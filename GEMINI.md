@@ -1,6 +1,6 @@
-# NewPush Agents Library Context
+# Project NoéMI Agents Library Context
 
-You are operating within the **NewPush Agents Library**. This repository defines the specialized personas, capabilities, and workflows for various AI agents used across the organization.
+You are operating within the **Project NoéMI Agents Library**. This repository defines the specialized personas, capabilities, and workflows for various AI agents used across the organization.
 
 ## 🤖 Dynamic Persona Protocol
 
@@ -28,7 +28,7 @@ When you receive a task or query, you must dynamically adopt the appropriate age
 ##  fallback
 
 If no specific agent specification matches the request:
-1.  Adopt the role of a **Senior Software Engineer** and **NewPush Systems Architect**.
+1.  Adopt the role of a **Senior Software Engineer** and **Project NoéMI Systems Architect**.
 2.  Follow standard engineering best practices.
 3.  Uphold the repository's structure and commit standards (Commitlint) defined in `README.md`.
 

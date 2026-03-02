@@ -12,11 +12,11 @@ The "Inbound" agent. It monitors a specific Dropbox folder for new video pairs, 
 
 ### 2. The Manager (The Orchestrator)
 **File:** `manager.py`  
-The Creative Director. It manages the **Project Context**, taking the raw inputs (Rough Cut + Pose Clip) and directing the specialized sub-agents.
+The Creative Director. It manages the **Project Context**, taking the raw inputs (Rough Assembly + Pose Clip) and directing the specialized sub-agents.
 
 ### 3. The Strategist (SEO Agent)
 **File:** `seo_agent.py`  
-The "Brain." It analyzes the rough cut audio/transcript to extract the core message, target keywords, and curiosity-driven hooks.
+The "Brain." It analyzes the rough assembly audio/transcript to extract the core message, target keywords, and curiosity-driven hooks.
 
 ### 4. The Visualizer (Thumbnail Agent)
 **File:** `thumb_agent.py`  
@@ -35,7 +35,7 @@ For more specific information, please refer to the following guides:
 
 ## 📚 Methodology Principles
 
-1.  **Shooting for the Edit:** We don't wait for a final edit to start marketing. Intelligence is extracted from the "Rough Cut."
+1.  **Shooting for the Edit:** We don't wait for a final edit to start marketing. Intelligence is extracted from the "Rough Assembly."
 2.  **Separate Visual Sources:** We use a dedicated clip for thumbnails (poses) to ensure high-energy, expressive assets.
 3.  **Programmatic Design:** We don't "paint from scratch." We use code to composite layers, ensuring perfect brand consistency.
 4.  **A/B Testing Loops:** The agent generates 15+ variations in seconds, allowing the creator to choose the winner.

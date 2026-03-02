@@ -55,7 +55,7 @@ To use the Dropbox Watcher, you must create a Dropbox App:
 
 1.  **Polling Loop:** `dropbox_watcher.py` checks for file pairs every 60 seconds.
 2.  **Download:** Once found, it downloads them to a local `tmp/` folder.
-3.  **Transcribe:** The SEO Agent uses `ffmpeg` to extract audio and a transcription service (Whisper or Gemini) to get the text.
+3.  **Transcribe:** The SEO Agent uses `ffmpeg` to extract audio and a transcription service (Whisper or Gemini) to get the text from the **Rough Assembly**.
 4.  **Analyze:** Gemini Pro analyzes the transcript against the "Amanda Horvath Methodology" instructions.
 5.  **Scan:** The Thumbnail Agent scans the pose clip using a saliency-based frame picker (OpenCV).
 6.  **Strip:** The agent strips backgrounds using `rembg` (this step is GPU-intensive if available).

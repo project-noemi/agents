@@ -8,8 +8,8 @@ This guide is designed for **Amanda Horvath** and her editing team. It explains 
 
 The Video Automation Pod is an "autonomous assistant" that monitors your Dropbox for new projects. You don't need to touch any code—you just need to follow the file-naming rules.
 
-### 1. Upload your "Rough Cut"
-As soon as the video editor has a rough cut (A-roll only, no B-roll or polish needed), they should upload it to the **Dropbox Inbound Folder**.
+### 1. Upload your "Rough Assembly"
+As soon as the video editor has a rough assembly (A-roll only, no B-roll or polish needed), they should upload it to the **Dropbox Inbound Folder**.
 - **The "Brain" Source:** The agent listens to this file to understand your message and keywords.
 
 ### 2. Upload your "Pose Clip"
@@ -32,10 +32,10 @@ The agent monitors these specific folders:
 
 The agent uses a "Project ID" to match your files. You **must** use the following naming pattern:
 
-- **Rough Cut:** `[ProjectName]_rough.mp4` (e.g., `ROI_Grok_v1_rough.mp4`)
+- **Rough Assembly:** `[ProjectName]_rough_assembly.mp4` (e.g., `ROI_Grok_v1_rough_assembly.mp4`)
 - **Pose Clip:** `[ProjectName]_pose.mp4` (e.g., `ROI_Grok_v1_pose.mp4`)
 
-**Note:** If the Project ID before the `_rough` and `_pose` suffix does not match exactly, the agent will not start processing.
+**Note:** If the Project ID before the `_rough_assembly` and `_pose` suffix does not match exactly, the agent will not start processing.
 
 ---
 
@@ -54,6 +54,6 @@ Within minutes of uploading your files, a new folder will appear in `/VideoPod/O
 
 ## ❓ Troubleshooting
 
-- **The agent isn't picking up my files:** Check that you have both the `_rough` and `_pose` files in the `Inbound` folder and that their names match.
+- **The agent isn't picking up my files:** Check that you have both the `_rough_assembly` and `_pose` files in the `Inbound` folder and that their names match.
 - **The faces look weird:** Ensure your `pose_clip` has good lighting and you are holding your poses for at least 1-2 seconds.
 - **I want a different title:** You can re-run the process by moving the files from `Processed` back to `Inbound` and the agent will regenerate them.

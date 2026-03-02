@@ -21,7 +21,7 @@ This folder contains the implementation scripts for automating your YouTube vide
    ```
 
 ## 🧠 What it does
-1. **Transcribes** your rough cut to understand the "Big Idea."
+1. **Transcribes** your rough assembly to understand the "Big Idea."
 2. **Generates** 3 curiosity-driven titles and thumbnail hooks.
 3. **Scans** your separate pose clip for the most expressive frames.
 4. **Composites** 15+ thumbnail variations with your brand colors and assets.

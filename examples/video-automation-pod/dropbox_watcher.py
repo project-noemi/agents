@@ -23,8 +23,8 @@ def check_for_pairs():
         # Look for matching projects
         projects = set()
         for name in filenames:
-            if "_rough.mp4" in name:
-                project_id = name.replace("_rough.mp4", "")
+            if "_rough_assembly.mp4" in name:
+                project_id = name.replace("_rough_assembly.mp4", "")
                 if f"{project_id}_pose.mp4" in filenames:
                     projects.add(project_id)
         
@@ -36,10 +36,10 @@ def check_for_pairs():
 def download_and_process(project_id):
     print(f"🚀 Found project: {project_id}. Starting download...")
     
-    rough_path = f"{INBOUND_FOLDER}/{project_id}_rough.mp4"
+    rough_path = f"{INBOUND_FOLDER}/{project_id}_rough_assembly.mp4"
     pose_path = f"{INBOUND_FOLDER}/{project_id}_pose.mp4"
     
-    local_rough = os.path.join(LOCAL_TMP, f"{project_id}_rough.mp4")
+    local_rough = os.path.join(LOCAL_TMP, f"{project_id}_rough_assembly.mp4")
     local_pose = os.path.join(LOCAL_TMP, f"{project_id}_pose.mp4")
     
     os.makedirs(LOCAL_TMP, exist_ok=True)
@@ -59,7 +59,7 @@ def download_and_process(project_id):
     
     # Cleanup: Move to processed
     print(f"✅ Cleanup: Moving {project_id} to Processed folder...")
-    dbx.files_move_v2(rough_path, f"{PROCESSED_FOLDER}/{project_id}_rough.mp4")
+    dbx.files_move_v2(rough_path, f"{PROCESSED_FOLDER}/{project_id}_rough_assembly.mp4")
     dbx.files_move_v2(pose_path, f"{PROCESSED_FOLDER}/{project_id}_pose.mp4")
     
     # Remove local temp files

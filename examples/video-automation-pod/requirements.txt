@@ -4,3 +4,5 @@ Pillow
 opencv-python
 moviepy
 pydub
+dropbox
+python-dotenv

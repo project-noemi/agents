@@ -4,41 +4,32 @@ This example demonstrates a multi-agent orchestration pattern designed to automa
 
 ## 🏗️ Architecture: The Marketing Pod
 
-The system is composed of three specialized micro-agents coordinated by a central Orchestrator.
+The system is composed of specialized micro-agents coordinated by a central Orchestrator.
 
-### 1. The Manager (The Orchestrator)
+### 1. The Watcher (Dropbox Agent)
+**File:** `dropbox_watcher.py`  
+The "Inbound" agent. It monitors a specific Dropbox folder for new video pairs, downloads them locally, and triggers the processing pipeline.
+
+### 2. The Manager (The Orchestrator)
 **File:** `manager.py`  
 The Creative Director. It manages the **Project Context**, taking the raw inputs (Rough Cut + Pose Clip) and directing the specialized sub-agents.
 
-### 2. The Strategist (SEO Agent)
+### 3. The Strategist (SEO Agent)
 **File:** `seo_agent.py`  
-The "Brain." It analyzes the rough cut audio/transcript to extract the core message, target keywords, and curiosity-driven hooks. It generates the "Creative Brief" that informs both the thumbnail design and the SEO metadata.
+The "Brain." It analyzes the rough cut audio/transcript to extract the core message, target keywords, and curiosity-driven hooks.
 
-### 3. The Visualizer (Thumbnail Agent)
+### 4. The Visualizer (Thumbnail Agent)
 **File:** `thumb_agent.py`  
-The "Eyes." It uses programmatic compositing to generate high-volume thumbnail variations. It pulls expressive "faces" from a dedicated pose clip, removes backgrounds, and layers them with brand assets and the strategist's hook text.
+The "Eyes." It uses programmatic compositing to generate high-volume thumbnail variations from a dedicated pose clip.
 
 ---
 
-## 🚀 Getting Started
+## 📖 Detailed Documentation
 
-### Prerequisites
-- Python 3.10+
-- `ffmpeg` installed on your system.
-- An API key for Google Gemini.
+For more specific information, please refer to the following guides:
 
-### Installation
-```bash
-cd examples/video-automation-pod
-pip install -r requirements.txt
-```
-
-### Usage
-Drop your **Rough Cut** (for intelligence) and your **Pose Clip** (for visuals) into the project folder.
-
-```bash
-python manager.py --project "MyProject" --rough_cut main_v1_rough.mp4 --pose_clip thumb_poses.mp4
-```
+*   **[User Guide](../../agents/marketing/video-automation-user-guide.md):** For creators and editors. Covers folder structures, naming conventions, and the daily workflow.
+*   **[Technical Guide](../../agents/marketing/video-automation-technical-guide.md):** For developers and system administrators. Covers environment setup, Dropbox API configuration, and script architecture.
 
 ---
 
@@ -46,5 +37,5 @@ python manager.py --project "MyProject" --rough_cut main_v1_rough.mp4 --pose_cli
 
 1.  **Shooting for the Edit:** We don't wait for a final edit to start marketing. Intelligence is extracted from the "Rough Cut."
 2.  **Separate Visual Sources:** We use a dedicated clip for thumbnails (poses) to ensure high-energy, expressive assets.
-3.  **Programmatic Design:** We don't "paint from scratch." We use code to composite layers, ensuring perfect brand consistency (colors, fonts, assets).
-4.  **A/B Testing Loops:** The agent generates 15+ variations in seconds, allowing the creator to choose the winner based on data, not just intuition.
+3.  **Programmatic Design:** We don't "paint from scratch." We use code to composite layers, ensuring perfect brand consistency.
+4.  **A/B Testing Loops:** The agent generates 15+ variations in seconds, allowing the creator to choose the winner.

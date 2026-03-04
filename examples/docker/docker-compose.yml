@@ -1,3 +1,8 @@
+# Fetch-on-Demand: All secrets are injected at runtime via vault CLI wrappers.
+# Usage:  op run --env-file=.env -- docker compose up -d
+#    or:  infisical run --env=dev -- docker compose up -d
+# See .env.example for required variable names.
+
 version: '3.8'
 
 services:
@@ -7,7 +12,7 @@ services:
     container_name: noemi-agent-memory
     environment:
       POSTGRES_USER: ai_user
-      POSTGRES_PASSWORD: secure_password_123
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: agent_memory
     ports:
       - "5432:5432"
@@ -33,7 +38,7 @@ services:
     environment:
       - DB_HOST=agent-memory
       - DB_USER=ai_user
-      - DB_PASSWORD=secure_password_123
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
       - DB_NAME=agent_memory
     volumes:
       - .:/app # Mounts local code so changes reflect instantly without rebuilding

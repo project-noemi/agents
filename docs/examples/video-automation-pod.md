@@ -28,8 +28,8 @@ The "Eyes." It uses programmatic compositing to generate high-volume thumbnail v
 
 For more specific information, please refer to the following guides:
 
-*   **[User Guide](../../agents/marketing/video-automation-user-guide.md):** For creators and editors. Covers folder structures, naming conventions, and the daily workflow.
-*   **[Technical Guide](../../agents/marketing/video-automation-technical-guide.md):** For developers and system administrators. Covers environment setup, Dropbox API configuration, and script architecture.
+*   **[User Guide](../agents/marketing/video-automation-user-guide.md):** For creators and editors. Covers folder structures, naming conventions, and the daily workflow.
+*   **[Technical Guide](../agents/marketing/video-automation-technical-guide.md):** For developers and system administrators. Covers environment setup, Dropbox API configuration, and script architecture.
 
 ---
 

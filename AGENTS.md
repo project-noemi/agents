@@ -14,6 +14,14 @@ This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Secu
 
 - RECOGNIZE REFERENCES: Any string starting with `op://` is a 1Password Secret Reference. You must use the CLI wrapper to resolve these into real values.
 
+# 🛡 Error Handling and Resilience
+To ensure reliability and stability, agents and toolkit components must implement robust error handling patterns.
+
+## Mandatory Directives
+- **Graceful Degradation**: If an MCP tool or external API fails, the agent must explain the error clearly and attempt alternative strategies if available, rather than silently failing.
+- **Exponential Backoff**: Implement exponential backoff retry logic for transient network errors or rate-limiting (429) responses.
+- **Standardized Logging**: All technical errors must be logged to `stderr` to allow the orchestrator to capture and report execution failures accurately.
+
 # 🚀 Execution Patterns
 The Infisical/1Password CLI is pre-installed in the environment. When you need to execute scripts, tests, or servers that require credentials, you must wrap the command using the following pattern:
 

@@ -15,25 +15,25 @@ The primary goal is to provide a robust foundation that developers can use to qu
 3. **Knowledge Base**: Act as a structured repository of information, protocols, and best practices that guide both human developers and the AI agents (NoéMI) operating within the ecosystem.
 
 ## Functional Requirements
-1. **Persona Definition**: Agents must be defined clearly using Markdown specifications (located in the `agents/` directory). The standard format is defined in [`docs/AGENT_TEMPLATE.md`](AGENT_TEMPLATE.md). Required sections: Role, Tone, Capabilities, Rules & Constraints, Boundaries. Optional sections (when relevant): Mission, Workflow, Tool Usage, Output Format, Journal, Files of Interest.
-2. **Configuration**: Agent runtime execution is configured via the orchestrator's environment variables. The context assembly script uses `mcp.config.json` to generate the correct base templates. 
-3. **Extensibility (MCP Integration)**: Agents and the underlying toolkit must be capable of seamlessly interacting with external Model Context Protocol (MCP) servers to expand their capabilities and execute actions in external systems.
+1. **Persona Definition**: Agents must be defined clearly using Markdown specifications (located in the `agents/` directory). The new standard format is: **Role, Mission, Core Mandates, Workflow, Boundaries**. Simpler agents may use basic templates, but standardization towards this format is preferred. Agents must also document any expected external tooling dependencies in their persona files.
+2. **Configuration**: Agent runtime execution is configured via the orchestrator's environment variables. The context assembly script uses `mcp.config.json` as the source of truth to generate the correct base templates.
+3. **Extensibility (MCP Integration)**: Agents and the underlying toolkit must be capable of seamlessly interacting with external Model Context Protocol (MCP) servers. Specialized components like the **Support Helper** persona and the **WHMCS MCP** protocol are maintained in separate repositories.
 4. **Modular Context Generation**: The system must provide a mechanism to compile `GEMINI.md` dynamically from base templates and modular MCP protocol files. This prevents context window overloading and allows developers to selectively activate only the MCP integrations relevant to their current task.
 
 ## Operational & Security Requirements
-1. **Execution Environment**: Agents defined in this repository are executed by integration into broader orchestration systems and chat UIs (e.g. Gemini CLI, LangChain).
+1. **Execution Environment**: This repository is a definitions library for building and composing agent contexts. Execution is handled by external orchestrators (e.g., Gemini CLI, n8n, LangChain).
 2. **Security & Credentials (Fetch-on-Demand)**: The toolkit mandates a "Fetch-on-Demand" architecture for secrets (referencing `.env.template`). All sensitive credentials (e.g., API keys, MCP connection strings) must be stored exclusively in secure vaults (e.g., 1Password) and never hardcoded.
 3. **Runtime Resolution**: Secrets must be resolved dynamically at runtime using secure CLI tools (e.g., the 1Password CLI `op`).
-4. **Resilience & Logging**: Agents must handle tool execution and API failures gracefully. Standardized logging to `stdout` and `stderr` is handled by the execution platform/orchestrator.
+4. **Resilience & Logging**: Agents must handle tool execution and API failures gracefully. Standardized logging to `stdout` and `stderr`, as well as error handling during execution, is the sole responsibility of the execution platform/orchestrator.
 5. **Identity & Access Management**:
     - **Authentication**: Delegated to the environment executing the agent (e.g., 1Password CLI auth for local runs).
     - **RBAC**: Role-Based Access Control is handled by the execution platform or host interface.
     - **Auditing**: Audit logging of tool executions is the responsibility of the MCP servers or the orchestrating platform.
 
 ## Technical Specifications
-- **Architecture**: A hybrid structure containing static Markdown documentation (for knowledge and persona definition) and Node.js executable scripts/configurations for runtime context deployment.
-- **Data Persistence**: The core execution model is stateless execution. Persistent memory (e.g., pgvector Memory Layer) is an optional enhancement handled by advanced orchestrators.
-- **Runtime Environment**: The context generation scripts use a Node.js environment. Docker and Gemini CLI are required dependencies for running the local examples and pre-flight checks. 
+- **Architecture**: A hybrid structure containing static Markdown documentation (for knowledge and persona definition) and Node.js executable scripts/configurations for runtime context deployment. The repository is language-agnostic regarding agent personas.
+- **Data Persistence**: The core execution model is stateless execution. The `pgvector` memory layer found in examples is an optional enhancement for advanced orchestrator setups.
+- **Runtime Environment**: The context generation scripts use a Node.js environment. **Python runtime support is officially deprecated.** Docker and Gemini CLI are core system requirements for running local examples and environment pre-flight checks.
   - *Prerequisite Reading:* For a short class on managing Gemini CLI extensions, please see the [Getting Started with Gemini CLI Extensions Codelab](https://codelabs.developers.google.com/getting-started-gemini-cli-extensions).
 
 ## Strategic Alignment & Future Enhancements (Top 5 Areas for Improvement)

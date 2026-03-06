@@ -6,22 +6,22 @@
 **Context:** The `REQUIREMENTS.md` explicitly states that "Python runtime support is officially deprecated," yet the `scripts/verify-env.sh` pre-flight check still mandates the presence of `python3` (line 19).
 **Ambiguity / Drift:** This creates confusion for new users and automated CI/CD pipelines. It is unclear if Python is required for specific examples or if the pre-flight check is simply outdated.
 **Question for Product Owner:** Should the `python3` check be removed from `verify-env.sh`, or are there specific components (e.g., in `examples/`) that still strictly require a Python environment?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *[If Python is truly deprecated, please command me to remove the `python3` check from `scripts/verify-env.sh` and `verify-env.ps1` to align with the core requirements.]*
+**Answer:** Python is deprecated per the answer to "Python Runtime Environment Support" (2026-02-25). Remove the `python3` check from `scripts/verify-env.sh` and `verify-env.ps1` to align with the core requirements. No components require a Python environment.
+**🤖 Jules Action Prompt:** *Remove the `python3` check from `scripts/verify-env.sh` and `verify-env.ps1`.*
 
 ### ❓ Question [2026-03-03] - Missing Casdoor Integration in Fleet Deployment
 **Context:** The `REQUIREMENTS.md` (Strategic Alignment, Item 4) specifies that Fleet Deployment infrastructure requires "Casdoor (identity)" as part of the multi-tenant stack. However, `examples/fleet-deployment/docker-compose.yml` does not implement a Casdoor service.
 **Ambiguity / Drift:** The core requirement for identity management is documented but not present in the provided reference architecture, preventing a complete "Fleet" demonstration.
 **Question for Product Owner:** Is there a preferred Casdoor configuration or Docker image we should use to complete this example, or is identity management currently being handled by another component not shown in the compose file?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *[Please provide the Casdoor configuration details so I can update `examples/fleet-deployment/docker-compose.yml` to satisfy the Strategic Alignment requirement for identity management.]*
+**Answer:** Add a Casdoor service to `examples/fleet-deployment/docker-compose.yml` using the official `casdoor/casdoor` image. Configuration secrets should follow the Infisical pattern established in the project. Provide a minimal working configuration with documentation for customization.
+**🤖 Jules Action Prompt:** *Add a `casdoor` service to `examples/fleet-deployment/docker-compose.yml` using the official `casdoor/casdoor` Docker image with a backing database, following the Infisical secret management pattern. Document required environment variables in `.env.template`.*
 
 ### ❓ Question [2026-03-03] - Status of ROI Calculator Scripts
 **Context:** `REQUIREMENTS.md` states the toolkit must include "Python/Excel-based ROI calculator scripts" (Strategic Alignment, Item 5). These files are not present in the repository.
 **Ambiguity / Drift:** A high-priority "Feynman Requirement" for automated validation and ROI modeling is documented as a core deliverable but has no implementation or placeholder.
 **Question for Product Owner:** Are the ROI calculator scripts intended to be part of this repository, and if so, can you provide the logic or templates that should be implemented?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *[Once the ROI logic is clarified, please command me to create the missing ROI calculator scripts in a new `tools/roi/` directory as specified in the strategic alignment.]*
+**Answer:** Python is deprecated. Create a Google Sheets-based ROI calculator instead. The sheet should include a line item per agent with ROI calculated from estimated time savings for each task transferred to agents. See `tools/roi/README.md` for the detailed methodology and a link to the template sheet.
+**🤖 Jules Action Prompt:** *Create `tools/roi/README.md` documenting the Google Sheets ROI calculator methodology (time-savings-based, per-agent line items) and include a link placeholder for the published Google Sheets template.*
 ### Question 2026-02-21 - Documentation Mirroring Drift (`docs/agents/`)
 *   **Context:** Project guidelines mandate that `docs/agents/` strictly mirror the hierarchy of `agents/`. Currently, `docs/agents/` is missing multiple domains (e.g., `engineering`, `marketing`, `operations`) found in the root `agents/` folder.
 *   **Ambiguity:** This indicates significant drift between the codebase structure and its required documentation mirror.

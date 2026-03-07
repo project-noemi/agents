@@ -7,6 +7,7 @@ const templatePath = path.join(__dirname, '../GEMINI.template.md');
 const outputPath = path.join(__dirname, '../GEMINI.md');
 const configPath = path.join(__dirname, '../mcp.config.json');
 const protocolsDir = path.join(__dirname, '../mcp-protocols');
+const agentsMdPath = path.join(__dirname, '../AGENTS.md');
 
 function run() {
     console.log('Generating modular GEMINI.md...');
@@ -64,7 +65,30 @@ function run() {
         
         const finalContent = `${pre}\n${injectedContent}\n${post}`;
         
-        fs.writeFileSync(outputPath, finalContent, 'utf8');
+        let finalOutput = finalContent;
+
+        // 5. Inject AGENTS.md content
+        const agentsStartTag = '<!-- AGENTS_INJECTIONS_START -->';
+        const agentsEndTag = '<!-- AGENTS_INJECTIONS_END -->';
+
+        const agentsStartIndex = finalOutput.indexOf(agentsStartTag);
+        const agentsEndIndex = finalOutput.indexOf(agentsEndTag);
+
+        if (agentsStartIndex !== -1 && agentsEndIndex !== -1) {
+            let agentsContent = '';
+            if (fs.existsSync(agentsMdPath)) {
+                agentsContent = fs.readFileSync(agentsMdPath, 'utf8');
+            } else {
+                console.warn('Warning: AGENTS.md not found.');
+                agentsContent = '> ⚠️ AGENTS.md missing.\n';
+            }
+
+            const preAgents = finalOutput.substring(0, agentsStartIndex + agentsStartTag.length);
+            const postAgents = finalOutput.substring(agentsEndIndex);
+            finalOutput = `${preAgents}\n${agentsContent}\n${postAgents}`;
+        }
+
+        fs.writeFileSync(outputPath, finalOutput, 'utf8');
         console.log(`Successfully generated GEMINI.md with active integrations: ${activeMcps.join(', ') || 'None'}`);
     } else {
         console.error('Error: Injection markers (<!-- MCP_INJECTIONS_START --> and <!-- MCP_INJECTIONS_END -->) not found in GEMINI.template.md');

@@ -125,6 +125,35 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.n8n-cohort02.rule=Host(`cohort02.noemi.local`)"
 
+  # --------------------------------------------------------
+  # IDENTITY MANAGEMENT
+  # Centralized identity provider for the multi-tenant fleet
+  # --------------------------------------------------------
+  db-casdoor:
+    image: postgres
+    container_name: fleet-db-casdoor
+    environment:
+      - POSTGRES_USER=casdoor
+      - POSTGRES_PASSWORD=${CASDOOR_DB_PASSWORD}
+      - POSTGRES_DB=casdoor
+    networks:
+      - noemi-fleet-net
+
+  casdoor:
+    image: casdoor/casdoor
+    container_name: fleet-casdoor
+    depends_on:
+      - db-casdoor
+    environment:
+      - driverName=postgres
+      - dataSourceName=user=casdoor password=${CASDOOR_DB_PASSWORD} host=db-casdoor port=5432 sslmode=disable dbname=casdoor
+      - dbName=casdoor
+    networks:
+      - noemi-fleet-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.casdoor.rule=Host(`auth.noemi.local`)"
+
 networks:
   noemi-fleet-net:
     driver: bridge

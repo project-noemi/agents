@@ -2,7 +2,7 @@
 
 ## Overview
 
-This ROI calculator measures the return on investment from deploying Project NoeMI agents by quantifying **time savings per task** that has been transferred from human workers to agents. The model follows a standard labor-cost-avoidance methodology, which is the most widely accepted approach for measuring automation ROI in enterprise environments.
+This ROI calculator measures the return on investment from deploying Project NoéMI agents by quantifying **time savings per task** that has been transferred from human workers to agents. The model follows a standard labor-cost-avoidance methodology, which is the most widely accepted approach for measuring automation ROI in enterprise environments.
 
 **Google Sheets Template:** [TODO: Insert published link to template]
 

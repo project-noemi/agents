@@ -14,7 +14,6 @@ function Check-Tool ($name, $command) {
 $allGood = $true
 if (-not (Check-Tool "Git" "git")) { $allGood = $false }
 if (-not (Check-Tool "Node.js" "node")) { $allGood = $false }
-if (-not (Check-Tool "Python" "python")) { $allGood = $false }
 if (-not (Check-Tool "Docker" "docker")) { $allGood = $false }
 if (-not (Check-Tool "Gemini CLI" "gemini")) { $allGood = $false }
 

@@ -16,7 +16,6 @@ check_tool() {
 ALL_GOOD=true
 check_tool "Git" "git" || ALL_GOOD=false
 check_tool "Node.js" "node" || ALL_GOOD=false
-check_tool "Python" "python3" || ALL_GOOD=false
 check_tool "Docker" "docker" || ALL_GOOD=false
 check_tool "Gemini CLI" "gemini" || ALL_GOOD=false
 

@@ -32,6 +32,36 @@ services:
       - noemi-fleet-net
 
   # --------------------------------------------------------
+  # THE IDENTITY LAYER (Casdoor)
+  # Standardized identity provider for all multi-tenant stacks
+  # --------------------------------------------------------
+  db-casdoor:
+    image: postgres:16
+    container_name: fleet-db-casdoor
+    environment:
+      - POSTGRES_USER=casdoor
+      - POSTGRES_PASSWORD=${CASDOOR_DB_PASSWORD}
+      - POSTGRES_DB=casdoor
+    networks:
+      - noemi-fleet-net
+
+  casdoor:
+    image: casdoor/casdoor:latest
+    container_name: fleet-casdoor
+    environment:
+      - driverName=postgres
+      - dataSourceName=user=casdoor password=${CASDOOR_DB_PASSWORD} host=db-casdoor port=5432 sslmode=disable dbname=casdoor
+    depends_on:
+      - db-casdoor
+    ports:
+      - "8000:8000"
+    networks:
+      - noemi-fleet-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.casdoor.rule=Host(`auth.noemi.local`)"
+
+  # --------------------------------------------------------
   # THE CENTRAL OBSERVABILITY STACK
   # Used by Master Accelerators to audit logs across all cohorts
   # --------------------------------------------------------

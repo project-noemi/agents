@@ -1,4 +1,4 @@
-# Project NoéMI Agents Repository - Requirements
+# Project NoéMI Agents Library - Requirements
 
 ## Overview
 This repository serves as a comprehensive resource for agentic development and a ready-to-use toolkit for building AI agents. It functions as the central directory for Project NoéMI, housing agent personas, specialized workflows, domain-specific knowledge (Markdown documentation), and integration scripts.
@@ -7,7 +7,8 @@ The primary goal is to provide a robust foundation that developers can use to qu
 
 ### Agent Deployment Model
 - **Standalone Collection**: This repository is exclusively a collection of standalone AI agent definitions, context templates, and scripts.
-- **External Dependencies**: Specific agents are implemented as personas that rely on external tools, such as Model Context Protocol (MCP) servers, for their core functionality rather than hosting that logic locally. Execution is handled by external orchestrators (e.g., Gemini CLI, n8n).
+- **External Dependencies**: Specific agents are implemented as personas that rely on external tools, such as Model Context Protocol (MCP) servers, for their core functionality rather than hosting that logic locally. Execution is handled by external orchestrators (e.g., Gemini CLI, n8n, LangChain).
+- **Separate Components**: Specialized components like the **Support Helper** persona and the **WHMCS MCP** server are maintained in separate repositories and are not part of this core library.
 
 ## Core Objectives
 1. **Agentic Development Toolkit**: Provide reusable components, standardized persona definitions, and workflow templates to accelerate agent creation.
@@ -15,32 +16,28 @@ The primary goal is to provide a robust foundation that developers can use to qu
 3. **Knowledge Base**: Act as a structured repository of information, protocols, and best practices that guide both human developers and the AI agents (NoéMI) operating within the ecosystem.
 
 ## Functional Requirements
-1. **Persona Definition**: Agents must be defined clearly using Markdown specifications (located in the `agents/` directory). The new standard format is: **Role, Mission, Core Mandates, Workflow, Boundaries**. Simpler agents may use basic templates, but standardization towards this format is preferred. Agents must also document any expected external tooling dependencies in their persona files.
-2. **Configuration**: Agent runtime execution is configured via the orchestrator's environment variables. The context assembly script uses `mcp.config.json` as the source of truth to generate the correct base templates.
-3. **Extensibility (MCP Integration)**: Agents and the underlying toolkit must be capable of seamlessly interacting with external Model Context Protocol (MCP) servers. Specialized components like the **Support Helper** persona and the **WHMCS MCP** protocol are maintained in separate repositories.
-4. **Modular Context Generation**: The system must provide a mechanism to compile `GEMINI.md` dynamically from base templates and modular MCP protocol files. This prevents context window overloading and allows developers to selectively activate only the MCP integrations relevant to their current task.
+1. **Persona Definition**: Agents must be defined clearly using Markdown specifications (located in the `agents/` directory). The standard format is: **Role, Mission, Core Mandates, Workflow, Boundaries**. Agents must also document any expected external tooling dependencies (e.g., `pnpm`, `docker`) in their persona files to ensure the orchestrator can prepare a compatible workspace.
+2. **Configuration**:
+    - **Context Assembly**: `mcp.config.json` is the source of truth for determining which MCP integrations are active during `GEMINI.md` generation.
+    - **Runtime Secrets**: Environment variables (managed via `.env.template` and SecretOps) are the source of truth for runtime execution.
+3. **Extensibility (MCP Integration)**: Agents and the underlying toolkit must be capable of seamlessly interacting with external Model Context Protocol (MCP) servers.
+4. **Modular Context Generation**: The system must provide a mechanism (`scripts/generate_gemini.js`) to compile `GEMINI.md` dynamically from base templates, modular MCP protocol files, and global security mandates from `AGENTS.md`.
 
 ## Operational & Security Requirements
-1. **Execution Environment**: This repository is a definitions library for building and composing agent contexts. Execution is handled by external orchestrators (e.g., Gemini CLI, n8n, LangChain).
-2. **Security & Credentials (Fetch-on-Demand)**: The toolkit mandates a "Fetch-on-Demand" architecture for secrets. All sensitive credentials (e.g., API keys, MCP connection strings) must be stored exclusively in secure vaults (e.g., Infisical) and never hardcoded.
-3. **Runtime Resolution**: Secrets must be resolved dynamically at runtime using secure CLI tools (e.g., the Infisical CLI `infisical`).
-4. **Resilience & Logging**: Agents must handle tool execution and API failures gracefully. Standardized logging to `stdout` and `stderr`, as well as error handling during execution, is the sole responsibility of the execution platform/orchestrator.
-5. **Identity & Access Management**:
-    - **Authentication**: Delegated to the environment executing the agent (e.g., Infisical CLI auth for local runs).
-    - **RBAC**: Role-Based Access Control is handled by the execution platform or host interface.
-    - **Auditing**: Audit logging of tool executions is the responsibility of the MCP servers or the orchestrating platform.
+1. **Execution Environment**: This repository is a definitions library; execution is handled by external orchestrators.
+2. **Security & Credentials (Fetch-on-Demand)**: All sensitive credentials must be stored in secure vaults (e.g., Infisical, 1Password) and resolved at runtime using CLI wrappers (`infisical run` or `op run`).
+3. **Resilience & Error Handling**: Agents must handle tool execution and API failures gracefully by following the global mandates in `AGENTS.md` (e.g., exponential backoff, graceful degradation). Standardized logging to `stdout` and `stderr` is the responsibility of the orchestrator.
+4. **Identity & Access Management**: Delegated to the execution environment and MCP servers.
 
 ## Technical Specifications
-- **Architecture**: A hybrid structure containing static Markdown documentation (for knowledge and persona definition) and Node.js executable scripts/configurations for runtime context deployment. The repository is language-agnostic regarding agent personas.
-- **Data Persistence**: The core execution model is stateless execution. The `pgvector` memory layer found in examples is an optional enhancement for advanced orchestrator setups.
-- **Runtime Environment**: The context generation scripts use a Node.js environment. **Python runtime support is officially deprecated.** Docker and Gemini CLI are core system requirements for running local examples and environment pre-flight checks.
-  - *Prerequisite Reading:* For a short class on managing Gemini CLI extensions, please see the [Getting Started with Gemini CLI Extensions Codelab](https://codelabs.developers.google.com/getting-started-gemini-cli-extensions).
+- **Architecture**: Static Markdown documentation and Node.js executable scripts.
+- **Data Persistence**: The core execution model is stateless. Optional persistent memory layers (e.g., `pgvector`) are handled by advanced orchestrators.
+- **Runtime Environment**: Node.js based utilities. **Python runtime support is officially deprecated.**
+- **System Dependencies**: Git, Node.js, Docker, and the Gemini CLI are required for running local examples, pre-flight checks (`scripts/verify-env.sh`), and environment validation.
 
-## Strategic Alignment & Future Enhancements (Top 5 Areas for Improvement)
-Based on the Project NoéMI strategy (1:50 Equilibrium, 4D Framework, and Fleet Deployment), the following are the top 5 required improvements to align the repository with the project's pedagogical and operational goals:
-
-1. **Role-Based Agent Toolkits (Practitioner vs. Accelerator):** The repository must categorize its templates and agents to explicitly serve the distinct roles of the "High-Tech Surfboard" model. We need clear toolkits for "Practitioners" (vibe coding, description, single-agent builds) and "Accelerators" (governance, multi-agent orchestration, risk audits).
-2. **Integration of the 4D AI Fluency Framework:** The agent development lifecycle documentation must be restructured around the 4 Ds: Delegation (Goal awareness), Description (Prompt engineering and contextualization), Discernment (Validation and quality control), and Diligence (ROI and ethical deployment).
-3. **Formalizing the "Guardian Layer" (TRiSM & Red Teaming):** The repository must introduce explicit "Guardian Agent" personas (supervisory AIs designed to monitor and critique other agents) and provide "Red Team Gauntlet" lab examples to test for prompt injection, data leaks, and policy violations.
-4. **Fleet-Ready Observability & Orchestration Infrastructure:** To support parallel "Fleet" deployments, the repository's examples must be expanded beyond single-tenant Docker setups. It needs automated provisioning templates (e.g., docker-compose or Kubernetes manifests) for a multi-tenant stack including n8n (automation), Traefik (ingress), Casdoor (identity), and Loki/Grafana (centralized observability).
-5. **Automated Validation & ROI Modeling (The Feynman Requirement):** The toolkit must include "Verification Bots" to audit agent logs for academic credentialing (GMU validation), alongside Python/Excel-based ROI calculator scripts to ensure agents deliver measurable business value before deployment.
+## Strategic Alignment & Future Enhancements
+1. **Role-Based Agent Toolkits**: Categorize templates for "Practitioners" and "Accelerators".
+2. **4D AI Fluency Framework**: Restructure lifecycle documentation around Delegation, Description, Discernment, and Diligence.
+3. **Guardian Layer**: Introduce explicit "Guardian Agent" personas and "Red Team Gauntlet" lab examples.
+4. **Fleet-Ready Infrastructure**: Expand examples to include multi-tenant stacks with Traefik, Loki, Grafana, n8n, and **Casdoor** (identity management).
+5. **Automated Validation & ROI Modeling**: Include "Verification Bots" for auditing and a **Google Sheets-based ROI calculator** (methodology documented in `tools/roi/README.md`).

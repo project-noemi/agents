@@ -1,5 +1,5 @@
 # 🔐 Secrets & Configuration
-This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical) and are never written to disk or hardcoded in source code.
+This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical or 1Password) and are never written to disk or hardcoded in source code.
 
 ## Mandatory Security Rules
 
@@ -9,7 +9,7 @@ This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Secu
 - NEVER hardcode actual secret values in any files, `.env` files, or logs.
 
 
-- ALWAYS use an Environment Injection CLI (`infisical run`) to resolve credentials at runtime.
+- ALWAYS use an Environment Injection CLI (`infisical run` or `op run`) to resolve credentials at runtime.
 
 # 🛡 Error Handling and Resilience
 To ensure reliability and stability, agents and toolkit components must implement robust error handling patterns.
@@ -20,24 +20,29 @@ To ensure reliability and stability, agents and toolkit components must implemen
 - **Standardized Logging**: All technical errors must be logged to `stderr` to allow the orchestrator to capture and report execution failures accurately.
 
 # 🚀 Execution Patterns
-The Infisical CLI is pre-installed in the environment. When you need to execute scripts, tests, or servers that require credentials, you must wrap the command using the following pattern:
+The Infisical CLI or 1Password CLI is required in the environment. When you need to execute scripts, tests, or servers that require credentials, you must wrap the command using the following pattern:
 
 ## Standard Command Wrapper
-Use `infisical run` to dynamically pull the specified environment and inject secrets directly into the process memory.
+Use `infisical run` or `op run` to dynamically pull the specified environment and inject secrets directly into the process memory.
 
 ## Examples:
 
 
-- Infisical Pattern (Python): `infisical run --env=dev -- python script.py`
+- Infisical Pattern: `infisical run --env=dev -- <command>`
 
 
-- Starting a Chat Session: `infisical run --env=dev -- gemini chat` 
+- 1Password Pattern: `op run --env-file=.env.template -- <command>`
+
+
+- Starting a Chat Session: `infisical run --env=dev -- gemini chat`
 
 # 🛠 Local Development & Authentication
 When running on a local host, the system uses human SSO or Desktop App integration for authentication.
 
 
 - Infisical: If execution fails, ensure you are logged in via `infisical login`.
+- 1Password: If execution fails, ensure you are logged in via `op signin`.
 
 # 📝 Coding Standards
-When writing code that requires configuration, always assume the values will be provided via process memory environment variables (e.g., `os.getenv()`). Do not create local `.env` parsing logic.
+- **Fetch-on-Demand**: When writing code that requires configuration, always assume the values will be provided via process memory environment variables (e.g., `os.getenv()`). Do not create local `.env` parsing logic.
+- **Persona Standards**: Specialized agent personas must follow the "Role, Mission, Core Mandates, Workflow, Boundaries" format and explicitly document their expected external tooling dependencies.

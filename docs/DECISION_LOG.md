@@ -1,5 +1,16 @@
 # Decision Log
 
+## [2026-03-08] - Documentation Audit and Requirement Consolidation
+- **Decision**: Consolidated implemented features (4D Framework, Guardian Layer, Fleet Infrastructure, ROI Methodology, Casdoor integration) into core requirements in `REQUIREMENTS.md`.
+- **Context**: Doc workflow requires identifying drift between code and requirements. The repository has successfully implemented several items previously listed as "Future Enhancements."
+- **Impact**:
+    - **4D Framework**: Formally adopted as the mandatory development methodology.
+    - **Guardian Layer**: Elevated to a core functional requirement.
+    - **Fleet Infrastructure**: Standardized multi-tenant deployment templates.
+    - **ROI Modeling**: Formally integrated the labor-cost-avoidance methodology.
+    - **Python Status**: Clarified that legacy Python scripts in `examples/` are deprecated and slated for conversion.
+    - **Strategic Alignment**: Added "Persona Standards Audit" and "Kubernetes Support" as new future enhancements.
+
 ## [2026-03-03] - Human Feedback Integration and Phase 1 Cleanup
 - **Decision**: Integrated 17 resolved clarification questions into core documentation and archived the Q&A history.
 - **Context**: Doc workflow requires processing all answered questions from `CLARIFICATIONS.md`.

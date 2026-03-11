@@ -22,7 +22,7 @@ The primary goal is to provide a robust foundation that developers can use to qu
     - **Context Assembly**: `mcp.config.json` is the source of truth for determining which MCP integrations are active during `GEMINI.md` generation.
     - **Runtime Secrets**: Environment variables (managed via `.env.template` and SecretOps) are the source of truth for runtime execution.
 3. **Extensibility (MCP Integration)**: Agents and the underlying toolkit must be capable of seamlessly interacting with external Model Context Protocol (MCP) servers.
-4. **Modular Context Generation**: The system must provide a mechanism (`scripts/generate_gemini.js`) to compile `GEMINI.md` dynamically from base templates, modular MCP protocol files, and global security mandates from `AGENTS.md`.
+4. **Modular Context Generation**: The system must provide a mechanism (`scripts/generate_gemini.js`) to compile `GEMINI.md` dynamically from base templates, modular MCP protocol files, and global security and resilience mandates from `AGENTS.md`.
 5. **Guardian Layer Defense**: Implement and maintain a specialized layer of "Guardian" agents (e.g., `PIIGuard`, `PromptShield`) to enforce security boundaries and data privacy protocols.
 
 ## Operational & Security Requirements

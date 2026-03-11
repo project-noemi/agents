@@ -30,6 +30,26 @@
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Identify all remaining `.py` files in the repository and create a prioritized migration roadmap to convert them into Node.js equivalents.*
 
+### ❓ Question [2026-03-09] - Enforcement of Persona Documentation Mirroring
+**Context:** `REQUIREMENTS.md` (Core Objectives, Item 2) states that "Documentation strictly mirrors these directories in `docs/agents/`." and `DECISION_LOG.md` (2026-03-03) mentions "Mandated that `docs/agents/` must strictly mirror the `agents/` hierarchy."
+**Ambiguity / Drift:** While the directory structure is mirrored, individual persona Markdown files (e.g., `agents/coding/bolt/core.md`) are missing their counterparts in `docs/agents/`. Only READMEs and a few select guides exist.
+**Question for Product Owner:** Should every individual persona file in `agents/` be mirrored as a documentation file in `docs/agents/`, or is mirroring only required at the directory/README level?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Identify all missing persona documentation files in `docs/agents/` and create mirror Markdown files that provide a technical overview and usage guide for each corresponding persona in `agents/`.*
+
+### ❓ Question [2026-03-09] - Persona Template Standardization (Core Mandates vs Rules & Constraints)
+**Context:** `REQUIREMENTS.md` (Functional Requirements, Item 1) specifies the standard format as "Role, Mission, Core Mandates, Workflow, Boundaries."
+**Ambiguity / Drift:** A majority of personas in the `agents/` directory (e.g., `ai-architect.md`, `brand-strategist.md`, `pii-guard.md`) utilize a "Rules & Constraints" header instead of "Core Mandates."
+**Question for Product Owner:** Should all existing personas be updated to strictly use the "Core Mandates" header to align with the latest standard, or is "Rules & Constraints" considered an acceptable alias?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a bulk update of all persona files in `agents/` to rename the "Rules & Constraints" section to "Core Mandates" for strict adherence to the standardized template.*
+
+### ❓ Question [2026-03-09] - Missing "External Tooling Dependencies" in Personas
+**Context:** `REQUIREMENTS.md` (Functional Requirements, Item 1) states that "Agents must also document any expected external tooling dependencies (e.g., pnpm, docker) in their persona files."
+**Ambiguity / Drift:** None of the current persona files in the `agents/` directory contain an explicit "External Tooling Dependencies" section, which may lead to environment setup failures during orchestrator preparation.
+**Question for Product Owner:** Should a new mandatory section "External Tooling Dependencies" be added to the persona template, and should existing personas be audited to populate it?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Audit all persona files in `agents/` and add a mandatory "External Tooling Dependencies" section, documenting required tools like `npm`, `docker`, or specific MCP servers for each.*
 ### ❓ Question [2026-03-09] - Header Discrepancy in Persona Template
 **Context:** `REQUIREMENTS.md` (Functional Requirements, Item 1) specifies the persona format as "Role, Mission, Core Mandates, Workflow, Boundaries". However, `docs/AGENT_TEMPLATE.md` and the majority of agent files in `agents/` use the header "Rules & Constraints" instead of "Core Mandates".
 **Ambiguity / Drift:** This inconsistency between the core requirements and the implementation template creates confusion for developers and complicates automated persona validation.

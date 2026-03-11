@@ -1,0 +1,1 @@
+../../../agents/operations/knowledge-manager.md

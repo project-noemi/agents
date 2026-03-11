@@ -1,0 +1,1 @@
+../../../../agents/coding/sentinel/core.md

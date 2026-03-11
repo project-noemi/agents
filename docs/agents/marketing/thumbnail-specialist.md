@@ -1,0 +1,1 @@
+../../../agents/marketing/thumbnail-specialist.md

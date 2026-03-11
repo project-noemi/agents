@@ -1,0 +1,1 @@
+../../../agents/marketing/seo-strategist.md

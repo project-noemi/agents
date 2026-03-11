@@ -1,0 +1,1 @@
+../../../../agents/coding/bolt/core.md

@@ -50,3 +50,16 @@
 **Question for Product Owner:** Should a new mandatory section "External Tooling Dependencies" be added to the persona template, and should existing personas be audited to populate it?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Audit all persona files in `agents/` and add a mandatory "External Tooling Dependencies" section, documenting required tools like `npm`, `docker`, or specific MCP servers for each.*
+### ❓ Question [2026-03-09] - Header Discrepancy in Persona Template
+**Context:** `REQUIREMENTS.md` (Functional Requirements, Item 1) specifies the persona format as "Role, Mission, Core Mandates, Workflow, Boundaries". However, `docs/AGENT_TEMPLATE.md` and the majority of agent files in `agents/` use the header "Rules & Constraints" instead of "Core Mandates".
+**Ambiguity / Drift:** This inconsistency between the core requirements and the implementation template creates confusion for developers and complicates automated persona validation.
+**Question for Product Owner:** Should `REQUIREMENTS.md` be updated to use "Rules & Constraints" to align with the template and current agents, or should the template and agents be updated to use "Core Mandates"?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a global search-and-replace across all `.md` files in `agents/` and the `docs/AGENT_TEMPLATE.md` to standardize the header as either "Core Mandates" or "Rules & Constraints" based on the PO's decision.*
+
+### ❓ Question [2026-03-09] - Enforcement of Documentation Mirroring
+**Context:** `DECISION_LOG.md` (Decision dated 2026-03-03) mandates that `docs/agents/` must "strictly mirror" the `agents/` hierarchy.
+**Ambiguity / Drift:** Currently, `docs/agents/` only contains category `README.md` files, while the individual agent personas (e.g., `agents/coding/bolt/core.md`) are missing from the `docs/` tree.
+**Question for Product Owner:** Is the requirement for "strict mirroring" intended to include a 1:1 copy of every persona file into `docs/agents/`, or should `docs/agents/` only house high-level category overviews and guides?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create a script to automatically sync and mirror all persona `.md` files from the `agents/` directory into their corresponding locations in `docs/agents/` to ensure documentation parity.*

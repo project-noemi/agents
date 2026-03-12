@@ -1,0 +1,59 @@
+{
+  "name": "ROI Automated Tracking Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "roi-log-ingest",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "name": "Webhook (Log Ingest)",
+      "type": "n8n-nodes-base.webhook",
+      "position": [ 200, 300 ]
+    },
+    {
+      "parameters": {
+        "agent": "roi-auditor"
+      },
+      "name": "ROI Auditor (Guardian)",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [ 450, 300 ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": "YOUR_ROI_SHEET_ID",
+        "range": "ExecutionLogs!A:D",
+        "options": {}
+      },
+      "name": "Google Sheets (Append)",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [ 700, 300 ]
+    }
+  ],
+  "connections": {
+    "Webhook (Log Ingest)": {
+      "main": [
+        [
+          {
+            "node": "ROI Auditor (Guardian)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ROI Auditor (Guardian)": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets (Append)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

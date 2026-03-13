@@ -1,0 +1,129 @@
+{
+  "name": "Kapcsolatprioritás",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "@newpush.com"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "88144b9b-5328-48c9-a39e-4578ecfae7c7",
+      "name": "Beérkező email",
+      "alwaysOutputData": false,
+      "notesInFlow": false,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_DATATABLE_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_DATATABLE_NAME",
+          "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/REPLACE_WITH_YOUR_DATATABLE_ID"
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "3c6f2624-1399-4b0b-aa61-820082a68845",
+      "name": "Get row(s)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4746f5ca-56a3-45a7-a37f-ee699d77bd6d",
+              "leftValue": "={{ $json.customer_level }}",
+              "rightValue": "VIP",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        0
+      ],
+      "id": "7ccfe3cf-334f-4ced-a54f-2557befd9265",
+      "name": "If"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Beérkező email": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0d268dbf-2d1d-4e01-b891-c79c35400bee",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "REPLACE_WITH_YOUR_INSTANCE_ID"
+  },
+  "id": "olQLYodgeqwTdqvB",
+  "tags": []
+}

@@ -1,0 +1,190 @@
+{
+  "name": "Labor 2.2: Iteratív Munkafolyamat (Párbeszédes automatizáció)",
+  "nodes": [
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Feladat: Készíts egy JSON objektumot az alábbi adatokból.\n\nEREDETI SZÖVEG:\n{{ $('trigger').item.json.chatInput }}\n\nKIEGÉSZÍTŐ INFÓ:\n{{ $json.chatInput }}\n\nJSON formátum:\n{\n  \"felado\": \"...\",\n  \"cimzett\": \"...\",\n  \"targy\": \"...\",\n  \"szoveg\": \"...\",\n  \"esemeny_neve\": \"...\",\n  \"esemeny_idopontja\": \"YYYY-MM-DD\",\n  \"uj_jelentkezo_neve\": \"...\",\n  \"uj_jelentkezo_email\": \"...\",\n  \"surgos_e\": true/false\n}\n\nCsak a tiszta JSON-t add vissza!"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "d5603d4c-8d74-4a55-a0e2-81789e656f80",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "653fb8a9-5507-425a-8189-834b1f2fbafa",
+              "leftValue": "={{ JSON.parse($json.content.parts[0].text).szoveg }}",
+              "rightValue": "={{ JSON.parse($json.content.parts[0].text).felado }}",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        528,
+        0
+      ],
+      "id": "ef50f277-5d42-4b50-a062-b7abf1d92990",
+      "name": "If",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "message": "Elnézést, nem találom az email tartalmát!\nKérem adja meg a tartalmát!",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1.2,
+      "position": [
+        768,
+        -192
+      ],
+      "id": "4357a645-afda-4764-8203-9ae819aad6f0",
+      "name": "Chat",
+      "webhookId": "0a68619c-7604-4b91-8b04-b7783aca544d"
+    },
+    {
+      "parameters": {
+        "message": "Köszönöm, meg van minden információm!",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1.2,
+      "position": [
+        752,
+        32
+      ],
+      "id": "a1662f28-8c45-4117-a47c-f2077b8d43f2",
+      "name": "Chat1",
+      "webhookId": "a2ca72c1-843e-4ddf-8264-15d1f7b1fcb0"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "responseNodes"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8fbd30bd-3c45-43ad-9b4a-d1a351760a20",
+      "name": "trigger",
+      "webhookId": "9e4bbaca-ad71-457e-ad48-d9a3bb89e8f3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Chat",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Chat1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "trigger": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "44eca6e3-6fb9-4141-8637-3595f1e3c89b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "REPLACE_WITH_YOUR_INSTANCE_ID"
+  },
+  "id": "NtNysx0AQ3VED2JP",
+  "tags": []
+}

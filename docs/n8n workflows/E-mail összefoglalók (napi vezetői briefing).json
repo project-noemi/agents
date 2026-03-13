@@ -1,0 +1,163 @@
+{
+  "name": "E-mail összefoglalók (napi vezetői briefing)",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        128,
+        -80
+      ],
+      "id": "6ebbdd1b-61b0-4666-b4be-693abd10663d",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true,
+        "filters": {
+          "labelIds": [
+            "Label_4227413208419604109"
+          ],
+          "receivedAfter": "={{ $now.minus({ hours: 24 }).toString() }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        304,
+        -80
+      ],
+      "id": "417da24a-f8b2-4026-b2ee-b484923869b1",
+      "name": "Get many messages",
+      "webhookId": "5311ca09-e4eb-48b2-b831-2a5e87c70686",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        512,
+        -80
+      ],
+      "id": "6cea86db-dbc1-44f1-879d-a27ed909a2a1",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bb35b197-232a-4651-9c01-b5a829b8f644",
+              "name": "data",
+              "value": "={{ $json.data.length }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        720,
+        -80
+      ],
+      "id": "09dfdb6b-0788-4f47-a558-3966fce2c694",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "Napi Email összesítő",
+        "message": "=A mai nap {{ $json.data }} email került internal besorolásba.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        -80
+      ],
+      "id": "a4ff0f52-ca54-43a6-bb03-485d0aa4709e",
+      "name": "Send a message",
+      "webhookId": "795a7267-3f18-486a-beb8-72778951d5d2",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "631aaacf-e114-46ae-9275-cf3f866640ba",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "REPLACE_WITH_YOUR_INSTANCE_ID"
+  },
+  "id": "HRwMWX1JWM5T9bml",
+  "tags": []
+}

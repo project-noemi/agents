@@ -1,0 +1,80 @@
+{
+  "name": "Labor 2.1: JSON Strukturálás és Validáció",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a0d47f79-8f18-4025-9f03-7af8a78a6e43",
+      "name": "When chat message received",
+      "webhookId": "741775ab-0f54-4266-a9af-6070ee43ed28"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Feladat: Olvasd el a megadott e-mailt, és kinyerd belőle az alábbi adatokat. Figyelj a magyar nyelv sajátosságaira (ragozás, dátumformátum). Ha egy adat ragozott alakban szerepel (pl. \"NoéMI-re\"), a válaszban a szótövet használd (\"NoéMI\").\n\nKimeneti formátum: Kizárólag érvényes JSON objektumot adj vissza, mindenféle szöveges kiegészítés vagy markdown kódblokk nélkül.\n\nMezők leírása (JSON kulcsok):\n\nesemeny_neve: A képzés vagy tréning megnevezése (pl. NoéMI).\n\nesemeny_idopontja: A képzés dátuma YYYY-MM-DD formátumban. (Ha csak \"március 10.\" szerepel, használd a 2026-os évet).\n\nfelado_neve: Az e-mailt aláíró személy teljes neve.\n\nfelado_cege: A küldő cégének neve az aláírásból.\n\nuj_resztvevo_neve: Annak a személynek a neve, aki pluszban jelentkezik.\n\nuj_resztvevo_email: Az új jelentkező e-mail címe.\n\nsurgos_e: Logikai érték (true), ha a levélben szerepel a \"sürgős\", \"holnap\", \"azonnal\" szó, vagy ha a dátum közeli."
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "3fceec19-07ee-4162-a99d-7df558f46e7d",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "2854f2be-6bee-4962-940f-3ba9fb09b12e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "REPLACE_WITH_YOUR_INSTANCE_ID"
+  },
+  "id": "h7lYLtI3Z0ydMb2v",
+  "tags": []
+}

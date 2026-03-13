@@ -1,0 +1,300 @@
+{
+  "name": "Bejövő levelek intelligens szűrése (AI triázs)",
+  "nodes": [
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Feladat: Elemezd az alábbi beérkező e-mailt, és sorold be a megadott 5 kategória egyikébe.\n\nAZ E-MAIL TARTALMA:\n{{ $json.text }}\n\nKATEGÓRIÁK ÉS LOGIKA:\n1. SPAM_MARKETING: Kéretlen reklám, hírlevél, tömeges ajánlat.\n2. INFO_NYUGTA: Meghívó, bemutatkozás, ajánlás, ami nem igényel azonnali döntést, csak nyugtázást.\n3. DELEGÁLHATÓ: Számla, adminisztráció, technikai segítségkérés, amit más kolléga is meg tud oldani.\n4. FIGYELMET_IGÉNYEL: Fontos partner vagy ügyfél levele, ami személyes döntést vagy választ vár.\n5. SÜRGŐS: Ügyfélpanasz, kritikus hiba, szoros határidő, azonnali beavatkozás kell.\n\nKimeneti formátum (csak tiszta JSON):\n{\n  \"kategoria_id\": 1-5 közötti szám,\n  \"kategoria_nev\": \"A kategória rövid neve\",\n  \"osszefoglalo\": \"Maximum 2 mondatos kivonat a levél lényegéről\",\n  \"indoklas\": \"Miért ebbe a kategóriába soroltad?\",\n  \"surgos_e\": true/false\n}"
+            }
+          ]
+        },
+        "simplify": false,
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        0
+      ],
+      "id": "d856770f-5858-4b37-9a7f-a2d7948256b8",
+      "name": "Email kategorizálás",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "labelIds": [
+            "Label_6657756323391930300"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "446c9ca8-25bb-4220-b1d2-3989deae7522",
+      "name": "Beérkező email",
+      "alwaysOutputData": false,
+      "notesInFlow": false,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Az alábbi e-mailre írj egy udvarias válasz javaslatot magyarul. Csak a válasz szövegét add vissza!\n\nEredeti email:\n{{ $('Beérkező email').item.json.text }}"
+            },
+            {}
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        912,
+        -96
+      ],
+      "id": "bd602405-daa1-4d2b-8ec1-4bfbca0b1bdc",
+      "name": "Válasz generálás 2. kategória esetén",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3f7ab070-f2e4-48a6-b89a-0ec85141f6dc",
+              "leftValue": "={{ $json.candidates[0].content.parts[0].text }}",
+              "rightValue": "\"kategoria_id\": 2",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        496,
+        0
+      ],
+      "id": "bfeb88c5-35f4-411f-a8e9-f3bbd264a6a7",
+      "name": "Ha kategória 2"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $('Beérkező email').item.json.subject }}",
+        "message": "={{ $json.content.parts[0].text }}",
+        "options": {
+          "threadId": "={{ $('Beérkező email').item.json.threadId }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1216,
+        -112
+      ],
+      "id": "fe11368e-310a-4a8a-b345-44f0f0918437",
+      "name": "Create a draft",
+      "webhookId": "f5ac2835-1201-4c03-86d0-f53e36818582",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_DATATABLE_ID",
+          "mode": "list",
+          "cachedResultName": "YOUR_DATATABLE_NAME",
+          "cachedResultUrl": "/projects/YOUR_PROJECT_ID/datatables/REPLACE_WITH_YOUR_DATATABLE_ID"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "customer_level",
+              "keyValue": "VIP"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        704,
+        -64
+      ],
+      "id": "203825d8-4102-4914-9362-146514c39879",
+      "name": "Get row(s)"
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Beérkező email').item.json.id }}",
+        "labelIds": [
+          "Label_5078824450306834231"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1408,
+        -128
+      ],
+      "id": "320e6f5a-51d8-4352-8864-b33174371a39",
+      "name": "Add label to message",
+      "webhookId": "1d181feb-de4d-4841-a784-7c6ceba1891a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_SECOND_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account 3"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Email kategorizálás": {
+      "main": [
+        [
+          {
+            "node": "Ha kategória 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Beérkező email": {
+      "main": [
+        [
+          {
+            "node": "Email kategorizálás",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Válasz generálás 2. kategória esetén": {
+      "main": [
+        [
+          {
+            "node": "Create a draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ha kategória 2": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a draft": {
+      "main": [
+        [
+          {
+            "node": "Add label to message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Válasz generálás 2. kategória esetén",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "ff9db4df-04fb-44d1-a1f6-ecd4b627cd32",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "REPLACE_WITH_YOUR_INSTANCE_ID"
+  },
+  "id": "VAUnVhbo5OwJJz72",
+  "tags": []
+}

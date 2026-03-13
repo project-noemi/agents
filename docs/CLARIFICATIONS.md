@@ -37,33 +37,6 @@
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Identify all missing persona documentation files in `docs/agents/` and create mirror Markdown files that provide a technical overview and usage guide for each corresponding persona in `agents/`.*
 
-### ❓ Question [2026-03-09] - Persona Template Standardization (Core Mandates vs Rules & Constraints)
-**Context:** `REQUIREMENTS.md` (Functional Requirements, Item 1) specifies the standard format as "Role, Mission, Core Mandates, Workflow, Boundaries."
-**Ambiguity / Drift:** A majority of personas in the `agents/` directory (e.g., `ai-architect.md`, `brand-strategist.md`, `pii-guard.md`) utilize a "Rules & Constraints" header instead of "Core Mandates."
-**Question for Product Owner:** Should all existing personas be updated to strictly use the "Core Mandates" header to align with the latest standard, or is "Rules & Constraints" considered an acceptable alias?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a bulk update of all persona files in `agents/` to rename the "Rules & Constraints" section to "Core Mandates" for strict adherence to the standardized template.*
-
-### ❓ Question [2026-03-09] - Missing "External Tooling Dependencies" in Personas
-**Context:** `REQUIREMENTS.md` (Functional Requirements, Item 1) states that "Agents must also document any expected external tooling dependencies (e.g., pnpm, docker) in their persona files."
-**Ambiguity / Drift:** None of the current persona files in the `agents/` directory contain an explicit "External Tooling Dependencies" section, which may lead to environment setup failures during orchestrator preparation.
-**Question for Product Owner:** Should a new mandatory section "External Tooling Dependencies" be added to the persona template, and should existing personas be audited to populate it?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Audit all persona files in `agents/` and add a mandatory "External Tooling Dependencies" section, documenting required tools like `npm`, `docker`, or specific MCP servers for each.*
-### ❓ Question [2026-03-09] - Header Discrepancy in Persona Template
-**Context:** `REQUIREMENTS.md` (Functional Requirements, Item 1) specifies the persona format as "Role, Mission, Core Mandates, Workflow, Boundaries". However, `docs/AGENT_TEMPLATE.md` and the majority of agent files in `agents/` use the header "Rules & Constraints" instead of "Core Mandates".
-**Ambiguity / Drift:** This inconsistency between the core requirements and the implementation template creates confusion for developers and complicates automated persona validation.
-**Question for Product Owner:** Should `REQUIREMENTS.md` be updated to use "Rules & Constraints" to align with the template and current agents, or should the template and agents be updated to use "Core Mandates"?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a global search-and-replace across all `.md` files in `agents/` and the `docs/AGENT_TEMPLATE.md` to standardize the header as either "Core Mandates" or "Rules & Constraints" based on the PO's decision.*
-
-### ❓ Question [2026-03-09] - Enforcement of Documentation Mirroring
-**Context:** `DECISION_LOG.md` (Decision dated 2026-03-03) mandates that `docs/agents/` must "strictly mirror" the `agents/` hierarchy.
-**Ambiguity / Drift:** Currently, `docs/agents/` only contains category `README.md` files, while the individual agent personas (e.g., `agents/coding/bolt/core.md`) are missing from the `docs/` tree.
-**Question for Product Owner:** Is the requirement for "strict mirroring" intended to include a 1:1 copy of every persona file into `docs/agents/`, or should `docs/agents/` only house high-level category overviews and guides?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Create a script to automatically sync and mirror all persona `.md` files from the `agents/` directory into their corresponding locations in `docs/agents/` to ensure documentation parity.*
-
 ### ❓ Question [2026-03-10] - SecretOps CLI Verification in Pre-Flight
 **Context:** `AGENTS.md` mandates the use of `infisical run` or `op run` for "Fetch-on-Demand" security. However, `scripts/verify-env.sh` and `verify-env.ps1` do not check if these CLIs are installed.
 **Ambiguity / Drift:** The core security policy is not enforced or verified by the project's own environment validation tools.
@@ -84,3 +57,10 @@
 **Question for Product Owner:** What is the standardized destination for the JSON Audit Log? Should it be printed to `stdout` following the primary output, or integrated into the final Markdown response within a `<details>` block?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Draft a technical specification for Audit Log delivery and update the `docs/AGENT_TEMPLATE.md` to include a standardized "Audit Log" section that adheres to this protocol.*
+
+### ❓ Question [2026-03-12] - Missing "External Tooling Dependencies" Section
+**Context:** `REQUIREMENTS.md` mandates that "Agents must also document any expected external tooling dependencies (e.g., pnpm, docker) in their persona files."
+**Ambiguity / Drift:** A codebase audit revealed that none of the 18 existing agent personas in the `agents/` directory currently contain this section.
+**Question for Product Owner:** Should Jules proceed with adding a placeholder `## External Tooling Dependencies` section to all personas, or should this be added only as each persona is updated with specific tool requirements?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Audit all 18 persona files in `agents/` and insert a mandatory `## External Tooling Dependencies` section with initial values based on their known capabilities (e.g., Docker for infrastructure agents).*

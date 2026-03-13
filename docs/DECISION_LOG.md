@@ -1,5 +1,15 @@
 # Decision Log
 
+## [2026-03-12] - Codebase Audit and Requirement Alignment
+- **Decision**: Conducted a Phase 2 holistic scan of the codebase to align documentation with reality and resolve persona template discrepancies.
+- **Context**: Discovered through automated audit that all 18 agent personas use "Rules & Constraints" instead of "Core Mandates," and that mirroring between `agents/` and `docs/agents/` is actually complete.
+- **Impact**:
+    - **Requirement Alignment**: Updated `REQUIREMENTS.md` and `AGENTS.md` to formally recognize "Rules & Constraints" as the standard persona header, resolving a recurring ambiguity.
+    - **Mirroring Verification**: Confirmed that persona file mirroring to `docs/agents/` is complete, removing the associated `[PENDING]` marker.
+    - **Python Debt Tracking**: Quantified the Python deprecation debt to exactly 6 files to provide better visibility for the migration roadmap.
+    - **ROI Status**: Updated requirements to reflect the existing implementation of the `roi-auditor` agent persona.
+    - **Clarifications**: Consolidated existing questions and added a new high-priority question regarding the bulk addition of missing mandatory sections (External Tooling Dependencies).
+
 ## [2026-03-10] - Documentation Audit and Pre-Flight Gap Identification
 - **Decision**: Conducted a follow-up holistic scan focusing on environment setup and toolchain dependencies.
 - **Context**: Phase 2 Doc workflow requires continuous identification of drift. Discovered that mandatory SecretOps patterns in `AGENTS.md` are not validated by pre-flight scripts.

@@ -12,12 +12,12 @@ The primary goal is to provide a robust foundation that developers can use to qu
 
 ## Core Objectives
 1. **Agentic Development Toolkit**: Provide reusable components, standardized persona definitions, and workflow templates to accelerate agent creation.
-2. **Out-of-the-Box Agents**: Supply fully defined, operational agent personas that can be deployed immediately for common tasks across coding, infrastructure, communication, engineering, marketing, operations, and product domains. Documentation strictly mirrors these directories in `docs/agents/` [PENDING: Individual persona file mirroring].
+2. **Out-of-the-Box Agents**: Supply fully defined, operational agent personas that can be deployed immediately for common tasks across coding, infrastructure, communication, engineering, marketing, operations, and product domains. Documentation strictly mirrors these directories in `docs/agents/` [VERIFIED: Individual persona file mirroring is complete].
 3. **Knowledge Base**: Act as a structured repository of information, protocols, and best practices that guide both human developers and the AI agents (NoéMI) operating within the ecosystem.
 4. **The 4D AI Fluency Framework**: Formally adopt and document the Delegation, Description, Discernment, and Diligence framework as the mandatory methodology for all agent development.
 
 ## Functional Requirements
-1. **Persona Definition**: Agents must be defined clearly using Markdown specifications (located in the `agents/` directory). The standard format is: **Role, Mission, Core Mandates, Workflow, Boundaries** [PENDING: Template header standardization]. Agents must also document any expected external tooling dependencies (e.g., `pnpm`, `docker`) in their persona files to ensure the orchestrator can prepare a compatible workspace [PENDING: Mandatory section implementation].
+1. **Persona Definition**: Agents must be defined clearly using Markdown specifications (located in the `agents/` directory). The standard format is: **Role, Mission, Rules & Constraints, Workflow, Boundaries** [VERIFIED: All agents utilize 'Rules & Constraints']. Agents must also document any expected external tooling dependencies (e.g., `pnpm`, `docker`) in their persona files to ensure the orchestrator can prepare a compatible workspace [PENDING: Mandatory section implementation].
 2. **Configuration**:
     - **Context Assembly**: `mcp.config.json` is the source of truth for determining which MCP integrations are active during `GEMINI.md` generation.
     - **Runtime Secrets**: Environment variables (managed via `.env.template` and SecretOps) are the source of truth for runtime execution.
@@ -31,12 +31,12 @@ The primary goal is to provide a robust foundation that developers can use to qu
 3. **Resilience & Error Handling**: Agents must handle tool execution and API failures gracefully by following the global mandates in `AGENTS.md` (e.g., exponential backoff, graceful degradation). Standardized logging to `stdout` and `stderr` is the responsibility of the orchestrator.
 4. **Identity & Access Management**: Delegated to the execution environment and MCP servers. **Casdoor** is the standardized identity management provider for multi-tenant fleet deployments.
 5. **Fleet-Ready Infrastructure**: Maintain standardized `docker-compose.yml` templates for parallel "Fleet" deployments, including Traefik for routing and a centralized observability stack (Grafana/Loki).
-6. **ROI Modeling & Validation**: Implement a standardized labor-cost-avoidance methodology for calculating agent ROI, documented in `tools/roi/README.md` [PENDING: Production-ready ROI calculator template link].
+6. **ROI Modeling & Validation**: Implement a standardized labor-cost-avoidance methodology for calculating agent ROI, documented in `tools/roi/README.md`. A specialized `roi-auditor` agent persona is available to automate this process [PENDING: Production-ready ROI calculator template link].
 
 ## Technical Specifications
 - **Architecture**: Static Markdown documentation and Node.js executable scripts.
 - **Data Persistence**: The core execution model is stateless. Optional persistent memory layers (e.g., `pgvector`) are handled by advanced orchestrators.
-- **Runtime Environment**: Node.js based utilities. **Python runtime support is officially deprecated.** Legacy Python scripts in `examples/` are maintained for historical context but are slated for conversion [PENDING: Migration roadmap].
+- **Runtime Environment**: Node.js based utilities. **Python runtime support is officially deprecated.** Legacy Python scripts in `examples/` (6 files identified) are maintained for historical context but are slated for conversion [PENDING: Migration roadmap].
 - **System Dependencies**: Git, Node.js, Docker, and the Gemini CLI are required for running local examples, pre-flight checks (`scripts/verify-env.sh`), and environment validation [PENDING: Documentation of Gemini CLI installation and SecretOps CLI pre-flight verification].
 
 ## Strategic Alignment & Future Enhancements

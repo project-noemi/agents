@@ -1,5 +1,15 @@
 # Decision Log
 
+## [2026-03-15] - Documentation Audit and MCP Configuration Drift Analysis
+- **Decision**: Verified documentation mirroring and identified drift in MCP configuration requirements.
+- **Context**: Phase 2 Doc workflow requires identifying technical debt and documentation drift.
+- **Impact**:
+    - **Mirroring Verification**: Confirmed that `docs/agents/` strictly mirrors `agents/` via symbolic links, fulfilling the 2026-03-03 mandate. Removed related `[PENDING]` marker from `REQUIREMENTS.md`.
+    - **MCP Configuration Drift**: Identified that `agents/guardian/roi-auditor.md` requires a `logging-mcp` (or webhook) which is currently absent from `mcp.config.json`.
+    - **SecretOps Pre-flight Gap**: Documented the absence of SecretOps CLI (Infisical/1Password) verification in `scripts/verify-env.sh`.
+    - **Persona Inconsistencies**: Re-confirmed that "External Tooling Dependencies" are missing from all persona files and "Rules & Constraints" remains the dominant header over "Core Mandates".
+    - **Clarifications**: Drafted 2 new high-priority questions in `CLARIFICATIONS.md` regarding MCP drift and retry logic standards.
+
 ## [2026-03-10] - Documentation Audit and Pre-Flight Gap Identification
 - **Decision**: Conducted a follow-up holistic scan focusing on environment setup and toolchain dependencies.
 - **Context**: Phase 2 Doc workflow requires continuous identification of drift. Discovered that mandatory SecretOps patterns in `AGENTS.md` are not validated by pre-flight scripts.

@@ -1,5 +1,14 @@
 # Decision Log
 
+## [2026-03-16] - Documentation Audit and technical Debt Identification
+- **Decision**: Conducted a holistic scan of the codebase to identify technical debt in modular context generation and persona standardization.
+- **Context**: Phase 2 Doc workflow requires identifying drift between code and requirements.
+- **Impact**:
+    - **Context Generation Drift**: Identified that `scripts/generate_gemini.js` ignores "Execution Patterns" and "Coding Standards" from `AGENTS.md`. Documented as drift in `REQUIREMENTS.md`.
+    - **Persona Standardization**: Confirmed `docs/AGENT_TEMPLATE.md` incorrectly labels "External Tooling Dependencies" as optional.
+    - **4D Framework Alignment**: Identified inconsistent application of the 4D framework across the persona library (predominantly "Diligence").
+    - **Mirror Verification**: Re-verified that `docs/agents/` strictly mirrors `agents/` via symbolic links.
+
 ## [2026-03-14] - Documentation Audit and Requirement Verification
 - **Decision**: Verified implementation status of persona mirroring and documented SecretOps validation gaps.
 - **Context**: Phase 2 Doc workflow requires continuous cross-referencing against the codebase.

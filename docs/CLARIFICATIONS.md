@@ -92,3 +92,24 @@
 **Question for Product Owner:** Is there a preferred Node.js library (e.g., `p-retry`, `axios-retry`, or a native implementation) that should be standardized across the toolkit for exponential backoff?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `AGENTS.md` and `docs/METHODOLOGY.md` to specify the mandatory Node.js library for exponential backoff and provide a reference implementation in `scripts/utils/retry-helper.js`.*
+
+### ❓ Question [2026-03-16] - Incomplete Injection in `generate_gemini.js`
+**Context:** `AGENTS.md` contains critical sections for "Execution Patterns" and "Coding Standards", but `scripts/generate_gemini.js` currently only parses and injects the "Secrets & Configuration" and "Error Handling" sections.
+**Ambiguity / Drift:** Global mandates for environment injection and coding standards are not automatically included in the compiled `GEMINI.md` context, meaning agents may not be aware of these requirements during active sessions.
+**Question for Product Owner:** Should `scripts/generate_gemini.js` be updated to inject the entirety of `AGENTS.md` into `GEMINI.md`, or are specific sections like "Execution Patterns" intended for human reference only?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/generate_gemini.js` to dynamically parse and inject all H1 sections from `AGENTS.md` into the `GEMINI.md` context to ensure full policy awareness.*
+
+### ❓ Question [2026-03-16] - Mandatory vs. Optional External Tooling Dependencies
+**Context:** `REQUIREMENTS.md` states that "Agents must also document any expected external tooling dependencies... in their persona files", yet `docs/AGENT_TEMPLATE.md` labels this section as "Optional".
+**Ambiguity / Drift:** This inconsistency has resulted in 0 out of 18 agent personas implementing the section. Without this metadata, orchestrators cannot automatically provision the required tools (e.g., Docker, pnpm) for the agent.
+**Question for Product Owner:** Should `docs/AGENT_TEMPLATE.md` be updated to mark the "External Tooling Dependencies" section as "Required", and should Jules proceed with a bulk update to add this section to all 18 persona files?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `docs/AGENT_TEMPLATE.md` to mark "External Tooling Dependencies" as required and audit all files in `agents/` to insert the missing section with relevant initial values.*
+
+### ❓ Question [2026-03-16] - Holistic Integration of the 4D Framework
+**Context:** `REQUIREMENTS.md` mandates the adoption of the 4D Framework (Delegation, Description, Discernment, Diligence), but currently, persona files only explicitly reference "4D Diligence" within the "Rules & Constraints" header.
+**Ambiguity / Drift:** The other dimensions of the framework (Delegation, Description, Discernment) are not structurally represented in the persona Markdown files, leading to an incomplete application of the mandatory methodology.
+**Question for Product Owner:** Should the agent persona template be updated to include dedicated sections or specific guidance for all four dimensions (4D) of the framework, rather than just Diligence?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Revise `docs/AGENT_TEMPLATE.md` to provide structural placeholders for Delegation, Description, and Discernment, and update the `roi-auditor.md` persona as a reference implementation of the full 4D structure.*

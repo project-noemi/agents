@@ -12,7 +12,7 @@ The primary goal is to provide a robust foundation that developers can use to qu
 
 ## Core Objectives
 1. **Agentic Development Toolkit**: Provide reusable components, standardized persona definitions, and workflow templates to accelerate agent creation.
-2. **Out-of-the-Box Agents**: Supply fully defined, operational agent personas that can be deployed immediately for common tasks across coding, infrastructure, communication, engineering, marketing, operations, and product domains. Documentation strictly mirrors these directories in `docs/agents/` [VERIFIED: Individual persona file mirroring is complete].
+2. **Out-of-the-Box Agents**: Supply fully defined, operational agent personas that can be deployed immediately for common tasks across coding, infrastructure, communication, engineering, marketing, operations, and product domains. Documentation strictly mirrors these directories in `docs/agents/` via symbolic links [VERIFIED: Individual persona file mirroring is complete].
 3. **Knowledge Base**: Act as a structured repository of information, protocols, and best practices that guide both human developers and the AI agents (NoéMI) operating within the ecosystem.
 4. **The 4D AI Fluency Framework**: Formally adopt and document the Delegation, Description, Discernment, and Diligence framework as the mandatory methodology for all agent development.
 
@@ -22,7 +22,7 @@ The primary goal is to provide a robust foundation that developers can use to qu
     - **Context Assembly**: `mcp.config.json` is the source of truth for determining which MCP integrations are active during `GEMINI.md` generation.
     - **Runtime Secrets**: Environment variables (managed via `.env.template` and SecretOps) are the source of truth for runtime execution.
 3. **Extensibility (MCP Integration)**: Agents and the underlying toolkit must be capable of seamlessly interacting with external Model Context Protocol (MCP) servers.
-4. **Modular Context Generation**: The system must provide a mechanism (`scripts/generate_gemini.js`) to compile `GEMINI.md` dynamically from base templates, modular MCP protocol files, and global security and resilience mandates from `AGENTS.md`.
+4. **Modular Context Generation**: The system must provide a mechanism (`scripts/generate_gemini.js`) to compile `GEMINI.md` dynamically from base templates, modular MCP protocol files, and global security and resilience mandates from `AGENTS.md`. [DRIFT: Current implementation only injects "Secrets & Configuration" and "Error Handling" sections, ignoring "Execution Patterns" and "Coding Standards"].
 5. **Guardian Layer Defense**: Implement and maintain a specialized layer of "Guardian" agents (e.g., `PIIGuard`, `PromptShield`) to enforce security boundaries and data privacy protocols.
 
 ## Operational & Security Requirements
@@ -37,7 +37,7 @@ The primary goal is to provide a robust foundation that developers can use to qu
 - **Architecture**: Static Markdown documentation and Node.js executable scripts.
 - **Data Persistence**: The core execution model is stateless. Optional persistent memory layers (e.g., `pgvector`) are handled by advanced orchestrators.
 - **Runtime Environment**: Node.js based utilities. **Python runtime support is officially deprecated.** Legacy Python scripts in `examples/` are maintained for historical context but are slated for conversion [PENDING: Migration roadmap].
-- **System Dependencies**: Git, Node.js, Docker, and the Gemini CLI are required for running local examples, pre-flight checks (`scripts/verify-env.sh`), and environment validation [PENDING: Documentation of Gemini CLI installation]. SecretOps CLI verification (`infisical` or `op`) is currently missing from the pre-flight scripts and is slated for implementation.
+- **System Dependencies**: Git, Node.js, Docker, and the Gemini CLI are required for running local examples, pre-flight checks (`scripts/verify-env.sh`), and environment validation [VERIFIED: Documentation of Gemini CLI is still missing]. SecretOps CLI verification (`infisical` or `op`) is currently missing from the pre-flight scripts and is slated for implementation.
 
 ## Strategic Alignment & Future Enhancements
 1. **Role-Based Agent Toolkits**: Categorize templates for "Practitioners" and "Accelerators".

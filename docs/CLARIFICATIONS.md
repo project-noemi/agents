@@ -113,3 +113,24 @@
 **Question for Product Owner:** Should the agent persona template be updated to include dedicated sections or specific guidance for all four dimensions (4D) of the framework, rather than just Diligence?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Revise `docs/AGENT_TEMPLATE.md` to provide structural placeholders for Delegation, Description, and Discernment, and update the `roi-auditor.md` persona as a reference implementation of the full 4D structure.*
+
+### ❓ Question [2026-03-17] - Structural Separation of Role-Based Toolkits
+**Context:** `REQUIREMENTS.md` specifies a requirement to "Categorize templates for 'Practitioners' and 'Accelerators'". Currently, all personas are mixed within the `agents/` directory without clear role-based distinction.
+**Ambiguity / Drift:** The lack of structural separation makes it difficult for users to identify which tools are intended for "Vibe Coding" (Practitioners) vs "Governance/Security" (Accelerators).
+**Question for Product Owner:** Should we reorganize the `agents/` and `docs/agents/` directories to include `practitioner/` and `accelerator/` subfolders, or should this categorization be handled via metadata/tags within the Markdown files?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Propose a new directory structure for `agents/` that separates personas into `practitioner/` and `accelerator/` categories, and migrate existing files to their respective roles.*
+
+### ❓ Question [2026-03-17] - Audit Log Delivery Protocol
+**Context:** `AGENTS.md` and `REQUIREMENTS.md` mandate a JSON "Audit Log" for reasoning.
+**Ambiguity / Drift:** It is unclear if this JSON should be appended to the agent's primary Markdown response (e.g., in a hidden block), emitted to `stderr`, or handled as a separate API payload.
+**Question for Product Owner:** What is the preferred technical delivery method for the JSON Audit Log to ensure it is captured by the centralized observability stack (Grafana/Loki)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Draft a technical specification for Audit Log delivery (e.g., standardizing on `stderr` or a specific Markdown block) and update the `roi-auditor.md` persona as the first implementation.*
+
+### ❓ Question [2026-03-17] - Mandatory "External Tooling Dependencies" in Template
+**Context:** `REQUIREMENTS.md` mandates documenting external tool dependencies in persona files, but `docs/AGENT_TEMPLATE.md` still marks this section as "Optional".
+**Ambiguity / Drift:** This documentation inconsistency is preventing the automated provisioning of required environments (e.g., ensuring `docker` is available for `linux.md`).
+**Question for Product Owner:** Can we formally update the `docs/AGENT_TEMPLATE.md` to mark "External Tooling Dependencies" as "Required" and proceed with a bulk update to all 18 personas?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `docs/AGENT_TEMPLATE.md` to make "External Tooling Dependencies" a required H2 section and audit the persona library to insert relevant tool requirements.*

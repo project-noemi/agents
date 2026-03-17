@@ -37,10 +37,10 @@ The primary goal is to provide a robust foundation that developers can use to qu
 - **Architecture**: Static Markdown documentation and Node.js executable scripts.
 - **Data Persistence**: The core execution model is stateless. Optional persistent memory layers (e.g., `pgvector`) are handled by advanced orchestrators.
 - **Runtime Environment**: Node.js based utilities. **Python runtime support is officially deprecated.** Legacy Python scripts in `examples/` are maintained for historical context but are slated for conversion [PENDING: Migration roadmap].
-- **System Dependencies**: Git, Node.js, Docker, and the Gemini CLI are required for running local examples, pre-flight checks (`scripts/verify-env.sh`), and environment validation [VERIFIED: Documentation of Gemini CLI is still missing]. SecretOps CLI verification (`infisical` or `op`) is currently missing from the pre-flight scripts and is slated for implementation.
+- **System Dependencies**: Git, Node.js, Docker, and the Gemini CLI are required for running local examples, pre-flight checks (`scripts/verify-env.sh`), and environment validation [PENDING: Gemini CLI source and installation documentation]. SecretOps CLI verification (`infisical` or `op`) is currently missing from the pre-flight scripts and is slated for implementation.
 
 ## Strategic Alignment & Future Enhancements
 1. **Role-Based Agent Toolkits**: Categorize templates for "Practitioners" and "Accelerators".
 2. **Kubernetes Support**: Expand fleet deployment examples to include Kubernetes manifests (Deployments, Services, and Ingress).
-3. **Automated Validation Bots**: Develop specialized "Verification Bots" for auditing agent logs for academic credentialing and ROI validation.
+3. **Automated Validation Bots**: Develop specialized "Verification Bots" for auditing agent logs for academic credentialing and ROI validation [VERIFIED: Academic audit logic implemented in `examples/gmu-validation/`].
 4. **Persona Standards Audit**: Standardize all agent personas to include a mandatory "Audit Log" requirement, ensuring they output a brief JSON summary of their reasoning alongside their final payload [PENDING: Schema definition and implementation].

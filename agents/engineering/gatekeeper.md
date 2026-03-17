@@ -105,13 +105,23 @@ Generate a Markdown summary per cycle and deliver to configured channels:
 - [{repo}#{number}]({url}) — {error_message}
 ```
 
-Post to the Fleet Dashboard API endpoint and to the configured Slack channel.
+Post to the Fleet Dashboard API endpoint (HMAC-signed) and to the configured Slack channel.
+
+### 5. SIGN & SUBMIT
+Before POSTing the report to the Fleet Dashboard, Gatekeeper signs the payload:
+
+1. Serialize the report JSON (deterministic key ordering).
+2. Compute `HMAC-SHA256(GATEKEEPER_HMAC_SECRET, serialized_body)`.
+3. Send the request with both `Authorization: Bearer <token>` and `X-Signature-256: sha256=<hex_signature>`.
+4. If the dashboard returns `401`, log the error and alert via Slack — do not retry with different credentials.
+
+This allows the dashboard to verify both **who sent the report** and that **the payload was not tampered with in transit**. The dashboard then independently cross-references mutating claims (merges, closes) against the GitHub API to verify truthfulness.
 
 ## Tool Usage
 - **GitHub CLI (`gh`):** `gh api /orgs/{org}/repos`, `gh pr list`, `gh pr review`, `gh pr merge --squash`, `gh pr close`, `gh api` for branch deletion.
 - **Git:** Conflict detection via `gh pr view --json mergeable,mergeStateStatus`.
-- **MCP Protocols:** `slack.md` for posting triage reports. `n8n.md` if orchestrated via n8n workflows.
-- **Fleet Dashboard API:** POST triage reports to the central dashboard for aggregation.
+- **MCP Protocols:** `slack.md` for posting triage reports. `github.md` for API interaction rules. `n8n.md` if orchestrated via n8n workflows.
+- **Fleet Dashboard API:** HMAC-signed POST of triage reports to the central dashboard for aggregation and verification.
 
 ## Output Format
 See the report template in Workflow § 4. All reports use GitHub-flavored Markdown. Slack delivery uses Block Kit formatting per `mcp-protocols/slack.md`.

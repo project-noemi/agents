@@ -134,3 +134,24 @@
 **Question for Product Owner:** Can we formally update the `docs/AGENT_TEMPLATE.md` to mark "External Tooling Dependencies" as "Required" and proceed with a bulk update to all 18 personas?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `docs/AGENT_TEMPLATE.md` to make "External Tooling Dependencies" a required H2 section and audit the persona library to insert relevant tool requirements.*
+
+### ❓ Question [2026-03-18] - Standardizing on "Rules & Constraints" vs "Core Mandates"
+**Context:** The `DECISION_LOG.md` (2026-03-12) states that "Rules & Constraints" is the standardized header for persona files, yet `AGENTS.md` (Coding Standards section) still references the "Role, Mission, Core Mandates, Workflow, Boundaries" format.
+**Ambiguity / Drift:** There is a discrepancy between the decision log and the active context rules in `AGENTS.md`, which could lead to inconsistent persona generation.
+**Question for Product Owner:** Should `AGENTS.md` be updated to align with the `DECISION_LOG.md` by replacing "Core Mandates" with "Rules & Constraints" in its persona standards definition?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `AGENTS.md` to replace "Core Mandates" with "Rules & Constraints" in the Coding Standards section to ensure alignment with the latest project decisions.*
+
+### ❓ Question [2026-03-18] - Granular Injection of AGENTS.md in Context Generation
+**Context:** The `scripts/generate_gemini.js` script currently only injects two sections of `AGENTS.md` ("Secrets & Configuration" and "Error Handling"). It ignores "Execution Patterns" and "Coding Standards".
+**Ambiguity / Drift:** Critical operational patterns and development standards are missing from the generated `GEMINI.md` context, limiting the agent's ability to adhere to project-wide mandates during active sessions.
+**Question for Product Owner:** Should the generation script be updated to inject all top-level sections of `AGENTS.md` into `GEMINI.md`, or are some sections intentionally excluded for brevity?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Modify `scripts/generate_gemini.js` to dynamically parse and inject all H1 sections from `AGENTS.md` into the `GEMINI.md` file, ensuring all global mandates are present in the agent's runtime context.*
+
+### ❓ Question [2026-03-18] - Implementation of the 4D Framework in Persona Structure
+**Context:** `REQUIREMENTS.md` mandates the 4D Framework, but persona files currently only include a "Rules & Constraints (4D Diligence)" header.
+**Ambiguity / Drift:** The structural representation of Delegation, Description, and Discernment is missing from the agent definitions, potentially leading to an incomplete application of the mandatory methodology.
+**Question for Product Owner:** Should we update the `docs/AGENT_TEMPLATE.md` and all 18 existing personas to include dedicated sections or sub-headers for all four dimensions (4D) of the framework?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Revise the `docs/AGENT_TEMPLATE.md` to incorporate placeholders for Delegation, Description, and Discernment, and then update the 18 existing persona files in `agents/` to reflect this complete 4D structure.*

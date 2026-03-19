@@ -1,5 +1,15 @@
 # Decision Log
 
+## [2026-03-19] - Documentation Audit and Technical Gate Formalization
+- **Decision**: Formalized the technical gates of the 4D Framework and documented environment-specific routing requirements.
+- **Context**: Phase 2 Doc workflow required clarifying the specific roles and gates used during the GMU Boot Camp and identifying drift in the video automation examples.
+- **Impact**:
+    - **4D Framework Gates**: Updated `REQUIREMENTS.md` to include mandatory gates: Acceptance Criteria (Delegation), Data Inventory (Description), and TRiSM Assessment (Discernment).
+    - **Fleet Routing Standards**: Formally documented the use of Traefik labels and host-based routing for multi-tenant fleet deployments.
+    - **Security Policy Breach**: Identified and documented a Phase 0 security breach in `video-automation-pod/dropbox_watcher.py` (use of `load_dotenv()` instead of Fetch-on-Demand).
+    - **Persona Standard Alignment**: Updated `AGENTS.md` to align the persona header requirement with the "Rules & Constraints" decision from 2026-03-12.
+    - **Workflow Localization Drift**: Identified localization drift in `docs/n8n workflows/` and flagged the need for a standardized naming convention.
+
 ## [2026-03-17] - Documentation Audit and Verification Update
 - **Decision**: Conducted a whole-codebase audit to verify implementation of "Verification Bots" and persona standardization.
 - **Context**: Phase 2 Doc workflow required confirming if `verification-bot.js` fulfilled the academic credentialing requirement.

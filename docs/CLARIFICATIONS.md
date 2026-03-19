@@ -155,3 +155,24 @@
 **Question for Product Owner:** Should we update the `docs/AGENT_TEMPLATE.md` and all 18 existing personas to include dedicated sections or sub-headers for all four dimensions (4D) of the framework?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Revise the `docs/AGENT_TEMPLATE.md` to incorporate placeholders for Delegation, Description, and Discernment, and then update the 18 existing persona files in `agents/` to reflect this complete 4D structure.*
+
+### ❓ Question [2026-03-19] - Automation for Agent Documentation Mirroring
+**Context:** `REQUIREMENTS.md` mandates that `docs/agents/` must strictly mirror the `agents/` hierarchy. Currently, this is handled via manual symbolic links, but no automated script exists to maintain these as new personas are added.
+**Ambiguity / Drift:** As the library grows, manual link maintenance is prone to error and "mirror drift."
+**Question for Product Owner:** Should we implement an automated sync script (e.g., `scripts/sync-agent-docs.js`) to automatically create/update symbolic links in `docs/agents/` based on the content of `agents/`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create a `scripts/sync-agent-docs.js` utility that scans the `agents/` directory and ensures the `docs/agents/` directory contains matching symbolic links for all persona files.*
+
+### ❓ Question [2026-03-19] - Technical Contract for Casdoor Identity Integration
+**Context:** `REQUIREMENTS.md` mandates Casdoor as the standardized identity provider for fleet deployments, but there is no technical "contract" or standardized environment variable pattern (e.g., `CASDOOR_TOKEN`) defined for agents to verify the requesting user's identity.
+**Ambiguity / Drift:** Without a defined protocol, agents cannot reliably enforce Role-Based Access Control (RBAC) at the persona level.
+**Question for Product Owner:** What is the standardized protocol for passing Casdoor identity tokens to agents? Should they expect a specific environment variable or a header provided by the orchestrator?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Draft a technical specification for "Identity Propagation" within the fleet, defining the environment variables and protocols for agents to consume Casdoor-verified identities.*
+
+### ❓ Question [2026-03-19] - Standardized Naming Convention for n8n Workflows
+**Context:** The `docs/n8n workflows/` directory currently contains JSON files with Hungarian names (e.g., `Bejövő levelek intelligens szűrése.json`), leading to localization drift and inconsistency.
+**Ambiguity / Drift:** The lack of a standardized, English-first naming convention for exported workflows makes the library difficult to maintain for international developers.
+**Question for Product Owner:** Should we establish a mandatory English naming convention for all exported workflows (e.g., `ai-triage-inbound.json`) and migrate the existing files?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Establish a "Workflow Naming Standard" in `docs/METHODOLOGY.md` and rename all files in `docs/n8n workflows/` to adhere to an English-first, slug-based format.*

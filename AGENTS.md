@@ -45,5 +45,5 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 
 # 📝 Coding Standards
 - **Fetch-on-Demand**: When writing code that requires configuration, always assume the values will be provided via process memory environment variables (e.g., `os.getenv()`). Do not create local `.env` parsing logic.
-- **Persona Standards**: Specialized agent personas must follow the "Role, Mission, Core Mandates, Workflow, Boundaries" format and explicitly document their expected external tooling dependencies.
+- **Persona Standards**: Specialized agent personas must follow the "Role, Mission, Rules & Constraints, Workflow, Boundaries" format and explicitly document their expected external tooling dependencies.
 - **Audit Log (Mandatory)**: All agent personas must include an "Audit Log" requirement in their workflow, ensuring they output a brief JSON summary of their reasoning (once the standardized schema is finalized).

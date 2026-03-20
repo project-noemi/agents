@@ -1,5 +1,15 @@
 # Decision Log
 
+## [2026-03-20] - Phase 2 Documentation Audit & Technical Drift Remediation
+- **Decision**: Verified and documented specific technical drifts in security policy, localization, and modular context generation.
+- **Context**: Doc persona workflow required a deep-dive analysis of the codebase to identify discrepancies between the mandated "Fetch-on-Demand" architecture and live examples.
+- **Impact**:
+    - **Security Policy Audit**: Confirmed a Phase 0 security breach in `examples/video-automation-pod/dropbox_watcher.py` (explicit use of `load_dotenv()`). Logged remediation requirement in `CLARIFICATIONS.md`.
+    - **Localization Drift**: Identified 6 n8n workflow files in `docs/n8n workflows/` using Hungarian naming conventions. Standardized English-first slug requirement added to `CLARIFICATIONS.md`.
+    - **Context Generation Verification**: Confirmed that `scripts/generate_gemini.js` still fails to inject "Execution Patterns" and "Coding Standards" from `AGENTS.md`.
+    - **Persona Audit**: Verified that "External Tooling Dependencies" and the mandatory "Audit Log" JSON reasoning sections remain missing from all 18 agent personas in `agents/`.
+    - **Environment Validation**: Confirmed that `scripts/verify-env.sh` lacks mandatory SecretOps CLI checks (Infisical/1Password).
+
 ## [2026-03-19] - Documentation Audit and Technical Gate Formalization
 - **Decision**: Formalized the technical gates of the 4D Framework and documented environment-specific routing requirements.
 - **Context**: Phase 2 Doc workflow required clarifying the specific roles and gates used during the GMU Boot Camp and identifying drift in the video automation examples.

@@ -25,7 +25,7 @@ The primary goal is to provide a robust foundation that developers can use to qu
     - **Context Assembly**: `mcp.config.json` is the source of truth for determining which MCP integrations are active during `GEMINI.md` generation.
     - **Runtime Secrets**: Environment variables (managed via `.env.template` and SecretOps) are the source of truth for runtime execution. [DRIFT: `video-automation-pod` example incorrectly utilizes `load_dotenv()` instead of the mandatory Fetch-on-Demand security policy].
 3. **Extensibility (MCP Integration)**: Agents and the underlying toolkit must be capable of seamlessly interacting with external Model Context Protocol (MCP) servers.
-4. **Modular Context Generation**: The system must provide a mechanism (`scripts/generate_gemini.js`) to compile `GEMINI.md` dynamically from base templates, modular MCP protocol files, and global security and resilience mandates from `AGENTS.md`. [DRIFT: Current implementation only injects "Secrets & Configuration" and "Error Handling" sections, ignoring "Execution Patterns" and "Coding Standards"].
+4. **Modular Context Generation**: The system must provide a mechanism (`scripts/generate_gemini.js`) to compile `GEMINI.md` dynamically from base templates, modular MCP protocol files, and global security and resilience mandates from `AGENTS.md`. [DRIFT: Current implementation only injects "Secrets & Configuration" and "Error Handling" sections, ignoring "Execution Patterns" and "Coding Standards" - VERIFIED 2026-03-20].
 5. **Guardian Layer Defense**: Implement and maintain a specialized layer of "Guardian" agents (e.g., `PIIGuard`, `PromptShield`) to enforce security boundaries and data privacy protocols.
 
 ## Operational & Security Requirements
@@ -42,11 +42,11 @@ The primary goal is to provide a robust foundation that developers can use to qu
 - **Architecture**: Static Markdown documentation and Node.js executable scripts.
 - **Data Persistence**: The core execution model is stateless. Optional persistent memory layers (e.g., `pgvector`) are handled by advanced orchestrators.
 - **Runtime Environment**: Node.js based utilities. **Python runtime support is officially deprecated.** Legacy Python scripts in `examples/` are maintained for historical context but are slated for conversion [PENDING: Migration roadmap].
-- **System Dependencies**: Git, Node.js, Docker, and the Gemini CLI are required for running local examples, pre-flight checks (`scripts/verify-env.sh`), and environment validation [PENDING: Gemini CLI source and installation documentation]. SecretOps CLI verification (`infisical` or `op`) is currently missing from the pre-flight scripts and is slated for implementation.
+- **System Dependencies**: Git, Node.js, Docker, and the Gemini CLI are required for running local examples, pre-flight checks (`scripts/verify-env.sh`), and environment validation [PENDING: Gemini CLI source and installation documentation]. SecretOps CLI verification (`infisical` or `op`) is currently missing from the pre-flight scripts and is slated for implementation [VERIFIED 2026-03-20].
 
 ## Strategic Alignment & Future Enhancements
 1. **Role-Based Agent Toolkits**: Categorize templates for "Practitioners" and "Accelerators".
 2. **Kubernetes Support**: Expand fleet deployment examples to include Kubernetes manifests (Deployments, Services, and Ingress).
 3. **Automated Validation Bots**: Develop specialized "Verification Bots" for auditing agent logs for academic credentialing and ROI validation [VERIFIED: Academic audit logic implemented in `examples/gmu-validation/`].
-4. **Persona Standards Audit**: Standardize all agent personas to include a mandatory "Audit Log" requirement, ensuring they output a brief JSON summary of their reasoning alongside their final payload [PENDING: Schema definition and implementation].
-5. **Workflow Standardization**: Implement a standardized naming and documentation convention for exported n8n workflows in `docs/n8n workflows/` to avoid localization drift [PENDING].
+4. **Persona Standards Audit**: Standardize all agent personas to include a mandatory "Audit Log" requirement, ensuring they output a brief JSON summary of their reasoning alongside their final payload [PENDING: Schema definition and implementation - VERIFIED 2026-03-20: Missing from all 18 personas].
+5. **Workflow Standardization**: Implement a standardized naming and documentation convention for exported n8n workflows in `docs/n8n workflows/` to avoid localization drift [PENDING: Renaming of 6 files with Hungarian names verified 2026-03-20].

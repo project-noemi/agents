@@ -17,9 +17,9 @@
 **🤖 Jules Action Prompt:** *Create a new agent persona `agents/guardian/roi-auditor.md` specifically tasked with auditing logs for ROI validation, and provide an accompanying Node.js script in `tools/roi/audit-logs.js` to automate the verification.*
 
 ### ❓ Question [2026-03-08] - JSON Schema for Mandatory "Audit Log"
-**Context:** `docs/frameworks/gartner-trism.md` suggests an "Audit Log" requirement for all agent personas, instructing them to output a brief JSON summary of their reasoning alongside their final payload.
-**Ambiguity / Drift:** This requirement is not currently implemented in any of the agent persona files in `agents/`. To ensure consistency, a standardized JSON schema is needed.
-**Question for Product Owner:** Is there a preferred JSON schema for the "Audit Log" output? For example, should it include fields like `reasoning`, `mcp_tools_used`, and `confidence_score`?
+**Context:** `docs/frameworks/gartner-trism.md` suggests an "Audit Log" requirement for all agent personas. A Phase 2 audit on 2026-03-20 confirmed this is missing from all 18 personas.
+**Ambiguity / Drift:** This requirement is not currently implemented. To ensure consistency, a standardized JSON schema and delivery protocol (e.g., stderr for Loki/Grafana ingestion) are needed.
+**Question for Product Owner:** Is there a preferred JSON schema (e.g., `reasoning`, `tools_used`, `duration_ms`) and delivery method for the "Audit Log" output?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Draft a standard JSON schema for the "Audit Log" requirement and update all agent persona files in `agents/` to include this mandatory directive.*
 
@@ -171,8 +171,15 @@
 **🤖 Jules Action Prompt:** *Draft a technical specification for "Identity Propagation" within the fleet, defining the environment variables and protocols for agents to consume Casdoor-verified identities.*
 
 ### ❓ Question [2026-03-19] - Standardized Naming Convention for n8n Workflows
-**Context:** The `docs/n8n workflows/` directory currently contains JSON files with Hungarian names (e.g., `Bejövő levelek intelligens szűrése.json`), leading to localization drift and inconsistency.
+**Context:** The `docs/n8n workflows/` directory currently contains 6 JSON files with Hungarian names (e.g., `Bejövő levelek intelligens szűrése.json`), confirmed during the 2026-03-20 audit.
 **Ambiguity / Drift:** The lack of a standardized, English-first naming convention for exported workflows makes the library difficult to maintain for international developers.
-**Question for Product Owner:** Should we establish a mandatory English naming convention for all exported workflows (e.g., `ai-triage-inbound.json`) and migrate the existing files?
+**Question for Product Owner:** Should we establish a mandatory English naming convention for all exported workflows (e.g., `ai-triage-inbound.json`) and migrate the existing files immediately?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Establish a "Workflow Naming Standard" in `docs/METHODOLOGY.md` and rename all files in `docs/n8n workflows/` to adhere to an English-first, slug-based format.*
+
+### ❓ Question [2026-03-20] - Remediation of Security Policy Breach in Video Pod
+**Context:** `AGENTS.md` (Secrets & Configuration) mandates a "Fetch-on-Demand" policy, stating: "NEVER create local `.env` parsing logic." However, `examples/video-automation-pod/dropbox_watcher.py` explicitly uses `load_dotenv()` and `python-dotenv`.
+**Ambiguity / Drift:** This is a direct violation of the project's mandatory security architecture.
+**Question for Product Owner:** Should Jules proceed with removing `load_dotenv()` from the Video Pod example and updating its documentation to reflect the mandatory use of `infisical run` or `op run`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `examples/video-automation-pod/dropbox_watcher.py` to remove `load_dotenv()` and update the accompanying `README.md` to mandate the use of SecretOps CLI wrappers for execution.*

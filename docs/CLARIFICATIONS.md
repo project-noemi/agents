@@ -183,3 +183,17 @@
 **Question for Product Owner:** Should Jules proceed with removing `load_dotenv()` from the Video Pod example and updating its documentation to reflect the mandatory use of `infisical run` or `op run`?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Refactor `examples/video-automation-pod/dropbox_watcher.py` to remove `load_dotenv()` and update the accompanying `README.md` to mandate the use of SecretOps CLI wrappers for execution.*
+
+### ❓ Question [2026-03-21] - Standardized Structural Placeholders for the 4D Framework
+**Context:** A Phase 2 audit on 2026-03-21 verified that while "4D Diligence" is present in persona headers, the other three dimensions (Delegation, Description, Discernment) have no structural representation in any of the 18 persona files.
+**Ambiguity / Drift:** The 4D framework is the mandatory development methodology, yet it is only partially represented in the active codebase. To ensure consistent application, a standardized way to integrate these dimensions is needed.
+**Question for Product Owner:** Should we introduce standardized H3 headers (e.g., `### 4D Discernment`) within the "Rules & Constraints" section, or should these be distinct H2 sections to ensure visibility?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `docs/AGENT_TEMPLATE.md` to include standardized headers for all four dimensions of the 4D framework and perform a bulk update to all 18 personas in `agents/` to provide placeholders for these missing sections.*
+
+### ❓ Question [2026-03-21] - Mandatory External Tooling Sections for Existing Personas
+**Context:** `REQUIREMENTS.md` mandates that agents document their external tooling dependencies. The Phase 2 audit on 2026-03-21 confirmed this is missing from all personas, despite being a core functional requirement.
+**Ambiguity / Drift:** Without this metadata, orchestrators cannot reliably provision the required environment for the agent.
+**Question for Product Owner:** Should Jules proceed with a bulk update to all 18 persona files to add the `## External Tooling Dependencies` section, even if the specific tools for some personas are currently unknown (using 'None' as a default)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a bulk audit and update of the `agents/` library to insert the `## External Tooling Dependencies` section into all 18 persona files, populating it with verified dependencies where possible.*

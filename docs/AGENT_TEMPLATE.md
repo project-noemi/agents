@@ -32,6 +32,10 @@
 <!-- Optional. Include for process-heavy agents with numbered phases.
      Use ### sub-headers for each phase (e.g., ### 1. PROFILE). -->
 
+## External Tooling Dependencies
+<!-- Required. List any external tools (e.g., pnpm, docker, infisical)
+     required for the agent to function. -->
+
 ## Tool Usage
 <!-- Optional. Include when the agent relies on specific CLI tools or APIs. -->
 

@@ -1,5 +1,14 @@
 # Decision Log
 
+## [2026-03-22] - Phase 2 Comprehensive Codebase Audit & Drift Verification
+- **Decision**: Conducted a follow-up Phase 2 audit to precisely quantify technical debt and verify functional drifts in MCP configuration.
+- **Context**: Required for continuous improvement of `REQUIREMENTS.md` accuracy as part of the "Doc" persona mission.
+- **Impact**:
+    - **MCP Drift Verification**: Formally verified that `agents/guardian/roi-auditor.md` depends on a `logging-mcp` that is missing from `mcp.config.json`.
+    - **Python Debt Quantification**: Confirmed exactly 6 legacy Python files remain in `examples/`, localized primarily in the Video Automation Pod and Docker examples.
+    - **Structural Gaps**: Re-verified that 0 of 18 personas implement "External Tooling Dependencies" or the mandatory "Audit Log" reasoning sections.
+    - **n8n Localization**: Verified 6 Hungarian-named workflows in `docs/n8n workflows/` contributing to naming convention drift.
+
 ## [2026-03-21] - Phase 2 Documentation Audit & Structural Gap Analysis
 - **Decision**: Conducted a Phase 2 audit to verify the implementation status of 4D Framework dimensions and confirm the extent of security policy breaches in examples.
 - **Context**: Autonomous audit required to maintain the accuracy of `REQUIREMENTS.md` and identify structural gaps in the persona library.

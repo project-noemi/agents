@@ -218,3 +218,24 @@
 **Question for Product Owner:** Should `dev` be formally documented as the mandatory default environment name for all local development and initial fleet provisioning?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `AGENTS.md` and `docs/METHODOLOGY.md` to formally define the standardized environment naming hierarchy (e.g., dev, staging, prod) and ensure all scripts and examples adhere to this standard.*
+
+### ❓ Question [2026-03-22] - Standardizing ROI Calculator Metric Collection
+**Context:** The `roi-auditor.md` persona specifies a dependency on a `Logging MCP` to retrieve records, but `REQUIREMENTS.md` (Operational Requirement 3) delegates standardized logging to the orchestrator.
+**Ambiguity / Drift:** Without a standardized log schema (e.g., JSON to stderr), the `roi-auditor` cannot reliably parse execution frequency or duration to calculate ROI.
+**Question for Product Owner:** Should we mandate a specific JSON schema for agent execution logs (e.g., `persona`, `task`, `duration_ms`, `success`) to be emitted to `stderr` by all agents?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Define a mandatory JSON log schema for agent observability and update all persona definitions to include this requirement as part of the "Audit Log" workflow step.*
+
+### ❓ Question [2026-03-22] - 4D Framework Structural Integration in Persona MD Files
+**Context:** `REQUIREMENTS.md` mandates the 4D framework, yet 18/18 personas only mention "4D Diligence" in the header. The other three dimensions (Delegation, Description, Discernment) have no structural presence in the Markdown files.
+**Ambiguity / Drift:** There is a gap between the mandatory methodology and its implementation in the persona definitions.
+**Question for Product Owner:** Should we reorganize the persona Markdown structure to explicitly include sections for Delegation (Acceptance Criteria), Description (Data Inventory), and Discernment (TRiSM/Risk Assessment)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Redesign the `docs/AGENT_TEMPLATE.md` to incorporate all four 4D dimensions as first-class sections and migrate the existing 18 personas to this new structural standard.*
+
+### ❓ Question [2026-03-22] - Resolution of Hungarian Localization in Workflow Documentation
+**Context:** A Phase 2 audit on 2026-03-22 verified 6 JSON workflow files in `docs/n8n workflows/` using Hungarian names (e.g., `E-mail összefoglalók.json`).
+**Ambiguity / Drift:** This localization drift complicates cross-repository maintenance and is inconsistent with the project's English-first documentation standard.
+**Question for Product Owner:** Should we proceed with an immediate bulk renaming of these files to slug-based English equivalents (e.g., `email-daily-briefing.json`)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Rename all 6 Hungarian-named JSON files in `docs/n8n workflows/` to English slug-based names and update any internal documentation references to ensure consistency.*

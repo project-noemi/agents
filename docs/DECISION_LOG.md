@@ -1,5 +1,13 @@
 # Decision Log
 
+## [2026-03-24] - Phase 2 Documentation Audit & Technical Drift Verification
+- **Decision**: Conducted a Phase 2 audit to identify inconsistencies in the 4D framework documentation and environment configuration.
+- **Context**: Required to ensure the accuracy of the "Source of Truth" (REQUIREMENTS.md) and identify technical debt in infrastructure templates.
+- **Impact**:
+    - **Framework Inconsistency**: Identified that "Data Inventory" is mapped to both Delegation and Description gates across lifecycle documentation.
+    - **Environment Drift**: Verified that `.env.template` is missing mandatory keys (`CASDOOR_DB_PASSWORD`, `GF_ADMIN_PASSWORD`) required by the fleet `docker-compose.yml`.
+    - **Policy Verification**: Confirmed that while "Exponential Backoff" is a mandatory directive in `AGENTS.md`, no reference implementation exists in the `scripts/` directory.
+
 ## [2026-03-22] - Phase 2 Comprehensive Codebase Audit & Drift Verification
 - **Decision**: Conducted a follow-up Phase 2 audit to precisely quantify technical debt and verify functional drifts in MCP configuration.
 - **Context**: Required for continuous improvement of `REQUIREMENTS.md` accuracy as part of the "Doc" persona mission.

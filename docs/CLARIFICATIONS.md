@@ -239,3 +239,17 @@
 **Question for Product Owner:** Should we proceed with an immediate bulk renaming of these files to slug-based English equivalents (e.g., `email-daily-briefing.json`)?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Rename all 6 Hungarian-named JSON files in `docs/n8n workflows/` to English slug-based names and update any internal documentation references to ensure consistency.*
+
+### ❓ Question [2026-03-24] - Parity for Environment Verification Scripts
+**Context:** `scripts/verify-env.sh` (Shell) and `scripts/verify-env.ps1` (PowerShell) currently check for Git, Node, Docker, and Gemini CLI. However, they lack checks for the mandatory SecretOps CLIs (`infisical` or `op`).
+**Ambiguity / Drift:** The project's own environment validation tools do not enforce the core "Fetch-on-Demand" security policy.
+**Question for Product Owner:** Should the verification scripts be updated to mandate the presence of either `infisical` or `op`, and should we add checks for the required environment variables used in the fleet `docker-compose.yml`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to include checks for `infisical` or `op` CLIs and verify the presence of mandatory fleet configuration variables.*
+
+### ❓ Question [2026-03-24] - Unified Mapping for "Data Inventory" Gate
+**Context:** `REQUIREMENTS.md` and `docs/lifecycle/DELEGATION.md` link "Data Inventory" to the Delegation phase, while `docs/lifecycle/DESCRIPTION.md` and other references map it to the Description phase.
+**Ambiguity / Drift:** This structural inconsistency in the 4D framework documentation can confuse Practitioners during the technical gating process.
+**Question for Product Owner:** To which of the four 4D dimensions does the "Data Inventory" technical gate formally belong?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize all lifecycle documentation (`docs/lifecycle/*.md`) to map the "Data Inventory" gate to a single, consistent dimension of the 4D framework.*

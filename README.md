@@ -34,15 +34,17 @@ bash scripts/verify-env.sh
 # 3. Configure which MCP integrations are active (edit as needed)
 cat mcp.config.json
 
-# 4. Generate the context file consumed by orchestrators
-node scripts/generate_gemini.js
+# 4. Generate context files consumed by orchestrators
+node scripts/generate_gemini.js   # For Gemini CLI / LangChain
+node scripts/generate_claude.js   # For Claude Code
 
 # 5. Use the generated context with your orchestrator
 # Example with Gemini CLI:
 infisical run --env=dev -- gemini -p GEMINI.md "List all open PRs in our org"
+# Claude Code reads CLAUDE.md automatically when opened in this repository
 ```
 
-The generated `GEMINI.md` file contains your agent personas, security mandates, and MCP protocol definitions — everything an orchestrator needs to act as your agents.
+The generated `GEMINI.md` and `CLAUDE.md` files contain your agent personas, security mandates, and MCP protocol definitions — everything an orchestrator needs to act as your agents.
 
 ---
 
@@ -54,7 +56,7 @@ The generated `GEMINI.md` file contains your agent personas, security mandates, 
 | MCP protocol definitions | `mcp-protocols/` | Behavioral rules for 16 tool integrations (Google Workspace, Slack, GitHub, n8n, etc.) |
 | Deployment examples | `examples/` | Docker Compose stacks, workflow templates, and testing suites |
 | Documentation | `docs/` | Framework docs, setup guides, agent-specific documentation |
-| Build scripts | `scripts/` | Context generation (`generate_gemini.js`) and environment verification |
+| Build scripts | `scripts/` | Context generation (`generate_gemini.js`, `generate_claude.js`) and environment verification |
 | ROI tools | `tools/roi/` | Methodology for calculating agent return on investment |
 | Presentations | `presentations/` | Slidev-based presentation decks for stakeholders |
 
@@ -102,12 +104,15 @@ The generated `GEMINI.md` file contains your agent personas, security mandates, 
 │
 ├── scripts/
 │   ├── generate_gemini.js           # Builds GEMINI.md from template + MCPs
+│   ├── generate_claude.js           # Builds CLAUDE.md from template + MCPs + agent index
 │   └── verify-env.sh               # Checks prerequisites (Docker, CLI tools)
 │
 ├── mcp.config.json                  # Declares which MCPs are active
-├── GEMINI.template.md               # Base template for context generation
+├── GEMINI.template.md               # Base template for Gemini context generation
+├── CLAUDE.template.md               # Base template for Claude Code context generation
 ├── AGENTS.md                        # Global security mandates and directives
-├── GEMINI.md                        # Generated output (do not edit directly)
+├── GEMINI.md                        # Generated output for Gemini (do not edit directly)
+├── CLAUDE.md                        # Generated output for Claude Code (do not edit directly)
 └── .env.template                    # Environment variable reference
 ```
 
@@ -148,7 +153,7 @@ MCP (Model Context Protocol) protocols define **how agents interact with externa
 | **Development** | GitHub |
 | **Research** | Web Search |
 
-The file `mcp.config.json` controls which protocols are active. Only active protocols are injected into the generated `GEMINI.md`.
+The file `mcp.config.json` controls which protocols are active. Only active protocols are injected into the generated `GEMINI.md` and `CLAUDE.md`.
 
 For setup instructions, see [`docs/mcp-setup/`](docs/mcp-setup/).
 
@@ -158,30 +163,38 @@ For setup instructions, see [`docs/mcp-setup/`](docs/mcp-setup/).
 
 ### Context Generation Pipeline
 
-The core build step combines your agent specs and MCP protocols into a single context file that orchestrators consume:
+The core build step combines your agent specs and MCP protocols into context files that orchestrators consume. Two parallel pipelines exist — one for Gemini CLI and one for Claude Code:
 
 ```
-GEMINI.template.md + mcp.config.json + AGENTS.md
-         │                  │               │
-         │      ┌───────────┘               │
-         ▼      ▼                           ▼
-  scripts/generate_gemini.js ──────> GEMINI.md
+{GEMINI,CLAUDE}.template.md + mcp.config.json + AGENTS.md
+         │                          │               │
+         │              ┌───────────┘               │
+         ▼              ▼                           ▼
+  scripts/generate_{gemini,claude}.js ──> {GEMINI,CLAUDE}.md
 ```
 
-**Step by step:**
+Both scripts follow the same steps:
 
-1. `generate_gemini.js` reads the base template (`GEMINI.template.md`)
-2. It reads `mcp.config.json` to determine which MCP integrations are active
-3. For each active MCP, it injects the protocol definition from `mcp-protocols/`
-4. It extracts global security mandates from `AGENTS.md`
-5. It writes the final `GEMINI.md` — the file your orchestrator consumes
+1. Read the base template (`GEMINI.template.md` or `CLAUDE.template.md`)
+2. Read `mcp.config.json` to determine which MCP integrations are active
+3. For each active MCP, inject the protocol definition from `mcp-protocols/`
+4. Extract global security mandates from `AGENTS.md`
+5. Write the final context file
+
+**`generate_claude.js` additionally:**
+- Auto-discovers all agent specs in `agents/` and builds an indexed table (domain, title, file path)
+- Injects the agent index into `CLAUDE.md` so Claude Code has a complete reference at conversation start
 
 ```bash
-# Regenerate after changing MCP config or protocol files
-node scripts/generate_gemini.js
+# Regenerate after changing MCP config, protocol files, or adding agents
+node scripts/generate_gemini.js    # For Gemini CLI / LangChain
+node scripts/generate_claude.js    # For Claude Code
 ```
 
 ### Using with Orchestrators
+
+**Claude Code** (reads CLAUDE.md automatically):
+Open this repository in Claude Code. It reads `CLAUDE.md` as project instructions at the start of every conversation — no manual setup required. The file includes the agent index, security mandates, and all active MCP protocols.
 
 **Gemini CLI** (direct agent interaction):
 ```bash
@@ -192,7 +205,7 @@ infisical run --env=dev -- gemini -p GEMINI.md "Analyze the server logs on web01
 Import workflow templates from `examples/workflows/` into your n8n instance. The workflows reference agent personas and MCP integrations defined in this repository.
 
 **LangChain / Custom** (programmatic):
-Read `GEMINI.md` or individual agent specs from `agents/` as system prompts in your LLM application.
+Read `GEMINI.md`, `CLAUDE.md`, or individual agent specs from `agents/` as system prompts in your LLM application.
 
 ---
 

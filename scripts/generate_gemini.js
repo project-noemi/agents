@@ -31,9 +31,13 @@ function run() {
 
         if (securityRulesMatch) {
             globalMandates += `\n## 🔐 Global Security Mandates\n${securityRulesMatch[1].trim()}\n`;
+        } else {
+            console.warn('Warning: "Secrets & Configuration" section not found in AGENTS.md — security mandates will not be injected.');
         }
         if (directivesMatch) {
             globalMandates += `\n## 🛡 Global Resilience Directives\n${directivesMatch[1].trim()}\n`;
+        } else {
+            console.warn('Warning: "Error Handling and Resilience" section not found in AGENTS.md — resilience directives will not be injected.');
         }
     }
 
@@ -43,6 +47,10 @@ function run() {
         try {
             const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
             activeMcps = config.active_mcps || [];
+            if (!Array.isArray(activeMcps)) {
+                console.error('Error: active_mcps in mcp.config.json must be an array.');
+                process.exit(1);
+            }
         } catch (err) {
             console.error('Error parsing mcp.config.json:', err.message);
             process.exit(1);

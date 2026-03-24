@@ -29,22 +29,11 @@
     {
       "parameters": {
         "model": "gemini-1.5-pro",
-        "systemMessage": "You are the Knowledge Manager & Researcher agent. Analyze the incoming email to determine if it is a Request for Proposal (RFP) or a Request for Quote (RFQ). 
-
-If it IS an RFP/RFQ, extract the core requirements, deadlines, and key questions being asked. If it is NOT an RFP/RFQ, simply state so.
-
-Output ONLY valid JSON in the following format:
-{
-  "is_rfp_rfq": true/false,
-  "summary": "Brief summary of the request...",
-  "requirements": ["req 1", "req 2"],
-  "deadline": "YYYY-MM-DD or Not specified"
-}",
+        "systemMessage": "You are the Knowledge Manager & Researcher agent. Analyze the incoming email to determine if it is a Request for Proposal (RFP) or a Request for Quote (RFQ).\n\nIf it IS an RFP/RFQ, extract the core requirements, deadlines, and key questions being asked. If it is NOT an RFP/RFQ, simply state so.\n\nOutput ONLY valid JSON in the following format:\n{\n  \"is_rfp_rfq\": true/false,\n  \"summary\": \"Brief summary of the request...\",\n  \"requirements\": [\"req 1\", \"req 2\"],\n  \"deadline\": \"YYYY-MM-DD or Not specified\"\n}",
         "messages": {
           "messageValues": [
             {
-              "message": "=Subject: {{ $json.snippet }}
-Body: {{ $json.textPlain }}"
+              "message": "=Subject: {{ $json.snippet }}\nBody: {{ $json.textPlain }}"
             }
           ]
         }
@@ -83,23 +72,7 @@ Body: {{ $json.textPlain }}"
         "resource": "document",
         "operation": "create",
         "title": "=RFP Draft: {{ $('Gmail Trigger (New Emails)').item.json.snippet }}",
-        "content": "=RFP / RFQ Analysis
-
-Sender: {{ $('Gmail Trigger (New Emails)').item.json.from }}
-Date: {{ $('Gmail Trigger (New Emails)').item.json.date }}
-
-Summary:
-{{ JSON.parse($('Analyze Request (Gemini)').item.json.text).summary }}
-
-Requirements:
-{{ JSON.parse($('Analyze Request (Gemini)').item.json.text).requirements.join('
-- ') }}
-
-Deadline: {{ JSON.parse($('Analyze Request (Gemini)').item.json.text).deadline }}
-
----
-Draft Response Section:
-[Agent to continue drafting proposal here]"
+        "content": "=RFP / RFQ Analysis\n\nSender: {{ $('Gmail Trigger (New Emails)').item.json.from }}\nDate: {{ $('Gmail Trigger (New Emails)').item.json.date }}\n\nSummary:\n{{ JSON.parse($('Analyze Request (Gemini)').item.json.text).summary }}\n\nRequirements:\n{{ JSON.parse($('Analyze Request (Gemini)').item.json.text).requirements.join('\\n- ') }}\n\nDeadline: {{ JSON.parse($('Analyze Request (Gemini)').item.json.text).deadline }}\n\n---\nDraft Response Section:\n[Agent to continue drafting proposal here]"
       },
       "id": "4",
       "name": "Create Google Doc",
@@ -115,16 +88,7 @@ Draft Response Section:
         "resource": "draft",
         "operation": "create",
         "subject": "=Re: {{ $('Gmail Trigger (New Emails)').item.json.snippet }}",
-        "message": "=Hello,
-
-Thank you for reaching out with your request. Our internal Knowledge Manager agent has reviewed your requirements and prepared an initial draft for our team to finalize.
-
-Internal Reference Document: https://docs.google.com/document/d/{{ $json.documentId }}/edit
-
-We will be in touch shortly.
-
-Best,
-Project NoeMI Team",
+        "message": "=Hello,\n\nThank you for reaching out with your request. Our internal Knowledge Manager agent has reviewed your requirements and prepared an initial draft for our team to finalize.\n\nInternal Reference Document: https://docs.google.com/document/d/{{ $json.documentId }}/edit\n\nWe will be in touch shortly.\n\nBest,\nProject NoeMI Team",
         "toEmail": "={{ $('Gmail Trigger (New Emails)').item.json.from }}"
       },
       "id": "5",

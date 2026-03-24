@@ -1,0 +1,25 @@
+# Gatekeeper PR Triage Agent
+# Lightweight container with GitHub CLI and curl for API interactions.
+# The agent spec (agents/engineering/gatekeeper.md) is consumed by the
+# orchestrator at runtime; this image provides the execution environment.
+
+FROM alpine:3.20
+
+RUN apk add --no-cache \
+    bash \
+    curl \
+    jq \
+    git \
+    github-cli
+
+WORKDIR /app
+
+# Copy agent entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Run as non-root
+RUN adduser -D gatekeeper
+USER gatekeeper
+
+ENTRYPOINT ["/app/entrypoint.sh"]

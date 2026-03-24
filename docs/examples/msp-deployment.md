@@ -165,6 +165,6 @@ The Fleet Dashboard aggregates reports across all client tenants. Use the three-
 The following components are planned to complete the MSP story:
 
 - [Client Onboarding Agent](../agents/operations/client-onboarding/) — Automates tenant provisioning
-- [PSA/Ticketing MCP](../mcp-protocols/) — Integration with ConnectWise, Autotask, HaloPSA
-- [RMM MCP](../mcp-protocols/) — Integration with Datto, NinjaRMM, N-able
+- [PSA/Ticketing MCP](../mcp-setup/psa-ticketing/) — Integration with ConnectWise, Autotask, HaloPSA
+- [RMM MCP](../mcp-setup/rmm/) — Integration with Datto, NinjaRMM, N-able
 - [Multi-Tenant Fleet Dashboard Extensions](../agents/operations/fleet-dashboard/) — Cross-client views, tenant-scoped RBAC

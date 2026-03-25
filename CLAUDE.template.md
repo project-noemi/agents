@@ -29,6 +29,7 @@ infisical run --env=dev -- [command]
 
 - `agents/` — **Source of truth** for all agent specifications, organized by domain (`coding/`, `guardian/`, `marketing/`, etc.)
 - `docs/` — Documentation mirroring `agents/` structure, plus framework docs (REQUIREMENTS.md, METHODOLOGY.md, GOVERNANCE.md)
+- `skills/` — Reusable task definitions that agents compose into their workflows
 - `mcp-protocols/` — One `.md` file per MCP integration (Slack, Gmail, Google Suite, n8n, etc.)
 - `scripts/` — Build utilities (context generation, environment verification)
 - `examples/` — Deployment examples (Docker sandbox, fleet deployment, video automation pod, red team gauntlet)
@@ -66,7 +67,8 @@ When working on a task in this repository, adopt the appropriate agent persona b
 1. **Identify the domain** — Determine the area (infrastructure, marketing, coding, etc.)
 2. **Read the spec** — Load the matching agent file from `agents/{domain}/{name}.md`
 3. **Adopt the role** — Follow the Role, Tone, Capabilities, Rules, and Boundaries defined in the spec
-4. **Cross-reference** — For multi-domain tasks, combine guidelines from relevant agents
+4. **Load skills** — If the agent's Workflow references skills (marked with `**Skill:**`), read the skill spec from `skills/` and follow its Procedure
+5. **Cross-reference** — For multi-domain tasks, combine guidelines from relevant agents
 
 **Fallback:** If no agent spec matches, operate as a Senior Software Engineer following standard best practices and this repository's conventions.
 
@@ -94,6 +96,9 @@ Scope matches the domain or area (e.g., `marketing`, `guardian`, `agents`, `life
 
 <!-- AGENT_INDEX_START -->
 <!-- AGENT_INDEX_END -->
+
+<!-- SKILLS_INJECTIONS_START -->
+<!-- SKILLS_INJECTIONS_END -->
 
 <!-- MCP_INJECTIONS_START -->
 <!-- MCP_INJECTIONS_END -->

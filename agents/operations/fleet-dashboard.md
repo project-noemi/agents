@@ -143,12 +143,17 @@ Dashboard views:
 | **Anomaly Alerts** | Missed cycles (agent didn't report within expected window), error spikes, unusual volumes |
 | **Digest** | Daily/weekly summary with trends and comparisons to prior period |
 
-### 4. ALERT
+### 4. VERIFY
+**Skill:** `verification/cross-reference` — Asynchronously verify mutating claims (merges, closes) against the GitHub API.
+
+Verification runs in batches every 5 minutes after ingestion. See Authentication & Trust Model § Layer 3 for details.
+
+### 5. ALERT
+**Skill:** `reporting/alert-notify` — Deliver anomaly alerts to Slack and surface as dashboard banners.
+
 - **Missed cycle:** Agent did not POST a report within 1.5× its expected interval (e.g., 6h for a 4h agent).
 - **Error spike:** Error count exceeds 20% of total actions in a single cycle.
 - **Volume anomaly:** Action count deviates > 2σ from the 7-day rolling average.
-
-Alerts are delivered via Slack (per `mcp-protocols/slack.md`) and surfaced as banners in the dashboard.
 
 ## Tool Usage
 - **Database:** InfluxDB / TimescaleDB / SQLite depending on deployment scale.

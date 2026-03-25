@@ -15,5 +15,15 @@
     "google-contacts",
     "google-admin",
     "web-search"
+  ],
+  "active_skills": [
+    "classification/risk-triage",
+    "verification/pre-flight-check",
+    "verification/cross-reference",
+    "reporting/structured-report",
+    "reporting/alert-notify",
+    "security/hmac-sign-submit",
+    "security/pii-scan",
+    "orchestration/dispatch-coordinate"
   ]
 }

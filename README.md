@@ -52,7 +52,8 @@ The generated `GEMINI.md` and `CLAUDE.md` files contain your agent personas, sec
 
 | What | Where | Purpose |
 |------|-------|---------|
-| Agent specifications | `agents/` | Markdown definitions of 20 AI agent personas across 8 domains |
+| Agent specifications | `agents/` | Markdown definitions of AI agent personas across 8 domains |
+| Skill definitions | `skills/` | Reusable task recipes that agents compose into their workflows |
 | MCP protocol definitions | `mcp-protocols/` | Behavioral rules for 16 tool integrations (Google Workspace, Slack, GitHub, n8n, etc.) |
 | Deployment examples | `examples/` | Docker Compose stacks, workflow templates, and testing suites |
 | Documentation | `docs/` | Framework docs, setup guides, agent-specific documentation |
@@ -75,6 +76,14 @@ The generated `GEMINI.md` and `CLAUDE.md` files contain your agent personas, sec
 │   ├── marketing/                   # Brand, SEO, Thumbnails, Video Content
 │   ├── operations/                  # Fleet Dashboard, Knowledge Manager, QA
 │   └── product/                     # Documentation specialist
+│
+├── skills/                          # Reusable task definitions (skills layer)
+│   ├── SKILL_TEMPLATE.md            # Canonical template for new skills
+│   ├── classification/              # Risk triage, multi-tier categorization
+│   ├── verification/                # Pre-flight checks, cross-referencing
+│   ├── reporting/                   # Structured reports, alert delivery
+│   ├── security/                    # HMAC signing, PII scanning
+│   └── orchestration/               # Sub-agent dispatch and coordination
 │
 ├── mcp-protocols/                   # MCP behavioral rules (one file per tool)
 │   ├── gmail.md, slack.md, n8n.md, github.md, web-search.md
@@ -136,6 +145,35 @@ The library includes **20 agent specifications** organized into 8 domains. Each 
 | **Product** | Doc | Technical documentation |
 
 Every agent spec follows the canonical template defined in [`docs/AGENT_TEMPLATE.md`](docs/AGENT_TEMPLATE.md) with required sections: **Role**, **Tone**, **Capabilities**, **Rules & Constraints**, and **Boundaries** (Always / Ask First / Never).
+
+---
+
+## Skills
+
+Skills are **reusable task recipes** that agents compose into their workflows. They sit between agents (who) and MCP protocols (how) in the architecture:
+
+```
+Agents (who)  →  compose  →  Skills (what)  →  use  →  MCP Protocols (how)
+                                    ↑
+                              Policies (why) govern everything
+```
+
+| Category | Skills | Purpose |
+|----------|--------|---------|
+| **Classification** | Risk Triage | Multi-tier categorization (Safe / Needs Review / Blocked) |
+| **Verification** | Pre-Flight Check, Cross-Reference | Validate preconditions; verify claims against source of truth |
+| **Reporting** | Structured Report, Alert & Notify | Standardized report generation; Slack/email delivery |
+| **Security** | HMAC Sign & Submit, PII Scan | Cryptographic payload signing; data privacy scanning |
+| **Orchestration** | Dispatch & Coordinate | Sub-agent delegation and output aggregation |
+
+Agents reference skills in their Workflow sections using the `**Skill:**` syntax:
+
+```markdown
+### 2. CLASSIFY
+**Skill:** `classification/risk-triage` — Classify each PR as Safe, Needs Review, or Stale Conflict
+```
+
+The skill template is at [`skills/SKILL_TEMPLATE.md`](skills/SKILL_TEMPLATE.md). Skills are declared in `mcp.config.json` under `active_skills` and injected into the generated context files alongside MCP protocols.
 
 ---
 

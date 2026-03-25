@@ -7,6 +7,7 @@ const templatePath = path.join(__dirname, '../GEMINI.template.md');
 const outputPath = path.join(__dirname, '../GEMINI.md');
 const configPath = path.join(__dirname, '../mcp.config.json');
 const protocolsDir = path.join(__dirname, '../mcp-protocols');
+const skillsDir = path.join(__dirname, '../skills');
 const agentsMdPath = path.join(__dirname, '../AGENTS.md');
 
 function run() {
@@ -41,14 +42,20 @@ function run() {
         }
     }
 
-    // 3. Read the config to see which MCPs to enable
+    // 3. Read the config to see which MCPs and skills to enable
     let activeMcps = [];
+    let activeSkills = [];
     if (fs.existsSync(configPath)) {
         try {
             const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
             activeMcps = config.active_mcps || [];
+            activeSkills = config.active_skills || [];
             if (!Array.isArray(activeMcps)) {
                 console.error('Error: active_mcps in mcp.config.json must be an array.');
+                process.exit(1);
+            }
+            if (!Array.isArray(activeSkills)) {
+                console.error('Error: active_skills in mcp.config.json must be an array.');
                 process.exit(1);
             }
         } catch (err) {
@@ -56,10 +63,28 @@ function run() {
             process.exit(1);
         }
     } else {
-        console.warn('Warning: mcp.config.json not found. Generating without specific MCP integrations.');
+        console.warn('Warning: mcp.config.json not found. Generating without specific MCP integrations or skills.');
     }
 
-    // 4. Gather MCP contents
+    // 4. Gather Skill contents
+    let skillsContent = '';
+    if (activeSkills.length === 0) {
+        skillsContent = '<!-- No active skills configured in mcp.config.json -->\n';
+    } else {
+        for (const skill of activeSkills) {
+            const skillFile = path.join(skillsDir, `${skill}.md`);
+            if (fs.existsSync(skillFile)) {
+                console.log(`Injecting skill: ${skill}`);
+                const content = fs.readFileSync(skillFile, 'utf8');
+                skillsContent += `\n${content}\n`;
+            } else {
+                console.warn(`Warning: Skill file not found -> ${skillFile}`);
+                skillsContent += `\n### ${skill}\n\n> Warning: Skill file missing — skills/${skill}.md\n\n`;
+            }
+        }
+    }
+
+    // 5. Gather MCP contents
     let injectedContent = '';
     
     if (activeMcps.length === 0) {
@@ -78,30 +103,38 @@ function run() {
         }
     }
 
-    // 5. Replace the target tags in the template
-    const mcpStartTag = '<!-- MCP_INJECTIONS_START -->';
-    const mcpEndTag = '<!-- MCP_INJECTIONS_END -->';
-    
+    // 6. Replace all injection zones in the template
     let finalContent = templateContent;
 
-    // Inject Global Mandates before the MCP injections
-    if (globalMandates) {
-        finalContent = finalContent.replace(mcpStartTag, `${globalMandates}\n${mcpStartTag}`);
+    // Helper to inject content between start/end markers
+    function injectBetween(content, startTag, endTag, payload) {
+        const startIdx = content.indexOf(startTag);
+        const endIdx = content.indexOf(endTag);
+        if (startIdx !== -1 && endIdx !== -1) {
+            const pre = content.substring(0, startIdx + startTag.length);
+            const post = content.substring(endIdx);
+            return `${pre}\n${payload}\n${post}`;
+        }
+        return content;
     }
 
-    const mcpStartIndex = finalContent.indexOf(mcpStartTag);
-    const mcpEndIndex = finalContent.indexOf(mcpEndTag);
-    
-    if (mcpStartIndex !== -1 && mcpEndIndex !== -1) {
-        const pre = finalContent.substring(0, mcpStartIndex + mcpStartTag.length);
-        const post = finalContent.substring(mcpEndIndex);
-        
-        finalContent = `${pre}\n${injectedContent}\n${post}`;
-        
+    // Inject Global Mandates before MCP injections (preserves existing behavior)
+    if (globalMandates) {
+        finalContent = finalContent.replace('<!-- MCP_INJECTIONS_START -->', `${globalMandates}\n<!-- MCP_INJECTIONS_START -->`);
+    }
+
+    // Inject Skills
+    finalContent = injectBetween(finalContent, '<!-- SKILLS_INJECTIONS_START -->', '<!-- SKILLS_INJECTIONS_END -->', skillsContent);
+
+    // Inject MCPs
+    const mcpStartTag = '<!-- MCP_INJECTIONS_START -->';
+    const mcpEndTag = '<!-- MCP_INJECTIONS_END -->';
+    if (finalContent.includes(mcpStartTag) && finalContent.includes(mcpEndTag)) {
+        finalContent = injectBetween(finalContent, mcpStartTag, mcpEndTag, injectedContent);
         fs.writeFileSync(outputPath, finalContent, 'utf8');
-        console.log(`Successfully generated GEMINI.md with active integrations: ${activeMcps.join(', ') || 'None'}`);
+        console.log(`Successfully generated GEMINI.md with ${activeSkills.length} skills and ${activeMcps.length} MCPs.`);
     } else {
-        console.error('Error: Injection markers (<!-- MCP_INJECTIONS_START --> and <!-- MCP_INJECTIONS_END -->) not found in GEMINI.template.md');
+        console.error('Error: MCP injection markers not found in GEMINI.template.md');
         process.exit(1);
     }
 }

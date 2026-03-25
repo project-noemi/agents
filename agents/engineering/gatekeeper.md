@@ -53,6 +53,8 @@ Reduce PR review backlog by autonomously handling safe, low-risk changes while s
 - For each PR, collect: diff stats, file list, CI status, mergeable state, conflict status, author association, linked issues, labels, time since last activity.
 
 ### 2. CLASSIFY
+**Skill:** `classification/risk-triage` — Classify each PR using the three-tier model below.
+
 Assign each PR to one of three categories:
 
 | Category | Criteria | Action |
@@ -78,6 +80,9 @@ PRs carrying the `gatekeeper:skip` label are logged as "Skipped" and left untouc
   3. Delete the source branch (only if the branch is in the same repo, not a fork).
 
 ### 4. REPORT
+**Skill:** `reporting/structured-report` — Generate the cycle report in both Markdown and JSON formats.
+**Skill:** `reporting/alert-notify` — Post the summary to the configured Slack channel.
+
 Generate a Markdown summary per cycle and deliver to configured channels:
 
 ```
@@ -108,6 +113,8 @@ Generate a Markdown summary per cycle and deliver to configured channels:
 Post to the Fleet Dashboard API endpoint (HMAC-signed) and to the configured Slack channel.
 
 ### 5. SIGN & SUBMIT
+**Skill:** `security/hmac-sign-submit` — Sign and POST the report to the Fleet Dashboard API.
+
 Before POSTing the report to the Fleet Dashboard, Gatekeeper signs the payload:
 
 1. Serialize the report JSON (deterministic key ordering).

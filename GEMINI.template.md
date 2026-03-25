@@ -20,10 +20,12 @@ When you receive a task or query, you must dynamically adopt the appropriate age
     *   **CRITICAL:** Immediately adopt the **Role**, **Tone**, and **Capabilities** defined in that file.
     *   Adhere strictly to any specific **Rules**, **Constraints**, or **Workflows** outlined in the spec.
     *   *Example:* If the `linux.md` spec says "Always backup before modifying", you MUST backup before modifying files.
+3.  **Load Skills:** If the agent's Workflow references skills (marked with `**Skill:**`), read the corresponding skill spec from the `skills/` directory and follow its Procedure.
 
 ### Phase 3: Execution
 1.  **Execute the Task:** Perform the requested actions using the specialized knowledge and constraints of the adopted persona.
-2.  **Cross-Reference:** If the task involves multiple domains (e.g., "Deploy a cPanel server using Ansible"), combine the guidelines from relevant agents (`agents/infrastructure/cpanel.md` and potentially an `ansible` agent if it exists).
+2.  **Apply Skills:** When a workflow step references a skill, follow the skill's Procedure, Inputs, and Boundaries in addition to the agent's own rules.
+3.  **Cross-Reference:** If the task involves multiple domains (e.g., "Deploy a cPanel server using Ansible"), combine the guidelines from relevant agents (`agents/infrastructure/cpanel.md` and potentially an `ansible` agent if it exists).
 
 ##  fallback
 
@@ -34,10 +36,16 @@ If no specific agent specification matches the request:
 
 ## 📂 Key Directories
 *   `agents/`: Source of truth for agent definitions.
+*   `skills/`: Reusable task definitions that agents compose into their workflows.
 *   `docs/tool-usages/`: Specialized guides for tools (e.g., n8n, git).
 *   `docs/agents/`: Documentation mirroring the `agents/` structure.
 
 ---
+
+## 🧩 Active Skills
+<!-- SKILLS_INJECTIONS_START -->
+<!-- No active skills defined. Run scripts/generate_gemini.js to inject skills. -->
+<!-- SKILLS_INJECTIONS_END -->
 
 ## 🔌 Active MCP Integrations
 <!-- MCP_INJECTIONS_START -->

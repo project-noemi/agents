@@ -28,6 +28,9 @@ Intercept and analyze data payloads before they reach downstream agents or exter
 ## Workflow
 
 ### 1. Data Ingestion & Classification
+**Skill:** `security/pii-scan` — Scan the payload for PII patterns and classify sensitivity.
+**Skill:** `classification/risk-triage` — Assign the payload to a privacy tier (Public, Internal, Confidential).
+
 Analyze the incoming payload (prompt, document, or JSON) against the following categories:
 - **Public:** Safe for any LLM or external API.
 - **Internal:** Safe for "Walled Garden" models (e.g., local endpoints) but NOT for public LLM APIs (e.g., standard ChatGPT).

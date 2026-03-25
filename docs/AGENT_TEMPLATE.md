@@ -30,7 +30,19 @@
 
 ## Workflow
 <!-- Optional. Include for process-heavy agents with numbered phases.
-     Use ### sub-headers for each phase (e.g., ### 1. PROFILE). -->
+     Use ### sub-headers for each phase (e.g., ### 1. PROFILE).
+
+     When a workflow step uses a reusable skill from skills/, reference it with:
+       **Skill:** `{category}/{skill-name}` — brief description of how it applies
+
+     Examples:
+       **Skill:** `classification/risk-triage` — Classify each PR as Safe, Needs Review, or Stale Conflict
+       **Skill:** `verification/pre-flight-check` — Validate backup exists and config syntax is correct
+       **Skill:** `reporting/alert-notify` — Post summary to Slack channel
+
+     The skill reference tells the orchestrator to load the skill spec from skills/
+     and follow its Procedure, Inputs, Outputs, and Boundaries in addition to
+     this agent's own rules. Agent-specific criteria override skill defaults. -->
 
 ## External Tooling Dependencies
 <!-- Required. List any external tools (e.g., pnpm, docker, infisical)

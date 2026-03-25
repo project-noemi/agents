@@ -7,6 +7,7 @@ const templatePath = path.join(__dirname, '../CLAUDE.template.md');
 const outputPath = path.join(__dirname, '../CLAUDE.md');
 const configPath = path.join(__dirname, '../mcp.config.json');
 const protocolsDir = path.join(__dirname, '../mcp-protocols');
+const skillsDir = path.join(__dirname, '../skills');
 const agentsMdPath = path.join(__dirname, '../AGENTS.md');
 const agentsDir = path.join(__dirname, '../agents');
 
@@ -101,14 +102,20 @@ function run() {
         console.log(`Indexed ${agents.length} agents across ${Object.keys(byDomain).length} domains.`);
     }
 
-    // 4. Read the config to see which MCPs to enable
+    // 4. Read the config to see which MCPs and skills to enable
     let activeMcps = [];
+    let activeSkills = [];
     if (fs.existsSync(configPath)) {
         try {
             const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
             activeMcps = config.active_mcps || [];
+            activeSkills = config.active_skills || [];
             if (!Array.isArray(activeMcps)) {
                 console.error('Error: active_mcps in mcp.config.json must be an array.');
+                process.exit(1);
+            }
+            if (!Array.isArray(activeSkills)) {
+                console.error('Error: active_skills in mcp.config.json must be an array.');
                 process.exit(1);
             }
         } catch (err) {
@@ -116,10 +123,31 @@ function run() {
             process.exit(1);
         }
     } else {
-        console.warn('Warning: mcp.config.json not found. Generating without specific MCP integrations.');
+        console.warn('Warning: mcp.config.json not found. Generating without MCP integrations or skills.');
     }
 
-    // 5. Gather MCP contents
+    // 5. Gather Skill contents
+    let skillsContent = '';
+    if (activeSkills.length === 0) {
+        skillsContent = '<!-- No active skills configured in mcp.config.json -->\n';
+    } else {
+        skillsContent = '\n## Active Skills\n\n';
+        skillsContent += `${activeSkills.length} reusable skills available. Agents reference these in their Workflow sections.\n`;
+
+        for (const skill of activeSkills) {
+            const skillFile = path.join(skillsDir, `${skill}.md`);
+            if (fs.existsSync(skillFile)) {
+                console.log(`Injecting skill: ${skill}`);
+                const content = fs.readFileSync(skillFile, 'utf8');
+                skillsContent += `\n${content}\n`;
+            } else {
+                console.warn(`Warning: Skill file not found -> ${skillFile}`);
+                skillsContent += `\n### ${skill}\n\n> Warning: Skill file missing — skills/${skill}.md\n\n`;
+            }
+        }
+    }
+
+    // 6. Gather MCP contents
     let injectedContent = '';
     if (activeMcps.length === 0) {
         injectedContent = '<!-- No active MCPs configured in mcp.config.json -->\n';
@@ -140,41 +168,40 @@ function run() {
         }
     }
 
-    // 6. Inject all sections into template
+    // 7. Inject all sections into template
     let finalContent = templateContent;
 
-    // Inject Global Mandates
-    const mandatesStart = '<!-- GLOBAL_MANDATES_START -->';
-    const mandatesEnd = '<!-- GLOBAL_MANDATES_END -->';
-    if (finalContent.includes(mandatesStart) && finalContent.includes(mandatesEnd)) {
-        const pre = finalContent.substring(0, finalContent.indexOf(mandatesStart) + mandatesStart.length);
-        const post = finalContent.substring(finalContent.indexOf(mandatesEnd));
-        finalContent = `${pre}\n${globalMandates}\n${post}`;
+    // Helper to inject content between start/end markers
+    function injectBetween(content, startTag, endTag, payload) {
+        const startIdx = content.indexOf(startTag);
+        const endIdx = content.indexOf(endTag);
+        if (startIdx !== -1 && endIdx !== -1) {
+            const pre = content.substring(0, startIdx + startTag.length);
+            const post = content.substring(endIdx);
+            return `${pre}\n${payload}\n${post}`;
+        }
+        return content;
     }
+
+    // Inject Global Mandates
+    finalContent = injectBetween(finalContent, '<!-- GLOBAL_MANDATES_START -->', '<!-- GLOBAL_MANDATES_END -->', globalMandates);
 
     // Inject Agent Index
-    const indexStart = '<!-- AGENT_INDEX_START -->';
-    const indexEnd = '<!-- AGENT_INDEX_END -->';
-    if (finalContent.includes(indexStart) && finalContent.includes(indexEnd)) {
-        const pre = finalContent.substring(0, finalContent.indexOf(indexStart) + indexStart.length);
-        const post = finalContent.substring(finalContent.indexOf(indexEnd));
-        finalContent = `${pre}\n${agentIndex}\n${post}`;
-    }
+    finalContent = injectBetween(finalContent, '<!-- AGENT_INDEX_START -->', '<!-- AGENT_INDEX_END -->', agentIndex);
+
+    // Inject Skills
+    finalContent = injectBetween(finalContent, '<!-- SKILLS_INJECTIONS_START -->', '<!-- SKILLS_INJECTIONS_END -->', skillsContent);
 
     // Inject MCP Protocols
-    const mcpStart = '<!-- MCP_INJECTIONS_START -->';
-    const mcpEnd = '<!-- MCP_INJECTIONS_END -->';
-    if (finalContent.includes(mcpStart) && finalContent.includes(mcpEnd)) {
-        const pre = finalContent.substring(0, finalContent.indexOf(mcpStart) + mcpStart.length);
-        const post = finalContent.substring(finalContent.indexOf(mcpEnd));
-        finalContent = `${pre}\n${injectedContent}\n${post}`;
+    if (finalContent.includes('<!-- MCP_INJECTIONS_START -->') && finalContent.includes('<!-- MCP_INJECTIONS_END -->')) {
+        finalContent = injectBetween(finalContent, '<!-- MCP_INJECTIONS_START -->', '<!-- MCP_INJECTIONS_END -->', injectedContent);
     } else {
         console.error('Error: MCP injection markers not found in CLAUDE.template.md');
         process.exit(1);
     }
 
     fs.writeFileSync(outputPath, finalContent, 'utf8');
-    console.log(`Successfully generated CLAUDE.md with ${agents.length} agents and ${activeMcps.length} MCP integrations: ${activeMcps.join(', ') || 'None'}`);
+    console.log(`Successfully generated CLAUDE.md with ${agents.length} agents, ${activeSkills.length} skills, and ${activeMcps.length} MCPs.`);
 }
 
 run();

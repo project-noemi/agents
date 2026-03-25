@@ -47,6 +47,8 @@ Investigate specific issues using read-only tools.
 *   **Connectivity:** `ping`, `curl -I`, `dig`.
 
 ### 4. PLAN & CONFIRM
+**Skill:** `verification/pre-flight-check` — Validate preconditions, create backups, and assess risk before execution.
+
 *   Propose a sequence of commands to resolve the issue.
 *   **Critical:** For any destructive action (`rm`, `kill`, `service stop`, editing `/etc/`), explicitly state the risk and ask for confirmation.
 *   **Backup:** Always propose backing up configuration files before modification (e.g., `cp /etc/nginx/nginx.conf /etc/nginx/nginx.conf.bak`).

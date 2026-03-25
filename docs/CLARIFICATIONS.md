@@ -102,7 +102,7 @@
 
 ### ❓ Question [2026-03-16] - Mandatory vs. Optional External Tooling Dependencies
 **Context:** `REQUIREMENTS.md` states that "Agents must also document any expected external tooling dependencies... in their persona files", yet `docs/AGENT_TEMPLATE.md` labels this section as "Optional".
-**Ambiguity / Drift:** This inconsistency has resulted in 0 out of 18 agent personas implementing the section. Without this metadata, orchestrators cannot automatically provision the required tools (e.g., Docker, pnpm) for the agent.
+**Ambiguity / Drift:** This documentation inconsistency has resulted in 0 out of 18 agent personas implementing the section. Without this metadata, orchestrators cannot automatically provision the required tools (e.g., Docker, pnpm) for the agent.
 **Question for Product Owner:** Should `docs/AGENT_TEMPLATE.md` be updated to mark the "External Tooling Dependencies" section as "Required", and should Jules proceed with a bulk update to add this section to all 18 persona files?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `docs/AGENT_TEMPLATE.md` to mark "External Tooling Dependencies" as required and audit all files in `agents/` to insert the missing section with relevant initial values.*
@@ -253,3 +253,24 @@
 **Question for Product Owner:** To which of the four 4D dimensions does the "Data Inventory" technical gate formally belong?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Standardize all lifecycle documentation (`docs/lifecycle/*.md`) to map the "Data Inventory" gate to a single, consistent dimension of the 4D framework.*
+
+### ❓ Question [2026-03-25] - Standardization of the 4D Framework Sequence
+**Context:** `docs/lifecycle/README.md` defines the 4D sequence as Delegation, Description, Discernment, Diligence. However, `docs/METHODOLOGY.md` lists it as Description (D1), Discernment (D2), Delegation (D3), Diligence (D4).
+**Ambiguity / Drift:** This structural discrepancy in the mandatory development methodology can lead to confusion during agent creation and architectural reviews.
+**Question for Product Owner:** What is the canonical sequence and D1-D4 mapping for the 4D framework?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize the 4D framework sequence across `docs/METHODOLOGY.md`, `docs/lifecycle/README.md`, and all related documentation to ensure a single source of truth for the methodology hierarchy.*
+
+### ❓ Question [2026-03-25] - Parity of 'Agent Index' Feature in Context Generation
+**Context:** `scripts/generate_claude.js` implements an 'Agent Index' feature that automatically builds a table of all available agent personas. This feature is currently missing from `scripts/generate_gemini.js`.
+**Ambiguity / Drift:** There is a functional disparity between the context generation tools for different LLM platforms, limiting the Gemini-based agents' awareness of the full persona library.
+**Question for Product Owner:** Should the 'Agent Index' feature be standardized across all context generation scripts, including `scripts/generate_gemini.js`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `scripts/generate_gemini.js` to include the automated 'Agent Index' discovery and injection logic currently present in `scripts/generate_claude.js`.*
+
+### ❓ Question [2026-03-25] - Resolution of Omitted GitHub MCP Protocol
+**Context:** `mcp-protocols/github.md` exists in the repository, but `github` is not included in the `active_mcps` array in `mcp.config.json`.
+**Ambiguity / Drift:** It is unclear if the GitHub integration is intended to be disabled by default for all cohorts or if its omission from the central configuration is accidental.
+**Question for Product Owner:** Should the `github` MCP be added to the default active list in `mcp.config.json`, or should it remain as an optional protocol that must be manually enabled?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `mcp.config.json` to include the `github` MCP in the `active_mcps` list and verify its successful injection into `GEMINI.md` and `CLAUDE.md`.*

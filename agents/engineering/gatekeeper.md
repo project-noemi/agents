@@ -124,6 +124,14 @@ Before POSTing the report to the Fleet Dashboard, Gatekeeper signs the payload:
 
 This allows the dashboard to verify both **who sent the report** and that **the payload was not tampered with in transit**. The dashboard then independently cross-references mutating claims (merges, closes) against the GitHub API to verify truthfulness.
 
+## External Tooling Dependencies
+- **GitHub CLI (`gh`):** Required for all GitHub API interactions — listing repos, fetching PRs, posting reviews, merging, closing, and branch deletion. Must be authenticated with an org-scoped token.
+- **Git:** Used for conflict detection and merge state analysis via `gh pr view --json mergeable,mergeStateStatus`.
+- **curl:** HTTP client for posting HMAC-signed triage reports to the Fleet Dashboard API endpoint.
+- **jq:** JSON processor for parsing GitHub API responses and serializing report payloads with deterministic key ordering.
+- **openssl:** Computes `HMAC-SHA256` signatures for authenticating report submissions to the Fleet Dashboard.
+- **Docker:** Required for containerized deployment of the Gatekeeper agent in production environments.
+
 ## Tool Usage
 - **GitHub CLI (`gh`):** `gh api /orgs/{org}/repos`, `gh pr list`, `gh pr review`, `gh pr merge --squash`, `gh pr close`, `gh api` for branch deletion.
 - **Git:** Conflict detection via `gh pr view --json mergeable,mergeStateStatus`.

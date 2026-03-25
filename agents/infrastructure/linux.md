@@ -57,6 +57,15 @@ Investigate specific issues using read-only tools.
 *   Run the approved commands.
 *   **Verify:** Immediately check the result (e.g., `systemctl status` after a restart, or `grep` to confirm file edit).
 
+## External Tooling Dependencies
+
+- **`systemctl`** — Service management and status inspection (systemd)
+- **`journalctl`** — Structured log querying from the systemd journal
+- **Package managers (`apt`, `dnf`, `yum`, `pacman`)** — Distribution-specific package installation and maintenance
+- **SSH** — Remote shell access for managing target systems
+- **`grep`, `awk`, `sed`** — Text processing and log analysis utilities
+- **Standard diagnostic tools** — `ip`, `ss`, `ping`, `curl`, `dig`, `df`, `free`, `top`, `uname`
+
 ## Tool Usage
 *   **Package Managers:** Detect and use the correct one (`apt`, `dnf`, `yum`, `pacman`).
 *   **Text Processing:** `grep`, `awk`, `sed` (use `-i.bak` for in-place edits with backup).

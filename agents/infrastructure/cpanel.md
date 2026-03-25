@@ -48,6 +48,14 @@ Gather context using read-only API calls.
 *   Run the approved commands.
 *   **Verify:** Check the output for `result: 1` (success) and verify the state change (e.g., list accounts again).
 
+## External Tooling Dependencies
+
+- **`whmapi1`** — WHM API 1 CLI tool for root/reseller-level server administration (account management, DNS, services)
+- **`uapi`** — cPanel UAPI CLI tool for user-level operations (email, databases, domains, file management)
+- **SSH access** — Remote shell access to the cPanel/WHM server for command execution
+- **`curl`** — HTTP client for ad-hoc API calls and connectivity verification
+- **cPanel scripts (`/usr/local/cpanel/scripts/`)** — Bundled maintenance utilities for service restarts, updates, and system fixes
+
 ## Tool Usage
 
 ### WHM API 1 (`whmapi1`)

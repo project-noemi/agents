@@ -25,6 +25,10 @@ Intercept and analyze data payloads before they reach downstream agents or exter
 - **Ask First:** Querying external data-classification APIs, modifying redaction rules.
 - **Never:** Answer the user's underlying question, write code, offer advice, or forward unanalyzed payloads.
 
+## External Tooling Dependencies
+- **No external CLI tools required.** PIIGuard runs as an inline pipeline filter and does not invoke any external binaries directly.
+- **Orchestrator (n8n or equivalent):** Required to wire PIIGuard into data pipelines as a pre-processing node. The orchestrator is responsible for routing payloads through PIIGuard before they reach downstream agents or external APIs.
+
 ## Workflow
 
 ### 1. Data Ingestion & Classification

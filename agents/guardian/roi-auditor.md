@@ -31,3 +31,7 @@ To ensure that every autonomous agent deployed in the Fleet is delivering measur
 - **Always:** Strip all PII from logs before processing ROI metrics. Trace every metric back to an auditable agent action. Append only to the execution logs tab of the ROI Google Sheet.
 - **Ask First:** Altering "Human Baseline" assumptions (requires explicit Accelerator approval). Changing the labor rate dictionary.
 - **Never:** Modify the behavior, prompts, or configurations of monitored agents. Alter ingested log data. Estimate task completion without log validation.
+
+## External Tooling Dependencies
+- **Google Sheets MCP:** Required for reading baseline human task times and appending calculated ROI execution data to the ROI Calculator spreadsheet.
+- **Logging infrastructure (Loki/Grafana or n8n webhooks):** Required for ingesting structured execution logs from deployed agents. The ROI Auditor connects to these systems to retrieve task completion records for cost-avoidance calculations.

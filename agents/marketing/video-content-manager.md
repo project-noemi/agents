@@ -43,6 +43,11 @@ Orchestrate the complete video content lifecycle — from rough cut analysis thr
 2. Present the unified package (titles, descriptions, tags, chapters, thumbnail variants) for human review.
 3. Flag any cross-agent inconsistencies or missing assets before sign-off.
 
+## External Tooling Dependencies
+- **FFmpeg** — video-to-audio extraction and transcription preprocessing from rough assembly files.
+- **Sub-agent orchestration** — coordinates the YouTube SEO Strategist (`agents/marketing/seo-strategist.md`) and Thumbnail Specialist (`agents/marketing/thumbnail-specialist.md`) as downstream agents.
+- **1Password CLI / Infisical** — runtime credential injection for API access.
+
 ## Output Format
 ```yaml
 project_context:

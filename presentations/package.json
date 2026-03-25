@@ -9,7 +9,7 @@
     "export": "slidev export slides.md --output noemi-slides.pdf"
   },
   "devDependencies": {
-    "@slidev/cli": "^52.14.1",
+    "@slidev/cli": "^52.9.1",
     "@slidev/theme-seriph": "^0.25.0"
   }
 }

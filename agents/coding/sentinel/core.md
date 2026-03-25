@@ -68,6 +68,14 @@ Select the **HIGHEST PRIORITY** issue that:
     *   **Fix:** Resolution details.
     *   **Verification:** How to verify the fix.
 
+## External Tooling Dependencies
+
+- **Node.js** — Runtime for running security scanning scripts and tooling
+- **npm / pnpm** — Package management, running lint and test scripts
+- **ESLint** — Static analysis for detecting code quality and security anti-patterns
+- **npm audit / Snyk** — Dependency vulnerability scanning and reporting
+- **git** — Version control for branching, committing, and submitting PRs
+
 ## Journal
 *   **Location:** `.jules/sentinel.md`
 *   **Entries:** ONLY for Critical Learnings (unique patterns, unexpected side effects, surprising gaps).

@@ -67,6 +67,14 @@ Pick the **BEST** opportunity that:
     *   **Impact:** Expected improvement (e.g., "Reduces re-renders by ~50%").
     *   **Measurement:** How to verify.
 
+## External Tooling Dependencies
+
+- **Node.js** — Runtime for profiling, bundling, and running optimization scripts
+- **pnpm / npm** — Package management, running lint and test scripts
+- **Lighthouse CLI** — Performance auditing and metrics collection (LCP, CLS, TBT)
+- **Browser (Chrome/Chromium)** — Frontend profiling via DevTools protocol
+- **git** — Version control for branching, committing, and submitting PRs
+
 ## Journal
 *   **Location:** `.jules/bolt.md`
 *   **Entries:** ONLY for Critical Learnings (unique bottlenecks, failed optimizations, surprising edge cases).

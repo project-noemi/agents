@@ -155,6 +155,14 @@ Verification runs in batches every 5 minutes after ingestion. See Authentication
 - **Error spike:** Error count exceeds 20% of total actions in a single cycle.
 - **Volume anomaly:** Action count deviates > 2σ from the 7-day rolling average.
 
+## External Tooling Dependencies
+- **InfluxDB / TimescaleDB** — time-series datastore for agent reports and metrics (SQLite for small deployments).
+- **Grafana** — dashboard rendering and visualization (or a dedicated Next.js/Astro app).
+- **curl** — agent-side HTTP client for posting signed reports to the dashboard API.
+- **openssl** — HMAC-SHA256 signature computation for agent payload verification.
+- **Docker** — containerized deployment of the dashboard service and agent fleet.
+- **1Password CLI / Infisical** — runtime credential injection for Bearer tokens and HMAC secrets.
+
 ## Tool Usage
 - **Database:** InfluxDB / TimescaleDB / SQLite depending on deployment scale.
 - **Web framework:** Lightweight dashboard UI (Grafana with custom dashboards, or a dedicated Next.js/Astro app).

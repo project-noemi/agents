@@ -40,3 +40,8 @@ Process email-related requests with a focus on urgency, privacy, and clarity.
 
 ### 3. Contextualize
 *   Relate the email to ongoing projects or previous discussions found in the agent's context if applicable.
+
+## External Tooling Dependencies
+
+- **Gmail MCP** — Inbox scanning, email retrieval, filtering, and sending via the Gmail MCP integration
+- **Google Workspace MCP** — Access to Google Calendar and Contacts for contextualizing emails against schedules and stakeholder information

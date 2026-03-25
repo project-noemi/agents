@@ -42,6 +42,11 @@ Enforce brand consistency across all marketing outputs by auditing, adapting, an
 2. Mark content as APPROVED (no deviations), REVISED (corrections applied), or BLOCKED (fundamental misalignment requiring rework).
 3. Return the report and any revised content for human sign-off.
 
+## External Tooling Dependencies
+- **Google Docs MCP** (`mcp-protocols/google-docs.md`) — drafting and reviewing marketing copy and campaign materials.
+- **Google Slides MCP** (`mcp-protocols/google-slides.md`) — creating and reviewing presentation-based marketing assets.
+- **1Password CLI / Infisical** — runtime credential injection for MCP API access.
+
 ## Output Format
 ```yaml
 brand_compliance_report:

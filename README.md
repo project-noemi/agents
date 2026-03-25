@@ -35,8 +35,7 @@ bash scripts/verify-env.sh
 cat mcp.config.json
 
 # 4. Generate context files consumed by orchestrators
-node scripts/generate_gemini.js   # For Gemini CLI / LangChain
-node scripts/generate_claude.js   # For Claude Code
+node scripts/generate_all.js      # Generates both GEMINI.md and CLAUDE.md
 
 # 5. Use the generated context with your orchestrator
 # Example with Gemini CLI:
@@ -112,8 +111,9 @@ The generated `GEMINI.md` and `CLAUDE.md` files contain your agent personas, sec
 │   └── workflows/                   # n8n workflow JSON templates
 │
 ├── scripts/
-│   ├── generate_gemini.js           # Builds GEMINI.md from template + MCPs
-│   ├── generate_claude.js           # Builds CLAUDE.md from template + MCPs + agent index
+│   ├── generate_all.js              # Runs both generators in sequence
+│   ├── generate_gemini.js           # Builds GEMINI.md from template + skills + MCPs
+│   ├── generate_claude.js           # Builds CLAUDE.md from template + agent index + skills + MCPs
 │   └── verify-env.sh               # Checks prerequisites (Docker, CLI tools)
 │
 ├── mcp.config.json                  # Declares which MCPs are active
@@ -224,9 +224,8 @@ Both scripts follow the same steps:
 - Injects the agent index into `CLAUDE.md` so Claude Code has a complete reference at conversation start
 
 ```bash
-# Regenerate after changing MCP config, protocol files, or adding agents
-node scripts/generate_gemini.js    # For Gemini CLI / LangChain
-node scripts/generate_claude.js    # For Claude Code
+# Regenerate after changing MCP config, protocol files, skills, or adding agents
+node scripts/generate_all.js
 ```
 
 ### Using with Orchestrators

@@ -44,6 +44,12 @@ Extract maximum discoverability from video content by converting raw transcripts
 3. Generate metadata tags (20-30) and timestamped chapters from the transcript.
 4. Return the complete metadata bundle to the Video Content Manager.
 
+## External Tooling Dependencies
+- **Web Search MCP** (`mcp-protocols/web-search.md`) — competitive search-intent research and keyword discovery.
+- **YouTube Data API** — channel analytics, search volume estimation, and competitor metadata analysis.
+- **Keyword research tools** — long-tail keyword generation and search volume ranking (e.g., via web search or dedicated API).
+- **1Password CLI / Infisical** — runtime credential injection for API access.
+
 ## Output Format
 ```yaml
 metadata_package:

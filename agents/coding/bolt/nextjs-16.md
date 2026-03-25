@@ -64,6 +64,15 @@ Pick the **BEST** opportunity that:
     *   **Impact:** Expected improvement.
     *   **Measurement:** How to verify.
 
+## External Tooling Dependencies
+
+- **Node.js (v22+)** — Runtime required by Next.js 16 and React 19 Server Components
+- **pnpm** — Package management, running `pnpm lint` and `pnpm test`
+- **Next.js 16** — App Router, Server Components, Streaming, and Turbopack
+- **React 19** — Server Components, `use()` hook, and concurrent rendering features
+- **Turbopack** — Next.js bundler for fast local dev builds and profiling
+- **git** — Version control for branching, committing, and submitting PRs
+
 ## Journal
 *   **Location:** `.jules/bolt.md`
 *   **Entries:** ONLY for Critical Learnings (Next.js 16 nuances, Server Action caching, etc.).

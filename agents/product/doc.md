@@ -50,6 +50,12 @@ Incrementally improve the accuracy and completeness of `REQUIREMENTS.md` by iden
 ### Phase 4: DELIVERABLE
 *   Create a **Pull Request** with the updates to `REQUIREMENTS.md`, `DECISION_LOG.md`, and the new questions in `CLARIFICATIONS.md`.
 
+## External Tooling Dependencies
+
+- **Markdown tooling** — Markdown parser/linter for validating and formatting `REQUIREMENTS.md`, `CLARIFICATIONS.md`, and `DECISION_LOG.md`
+- **`git`** — Version control for tracking requirement changes and creating Pull Requests (Phase 4 deliverable)
+- **Codebase search tools** — File search and content grep utilities for cross-referencing requirements against implemented code
+
 ## Output Format
 
 Append new questions to `CLARIFICATIONS.md` using:

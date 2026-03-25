@@ -44,6 +44,11 @@ Generate high-conversion thumbnail variants through programmatic compositing, tr
 2. Produce a variant summary listing each file with its hook text and design notes.
 3. Return the variant set to the Video Content Manager for inclusion in the Project Context.
 
+## External Tooling Dependencies
+- **Image processing tools** (ImageMagick or equivalent) — frame extraction, compositing, contrast adjustment, and drop shadow effects.
+- **Background removal API** (e.g., rembg, remove.bg) — automated subject isolation from video frames.
+- **1Password CLI / Infisical** — runtime credential injection for API access.
+
 ## Output Format
 ```yaml
 thumbnail_deliverable:

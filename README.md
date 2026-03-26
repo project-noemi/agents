@@ -60,7 +60,6 @@ The generated `GEMINI.md` and `CLAUDE.md` files contain your agent personas, sec
 | Documentation | `docs/` | Framework docs, setup guides, agent-specific documentation |
 | Build scripts | `scripts/` | Context generation (`generate_gemini.js`, `generate_claude.js`) and environment verification |
 | ROI tools | `tools/roi/` | Methodology for calculating agent return on investment |
-| Presentations | `presentations/` | Slidev-based presentation decks for stakeholders |
 
 ---
 

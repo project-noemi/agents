@@ -274,3 +274,17 @@
 **Question for Product Owner:** Should the `github` MCP be added to the default active list in `mcp.config.json`, or should it remain as an optional protocol that must be manually enabled?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `mcp.config.json` to include the `github` MCP in the `active_mcps` list and verify its successful injection into `GEMINI.md` and `CLAUDE.md`.*
+
+### ❓ Question [2026-03-26] - Missing Protocol File for Logging MCP
+**Context:** The `agents/guardian/roi-auditor.md` persona and several requirements mention a dependency on a `logging-mcp`. While it is missing from `mcp.config.json` (as noted in Question [2026-03-15]), it is also entirely missing from the `mcp-protocols/` directory.
+**Ambiguity / Drift:** The `roi-auditor` cannot be operationalized even if enabled in the config, as the underlying protocol definition file does not exist.
+**Question for Product Owner:** Is the `logging-mcp` protocol intended to be a custom implementation within this repository, or should it point to an external standardized logging MCP server?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create the missing `mcp-protocols/logging-mcp.md` protocol definition file to support the `roi-auditor.md` persona.*
+
+### ❓ Question [2026-03-26] - Absence of Root `src/` and `tests/` Directories
+**Context:** The project requirements and agent prompts reference `src/` and `tests/` directories as primary locations for codebase and validation logic.
+**Ambiguity / Drift:** These directories are physically absent from the root of the repository. Logic is instead distributed across `scripts/`, `skills/`, `tools/`, and `examples/`.
+**Question for Product Owner:** Should the repository be reorganized to include standard `src/` and `tests/` directories at the root, or is the current distributed structure (scripts, skills, tools) the intended final architecture?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Propose a root-level directory reorganization plan that consolidates distributed logic into standardized `src/` and `tests/` folders while maintaining backward compatibility for existing scripts.*

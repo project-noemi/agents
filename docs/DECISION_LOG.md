@@ -1,5 +1,15 @@
 # Decision Log
 
+## [2026-03-26] - Phase 2 Documentation Audit & Technical Drift Verification
+- **Decision**: Conducted a Phase 2 audit to identify inconsistencies in the 4D framework, configuration, and repository structure.
+- **Context**: Required to maintain "Source of Truth" (REQUIREMENTS.md) accuracy and identify technical debt.
+- **Impact**:
+    - **Localization Resolution**: Verified that all 6 n8n workflow files in `docs/n8n workflows/` have been renamed to English slugs, resolving the previously reported localization drift.
+    - **Configuration Gap**: Identified that `logging-mcp` is not only missing from `mcp.config.json` but is also missing its protocol file in `mcp-protocols/`.
+    - **Structural Discrepancy**: Formally documented the absence of root-level `src/` and `tests/` directories, despite being referenced in requirements and prompts.
+    - **Framework Discrepancy**: Confirmed D1-D4 mapping conflict between `docs/METHODOLOGY.md` (D1: Description) and `docs/lifecycle/README.md` (D1: Delegation).
+    - **Backoff Debt**: Verified that "Exponential Backoff" remains a mandatory directive in `AGENTS.md` without any reference implementation or helper script in the repository.
+
 ## [2026-03-24] - Phase 2 Documentation Audit & Technical Drift Verification
 - **Decision**: Conducted a Phase 2 audit to identify inconsistencies in the 4D framework documentation and environment configuration.
 - **Context**: Required to ensure the accuracy of the "Source of Truth" (REQUIREMENTS.md) and identify technical debt in infrastructure templates.

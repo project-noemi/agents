@@ -8,16 +8,21 @@ This folder contains the implementation scripts for automating your YouTube vide
 - `thumb_agent.py`: Visual agent for pose extraction and compositing.
 - `requirements.txt`: Python dependencies.
 
-## 🛠️ Usage
+## Usage
 
 1. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-2. **Run the pod:**
+2. **Run the pod** (secrets injected at runtime via vault CLI):
    ```bash
-   python manager.py --project "[ProjectName]" --rough_cut [main_rough_cut.mp4] --pose_clip [pose_video.mp4]
+   op run --env-file=.env.template -- python manager.py --project "[ProjectName]" --rough_cut [main_rough_cut.mp4] --pose_clip [pose_video.mp4]
+   ```
+
+3. **Run the Dropbox watcher** (optional, polls for new video pairs):
+   ```bash
+   op run --env-file=.env.template -- python dropbox_watcher.py
    ```
 
 ## 🧠 What it does

@@ -1,12 +1,15 @@
 import os
+import sys
 import time
 import dropbox
-from dotenv import load_dotenv
 import subprocess
 
-# Load credentials from .env
-load_dotenv()
-DROPBOX_TOKEN = os.getenv("DROPBOX_ACCESS_TOKEN")
+# Fetch-on-Demand: credentials are injected at runtime via vault CLI wrappers.
+# Usage:  op run --env-file=.env.template -- python dropbox_watcher.py
+#    or:  infisical run --env=dev -- python dropbox_watcher.py
+DROPBOX_TOKEN = os.environ.get("DROPBOX_ACCESS_TOKEN")
+if not DROPBOX_TOKEN:
+    sys.exit("DROPBOX_ACCESS_TOKEN not set. Use 'op run' or 'infisical run' to inject secrets.")
 dbx = dropbox.Dropbox(DROPBOX_TOKEN)
 
 # Configuration

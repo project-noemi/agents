@@ -42,6 +42,66 @@ If no specific agent specification matches the request:
 
 ---
 
+<!-- GLOBAL_MANDATES_START -->
+
+## 🔐 Global Security Mandates
+This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical or 1Password) and are never written to disk or hardcoded in source code.
+
+## Mandatory Security Rules
+
+- NEVER ask the user for secrets in the chat interface.
+
+
+- NEVER hardcode actual secret values in any files, `.env` files, or logs.
+
+
+- ALWAYS use an Environment Injection CLI (`infisical run` or `op run`) to resolve credentials at runtime.
+
+## 🛡 Global Resilience Directives
+To ensure reliability and stability, agents and toolkit components must implement robust error handling patterns.
+
+## Mandatory Directives
+- **Graceful Degradation**: If an MCP tool or external API fails, the agent must explain the error clearly and attempt alternative strategies if available, rather than silently failing.
+- **Exponential Backoff**: Implement exponential backoff retry logic for transient network errors or rate-limiting (429) responses.
+- **Standardized Logging**: All technical errors must be logged to `stderr` to allow the orchestrator to capture and report execution failures accurately.
+
+<!-- GLOBAL_MANDATES_END -->
+
+<!-- AGENT_INDEX_START -->
+
+## 🗂️ Agent Index
+
+22 agent specifications across 8 domains:
+
+| Domain | Agent | Spec File |
+|--------|-------|-----------|
+| coding | Bolt — Performance Agent | `agents/coding/bolt/core.md` |
+| coding | Bolt (Next.js 16) — Performance Agent | `agents/coding/bolt/nextjs-16.md` |
+| coding | Sentinel — Security Agent | `agents/coding/sentinel/core.md` |
+| communication | Postman — Communication Agent | `agents/communication/postman.md` |
+| engineering | AI Architect — Engineering Agent | `agents/engineering/ai-architect.md` |
+| engineering | Gatekeeper — Engineering Agent | `agents/engineering/gatekeeper.md` |
+| guardian | PIIGuard — Guardian Agent | `agents/guardian/pii-guard.md` |
+| guardian | PromptShield — Guardian Agent | `agents/guardian/prompt-shield.md` |
+| guardian | ROI Auditor — Guardian Agent | `agents/guardian/roi-auditor.md` |
+| infrastructure | cPanel — Infrastructure Agent | `agents/infrastructure/cpanel.md` |
+| infrastructure | SysAdmin — Infrastructure Agent | `agents/infrastructure/linux.md` |
+| marketing | Marketing & Brand Strategist — Marketing Agent | `agents/marketing/brand-strategist.md` |
+| marketing | YouTube SEO Strategist — Marketing Agent | `agents/marketing/seo-strategist.md` |
+| marketing | Thumbnail Specialist — Marketing Agent | `agents/marketing/thumbnail-specialist.md` |
+| marketing | Video Content Manager — Marketing Agent | `agents/marketing/video-content-manager.md` |
+| operations | Client Onboarding — Operations Agent | `agents/operations/client-onboarding.md` |
+| operations | Drive Cataloger — Operations Agent | `agents/operations/drive-cataloger.md` |
+| operations | Fleet Dashboard — Operations Agent | `agents/operations/fleet-dashboard.md` |
+| operations | Knowledge Manager & Researcher — Operations Agent | `agents/operations/knowledge-manager.md` |
+| operations | Multimodal Operations Specialist — Operations Agent | `agents/operations/multimodal-specialist.md` |
+| operations | QA & Risk Manager — Operations Agent | `agents/operations/qa-risk-manager.md` |
+| product | Doc — Product Agent | `agents/product/doc.md` |
+
+Read the relevant agent spec before performing domain-specific tasks.
+
+<!-- AGENT_INDEX_END -->
+
 ## 🧩 Active Skills
 <!-- SKILLS_INJECTIONS_START -->
 
@@ -466,28 +526,6 @@ Delegate work to one or more sub-agents and aggregate their outputs into a unifi
 <!-- SKILLS_INJECTIONS_END -->
 
 ## 🔌 Active MCP Integrations
-
-## 🔐 Global Security Mandates
-This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical or 1Password) and are never written to disk or hardcoded in source code.
-
-## Mandatory Security Rules
-
-- NEVER ask the user for secrets in the chat interface.
-
-
-- NEVER hardcode actual secret values in any files, `.env` files, or logs.
-
-
-- ALWAYS use an Environment Injection CLI (`infisical run` or `op run`) to resolve credentials at runtime.
-
-## 🛡 Global Resilience Directives
-To ensure reliability and stability, agents and toolkit components must implement robust error handling patterns.
-
-## Mandatory Directives
-- **Graceful Degradation**: If an MCP tool or external API fails, the agent must explain the error clearly and attempt alternative strategies if available, rather than silently failing.
-- **Exponential Backoff**: Implement exponential backoff retry logic for transient network errors or rate-limiting (429) responses.
-- **Standardized Logging**: All technical errors must be logged to `stderr` to allow the orchestrator to capture and report execution failures accurately.
-
 <!-- MCP_INJECTIONS_START -->
 
 ### 🔹 N8N Protocol

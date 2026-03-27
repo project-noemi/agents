@@ -42,6 +42,12 @@ If no specific agent specification matches the request:
 
 ---
 
+<!-- GLOBAL_MANDATES_START -->
+<!-- GLOBAL_MANDATES_END -->
+
+<!-- AGENT_INDEX_START -->
+<!-- AGENT_INDEX_END -->
+
 ## 🧩 Active Skills
 <!-- SKILLS_INJECTIONS_START -->
 <!-- No active skills defined. Run scripts/generate_gemini.js to inject skills. -->

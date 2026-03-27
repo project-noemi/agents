@@ -9,6 +9,39 @@ const configPath = path.join(__dirname, '../mcp.config.json');
 const protocolsDir = path.join(__dirname, '../mcp-protocols');
 const skillsDir = path.join(__dirname, '../skills');
 const agentsMdPath = path.join(__dirname, '../AGENTS.md');
+const agentsDir = path.join(__dirname, '../agents');
+
+function discoverAgents(baseDir, prefix = '') {
+    const agents = [];
+    if (!fs.existsSync(baseDir)) return agents;
+
+    const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+    for (const entry of entries) {
+        const fullPath = path.join(baseDir, entry.name);
+        if (entry.isDirectory()) {
+            agents.push(...discoverAgents(fullPath, path.join(prefix, entry.name)));
+        } else if (entry.name.endsWith('.md')) {
+            const relativePath = path.join(prefix, entry.name);
+            const content = fs.readFileSync(fullPath, 'utf8');
+
+            // Extract H1 title (# Name — Domain Agent)
+            const titleMatch = content.match(/^#\s+(.+)/m);
+            const title = titleMatch ? titleMatch[1].trim() : entry.name.replace('.md', '');
+
+            // Extract Role section (first paragraph after ## Role)
+            const roleMatch = content.match(/## Role\s*\n([\s\S]*?)(?=\n## |\n$)/);
+            const role = roleMatch ? roleMatch[1].trim().split('\n')[0] : '';
+
+            agents.push({
+                path: `agents/${relativePath}`,
+                title,
+                role: role.substring(0, 200), // Truncate to keep index concise
+                domain: prefix.split(path.sep)[0] || 'root'
+            });
+        }
+    }
+    return agents;
+}
 
 function run() {
     console.log('Generating modular GEMINI.md...');
@@ -42,7 +75,35 @@ function run() {
         }
     }
 
-    // 3. Read the config to see which MCPs and skills to enable
+    // 3. Discover all agent specs and build an index
+    console.log('Discovering agent specifications...');
+    const agents = discoverAgents(agentsDir);
+    let agentIndex = '';
+    if (agents.length > 0) {
+        // Group by domain
+        const byDomain = {};
+        for (const agent of agents) {
+            if (!byDomain[agent.domain]) byDomain[agent.domain] = [];
+            byDomain[agent.domain].push(agent);
+        }
+
+        agentIndex = '\n## 🗂️ Agent Index\n\n';
+        agentIndex += `${agents.length} agent specifications across ${Object.keys(byDomain).length} domains:\n\n`;
+        agentIndex += '| Domain | Agent | Spec File |\n';
+        agentIndex += '|--------|-------|-----------|\n';
+
+        const sortedDomains = Object.keys(byDomain).sort();
+        for (const domain of sortedDomains) {
+            for (const agent of byDomain[domain]) {
+                agentIndex += `| ${domain} | ${agent.title} | \`${agent.path}\` |\n`;
+            }
+        }
+        agentIndex += '\nRead the relevant agent spec before performing domain-specific tasks.\n';
+
+        console.log(`Indexed ${agents.length} agents across ${Object.keys(byDomain).length} domains.`);
+    }
+
+    // 4. Read the config to see which MCPs and skills to enable
     let activeMcps = [];
     let activeSkills = [];
     if (fs.existsSync(configPath)) {
@@ -118,25 +179,25 @@ function run() {
         return content;
     }
 
-    // Inject Global Mandates before MCP injections (preserves existing behavior)
-    if (globalMandates) {
-        finalContent = finalContent.replace('<!-- MCP_INJECTIONS_START -->', `${globalMandates}\n<!-- MCP_INJECTIONS_START -->`);
-    }
+    // Inject Global Mandates
+    finalContent = injectBetween(finalContent, '<!-- GLOBAL_MANDATES_START -->', '<!-- GLOBAL_MANDATES_END -->', globalMandates);
+
+    // Inject Agent Index
+    finalContent = injectBetween(finalContent, '<!-- AGENT_INDEX_START -->', '<!-- AGENT_INDEX_END -->', agentIndex);
 
     // Inject Skills
     finalContent = injectBetween(finalContent, '<!-- SKILLS_INJECTIONS_START -->', '<!-- SKILLS_INJECTIONS_END -->', skillsContent);
 
     // Inject MCPs
-    const mcpStartTag = '<!-- MCP_INJECTIONS_START -->';
-    const mcpEndTag = '<!-- MCP_INJECTIONS_END -->';
-    if (finalContent.includes(mcpStartTag) && finalContent.includes(mcpEndTag)) {
-        finalContent = injectBetween(finalContent, mcpStartTag, mcpEndTag, injectedContent);
-        fs.writeFileSync(outputPath, finalContent, 'utf8');
-        console.log(`Successfully generated GEMINI.md with ${activeSkills.length} skills and ${activeMcps.length} MCPs.`);
+    if (finalContent.includes('<!-- MCP_INJECTIONS_START -->') && finalContent.includes('<!-- MCP_INJECTIONS_END -->')) {
+        finalContent = injectBetween(finalContent, '<!-- MCP_INJECTIONS_START -->', '<!-- MCP_INJECTIONS_END -->', injectedContent);
     } else {
         console.error('Error: MCP injection markers not found in GEMINI.template.md');
         process.exit(1);
     }
+
+    fs.writeFileSync(outputPath, finalContent, 'utf8');
+    console.log(`Successfully generated GEMINI.md with ${agents.length} agents, ${activeSkills.length} skills, and ${activeMcps.length} MCPs.`);
 }
 
 run();

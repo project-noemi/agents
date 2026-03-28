@@ -1,5 +1,13 @@
 # Decision Log
 
+## [2026-03-28] - Resolution of Localization and Documentation Mirroring Drift
+- **Decision**: Formally verified the resolution of localization drift in n8n workflows and confirmed the completion of persona documentation mirroring.
+- **Context**: As part of the "Doc" persona mission to maintain an accurate Source of Truth (REQUIREMENTS.md).
+- **Impact**:
+    - **Localization Resolution**: Confirmed that all 6 n8n workflow files in `docs/n8n workflows/` have been renamed to English slugs (e.g., `ai-email-triage.json`), resolving Question [2026-03-19] and Question [2026-03-22].
+    - **Documentation Mirroring**: Verified that the `docs/agents/` directory strictly mirrors the `agents/` hierarchy via symbolic links, fulfilling the requirement from Question [2026-03-09] and the 2026-03-03 decision.
+    - **Standardized Header Alignment**: Re-confirmed that all 18 agent personas utilize "Rules & Constraints" as their primary header, aligning with the 2026-03-12 decision and resolving Question [2026-03-18].
+
 ## [2026-03-26] - Phase 2 Documentation Audit & Technical Drift Verification
 - **Decision**: Conducted a Phase 2 audit to identify inconsistencies in the 4D framework, configuration, and repository structure.
 - **Context**: Required to maintain "Source of Truth" (REQUIREMENTS.md) accuracy and identify technical debt.

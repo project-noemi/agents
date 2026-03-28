@@ -37,7 +37,7 @@ The primary goal is to provide a robust foundation that developers can use to qu
 5. **Fleet-Ready Infrastructure**: Maintain standardized `docker-compose.yml` templates for parallel "Fleet" deployments.
     - **Traffic Routing**: Standardize on Traefik with host-based routing (e.g., `auth.noemi.local`, `audit.noemi.local`) for service isolation and multi-tenancy.
     - **Observability**: A centralized stack (Grafana/Loki) is mandatory for cross-cohort auditing.
-6. **ROI Modeling & Validation**: Implement a standardized labor-cost-avoidance methodology for calculating agent ROI, documented in `tools/roi/README.md`. A specialized `roi-auditor` agent persona is available to automate this process [PENDING: Production-ready ROI calculator template link].
+6. **ROI Modeling & Validation**: Implement a standardized labor-cost-avoidance methodology for calculating agent ROI, documented in `tools/roi/README.md`. A specialized `roi-auditor` agent persona is available to automate this process [VERIFIED: ROI Calculator methodology is documented; placeholder link remains in README].
 
 ## Technical Specifications
 - **Architecture**: Static Markdown documentation and Node.js executable scripts. Logic is currently distributed across `scripts/`, `skills/`, `tools/`, and `examples/`. [DRIFT: Root `src/` and `tests/` directories are absent - VERIFIED 2026-03-26].
@@ -50,4 +50,4 @@ The primary goal is to provide a robust foundation that developers can use to qu
 2. **Kubernetes Support**: Expand fleet deployment examples to include Kubernetes manifests (Deployments, Services, and Ingress).
 3. **Automated Validation Bots**: Develop specialized "Verification Bots" for auditing agent logs for academic credentialing and ROI validation [VERIFIED: Academic audit logic implemented in `examples/gmu-validation/`].
 4. **Persona Standards Audit**: Standardize all agent personas to include a mandatory "Audit Log" requirement, ensuring they output a brief JSON summary of their reasoning alongside their final payload [PENDING: Schema definition and implementation - VERIFIED 2026-03-20: Missing from all 18 personas].
-5. **Workflow Standardization**: Implement a standardized naming and documentation convention for exported n8n workflows in `docs/n8n workflows/` to avoid localization drift [VERIFIED 2026-03-26: Renaming of 6 files with Hungarian names is complete; all files use English slugs].
+5. **Workflow Standardization**: Implement a standardized naming and documentation convention for exported n8n workflows in `docs/n8n workflows/` to avoid localization drift [VERIFIED: n8n workflow naming is standardized to English slugs].

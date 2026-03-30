@@ -1,5 +1,15 @@
 # Decision Log
 
+## [2026-03-30] - Phase 2 Comprehensive Documentation Audit & Technical Drift Verification
+- **Decision**: Conducted a comprehensive audit of the repository's core documentation, environment configuration, and context generation logic.
+- **Context**: Required as part of the "Doc" persona mission to ensure `REQUIREMENTS.md` remains the "Source of Truth" and to identify actionable technical drifts.
+- **Impact**:
+    - **4D Framework Sequence**: Confirmed a persistent structural conflict between `docs/METHODOLOGY.md` (D1: Description) and `docs/lifecycle/README.md` (D1: Delegation).
+    - **Brittle Context Generation**: Verified that `scripts/generate_gemini.js` utilizes fragile regex for section extraction from `AGENTS.md` and lacks a dedicated injection zone in `GEMINI.template.md`.
+    - **Environment Template Drift**: Identified that `.env.template` is missing mandatory keys (`CASDOOR_DB_PASSWORD`, `GF_ADMIN_PASSWORD`, `COHORT_DB_PASSWORD`) required by the fleet `docker-compose.yml`.
+    - **Pre-Flight Verification Gap**: Confirmed that `scripts/verify-env.sh` still lacks mandated checks for `infisical` or `op` CLIs, despite being a core security requirement.
+    - **MCP Configuration Drift**: Verified that the `github` MCP protocol is omitted from `mcp.config.json` despite the protocol file being present in the repository.
+
 ## [2026-03-26] - Phase 2 Documentation Audit & Technical Drift Verification
 - **Decision**: Conducted a Phase 2 audit to identify inconsistencies in the 4D framework, configuration, and repository structure.
 - **Context**: Required to maintain "Source of Truth" (REQUIREMENTS.md) accuracy and identify technical debt.

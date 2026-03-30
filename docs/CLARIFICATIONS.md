@@ -288,3 +288,24 @@
 **Question for Product Owner:** Should the repository be reorganized to include standard `src/` and `tests/` directories at the root, or is the current distributed structure (scripts, skills, tools) the intended final architecture?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Propose a root-level directory reorganization plan that consolidates distributed logic into standardized `src/` and `tests/` folders while maintaining backward compatibility for existing scripts.*
+
+### ❓ Question [2026-03-30] - Canonical 4D Framework Sequence
+**Context:** `docs/METHODOLOGY.md` defines the 4D sequence as Description (D1), Discernment (D2), Delegation (D3), Diligence (D4). However, `docs/lifecycle/README.md` and related files define it as Delegation (D1), Description (D2), Discernment (D3), Diligence (D4).
+**Ambiguity / Drift:** This structural inconsistency in the mandatory development methodology creates confusion during agent creation and architectural reviews.
+**Question for Product Owner:** Which of the two documented sequences is the canonical 4D framework standard for Project NoéMI?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize the 4D framework sequence across all documentation files (`docs/METHODOLOGY.md`, `docs/lifecycle/*.md`) to ensure a single source of truth for the methodology hierarchy.*
+
+### ❓ Question [2026-03-30] - Refactoring Context Generation for Robustness
+**Context:** `scripts/generate_gemini.js` uses brittle regex to extract sections from `AGENTS.md` and prepends mandates to the MCP injection zone in `GEMINI.template.md`.
+**Ambiguity / Drift:** This implementation is fragile and likely to break if `AGENTS.md` headers change or if the template structure is modified.
+**Question for Product Owner:** Should the context generation logic be refactored to use a more robust parsing method (e.g., Markdown-to-AST) and dedicated injection zones (e.g., `<!-- GLOBAL_MANDATES -->`) in the template?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `GEMINI.template.md` to include a dedicated injection zone for global mandates and refactor `scripts/generate_gemini.js` to utilize a robust Markdown parser for section extraction.*
+
+### ❓ Question [2026-03-30] - Standardization of Fleet Deployment Secrets
+**Context:** `examples/fleet-deployment/docker-compose.yml` requires several environment variables (e.g., `CASDOOR_DB_PASSWORD`, `GF_ADMIN_PASSWORD`) that are currently missing from the root `.env.template`.
+**Ambiguity / Drift:** This discrepancy prevents "out-of-the-box" fleet deployment and leads to environment-specific configuration drift.
+**Question for Product Owner:** Should all required environment variables for fleet deployment be consolidated and standardized within the root `.env.template`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update the root `.env.template` to include all mandatory keys identified in the fleet deployment examples, ensuring consistency across all environments.*

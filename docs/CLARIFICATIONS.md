@@ -309,3 +309,24 @@
 **Question for Product Owner:** Should all required environment variables for fleet deployment be consolidated and standardized within the root `.env.template`?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update the root `.env.template` to include all mandatory keys identified in the fleet deployment examples, ensuring consistency across all environments.*
+
+### ❓ Question [2026-03-31] - Standardized Backoff Parameters for Resilience
+**Context:** `AGENTS.md` mandates "Exponential Backoff" for transient errors, but no specific parameters (e.g., `initial_interval`, `max_retries`, `multiplier`) are defined in the requirements or scripts.
+**Ambiguity / Drift:** Without standardized parameters, different agents or scripts may implement inconsistent retry behaviors, leading to unpredictable failure handling or unintentional rate-limiting violations.
+**Question for Product Owner:** What are the standardized exponential backoff parameters (Initial Interval, Multiplier, Max Retries, Max Interval) that should be mandated across the toolkit?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `AGENTS.md` and `docs/METHODOLOGY.md` to define the standardized exponential backoff parameters and implement a reference helper in `scripts/utils/retry.js`.*
+
+### ❓ Question [2026-03-31] - Missing AI TRiSM Assessment Template
+**Context:** `REQUIREMENTS.md` mandates a "Gartner AI TRiSM Assessment (Discernment)" technical gate, but no formal assessment template or checklist currently exists in `docs/lifecycle/` or `docs/frameworks/`.
+**Ambiguity / Drift:** Practitioners cannot consistently perform the mandated Discernment gate without a standardized assessment framework, increasing the risk of inconsistent security and trust audits.
+**Question for Product Owner:** Should a standardized Markdown checklist for the Gartner AI TRiSM Assessment be added to the repository to support the Discernment gate?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create a standardized `docs/lifecycle/templates/trism-assessment.md` checklist based on the pillars in `docs/frameworks/gartner-trism.md` and mandate its use for the Discernment gate.*
+
+### ❓ Question [2026-03-31] - Identity Verification Protocol for Agents (Casdoor)
+**Context:** `REQUIREMENTS.md` specifies Casdoor as the standardized identity provider, but there is no documented protocol for how an agent should verify a user's identity token (e.g., via a specific MCP tool or an environment-injected public key).
+**Ambiguity / Drift:** Agents cannot fulfill their role in the "Guardian Layer" or enforce RBAC if they lack a technical mechanism to verify the authenticity of the identity tokens they receive.
+**Question for Product Owner:** What is the technical protocol for agents to verify Casdoor-issued identity tokens? Should this be handled by a specialized `identity-mcp` or a standardized skill?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Draft a technical specification for "Agent-Side Identity Verification" and implement a corresponding skill in `skills/security/verify-identity.md` that interfaces with the Casdoor API.*

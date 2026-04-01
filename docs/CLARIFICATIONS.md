@@ -330,3 +330,24 @@
 **Question for Product Owner:** What is the technical protocol for agents to verify Casdoor-issued identity tokens? Should this be handled by a specialized `identity-mcp` or a standardized skill?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Draft a technical specification for "Agent-Side Identity Verification" and implement a corresponding skill in `skills/security/verify-identity.md` that interfaces with the Casdoor API.*
+
+### ❓ Question [2026-04-01] - Functional Parity for 'Agent Index' in Gemini Context
+**Context:** `scripts/generate_claude.js` implements an 'Agent Index' feature that automatically builds a table of all available agent personas. This feature is currently missing from `scripts/generate_gemini.js`.
+**Ambiguity / Drift:** There is a functional disparity between the context generation tools, limiting the Gemini-based agents' awareness of the full persona library compared to Claude-based agents.
+**Question for Product Owner:** Should the 'Agent Index' feature be standardized across all context generation scripts to ensure Gemini agents have the same situational awareness as Claude agents?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `scripts/generate_gemini.js` to include the automated 'Agent Index' discovery and injection logic currently present in `scripts/generate_claude.js`.*
+
+### ❓ Question [2026-04-01] - Remediation of Documentation Mirroring Gaps
+**Context:** `REQUIREMENTS.md` mandates that `docs/agents/` must strictly mirror the `agents/` hierarchy via symbolic links. A Phase 2 audit on 2026-04-01 identified that 4 persona files (gatekeeper, client-onboarding, drive-cataloger, fleet-dashboard) are missing their corresponding links.
+**Ambiguity / Drift:** The 1:1 mirroring policy is being violated, leading to incomplete documentation for several core personas.
+**Question for Product Owner:** Should Jules proceed with a bulk remediation to create the missing symbolic links, or is there a reason these specific personas were excluded from the documentation mirror?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a bulk remediation of the `docs/agents/` directory by creating the 4 missing symbolic links for `gatekeeper.md`, `client-onboarding.md`, `drive-cataloger.md`, and `fleet-dashboard.md`.*
+
+### ❓ Question [2026-04-01] - Definition of Missing Logging MCP Protocol
+**Context:** The `agents/guardian/roi-auditor.md` persona and several requirements reference a `logging-mcp`. A Phase 2 audit on 2026-04-01 verified that not only is this MCP missing from `mcp.config.json`, but its protocol definition file is also absent from `mcp-protocols/`.
+**Ambiguity / Drift:** The `roi-auditor` cannot be operationalized as its primary data source has no defined interface protocol within the repository.
+**Question for Product Owner:** What is the intended protocol for the `logging-mcp`? Should it be modeled after a specific external logging service (e.g., Loki) or is it a custom internal specification?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create the missing `mcp-protocols/logging-mcp.md` protocol definition file based on the technical requirements for the `roi-auditor.md` persona.*

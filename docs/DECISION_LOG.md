@@ -1,5 +1,13 @@
 # Decision Log
 
+## [2026-04-01] - Phase 2 Documentation Audit & Technical Drift Verification
+- **Decision**: Conducted a holistic scan of the codebase to identify inconsistencies in the 4D framework, configuration, and repository structure.
+- **Context**: Required to maintain "Source of Truth" (REQUIREMENTS.md) accuracy and identify technical debt.
+- **Impact**:
+    - **Documentation Mirroring Gap**: Verified that 4 of 22 persona files (gatekeeper, client-onboarding, drive-cataloger, fleet-dashboard) are missing symbolic links in `docs/agents/`, violating the mandated 1:1 mirroring policy.
+    - **Generator Functional Disparity**: Confirmed that `scripts/generate_gemini.js` lacks the 'Agent Index' feature implemented in `scripts/generate_claude.js`, limiting the Gemini agent's situational awareness.
+    - **Pre-Flight Verification Gap**: Verified that `scripts/verify-env.sh` still lacks mandated checks for `infisical` or `op` CLIs, despite being a core security requirement.
+
 ## [2026-03-30] - Phase 2 Comprehensive Documentation Audit & Technical Drift Verification
 - **Decision**: Conducted a comprehensive audit of the repository's core documentation, environment configuration, and context generation logic.
 - **Context**: Required as part of the "Doc" persona mission to ensure `REQUIREMENTS.md` remains the "Source of Truth" and to identify actionable technical drifts.

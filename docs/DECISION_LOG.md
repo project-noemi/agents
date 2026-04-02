@@ -78,3 +78,11 @@
 - **Impact:**
   - WHMCS-specific assumptions were removed from the core scope.
   - The project direction shifted toward a reusable agent architecture for broader organizational deployment.
+
+## [2026-04-02] - Node.js Exponential Backoff Reference Implementation
+- **Decision:** A standardized Node.js exponential backoff helper must be implemented in `scripts/resilience_helpers.js` (or equivalent) to satisfy the AGENTS.md and REQUIREMENTS.md resilience mandate. The shell `scripts/retry-with-backoff.sh` is insufficient for Node.js/Python agent runtimes.
+- **Reference:** Requirements alignment — existing AGENTS.md and REQUIREMENTS.md resilience mandate.
+
+## [2026-04-02] - ROI Auditor Logging: Dual Protocol Support
+- **Decision:** The ROI Auditor must support BOTH Loki/Grafana protocol (for structured log querying) AND n8n webhook pattern (for event-driven ingestion). The `logging-mcp` protocol definition should be created to abstract both backends, allowing the ROI Auditor to ingest logs regardless of which observability stack is deployed.
+- **Reference:** CEO Decision — treat both cases.

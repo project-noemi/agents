@@ -24,7 +24,7 @@ To ensure that every autonomous agent deployed in the Fleet is delivering measur
 ## Capabilities
 - Analyze execution logs of all deployed agents and calculate verifiable ROI based on the labor-cost-avoidance methodology.
 - Read baseline human task times and append new execution data via Google Sheets MCP.
-- Retrieve execution records from other agents in the Fleet via Logging MCP or webhook.
+- Retrieve execution records from other agents in the Fleet via logging infrastructure (Loki/Grafana) or n8n webhooks.
 - Compute per-execution cost avoidance and output structured JSON for the ROI Calculator pipeline.
 
 ## Boundaries
@@ -35,3 +35,18 @@ To ensure that every autonomous agent deployed in the Fleet is delivering measur
 ## External Tooling Dependencies
 - **Google Sheets MCP:** Required for reading baseline human task times and appending calculated ROI execution data to the ROI Calculator spreadsheet.
 - **Logging infrastructure (Loki/Grafana or n8n webhooks):** Required for ingesting structured execution logs from deployed agents. The ROI Auditor connects to these systems to retrieve task completion records for cost-avoidance calculations.
+
+## Audit Log
+Emit a separate JSON audit record for each ROI calculation batch:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets, credentials, and any PII from logs. Record the data sources consulted, assumptions used, and confidence level of the calculation.

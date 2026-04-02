@@ -67,3 +67,18 @@ project_context:
       hook_text: "<overlay text>"
   status: "DRAFT | REVIEW | APPROVED"
 ```
+
+## Audit Log
+Emit a separate JSON audit record for each video packaging cycle:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets and unnecessary private content. Record the assets coordinated, dependencies, approval state, and blockers.

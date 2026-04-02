@@ -193,3 +193,18 @@ Verification runs in batches every 5 minutes after ingestion. See Authentication
 ## Files of Interest
 - `examples/gatekeeper-deployment/docker-compose.yml` — includes the dashboard service definition.
 - `docs/agents/operations/dashboard/` — setup and configuration guides.
+
+## Audit Log
+Emit a separate JSON audit record for each ingestion, reconciliation, or reporting task:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets and credentials. Record the reporting source, verification steps, health classification, and any mismatch detected.

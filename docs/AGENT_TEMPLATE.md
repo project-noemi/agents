@@ -14,8 +14,7 @@
 <!-- Required. Bulleted list of what the agent can do. -->
 
 ## Mission
-<!-- Optional. Include for agents with a single focused objective.
-     Omit if the Role section already conveys the agent's purpose. -->
+<!-- Required. One concise statement describing the agent's primary objective. -->
 
 ## Rules & Constraints ({Methodology})
 <!-- Required. Numbered constraints. Replace {Methodology} with the applicable
@@ -29,7 +28,7 @@
      - **Never:** Modify config without instruction, make breaking changes. -->
 
 ## Workflow
-<!-- Optional. Include for process-heavy agents with numbered phases.
+<!-- Required. Include numbered phases for how the agent approaches work.
      Use ### sub-headers for each phase (e.g., ### 1. PROFILE).
 
      When a workflow step uses a reusable skill from skills/, reference it with:
@@ -43,6 +42,19 @@
      The skill reference tells the orchestrator to load the skill spec from skills/
      and follow its Procedure, Inputs, Outputs, and Boundaries in addition to
      this agent's own rules. Agent-specific criteria override skill defaults. -->
+
+## Audit Log
+<!-- Required. Define the lightweight audit record the agent must emit separately
+     from its primary payload. Minimum shape:
+     {
+       "task": "...",
+       "inputs": [],
+       "actions": [],
+       "risks": [],
+       "result": "..."
+     }
+
+     Audit logs must exclude secrets, credentials, and PII. -->
 
 ## External Tooling Dependencies
 <!-- Required. List any external tools (e.g., pnpm, docker, infisical)

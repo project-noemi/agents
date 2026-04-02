@@ -2,3 +2,5 @@
 node_modules/
 .mcp.json
 scratchpad
+__pycache__/
+*.pyc

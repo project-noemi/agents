@@ -179,6 +179,7 @@ Phase 0 is complete when the organization can answer:
 
 If you already have an MSP or MSSP, use them. But ask them to behave like a diagnostic partner, not a product reseller.
 
+The reusable templates that support this conversation live in the [Phase 0 Assessment Kit](phase-zero-assessment/README.md).
 ### What to Ask For
 
 - A Phase 0 baseline or cyber risk assessment tied to the AI initiative you are considering
@@ -281,3 +282,4 @@ For the broader program context, see:
 - [PROJECT_REFERENCE.md](PROJECT_REFERENCE.md)
 - [GOVERNANCE.md](GOVERNANCE.md)
 - [tool-usages/secure-secret-management.md](tool-usages/secure-secret-management.md)
+- [phase-zero-assessment/README.md](phase-zero-assessment/README.md)

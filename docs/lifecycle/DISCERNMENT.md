@@ -10,7 +10,9 @@ Discernment focuses on validation, quality control, and testing. AI output is pr
 ## 3. The Discernment Process (High-Tech Surfboard Model)
 - **Explorers (Passengers)**: Conduct "User Acceptance Testing" (UAT) on the agents built by the Practitioners, flagging when the "vibe" feels off or data is wrong.
 - **Practitioners (Crew)**: Execute "Red Teaming." Actively try to break their own agents using edge-case inputs (e.g., inputting data in the wrong language, adversarial prompts).
-- **Accelerators (Pilots)**: Deploy the "Guardian Layer." They build supervisor agents that scan the input/output of the primary agent for policy violations, PII leaks, and prompt injections before the Explorer sees the result.# Security, Testing, & Quality Assurance
+- **Accelerators (Pilots)**: Deploy the "Guardian Layer." They build supervisor agents that scan the input/output of the primary agent for policy violations, PII leaks, and prompt injections before the Explorer sees the result.
+
+# Security, Testing, & Quality Assurance
 
 ## 1. Testing Protocols
 

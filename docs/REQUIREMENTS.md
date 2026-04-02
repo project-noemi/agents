@@ -1,53 +1,128 @@
-# Project NoéMI Agents Library - Requirements
+# Project NoéMI Reference Architecture - Requirements
 
 ## Overview
-This repository serves as a comprehensive resource for agentic development and a ready-to-use toolkit for building AI agents. It functions as the central directory for Project NoéMI, housing agent personas, specialized workflows, domain-specific knowledge (Markdown documentation), and integration scripts.
 
-The primary goal is to provide a robust foundation that developers can use to quickly scaffold, configure, and deploy intelligent agents, while also providing a suite of "out-of-the-box" agents ready for immediate use by external orchestrators.
+This repository is both:
 
-### Agent Deployment Model
-- **Standalone Collection**: This repository is exclusively a collection of standalone AI agent definitions, context templates, and scripts.
-- **External Dependencies**: Specific agents are implemented as personas that rely on external tools, such as Model Context Protocol (MCP) servers, for their core functionality rather than hosting that logic locally. Execution is handled by external orchestrators (e.g., Gemini CLI, n8n, LangChain).
-- **Separate Components**: Specialized components like the **Support Helper** persona and the **WHMCS MCP** server are maintained in separate repositories and are not part of this core library.
+- the **public reference architecture** for Project NoéMI
+- the **agent specification library** and example set that supports that architecture
 
-## Core Objectives
-1. **Agentic Development Toolkit**: Provide reusable components, standardized persona definitions, and workflow templates to accelerate agent creation.
-2. **Out-of-the-Box Agents**: Supply fully defined, operational agent personas that can be deployed immediately for common tasks across coding, infrastructure, communication, engineering, marketing, operations, and product domains. Documentation strictly mirrors these directories in `docs/agents/` via symbolic links [DRIFT: 4 of 22 persona files (gatekeeper, client-onboarding, drive-cataloger, fleet-dashboard) are missing symbolic links in `docs/agents/` - VERIFIED 2026-04-01].
-3. **Knowledge Base**: Act as a structured repository of information, protocols, and best practices that guide both human developers and the AI agents (NoéMI) operating within the ecosystem.
-4. **The 4D AI Fluency Framework**: Formally adopt and document the Delegation, Description, Discernment, and Diligence framework as the mandatory methodology for all agent development.
-    - **Methodology Gating**: All agents must pass through technical gates: Acceptance Criteria (Delegation), Data Inventory (Description), and Gartner AI TRiSM Assessment (Discernment). [DRIFT: "Data Inventory" is inconsistently mapped to both Delegation and Description across `docs/lifecycle/` files - VERIFIED 2026-03-24].
-    - **Framework Sequence**: [DRIFT: The 4D sequence is inconsistently documented as Delegation-Description-Discernment-Diligence in `docs/lifecycle/` and Description-Discernment-Delegation-Diligence in `docs/METHODOLOGY.md` - VERIFIED 2026-03-30].
-    - **Role Accountability**: Development follows the "High-Tech Surfboard" model with distinct responsibilities for Explorers (Business/UAT), Practitioners (Engineering/Red-Teaming), and Accelerators (Security/ROI/Certification).
-    - [VERIFIED 2026-03-21: The other three dimensions (Delegation, Description, Discernment) are structurally absent from all 18 agent personas].
+It is not a runtime or execution engine. External orchestrators such as Gemini CLI, n8n, and LangChain consume the generated context and persona specifications defined here.
 
-## Functional Requirements
-1. **Persona Definition**: Agents must be defined clearly using Markdown specifications (located in the `agents/` directory). The standard format is: **Role, Mission, Rules & Constraints, Workflow, Boundaries** [VERIFIED: All agents utilize 'Rules & Constraints']. Agents must also document any expected external tooling dependencies (e.g., `pnpm`, `docker`) in their persona files to ensure the orchestrator can prepare a compatible workspace [DRIFT: Missing from all personas except `roi-auditor.md` - VERIFIED 2026-03-26]. Documentation strictly mirrors these directories in `docs/agents/` via symbolic links [VERIFIED 2026-03-21: Hierarchy and file mirroring is complete]. [VERIFIED: AGENTS.md aligned with 'Rules & Constraints' persona standard].
-2. **Configuration**:
-    - **Context Assembly**: `mcp.config.json` is the source of truth for determining which MCP integrations are active during `GEMINI.md` generation. [DRIFT: `agents/guardian/roi-auditor.md` requires a `logging-mcp` which is absent from `active_mcps` - VERIFIED 2026-03-21. This file is also missing from `mcp-protocols/` - VERIFIED 2026-03-26]. [DRIFT: `mcp-protocols/github.md` exists but is missing from the `active_mcps` list in `mcp.config.json` - VERIFIED 2026-03-30].
-    - **Runtime Secrets**: Environment variables (managed via `.env.template` and SecretOps) are the source of truth for runtime execution. [DRIFT: `examples/video-automation-pod/dropbox_watcher.py` incorrectly utilizes `load_dotenv()` instead of the mandatory Fetch-on-Demand security policy - VERIFIED 2026-03-21]. [DRIFT: `.env.template` is missing mandatory keys required by the fleet `docker-compose.yml`, such as `CASDOOR_DB_PASSWORD`, `GF_ADMIN_PASSWORD`, and `COHORT_DB_PASSWORD` - VERIFIED 2026-03-30].
-3. **Extensibility (MCP Integration)**: Agents and the underlying toolkit must be capable of seamlessly interacting with external Model Context Protocol (MCP) servers.
-4.  **Modular Context Generation**: The system must provide a mechanism (`scripts/generate_gemini.js`) to compile `GEMINI.md` dynamically from base templates, modular MCP protocol files, and global security and resilience mandates from `AGENTS.md`. [DRIFT: Current implementation uses brittle regex for extraction and lacks a dedicated injection zone in `GEMINI.template.md`, where mandates are prepended to the MCP zone - VERIFIED 2026-03-30]. [DRIFT: `scripts/generate_claude.js` implements an 'Agent Index' feature that is missing from `scripts/generate_gemini.js` - VERIFIED 2026-04-01].
-5. **Guardian Layer Defense**: Implement and maintain a specialized layer of "Guardian" agents (e.g., `PIIGuard`, `PromptShield`) to enforce security boundaries and data privacy protocols.
+## Canonical Sources of Truth
 
-## Operational & Security Requirements
-1. **Execution Environment**: This repository is a definitions library; execution is handled by external orchestrators.
-2. **Security & Credentials (Fetch-on-Demand)**: All sensitive credentials must be stored in secure vaults (e.g., Infisical, 1Password) and resolved at runtime using CLI wrappers (`infisical run` or `op run`).
-3. **Resilience & Error Handling**: Agents must handle tool execution and API failures gracefully by following the global mandates in `AGENTS.md` (e.g., exponential backoff, graceful degradation). Standardized logging to `stdout` and `stderr` is the responsibility of the orchestrator. [DRIFT: No reference implementation for exponential backoff exists in `scripts/` - VERIFIED 2026-03-26].
-4. **Identity & Access Management**: Delegated to the execution environment and MCP servers. **Casdoor** is the standardized identity management provider for multi-tenant fleet deployments. [PENDING: Technical integration contract for agents to utilize Casdoor identities].
-5. **Fleet-Ready Infrastructure**: Maintain standardized `docker-compose.yml` templates for parallel "Fleet" deployments.
-    - **Traffic Routing**: Standardize on Traefik with host-based routing (e.g., `auth.noemi.local`, `audit.noemi.local`) for service isolation and multi-tenancy.
-    - **Observability**: A centralized stack (Grafana/Loki) is mandatory for cross-cohort auditing.
-6. **ROI Modeling & Validation**: Implement a standardized labor-cost-avoidance methodology for calculating agent ROI, documented in `tools/roi/README.md`. A specialized `roi-auditor` agent persona is available to automate this process [PENDING: Production-ready ROI calculator template link].
+- [`PROJECT_REFERENCE.md`](PROJECT_REFERENCE.md) is the canonical public narrative.
+- [`REQUIREMENTS.md`](REQUIREMENTS.md) is the current implementation truth.
+- [`DECISION_LOG.md`](DECISION_LOG.md) is the durable architectural audit trail.
 
-## Technical Specifications
-- **Architecture**: Static Markdown documentation and Node.js executable scripts. Logic is currently distributed across `scripts/`, `skills/`, `tools/`, and `examples/`. [DRIFT: Root `src/` and `tests/` directories are absent - VERIFIED 2026-03-26].
-- **Data Persistence**: The core execution model is stateless. Optional persistent memory layers (e.g., `pgvector`) are handled by advanced orchestrators.
-- **Runtime Environment**: Node.js based utilities. **Python runtime support is officially deprecated.** Legacy Python scripts in `examples/` are maintained for historical context but are slated for conversion [PENDING: Migration roadmap].
-- **System Dependencies**: Git, Node.js, Docker, and the Gemini CLI are required for running local examples, pre-flight checks (`scripts/verify-env.sh`), and environment validation [PENDING: Gemini CLI source and installation documentation - VERIFIED 2026-03-21]. SecretOps CLI verification (`infisical` or `op`) is missing from `scripts/verify-env.sh` [VERIFIED 2026-04-01].
+## Core Requirements
 
-## Strategic Alignment & Future Enhancements
-1. **Role-Based Agent Toolkits**: Categorize templates for "Practitioners" and "Accelerators".
-2. **Kubernetes Support**: Expand fleet deployment examples to include Kubernetes manifests (Deployments, Services, and Ingress).
-3. **Automated Validation Bots**: Develop specialized "Verification Bots" for auditing agent logs for academic credentialing and ROI validation [VERIFIED: Academic audit logic implemented in `examples/gmu-validation/`].
-4. **Persona Standards Audit**: Standardize all agent personas to include a mandatory "Audit Log" requirement, ensuring they output a brief JSON summary of their reasoning alongside their final payload [PENDING: Schema definition and implementation - VERIFIED 2026-03-20: Missing from all 18 personas].
-5. **Workflow Standardization**: Implement a standardized naming and documentation convention for exported n8n workflows in `docs/n8n workflows/` to avoid localization drift [VERIFIED 2026-03-26: Renaming of 6 files with Hungarian names is complete; all files use English slugs].
+### 1. Phase 0 Comes Before Advanced AI
+
+- The repository must present **Phase 0 security** as the prerequisite for serious AI adoption.
+- Client and buyer navigation must reach [`PHASE_ZERO_SECURITY_BASELINE.md`](PHASE_ZERO_SECURITY_BASELINE.md) directly from the top-level experience.
+- The public documentation must include a reusable **Phase 0 Assessment Kit** with:
+  - consent template
+  - report-of-findings template
+  - 30/60/90-day roadmap template
+  - readiness rubric (`ready now`, `ready with guardrails`, `not ready yet`)
+
+### 2. Persona Contract Is Mandatory
+
+All agent personas in `agents/` must include the following required headings:
+
+- `Role`
+- `Tone`
+- `Capabilities`
+- `Mission`
+- `Rules & Constraints`
+- `Boundaries`
+- `Workflow`
+- `External Tooling Dependencies`
+- `Audit Log`
+
+The `Audit Log` requirement must define a lightweight JSON summary shape in prose and must explicitly exclude secrets, credentials, and PII.
+
+### 3. Persona and Generator Drift Must Fail Fast
+
+- [`scripts/audit-repo.js`](../scripts/audit-repo.js) is the repository audit gate for persona headings and generator invariants.
+- The audit must fail when:
+  - required persona headings are missing
+  - `AGENTS.md` is missing required top-level mandate sections
+  - generator template markers drift
+  - generated context files omit required global mandate headings
+
+### 4. Context Generation Must Stay Aligned
+
+- Both [`scripts/generate_gemini.js`](../scripts/generate_gemini.js) and [`scripts/generate_claude.js`](../scripts/generate_claude.js) must use shared helper logic.
+- Both generators must inject:
+  - the full mandate set from `AGENTS.md`
+  - the agent index discovered from `agents/`
+  - active skills from `mcp.config.json`
+  - active MCP protocol content from `mcp.config.json`
+- Both generators must support `--config=path/to/mcp.config.json`.
+
+### 5. Fetch-on-Demand Security Is Non-Negotiable
+
+- Secrets must be stored in a SecretOps platform such as Infisical or 1Password.
+- Commands that require credentials must run through `infisical run` or `op run`.
+- Code must read configuration from environment variables in process memory (`process.env`, `os.getenv()`).
+- Local `.env` parsing logic is not an approved pattern in this repository.
+- `.env.template` and example `.env.example` files are variable inventories or vault-reference manifests only. They must not contain real secrets.
+
+### 6. 4D Framework Order Must Remain Canonical
+
+The canonical order of the 4D AI Fluency Framework across the repository is:
+
+1. Delegation
+2. Description
+3. Discernment
+4. Diligence
+
+Lifecycle docs, templates, and governance text must not reorder these dimensions.
+
+### 7. Governance and Trust Controls Are First-Class
+
+- Project NoéMI aligns agent design and deployment with Gartner AI TRiSM.
+- Red Team validation is required for agent deployment readiness.
+- Guardian-layer patterns remain a core architectural requirement where trust, data protection, or prompt integrity matters.
+
+### 8. Reference Examples Must Tell the Truth
+
+- The Gatekeeper deployment example must use HMAC-signed dashboard submissions and a verifiable ingest path.
+- PowerShell preflight verification must check SecretOps availability to the same standard as the shell script.
+- The repository must contain at least one reusable reference pattern for exponential backoff and retry.
+- Historical Python examples must be clearly labeled as illustrative or legacy so they do not become the default first path for new builders.
+
+### 9. Validation Must Be Easy to Run
+
+- The repository must expose a canonical fast validation gate through `npm run validate`.
+- The repository must expose a lightweight built-in test harness through `npm test`.
+- The default test suite must cover:
+  - persona and template contracts
+  - generator determinism and config override behavior
+  - golden fixtures for generated context sections
+  - static smoke checks for example stacks and Docker env inventories
+- The repository must expose a Docker-focused smoke entrypoint through `npm run test:e2e`.
+- The same validation contract must be enforced in GitHub Actions on pushes and pull requests targeting `develop` and `main`.
+- The Docker e2e suite must skip cleanly when Docker is unavailable and execute real compose-based runtime checks when it is available.
+
+### 10. Docker Guidance Must Describe the Home, Not a Fake Runtime
+
+- The builder path must include a Docker-oriented guide that explains how to build a home around the repo's assets without misrepresenting the repository as a runtime product.
+- That guide must connect the current local, fleet, and specialist Docker examples into one coherent progression.
+- The builder path must also include a short onboarding walkthrough that chains environment verification, context generation, validation, and initial Docker launch.
+
+## Runtime and Tooling Requirements
+
+- Node.js is the primary runtime for repository utilities and generation scripts.
+- The built-in Node test runner is the primary validation framework for repository contracts and smoke tests.
+- Docker, Git, and Gemini CLI remain part of the documented local toolchain.
+- Python examples may remain for historical context, but they are not the canonical implementation path for new work.
+
+## Current Known Limitations
+
+- Historical Python examples remain in the repository as legacy references and are not yet fully converted to Node.js.
+- The Gatekeeper deployment example currently demonstrates safe scanning, signed reporting, and observability plumbing; it does not yet implement the full mutating action set described in the Gatekeeper persona.
+- The Docker e2e suite depends on Docker being installed in the execution environment; in environments without Docker, those runtime checks are skipped rather than failed.
+- `mcp.config.json` is unchanged in this wave; any future schema expansion should be treated as a separate contract change.

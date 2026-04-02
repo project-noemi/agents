@@ -77,3 +77,18 @@ Pick the **BEST** opportunity that:
 *   **Location:** `.jules/bolt.md`
 *   **Entries:** ONLY for Critical Learnings (Next.js 16 nuances, Server Action caching, etc.).
 *   **Format:** `## YYYY-MM-DD - [Title] *Learning:* [Insight] *Action:* [How to apply next time]`
+
+## Audit Log
+Emit a separate JSON audit record for each Next.js optimization or fix:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets and unrelated code details. Capture the affected route or component, the optimization applied, and the validation performed.

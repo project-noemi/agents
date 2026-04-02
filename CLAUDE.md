@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Project NoéMI is an **agent specification library** — not a runtime or execution engine. It defines AI agent personas, MCP (Model Context Protocol) integrations, and governance frameworks as Markdown files. External orchestrators (Gemini CLI, n8n, LangChain) consume the generated output.
+Project NoéMI also serves as the **public reference architecture** for NewPush's governed AI operating model, so code and docs in this repository should remain aligned with that role.
 
 ## Key Commands
 
@@ -54,9 +55,9 @@ All secrets live in 1Password or Infisical vaults. Never hardcode credentials. A
 
 All agents follow the canonical template in `docs/AGENT_TEMPLATE.md`:
 
-**Required sections:** Role, Tone, Capabilities, Rules & Constraints ({Methodology}), Boundaries (Always / Ask First / Never)
+**Required sections:** Role, Tone, Capabilities, Mission, Rules & Constraints ({Methodology}), Boundaries, Workflow, Audit Log, External Tooling Dependencies
 
-**Optional sections:** Mission, Workflow, Tool Usage, Output Format, Journal, Files of Interest
+**Optional sections:** Tool Usage, Output Format, Journal, Files of Interest
 
 H1 format: `# {Name} — {Domain} Agent`
 
@@ -81,7 +82,7 @@ When working on a task in this repository, adopt the appropriate agent persona b
 
 ## Governance
 
-Agents are evaluated against Gartner AI TRiSM (Trust, Risk, Security Management) — see `docs/GOVERNANCE.md`. Red Team audits (prompt injection, boundary testing, failure handling) are required before deployment. The 4D Framework (Description, Discernment, Delegation, Diligence) guides all design decisions — see `docs/METHODOLOGY.md`.
+Agents are evaluated against Gartner AI TRiSM (Trust, Risk, Security Management) — see `docs/GOVERNANCE.md`. Red Team audits (prompt injection, boundary testing, failure handling) are required before deployment. The 4D Framework (Delegation, Description, Discernment, Diligence) guides all design decisions — see `docs/METHODOLOGY.md`.
 
 ## Commit Convention
 
@@ -92,8 +93,7 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `chore`
 Scope matches the domain or area (e.g., `marketing`, `guardian`, `agents`, `lifecycle`).
 
 <!-- GLOBAL_MANDATES_START -->
-
-## Security Mandates
+## 🔐 Secrets & Configuration
 This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical or 1Password) and are never written to disk or hardcoded in source code.
 
 ## Mandatory Security Rules
@@ -106,7 +106,7 @@ This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Secu
 
 - ALWAYS use an Environment Injection CLI (`infisical run` or `op run`) to resolve credentials at runtime.
 
-## Resilience Directives
+## 🛡 Error Handling and Resilience
 To ensure reliability and stability, agents and toolkit components must implement robust error handling patterns.
 
 ## Mandatory Directives
@@ -114,10 +114,39 @@ To ensure reliability and stability, agents and toolkit components must implemen
 - **Exponential Backoff**: Implement exponential backoff retry logic for transient network errors or rate-limiting (429) responses.
 - **Standardized Logging**: All technical errors must be logged to `stderr` to allow the orchestrator to capture and report execution failures accurately.
 
+## 🚀 Execution Patterns
+The Infisical CLI or 1Password CLI is required in the environment. When you need to execute scripts, tests, or servers that require credentials, you must wrap the command using the following pattern:
+
+## Standard Command Wrapper
+Use `infisical run` or `op run` to dynamically pull the specified environment and inject secrets directly into the process memory.
+
+## Examples:
+
+
+- Infisical Pattern: `infisical run --env=dev -- <command>`
+
+
+- 1Password Pattern: `op run --env-file=.env.template -- <command>`
+
+
+- Starting a Chat Session: `infisical run --env=dev -- gemini chat`
+
+## 🛠 Local Development & Authentication
+When running on a local host, the system uses human SSO or Desktop App integration for authentication.
+
+
+- Infisical: If execution fails, ensure you are logged in via `infisical login`.
+- 1Password: If execution fails, ensure you are logged in via `op signin`.
+
+## 📝 Coding Standards
+- **Fetch-on-Demand**: When writing code that requires configuration, always assume the values will be provided via process memory environment variables (e.g., `os.getenv()`). Do not create local `.env` parsing logic.
+- **4D Framework Alignment**: All development must adhere to the 4D AI Fluency Framework (Delegation, Description, Discernment, Diligence). Personas must structurally incorporate these dimensions to ensure technical and ethical gating.
+- **Persona Standards**: Specialized agent personas must include the following required sections: `Role`, `Tone`, `Capabilities`, `Mission`, `Rules & Constraints`, `Boundaries`, `Workflow`, `External Tooling Dependencies`, and `Audit Log`.
+- **Naming Conventions**: All exported artifacts (n8n workflows, scripts, documentation) must use English-first, slug-based naming (e.g., `ai-triage-inbound.json`) to avoid localization drift.
+- **Audit Log (Mandatory)**: All agent personas must include a dedicated `Audit Log` section. The minimum lightweight shape is `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`. Audit logs must exclude secrets and PII and should be emitted separately from the primary payload so the orchestrator can capture them safely.
 <!-- GLOBAL_MANDATES_END -->
 
 <!-- AGENT_INDEX_START -->
-
 ## Agent Index
 
 22 agent specifications across 8 domains:
@@ -147,12 +176,11 @@ To ensure reliability and stability, agents and toolkit components must implemen
 | operations | QA & Risk Manager — Operations Agent | `agents/operations/qa-risk-manager.md` |
 | product | Doc — Product Agent | `agents/product/doc.md` |
 
-Read the relevant agent spec before performing domain-specific tasks.
+Read the relevant agent specification before performing domain-specific tasks.
 
 <!-- AGENT_INDEX_END -->
 
 <!-- SKILLS_INJECTIONS_START -->
-
 ## Active Skills
 
 8 reusable skills available. Agents reference these in their Workflow sections.
@@ -204,7 +232,6 @@ Categorize items into risk tiers to determine the appropriate action path. This 
 - Input: JSON payload containing "SSN: 999-00-1234"
 - Criteria: PIIGuard classification (Confidential/PII patterns)
 - Output: `{ "tier": "BLOCKED", "reasons": ["SSN pattern detected"], "confidence": "high" }`
-
 
 # Pre-Flight Check — Verification Skill
 
@@ -262,7 +289,6 @@ Validate that preconditions are met before executing a state-changing action. Th
 - Checks: [CI green, no conflicts, branch protection rules met]
 - Output: `{ "status": "READY", "risk_level": "low", "checks_result": [...] }`
 
-
 # Cross-Reference — Verification Skill
 
 ## Purpose
@@ -307,7 +333,6 @@ Verify that a claimed action actually occurred by checking it against an authori
 - **Always:** Respect rate limits on the source of truth API. Record evidence for every verification. Flag all mismatches immediately.
 - **Ask First:** Increasing batch_size beyond the default. Marking a mismatch as "resolved" without investigation.
 - **Never:** Modify the source of truth during verification. Silently ignore mismatches. Assume a claim is true without querying.
-
 
 # Structured Report — Reporting Skill
 
@@ -357,7 +382,6 @@ Generate a standardized, machine-readable report from agent activity data. This 
 - **Ask First:** Changing the report schema (requires Fleet Dashboard coordination).
 - **Never:** Include raw secrets, tokens, or credentials in report output. Omit the reasoning field from detail entries.
 
-
 # Alert & Notify — Reporting Skill
 
 ## Purpose
@@ -404,7 +428,6 @@ Deliver alerts and notifications to communication channels (Slack, email) with c
 - **Always:** Include the source agent ID and timestamp in every alert. Truncate large payloads rather than failing. Log delivery failures.
 - **Ask First:** Sending `critical` severity alerts. Using `@channel` or `@all` mentions.
 - **Never:** Send alerts without a severity level. Include raw secrets or tokens in alert content. Retry failed deliveries more than 3 times.
-
 
 # HMAC Sign & Submit — Security Skill
 
@@ -464,7 +487,6 @@ curl -X POST "$DASHBOARD_API_URL/api/v1/reports" \
   -d "$BODY"
 ```
 
-
 # PII Scan — Security Skill
 
 ## Purpose
@@ -523,7 +545,6 @@ Scan a data payload for Personally Identifiable Information (PII) and sensitive 
 - **Ask First:** Changing redaction patterns. Allowing a Confidential payload through in `report_only` mode.
 - **Never:** Forward unscanned payloads to public APIs. Include actual PII values in scan result logs. Attempt to answer the user's underlying question — this skill is a compliance filter only.
 
-
 # Dispatch & Coordinate — Orchestration Skill
 
 ## Purpose
@@ -573,12 +594,9 @@ Delegate work to one or more sub-agents and aggregate their outputs into a unifi
 - **Always:** Provide the shared context to every sub-agent. Validate consistency before returning the final deliverable. Preserve individual agent outputs for traceability.
 - **Ask First:** Overriding a sub-agent's output to resolve a conflict. Re-dispatching to a sub-agent after a consistency failure.
 - **Never:** Modify a sub-agent's output without flagging it. Dispatch to an agent spec that doesn't exist. Skip consistency checks.
-
-
 <!-- SKILLS_INJECTIONS_END -->
 
 <!-- MCP_INJECTIONS_START -->
-
 ## Active MCP Protocols
 
 The following MCP integrations are active. When working with these tools, follow the protocol rules below.
@@ -622,7 +640,7 @@ When drafting emails, strictly adhere to the requested tone, professionalism, an
 #### 3. Reading & Searching
 When searching for or reading emails, prioritize specific search queries (e.g., `from:user@example.com subject:"Update"`) to minimize data retrieval and respect privacy constraints. Do not summarize entire threads unless requested; focus on extracting the requested information.
 
-### Google-drive Protocol
+### Google Drive Protocol
 
 #### Overview
 This file dictates how Gemini interacts with Google Drive via the MCP.
@@ -636,7 +654,7 @@ Use precise query parameters when searching for files or folders to avoid return
 #### 3. Structure & Metadata
 When creating new files or folders, always ensure they are placed within the correct target directory. Do not leave files orphaned in the root directory unless explicitly instructed. Respect existing naming conventions and metadata requirements.
 
-### Google-calendar Protocol
+### Google Calendar Protocol
 
 #### Overview
 This file dictates how Gemini interacts with Google Calendar via the MCP.
@@ -650,7 +668,7 @@ When scheduling events, ensure all participant email addresses are correct. Clea
 #### 3. Conflict Resolution
 When checking availability or proposing times, proactively identify and flag scheduling conflicts. Offer alternative time slots based on the participants' visible availability.
 
-### Google-docs Protocol
+### Google Docs Protocol
 
 #### Overview
 This file dictates how Gemini interacts with Google Docs via the MCP.
@@ -664,7 +682,7 @@ When appending or replacing text, ensure you are targeting the correct section o
 #### 3. Reading & Extraction
 When reading documents, extract only the necessary context. For large documents, summarize the relevant sections rather than attempting to ingest the entire content at once.
 
-### Google-sheets Protocol
+### Google Sheets Protocol
 
 #### Overview
 This file dictates how Gemini interacts with Google Sheets via the MCP.
@@ -678,7 +696,7 @@ Always be precise when specifying ranges (e.g., `Sheet1!A1:D10`). Avoid open-end
 #### 3. Reading & Analysis
 When reading from a sheet, handle empty cells and varying row lengths gracefully. If extracting data for analysis, ensure the header row is clearly identified and mapped to the corresponding data columns.
 
-### Google-slides Protocol
+### Google Slides Protocol
 
 #### Overview
 This file dictates how Gemini interacts with Google Slides via the MCP.
@@ -692,7 +710,7 @@ When adding text, shapes, or images, specify exact positioning and dimensions wh
 #### 3. Presentation Updates
 When modifying existing slides, carefully identify the target slide ID or index before applying changes. Do not delete slides or rearrange the presentation order without explicit instruction.
 
-### Google-meet Protocol
+### Google Meet Protocol
 
 #### Overview
 This file dictates how Gemini interacts with Google Meet via the MCP.
@@ -703,7 +721,7 @@ When generating a Google Meet link, ensure it is attached to the corresponding G
 #### 2. Participant Management
 Be aware of meeting entry settings (e.g., who can bypass the waiting room) if the MCP supports configuring them. Ensure the generated meeting links are provided clearly to the user.
 
-### Google-chat Protocol
+### Google Chat Protocol
 
 #### Overview
 This file dictates how Gemini interacts with Google Chat via the MCP.
@@ -717,7 +735,7 @@ When replying to existing conversations, always ensure the reply is correctly th
 #### 3. Notification Management
 Use `@mentions` judiciously. Only mention specific individuals or `@all` when the message requires immediate attention or action from those parties.
 
-### Google-keep Protocol
+### Google Keep Protocol
 
 #### Overview
 This file dictates how Gemini interacts with Google Keep via the MCP.
@@ -728,7 +746,7 @@ When creating notes, utilize appropriate formats (text, lists) based on the user
 #### 2. Task Management
 For to-do lists, clearly distinguish between completed and pending tasks when reading or updating the note.
 
-### Google-forms Protocol
+### Google Forms Protocol
 
 #### Overview
 This file dictates how Gemini interacts with Google Forms via the MCP.
@@ -739,7 +757,7 @@ When creating or modifying a form, ensure questions are clearly worded and utili
 #### 2. Response Handling
 When reading or analyzing form responses, treat the data as structured output (often linked to a Google Sheet). Handle missing or malformed responses gracefully during analysis.
 
-### Google-contacts Protocol
+### Google Contacts Protocol
 
 #### Overview
 This file dictates how Gemini interacts with Google Contacts via the MCP.
@@ -750,7 +768,7 @@ When creating or updating contacts, ensure fields (name, email, phone, organizat
 #### 2. Privacy & Scope
 Only access or modify contacts that are strictly relevant to the user's immediate request. Do not perform bulk exports or broad searches without clear authorization.
 
-### Google-admin Protocol
+### Google Admin Protocol
 
 #### Overview
 This file dictates how Gemini interacts with the Google Workspace Admin Console via the MCP.
@@ -764,7 +782,7 @@ When performing administrative tasks, maintain a clear audit trail of actions ta
 #### 3. Group Management
 When managing Google Groups, carefully verify the email addresses being added or removed, and confirm the intended permission levels (Owner, Manager, Member) before applying changes.
 
-### Web-search Protocol
+### Web Search Protocol
 
 #### Overview
 This file dictates how Gemini interacts with its built-in web search and web fetch capabilities.
@@ -778,4 +796,23 @@ When fetching content from specific URLs (`web_fetch`), ensure the URLs are well
 #### 3. Citation & Summarization
 Always synthesize and summarize search results in your own words rather than dumping raw excerpts. If asked for sources, clearly provide the URLs or citations corresponding to the information retrieved.
 
+### Github Protocol
+
+#### Overview
+This file dictates how agents interact with GitHub using the GitHub CLI (`gh`) and the GitHub REST/GraphQL APIs.
+
+#### 1. Authentication
+Always authenticate via environment variable `GH_TOKEN` injected at runtime through vault CLI wrappers (`op run` / `infisical run`). Never store tokens in config files or commit them to the repository.
+
+#### 2. Rate Limit Awareness
+Monitor `X-RateLimit-Remaining` headers on every API response. When remaining calls drop below 100, introduce a backoff delay. On `403` or `429` responses, wait for the `X-RateLimit-Reset` timestamp before retrying.
+
+#### 3. Pagination
+Always paginate API responses. Use `--paginate` with `gh api` or follow `Link` headers in raw REST calls. Never assume a single page contains all results.
+
+#### 4. Scope Minimization
+Request only the scopes and data fields necessary for the current operation. Use GraphQL queries to select specific fields rather than fetching full objects via REST when possible.
+
+#### 5. Audit Trail
+Log every mutating API call (merge, close, comment, label) with the full request and response status for traceability. Include the agent identifier in all comments and commit messages.
 <!-- MCP_INJECTIONS_END -->

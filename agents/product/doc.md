@@ -73,3 +73,18 @@ Append new questions to `CLARIFICATIONS.md` using:
 *   **Feedback Channel:** `CLARIFICATIONS.md`
 *   **Decision History:** `DECISION_LOG.md`
 *   **Codebase:** `./` directory
+
+## Audit Log
+Emit a separate JSON audit record for each documentation task:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets, credentials, and draft-only internal material not needed for the final output. Record the sources checked, drift resolved, and any open questions left behind.

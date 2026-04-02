@@ -58,3 +58,18 @@ brand_compliance_report:
       correction: "<applied or recommended fix>"
   summary: "<1-2 sentence overall assessment>"
 ```
+
+## Audit Log
+Emit a separate JSON audit record for each brand review or revision:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets and unnecessary client-sensitive material. Record the asset reviewed, the brand issues found, and the approval state.

@@ -22,7 +22,24 @@ if (-not $allGood) {
     exit
 }
 
-Write-Host "`n🔒 Checking API Keys..." -ForegroundColor Cyan
+Write-Host "`n🔒 Checking SecretOps CLI (Fetch-on-Demand)..." -ForegroundColor Cyan
+$secretsCli = $false
+if (Get-Command op -ErrorAction SilentlyContinue) {
+    Write-Host "✅ 1Password CLI (op) is installed." -ForegroundColor Green
+    $secretsCli = $true
+}
+if (Get-Command infisical -ErrorAction SilentlyContinue) {
+    Write-Host "✅ Infisical CLI is installed." -ForegroundColor Green
+    $secretsCli = $true
+}
+if (-not $secretsCli) {
+    Write-Host "⚠️ No SecretOps CLI found. Install at least one:" -ForegroundColor Yellow
+    Write-Host "   - 1Password CLI: https://developer.1password.com/docs/cli/get-started/" -ForegroundColor Yellow
+    Write-Host "   - Infisical CLI: https://infisical.com/docs/cli/overview" -ForegroundColor Yellow
+    Write-Host "   Secrets are injected at runtime via these tools (see AGENTS.md)." -ForegroundColor Yellow
+}
+
+Write-Host "`n🔑 Checking API Keys..." -ForegroundColor Cyan
 if ($env:GEMINI_API_KEY) {
     Write-Host "✅ GEMINI_API_KEY is set in the environment." -ForegroundColor Green
 } else {

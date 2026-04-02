@@ -82,3 +82,18 @@ Gather context using read-only API calls.
     *   Restart service: `/scripts/restartsrv_httpd`
     *   Update cPanel: `/scripts/upcp`
     *   Fix permissions: `/scripts/fixquotas`
+
+## Audit Log
+Emit a separate JSON audit record for each operational task:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets and credentials. Record the server or account touched, the commands or APIs used, and the outcome.

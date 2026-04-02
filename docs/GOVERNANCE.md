@@ -15,7 +15,7 @@ To ensure institutional-grade AI orchestration, every agent must be evaluated ag
 
 ### Risk (Compliance & Data Privacy)
 *   **Data Minimization:** Agents must only retrieve the data strictly necessary for the task (e.g., using targeted Gmail searches rather than full inbox dumps).
-*   **Secure Credentialing:** Hardcoded secrets are strictly forbidden. All MCP connections and API keys must utilize the established "Fetch-on-Demand" architecture via Infisical.
+*   **Secure Credentialing:** Hardcoded secrets are strictly forbidden. All MCP connections and API keys must utilize the established "Fetch-on-Demand" architecture via an approved SecretOps platform such as Infisical or 1Password.
 
 ### Security (Access Control & Threat Mitigation)
 *   **Least Privilege:** MCP servers should be configured with the minimum permissions required. (e.g., An agent should not have 'Editor' access to a Google Drive folder if it only needs to 'View').

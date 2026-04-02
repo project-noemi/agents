@@ -1,178 +1,41 @@
 # Decision Log
 
-## [2026-04-01] - Phase 2 Documentation Audit & Technical Drift Verification
-- **Decision**: Conducted a holistic scan of the codebase to identify inconsistencies in the 4D framework, configuration, and repository structure.
-- **Context**: Required to maintain "Source of Truth" (REQUIREMENTS.md) accuracy and identify technical debt.
-- **Impact**:
-    - **Documentation Mirroring Gap**: Verified that 4 of 22 persona files (gatekeeper, client-onboarding, drive-cataloger, fleet-dashboard) are missing symbolic links in `docs/agents/`, violating the mandated 1:1 mirroring policy.
-    - **Generator Functional Disparity**: Confirmed that `scripts/generate_gemini.js` lacks the 'Agent Index' feature implemented in `scripts/generate_claude.js`, limiting the Gemini agent's situational awareness.
-    - **Pre-Flight Verification Gap**: Verified that `scripts/verify-env.sh` still lacks mandated checks for `infisical` or `op` CLIs, despite being a core security requirement.
+## [2026-04-02] Balanced Reference + Implementation Alignment
 
-## [2026-03-30] - Phase 2 Comprehensive Documentation Audit & Technical Drift Verification
-- **Decision**: Conducted a comprehensive audit of the repository's core documentation, environment configuration, and context generation logic.
-- **Context**: Required as part of the "Doc" persona mission to ensure `REQUIREMENTS.md` remains the "Source of Truth" and to identify actionable technical drifts.
-- **Impact**:
-    - **4D Framework Sequence**: Confirmed a persistent structural conflict between `docs/METHODOLOGY.md` (D1: Description) and `docs/lifecycle/README.md` (D1: Delegation).
-    - **Brittle Context Generation**: Verified that `scripts/generate_gemini.js` utilizes fragile regex for section extraction from `AGENTS.md` and lacks a dedicated injection zone in `GEMINI.template.md`.
-    - **Environment Template Drift**: Identified that `.env.template` is missing mandatory keys (`CASDOOR_DB_PASSWORD`, `GF_ADMIN_PASSWORD`, `COHORT_DB_PASSWORD`) required by the fleet `docker-compose.yml`.
-    - **Pre-Flight Verification Gap**: Confirmed that `scripts/verify-env.sh` still lacks mandated checks for `infisical` or `op` CLIs, despite being a core security requirement.
-    - **MCP Configuration Drift**: Verified that the `github` MCP protocol is omitted from `mcp.config.json` despite the protocol file being present in the repository.
+- **Decision:** Treat this repository as both a public reference architecture and a truthful implementation library, and align documentation, personas, generators, and examples to that dual role.
+- **Context:** `docs/PROJECT_REFERENCE.md` establishes the repository as the public reference for Project NoéMI, but several docs and examples had drifted away from that framing.
+- **Impact:**
+  - Phase 0 is now the explicit buyer entry point through the baseline guide and assessment kit.
+  - The persona contract is standardized and enforced via `scripts/audit-repo.js`.
+  - Both context generators now share helper logic, support config overrides, and inject the full `AGENTS.md` mandate set.
+  - Gatekeeper reporting now uses HMAC-signed dashboard ingestion instead of posting unauthenticated line protocol directly.
+  - Historical Python examples are clearly labeled as illustrative rather than recommended first paths.
+  - The repository now includes a built-in Node test harness and a builder-facing Docker Agent Home guide to make validation and Docker adoption easier without reframing the repo as a runtime product.
+  - Validation now has two layers: a canonical fast gate in `npm run validate` (repository audit plus `npm test`) and compose-based Docker smoke automation in `npm run test:e2e`, plus a builder onboarding walkthrough that ties the path together.
+  - GitHub Actions now enforces the same audit, generation freshness, and Docker smoke validation path on pushes and pull requests targeting `develop` and `main`.
 
-## [2026-03-26] - Phase 2 Documentation Audit & Technical Drift Verification
-- **Decision**: Conducted a Phase 2 audit to identify inconsistencies in the 4D framework, configuration, and repository structure.
-- **Context**: Required to maintain "Source of Truth" (REQUIREMENTS.md) accuracy and identify technical debt.
-- **Impact**:
-    - **Localization Resolution**: Verified that all 6 n8n workflow files in `docs/n8n workflows/` have been renamed to English slugs, resolving the previously reported localization drift.
-    - **Configuration Gap**: Identified that `logging-mcp` is not only missing from `mcp.config.json` but is also missing its protocol file in `mcp-protocols/`.
-    - **Structural Discrepancy**: Formally documented the absence of root-level `src/` and `tests/` directories, despite being referenced in requirements and prompts.
-    - **Framework Discrepancy**: Confirmed D1-D4 mapping conflict between `docs/METHODOLOGY.md` (D1: Description) and `docs/lifecycle/README.md` (D1: Delegation).
-    - **Backoff Debt**: Verified that "Exponential Backoff" remains a mandatory directive in `AGENTS.md` without any reference implementation or helper script in the repository.
+## [2026-03-03] Fetch-on-Demand and Definitions-Library Execution Model
 
-## [2026-03-24] - Phase 2 Documentation Audit & Technical Drift Verification
-- **Decision**: Conducted a Phase 2 audit to identify inconsistencies in the 4D framework documentation and environment configuration.
-- **Context**: Required to ensure the accuracy of the "Source of Truth" (REQUIREMENTS.md) and identify technical debt in infrastructure templates.
-- **Impact**:
-    - **Framework Inconsistency**: Identified that "Data Inventory" is mapped to both Delegation and Description gates across lifecycle documentation.
-    - **Environment Drift**: Verified that `.env.template` is missing mandatory keys (`CASDOOR_DB_PASSWORD`, `GF_ADMIN_PASSWORD`) required by the fleet `docker-compose.yml`.
-    - **Policy Verification**: Confirmed that while "Exponential Backoff" is a mandatory directive in `AGENTS.md`, no reference implementation exists in the `scripts/` directory.
+- **Decision:** Formalize the repository as a definitions library for external orchestrators and standardize Fetch-on-Demand secret handling.
+- **Context:** The project moved away from embedded runtime assumptions and needed a durable security posture for agent execution.
+- **Impact:**
+  - Agents rely on external orchestrators such as Gemini CLI, n8n, and LangChain.
+  - Secrets must be injected at runtime via `infisical run` or `op run`.
+  - Logging to `stdout` and `stderr` is treated as an orchestrator-facing contract.
+  - Casdoor was selected as the reference identity layer for multi-tenant fleet deployments.
 
-## [2026-03-22] - Phase 2 Comprehensive Codebase Audit & Drift Verification
-- **Decision**: Conducted a follow-up Phase 2 audit to precisely quantify technical debt and verify functional drifts in MCP configuration.
-- **Context**: Required for continuous improvement of `REQUIREMENTS.md` accuracy as part of the "Doc" persona mission.
-- **Impact**:
-    - **MCP Drift Verification**: Formally verified that `agents/guardian/roi-auditor.md` depends on a `logging-mcp` that is missing from `mcp.config.json`.
-    - **Python Debt Quantification**: Confirmed exactly 6 legacy Python files remain in `examples/`, localized primarily in the Video Automation Pod and Docker examples.
-    - **Structural Gaps**: Re-verified that 0 of 18 personas implement "External Tooling Dependencies" or the mandatory "Audit Log" reasoning sections.
-    - **n8n Localization**: Verified 6 Hungarian-named workflows in `docs/n8n workflows/` contributing to naming convention drift.
+## [2026-02-21] Pivot to Standalone Agents and MCP
 
-## [2026-03-21] - Phase 2 Documentation Audit & Structural Gap Analysis
-- **Decision**: Conducted a Phase 2 audit to verify the implementation status of 4D Framework dimensions and confirm the extent of security policy breaches in examples.
-- **Context**: Autonomous audit required to maintain the accuracy of `REQUIREMENTS.md` and identify structural gaps in the persona library.
-- **Impact**:
-    - **4D Framework Gap**: Verified that Delegation, Description, and Discernment are structurally absent from all 18 personas, quantifying the implementation debt.
-    - **Security Breach Isolation**: Confirmed that `examples/video-automation-pod/dropbox_watcher.py` is the primary point of failure for the "Fetch-on-Demand" policy.
-    - **Mirror Verification**: Confirmed that the `docs/agents/` symbolic link hierarchy is 100% complete and synchronized.
-    - **Template Inconsistency**: Identified that `docs/AGENT_TEMPLATE.md` contradicts `REQUIREMENTS.md` regarding the mandatory status of "External Tooling Dependencies."
+- **Decision:** Focus the repository on standalone agent specifications, MCP integrations, and supporting documentation.
+- **Context:** Earlier directions tied too much of the project to adjacent runtime concerns.
+- **Impact:**
+  - The repository centers on agent personas, skills, MCP protocols, docs, and examples.
+  - External tool integration is modeled through MCP protocol definitions instead of in-repo execution engines.
 
-## [2026-03-20] - Phase 2 Documentation Audit & Technical Drift Remediation
-- **Decision**: Verified and documented specific technical drifts in security policy, localization, and modular context generation.
-- **Context**: Doc persona workflow required a deep-dive analysis of the codebase to identify discrepancies between the mandated "Fetch-on-Demand" architecture and live examples.
-- **Impact**:
-    - **Security Policy Audit**: Confirmed a Phase 0 security breach in `examples/video-automation-pod/dropbox_watcher.py` (explicit use of `load_dotenv()`). Logged remediation requirement in `CLARIFICATIONS.md`.
-    - **Localization Drift**: Identified 6 n8n workflow files in `docs/n8n workflows/` using Hungarian naming conventions. Standardized English-first slug requirement added to `CLARIFICATIONS.md`.
-    - **Context Generation Verification**: Confirmed that `scripts/generate_gemini.js` still fails to inject "Execution Patterns" and "Coding Standards" from `AGENTS.md`.
-    - **Persona Audit**: Verified that "External Tooling Dependencies" and the mandatory "Audit Log" JSON reasoning sections remain missing from all 18 agent personas in `agents/`.
-    - **Environment Validation**: Confirmed that `scripts/verify-env.sh` lacks mandatory SecretOps CLI checks (Infisical/1Password).
+## [2026-02-15] Retire the WHMCS Addon Direction
 
-## [2026-03-19] - Documentation Audit and Technical Gate Formalization
-- **Decision**: Formalized the technical gates of the 4D Framework and documented environment-specific routing requirements.
-- **Context**: Phase 2 Doc workflow required clarifying the specific roles and gates used during the GMU Boot Camp and identifying drift in the video automation examples.
-- **Impact**:
-    - **4D Framework Gates**: Updated `REQUIREMENTS.md` to include mandatory gates: Acceptance Criteria (Delegation), Data Inventory (Description), and TRiSM Assessment (Discernment).
-    - **Fleet Routing Standards**: Formally documented the use of Traefik labels and host-based routing for multi-tenant fleet deployments.
-    - **Security Policy Breach**: Identified and documented a Phase 0 security breach in `video-automation-pod/dropbox_watcher.py` (use of `load_dotenv()` instead of Fetch-on-Demand).
-    - **Persona Standard Alignment**: Updated `AGENTS.md` to align the persona header requirement with the "Rules & Constraints" decision from 2026-03-12.
-    - **Workflow Localization Drift**: Identified localization drift in `docs/n8n workflows/` and flagged the need for a standardized naming convention.
-
-## [2026-03-17] - Documentation Audit and Verification Update
-- **Decision**: Conducted a whole-codebase audit to verify implementation of "Verification Bots" and persona standardization.
-- **Context**: Phase 2 Doc workflow required confirming if `verification-bot.js` fulfilled the academic credentialing requirement.
-- **Impact**:
-    - **Verification Bot**: Formally verified that `examples/gmu-validation/verification-bot.js` implements the mandatory "Feynman Requirement" audit logic. Updated `REQUIREMENTS.md`.
-    - **System Dependencies**: Identified that `scripts/verify-env.sh` and `.ps1` are currently missing mandated SecretOps CLI checks. Documented as [PENDING] implementation.
-    - **Drift Identification**: Confirmed that `scripts/generate_gemini.js` remains inconsistent with `AGENTS.md` by ignoring "Execution Patterns" and "Coding Standards".
-
-## [2026-03-16] - Documentation Audit and technical Debt Identification
-- **Decision**: Conducted a holistic scan of the codebase to identify technical debt in modular context generation and persona standardization.
-- **Context**: Phase 2 Doc workflow requires identifying drift between code and requirements.
-- **Impact**:
-    - **Context Generation Drift**: Identified that `scripts/generate_gemini.js` ignores "Execution Patterns" and "Coding Standards" from `AGENTS.md`. Documented as drift in `REQUIREMENTS.md`.
-    - **Persona Standardization**: Confirmed `docs/AGENT_TEMPLATE.md` incorrectly labels "External Tooling Dependencies" as optional.
-    - **4D Framework Alignment**: Identified inconsistent application of the 4D framework across the persona library (predominantly "Diligence").
-    - **Mirror Verification**: Re-verified that `docs/agents/` strictly mirrors `agents/` via symbolic links.
-
-## [2026-03-14] - Documentation Audit and Requirement Verification
-- **Decision**: Verified implementation status of persona mirroring and documented SecretOps validation gaps.
-- **Context**: Phase 2 Doc workflow requires continuous cross-referencing against the codebase.
-- **Impact**:
-    - **Persona Mirroring**: Verified that all 18 agent personas in `agents/` are successfully mirrored to `docs/agents/` using symbolic links. Removed `[PENDING]` status from `REQUIREMENTS.md`.
-    - **SecretOps Verification**: Confirmed that `scripts/verify-env.sh` still lacks mandatory SecretOps CLI checks (Infisical/1Password). Updated `REQUIREMENTS.md` with specific implementation debt.
-    - **Audit Log Status**: Confirmed that the "Audit Log" requirement remains unimplemented across the persona library.
-
-## [2026-03-12] - Codebase Audit and Requirement Alignment
-- **Decision**: Conducted a Phase 2 holistic scan of the codebase to align documentation with reality and resolve persona template discrepancies.
-- **Context**: Discovered through automated audit that all 18 agent personas use "Rules & Constraints" instead of "Core Mandates," and that mirroring between `agents/` and `docs/agents/` is actually complete.
-- **Impact**:
-    - **Requirement Alignment**: Updated `REQUIREMENTS.md` and `AGENTS.md` to formally recognize "Rules & Constraints" as the standard persona header, resolving a recurring ambiguity.
-    - **Mirroring Verification**: Confirmed that persona file mirroring to `docs/agents/` is complete, removing the associated `[PENDING]` marker.
-    - **Python Debt Tracking**: Quantified the Python deprecation debt to exactly 6 files to provide better visibility for the migration roadmap.
-    - **ROI Status**: Updated requirements to reflect the existing implementation of the `roi-auditor` agent persona.
-    - **Clarifications**: Consolidated existing questions and added a new high-priority question regarding the bulk addition of missing mandatory sections (External Tooling Dependencies).
-
-## [2026-03-15] - Documentation Audit and MCP Configuration Drift Analysis
-- **Decision**: Verified documentation mirroring and identified drift in MCP configuration requirements.
-- **Context**: Phase 2 Doc workflow requires identifying technical debt and documentation drift.
-- **Impact**:
-    - **Mirroring Verification**: Confirmed that `docs/agents/` strictly mirrors `agents/` via symbolic links, fulfilling the 2026-03-03 mandate. Removed related `[PENDING]` marker from `REQUIREMENTS.md`.
-    - **MCP Configuration Drift**: Identified that `agents/guardian/roi-auditor.md` requires a `logging-mcp` (or webhook) which is currently absent from `mcp.config.json`.
-    - **SecretOps Pre-flight Gap**: Documented the absence of SecretOps CLI (Infisical/1Password) verification in `scripts/verify-env.sh`.
-    - **Persona Inconsistencies**: Re-confirmed that "External Tooling Dependencies" are missing from all persona files and "Rules & Constraints" remains the dominant header over "Core Mandates".
-    - **Clarifications**: Drafted 2 new high-priority questions in `CLARIFICATIONS.md` regarding MCP drift and retry logic standards.
-
-## [2026-03-10] - Documentation Audit and Pre-Flight Gap Identification
-- **Decision**: Conducted a follow-up holistic scan focusing on environment setup and toolchain dependencies.
-- **Context**: Phase 2 Doc workflow requires continuous identification of drift. Discovered that mandatory SecretOps patterns in `AGENTS.md` are not validated by pre-flight scripts.
-- **Impact**:
-    - **SecretOps Verification**: Identified that `scripts/verify-env.sh` and `verify-env.ps1` lack checks for Infisical and 1Password CLIs. Flagged as `[PENDING]` in `REQUIREMENTS.md`.
-    - **Undocumented Dependency**: Noted that `gemini` CLI is a required but undocumented dependency. Flagged as `[PENDING]` in `REQUIREMENTS.md`.
-    - **ROI Link Gap**: Confirmed `tools/roi/README.md` contains placeholder links. Flagged as `[PENDING]` in `REQUIREMENTS.md`.
-    - **Clarifications**: Drafted 3 new high-priority questions in `CLARIFICATIONS.md`.
-
-## [2026-03-09] - Documentation Audit and Gap Identification
-- **Decision**: Conducted a holistic scan of the codebase to identify drifts between implemented code and documented requirements.
-- **Context**: Phase 2 Doc workflow requires identifying technical debt and documentation drift.
-- **Impact**:
-    - **Persona Documentation Mirroring**: Identified that individual persona files in `agents/` are not mirrored in `docs/agents/`. Flagged as `[PENDING]` in `REQUIREMENTS.md`.
-    - **Template Header Inconsistency**: Discovered widespread use of "Rules & Constraints" instead of the standardized "Core Mandates" in persona files. Flagged as `[PENDING]` in `REQUIREMENTS.md`.
-    - **Missing External Tooling Dependencies**: Confirmed that no persona files currently document their required external tools. Flagged as `[PENDING]` in `REQUIREMENTS.md`.
-    - **Audit Log Schema**: Identified that the mandatory "Audit Log" requirement is currently unimplemented. Flagged as `[PENDING]` in `REQUIREMENTS.md`.
-    - **Python Migration**: Verified presence of deprecated Python scripts in `examples/`. Flagged as `[PENDING]` in `REQUIREMENTS.md`.
-    - **Clarifications**: Generated 3 new high-priority questions in `CLARIFICATIONS.md` to resolve these gaps.
-
-## [2026-03-08] - Documentation Audit and Requirement Consolidation
-- **Decision**: Consolidated implemented features (4D Framework, Guardian Layer, Fleet Infrastructure, ROI Methodology, Casdoor integration) into core requirements in `REQUIREMENTS.md`.
-- **Context**: Doc workflow requires identifying drift between code and requirements. The repository has successfully implemented several items previously listed as "Future Enhancements."
-- **Impact**:
-    - **4D Framework**: Formally adopted as the mandatory development methodology.
-    - **Guardian Layer**: Elevated to a core functional requirement.
-    - **Fleet Infrastructure**: Standardized multi-tenant deployment templates.
-    - **ROI Modeling**: Formally integrated the labor-cost-avoidance methodology.
-    - **Python Status**: Clarified that legacy Python scripts in `examples/` are deprecated and slated for conversion.
-    - **Strategic Alignment**: Added "Persona Standards Audit" and "Kubernetes Support" as new future enhancements.
-
-## [2026-03-03] - Human Feedback Integration and Phase 1 Cleanup
-- **Decision**: Integrated 17 resolved clarification questions into core documentation and archived the Q&A history.
-- **Context**: Doc workflow requires processing all answered questions from `CLARIFICATIONS.md`.
-- **Impact**:
-    - **Branding**: Standardized "Project NoéMI" across all primary documentation.
-    - **Persona Template**: Formally adopted "Role, Mission, Core Mandates, Workflow, Boundaries" for all specialized agents.
-    - **Python Deprecation**: Removed Python runtime support; Node.js is the official environment for toolkit scripts.
-    - **System Dependencies**: Git, Node.js, Docker, and Gemini CLI confirmed as core requirements for pre-flight and examples.
-    - **Security & Secrets**: Updated `AGENTS.md` with explicit SecretOps patterns for Infisical and 1Password (Fetch-on-Demand).
-    - **Error Handling**: Added mandatory directives for graceful degradation and exponential backoff.
-    - **Fleet Deployment**: Mandated Casdoor as the identity management provider for multi-tenant stacks.
-    - **ROI Modeling**: Standardized on a Google Sheets-based methodology, documented in `tools/roi/README.md`.
-    - **Component Separation**: Clarified that "Support Helper" and "WHMCS MCP" are maintained in separate repositories.
-    - **Stateless Execution**: Confirmed stateless model as the core architecture, with persistent memory (pgvector) as an optional enhancement.
-    - **Execution Model**: Defined the repository as a definitions library for external orchestrators, not a standalone execution engine.
-    - **Logging**: Standardized logging to `stdout`/`stderr` delegated to the orchestrator.
-    - **Mirror Sync**: Mandated that `docs/agents/` must strictly mirror the `agents/` hierarchy.
-
-## [2026-02-21] - Pivot to Standalone Agents and MCP
-- **Decision**: The repository is strictly for standalone scripts and agents.
-- **Context**: Removed PHP legacy code and pivoted to standalone agent definitions.
-- **Impact**: REQUIREMENTS.md updated to remove WHMCS dependencies.
-
-## [2026-02-15] - Project Direction Pivot
-- **Decision**: The project is no longer being developed as a WHMCS Addon Module.
-- **Context**: Removed support ticketing and API timeout requirements from initial scope.
+- **Decision:** End development of the project as a WHMCS addon module.
+- **Context:** The evolving NoéMI architecture required a broader, more portable model than a single product integration could support.
+- **Impact:**
+  - WHMCS-specific assumptions were removed from the core scope.
+  - The project direction shifted toward a reusable agent architecture for broader organizational deployment.

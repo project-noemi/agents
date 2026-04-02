@@ -1,0 +1,19 @@
+{
+  "name": "project-noemi-agents",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Project NoeMI reference architecture and agent specification library",
+  "type": "commonjs",
+  "scripts": {
+    "audit": "node scripts/audit-repo.js",
+    "generate": "node scripts/generate_all.js",
+    "test": "node --test --test-concurrency=1 tests/*.test.js",
+    "test:contracts": "node --test --test-concurrency=1 tests/contracts.test.js tests/generators.test.js",
+    "test:golden": "node --test --test-concurrency=1 tests/golden-fixtures.test.js",
+    "test:examples": "node --test --test-concurrency=1 tests/examples-smoke.test.js",
+    "test:e2e": "node --test --test-concurrency=1 tests/e2e/*.test.js",
+    "test:update-fixtures": "node scripts/update-golden-fixtures.js",
+    "validate": "npm run audit && npm test",
+    "validate:full": "npm run validate && npm run test:e2e"
+  }
+}

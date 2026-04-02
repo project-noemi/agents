@@ -64,3 +64,18 @@ thumbnail_deliverable:
   total_variants: <count>
   recommended: "<filename of top pick>"
 ```
+
+## Audit Log
+Emit a separate JSON audit record for each thumbnail batch:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets and raw source assets not needed for traceability. Record the design objective, variants produced, and the recommended selection rationale.

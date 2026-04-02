@@ -24,7 +24,24 @@ if [ "$ALL_GOOD" = false ]; then
     exit 1
 fi
 
-echo -e "\n🔒 Checking API Keys..."
+echo -e "\n🔒 Checking SecretOps CLI (Fetch-on-Demand)..."
+SECRETS_CLI=false
+if command -v op >/dev/null 2>&1; then
+    echo -e "✅ 1Password CLI (op) is installed."
+    SECRETS_CLI=true
+fi
+if command -v infisical >/dev/null 2>&1; then
+    echo -e "✅ Infisical CLI is installed."
+    SECRETS_CLI=true
+fi
+if [ "$SECRETS_CLI" = false ]; then
+    echo -e "⚠️ No SecretOps CLI found. Install at least one:"
+    echo -e "   - 1Password CLI: https://developer.1password.com/docs/cli/get-started/"
+    echo -e "   - Infisical CLI: https://infisical.com/docs/cli/overview"
+    echo -e "   Secrets are injected at runtime via these tools (see AGENTS.md)."
+fi
+
+echo -e "\n🔑 Checking API Keys..."
 if [ -n "$GEMINI_API_KEY" ]; then
     echo -e "✅ GEMINI_API_KEY is set in the environment."
 else
@@ -32,7 +49,6 @@ else
     echo -e "   Use a secrets manager to inject credentials at runtime:"
     echo -e "     op run --env-file=.env.template -- <command>"
     echo -e "     infisical run --env=dev -- <command>"
-    echo -e "   See AGENTS.md for the Fetch-on-Demand security policy."
 fi
 
 echo -e "\n🎉 All Systems Go! You are ready to build agents.\n"

@@ -1,6 +1,6 @@
-# NewPush Agents Library Context
+# Project NoéMI Context
 
-You are operating within the **NewPush Agents Library**. This repository defines the specialized personas, capabilities, and workflows for various AI agents used across the organization.
+You are operating within **Project NoéMI**, the public reference architecture and agent specification library used to define governable AI personas, workflows, and MCP integrations.
 
 ## 🤖 Dynamic Persona Protocol
 
@@ -27,7 +27,7 @@ When you receive a task or query, you must dynamically adopt the appropriate age
 2.  **Apply Skills:** When a workflow step references a skill, follow the skill's Procedure, Inputs, and Boundaries in addition to the agent's own rules.
 3.  **Cross-Reference:** If the task involves multiple domains (e.g., "Deploy a cPanel server using Ansible"), combine the guidelines from relevant agents (`agents/infrastructure/cpanel.md` and potentially an `ansible` agent if it exists).
 
-##  fallback
+## Fallback
 
 If no specific agent specification matches the request:
 1.  Adopt the role of a **Senior Software Engineer** and **NewPush Systems Architect**.
@@ -41,6 +41,12 @@ If no specific agent specification matches the request:
 *   `docs/agents/`: Documentation mirroring the `agents/` structure.
 
 ---
+
+<!-- GLOBAL_MANDATES_START -->
+<!-- GLOBAL_MANDATES_END -->
+
+<!-- AGENT_INDEX_START -->
+<!-- AGENT_INDEX_END -->
 
 ## 🧩 Active Skills
 <!-- SKILLS_INJECTIONS_START -->

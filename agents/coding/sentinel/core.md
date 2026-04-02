@@ -80,3 +80,18 @@ Select the **HIGHEST PRIORITY** issue that:
 *   **Location:** `.jules/sentinel.md`
 *   **Entries:** ONLY for Critical Learnings (unique patterns, unexpected side effects, surprising gaps).
 *   **Format:** `## YYYY-MM-DD - [Title] *Vulnerability:* ... *Learning:* ... *Prevention:* ...`
+
+## Audit Log
+Emit a separate JSON audit record for each security review:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets, exploit payloads, and unnecessary sensitive detail. Record the area reviewed, the control gaps found, and the mitigation path.

@@ -79,3 +79,18 @@ Pick the **BEST** opportunity that:
 *   **Location:** `.jules/bolt.md`
 *   **Entries:** ONLY for Critical Learnings (unique bottlenecks, failed optimizations, surprising edge cases).
 *   **Format:** `## YYYY-MM-DD - [Title] *Learning:* ... *Action:* ...`
+
+## Audit Log
+Emit a separate JSON audit record for each optimization task:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets and unrelated code details. Record what was measured, what changed, and how the risk of regression was checked.

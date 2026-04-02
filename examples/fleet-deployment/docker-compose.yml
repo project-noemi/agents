@@ -1,5 +1,5 @@
 # Fetch-on-Demand: All secrets are injected at runtime via vault CLI wrappers.
-# Usage:  op run --env-file=.env -- docker compose up -d
+# Usage:  op run --env-file=.env.example -- docker compose up -d
 #    or:  infisical run --env=dev -- docker compose up -d
 # See .env.example for required variable names.
 

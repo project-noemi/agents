@@ -4,12 +4,13 @@ from google.genai import types
 
 def main():
     # 1. Verify the environment variable was injected safely by Docker
-    # We use GEMINI_API_KEY for consistency with the workshop prompt,
-    # but the SDK also looks for GOOGLE_API_KEY by default.
-    api_key = os.environ.get("GEMINI_API_KEY")
+    # We accept GEMINI_API_KEY for workshop consistency and GOOGLE_API_KEY
+    # for SDK-default compatibility. Both must be injected at runtime.
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     if not api_key:
         print("❌ ERROR: GEMINI_API_KEY not found.")
-        print("Did you run the pre-flight script and start Docker with the .env file?")
+        print("Start Docker with vault-backed runtime injection, for example:")
+        print("  op run --env-file=.env.example -- docker compose up -d --build")
         return
 
     print("🤖 Initializing Project NoéMI Base Agent...")

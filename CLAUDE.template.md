@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Project NoéMI is an **agent specification library** — not a runtime or execution engine. It defines AI agent personas, MCP (Model Context Protocol) integrations, and governance frameworks as Markdown files. External orchestrators (Gemini CLI, n8n, LangChain) consume the generated output.
+Project NoéMI also serves as the **public reference architecture** for NewPush's governed AI operating model, so code and docs in this repository should remain aligned with that role.
 
 ## Key Commands
 
@@ -54,9 +55,9 @@ All secrets live in 1Password or Infisical vaults. Never hardcode credentials. A
 
 All agents follow the canonical template in `docs/AGENT_TEMPLATE.md`:
 
-**Required sections:** Role, Tone, Capabilities, Rules & Constraints ({Methodology}), Boundaries (Always / Ask First / Never)
+**Required sections:** Role, Tone, Capabilities, Mission, Rules & Constraints ({Methodology}), Boundaries, Workflow, Audit Log, External Tooling Dependencies
 
-**Optional sections:** Mission, Workflow, Tool Usage, Output Format, Journal, Files of Interest
+**Optional sections:** Tool Usage, Output Format, Journal, Files of Interest
 
 H1 format: `# {Name} — {Domain} Agent`
 
@@ -81,7 +82,7 @@ When working on a task in this repository, adopt the appropriate agent persona b
 
 ## Governance
 
-Agents are evaluated against Gartner AI TRiSM (Trust, Risk, Security Management) — see `docs/GOVERNANCE.md`. Red Team audits (prompt injection, boundary testing, failure handling) are required before deployment. The 4D Framework (Description, Discernment, Delegation, Diligence) guides all design decisions — see `docs/METHODOLOGY.md`.
+Agents are evaluated against Gartner AI TRiSM (Trust, Risk, Security Management) — see `docs/GOVERNANCE.md`. Red Team audits (prompt injection, boundary testing, failure handling) are required before deployment. The 4D Framework (Delegation, Description, Discernment, Diligence) guides all design decisions — see `docs/METHODOLOGY.md`.
 
 ## Commit Convention
 

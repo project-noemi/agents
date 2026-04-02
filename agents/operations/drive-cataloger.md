@@ -155,3 +155,18 @@ Output the diff as a separate tab/section in the catalog.
 - `mcp-protocols/google-sheets.md` — Interaction protocol for Google Sheets MCP.
 - `agents/operations/knowledge-manager.md` — Complementary agent; the cataloger indexes, the knowledge manager researches.
 - `docs/GOVERNANCE.md` — Governance framework guiding audit and compliance requirements.
+
+## Audit Log
+Emit a separate JSON audit record for each cataloging run:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets and document contents beyond what is needed for traceability. Record the folders scanned, indexing actions taken, and any access or classification issues.

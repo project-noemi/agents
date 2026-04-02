@@ -56,6 +56,14 @@ test('builder-facing docs point to the Docker Agent Home path', () => {
     assert.match(readme, /npm run validate/);
 });
 
+test('contributor guide documents the canonical validation and security flow', () => {
+    const contributing = read('CONTRIBUTING.md');
+    assert.match(contributing, /npm run validate/);
+    assert.match(contributing, /npm run test:e2e/);
+    assert.match(contributing, /infisical run/);
+    assert.match(contributing, /op run/);
+});
+
 test('root env template documents the shared Gemini runtime key', () => {
     const envTemplate = read('.env.template');
     assert.match(envTemplate, /^GEMINI_API_KEY=/m);

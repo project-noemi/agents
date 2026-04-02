@@ -21,6 +21,7 @@ Project NoéMI is the **public reference architecture** for NewPush's AI fluency
 - [Deploying the Examples](#deploying-the-examples)
 - [Documentation Guide](#documentation-guide)
 - [Security Model](#security-model)
+- [Contributing](#contributing)
 - [Adding or Modifying Agents](#adding-or-modifying-agents)
 - [Governance](#governance)
 - [Commit Standards](#commit-standards)
@@ -84,6 +85,7 @@ The same validation gates are enforced in GitHub Actions on pushes and pull requ
 | Documentation | `docs/` | Framework docs, setup guides, agent-specific documentation |
 | Build scripts | `scripts/` | Context generation, repo auditing, retry helpers, and environment verification |
 | Test harness | `tests/`, `package.json` | Built-in Node contract, golden fixture, example smoke, and Docker e2e tests |
+| Contribution workflow | `CONTRIBUTING.md`, `.github/pull_request_template.md` | Human contributor expectations, validation flow, and PR checklist |
 | ROI tools | `tools/roi/` | Methodology for calculating agent return on investment |
 
 ---
@@ -524,6 +526,12 @@ op run --env-file=.env.template -- [your command]
 The `.env.template` file at the repository root documents the shared environment variables without containing actual values. Example-specific `.env.example` files are inventories of required variables and should contain only vault references or placeholders, never real secrets.
 
 See [`docs/tool-usages/secure-secret-management.md`](docs/tool-usages/secure-secret-management.md) for the full guide and [`examples/secure-secret-management/`](examples/secure-secret-management/) for a working demo.
+
+---
+
+## Contributing
+
+Start with [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request. It documents the contributor workflow, the canonical validation commands, regeneration rules, and the Fetch-on-Demand security expectations that CI now enforces.
 
 ---
 

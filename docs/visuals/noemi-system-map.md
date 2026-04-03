@@ -13,7 +13,7 @@ flowchart TD
     mcps["MCP Protocols and Integrations\nGoogle Workspace, Microsoft 365, Slack, GitHub, n8n, web"]
     clients["Agentic Clients and Orchestrators\nGemini CLI, Antigravity, Claude Code, Codex, n8n"]
     profiles["Operating Profiles\nLocale, subregion, sector, audience"]
-    lenses["Value Lenses\nPerformance-efficiency, care-continuity, balanced-enterprise"]
+    lenses["Value Lenses\nCompetitiveness-output, care-demographic-vitality, mathesis-integrative"]
     runtime["Runtime Execution\nPrompts, approvals, retries, human review"]
     governance["Governance and Guardian Layer\nTRiSM, red teaming, diligence, refusal principle"]
     audit["Audit, ROI, and Observability\nLogs, dashboards, decision traces, ROI"]

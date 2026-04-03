@@ -16,7 +16,7 @@ Describe what this lens optimizes for and how it evaluates success.
 
 What is the first question this lens asks when judging a result?
 
-## Success Dimensions
+## Success Criteria
 
 - `{dimension 1}`
 - `{dimension 2}`
@@ -33,8 +33,19 @@ What is the first question this lens asks when judging a result?
 - short-cycle
 - medium-term
 - long-term
+- intergenerational (10+ year)
 
 Describe which horizon dominates this lens.
+
+## Care Capital
+
+- how this lens evaluates trust, reciprocity, and relational durability
+- what kinds of actions strengthen or deplete human cooperation
+
+## Demographic Footprint
+
+- how this lens evaluates life-balance and long-term human renewal
+- whether this lens tolerates or rejects hidden demographic debt
 
 ## Preferred Evidence
 

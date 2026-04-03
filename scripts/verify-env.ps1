@@ -22,6 +22,13 @@ if (-not $allGood) {
     exit
 }
 
+$nodeMajor = [int]((node --version) -replace '^v([0-9]+).*$','$1')
+if ($nodeMajor -lt 24) {
+    Write-Host "❌ Node.js $(node --version) is too old. Install Node.js 24.x LTS for this repository." -ForegroundColor Red
+    exit 1
+}
+Write-Host "✅ Node.js $(node --version) meets the 24.x LTS baseline." -ForegroundColor Green
+
 Write-Host "`n🔒 Checking SecretOps CLI (Fetch-on-Demand)..." -ForegroundColor Cyan
 $secretsCli = $false
 if (Get-Command op -ErrorAction SilentlyContinue) {

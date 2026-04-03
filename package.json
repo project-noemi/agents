@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "description": "Project NoeMI reference architecture and agent specification library",
   "type": "commonjs",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "audit": "node scripts/audit-repo.js",
     "generate": "node scripts/generate_all.js",

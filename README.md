@@ -32,7 +32,7 @@ Project NoéMI is the **public reference architecture** for NewPush's AI fluency
 
 ## Quick Start
 
-**Prerequisites:** [Node.js](https://nodejs.org/) (v18+), [Docker](https://www.docker.com/), and a secret manager ([Infisical CLI](https://infisical.com/docs/cli/overview) or [1Password CLI](https://developer.1password.com/docs/cli/))
+**Prerequisites:** [Node.js](https://nodejs.org/) (24.x LTS recommended; 25+ supported), [Docker](https://www.docker.com/), and a secret manager ([Infisical CLI](https://infisical.com/docs/cli/overview) or [1Password CLI](https://developer.1password.com/docs/cli/))
 
 ```bash
 # 1. Clone the repository

@@ -4,6 +4,8 @@ Project NoeMI needs a way to evaluate work through more than one success logic w
 
 This document defines that layer as **Value Lenses**.
 
+Project NoeMI uses this layer to integrate business efficiency with the Demographic Mathésis view of long-term human sustainability.
+
 ## Why This Is Needed
 
 Two teams can look at the same output and disagree honestly because they are optimizing for different things.
@@ -32,6 +34,7 @@ The system needs a clean way to say:
 - whose benefit is being counted?
 - what time horizon matters?
 - what tradeoffs are acceptable?
+- what happens to Care Capital and Demographic Footprint if this decision scales?
 
 ## Core Principle
 
@@ -42,6 +45,11 @@ An operating profile defines **how the work should be carried out in a local con
 A value lens defines **how success and tradeoffs should be judged**.
 
 Keep those layers separate.
+
+Value Lenses are intentionally separate from:
+
+- Agent Personas, which define the role and workflow
+- Operating Profiles, which define local style and execution customs
 
 ## Why Not Use Gendered Operational Labels
 
@@ -62,7 +70,7 @@ That means the implementation can preserve the conceptual distinction without sa
 
 ## Recommended Starter Lenses
 
-### 1. Performance-Efficiency Lens
+### 1. Competitiveness-Output Lens
 
 Optimizes for:
 
@@ -72,27 +80,42 @@ Optimizes for:
 - predictability
 - clear measurable output
 
-### 2. Care-Continuity Lens
+Blind spot:
+
+- high risk of demographic debt and erosion of trust networks
+
+### 2. Care-Demographic-Vitality Lens
 
 Optimizes for:
 
-- long-term sustainability
 - relational health
-- human impact
-- continuity
-- habitability and trust
+- care capital
+- demographic vitality
+- human viability
+- 10+ year sustainability
 
-### 3. Balanced-Enterprise Lens
+Core question:
+
+- does this action support or deplete the human ecosystem over a 10-year horizon?
+
+### 3. Mathesis-Integrative Lens
 
 Optimizes for:
 
 - practical business viability
-- human and organizational sustainability
-- acceptable pace and efficiency without degrading the system that must live with the result
+- care capital
+- demographic stability
+- competitiveness without degrading the human system that must sustain the result
+
+Default rule:
+
+- this is the default lens when no higher-stakes override is selected
 
 ## What Belongs In A Value Lens
 
 - success criteria
+- care capital stance
+- demographic footprint stance
 - stakeholders counted
 - time horizon
 - acceptable tradeoffs
@@ -114,9 +137,9 @@ Optimizes for:
 value-lenses/
 ├── README.md
 ├── LENS_TEMPLATE.md
-├── performance-efficiency.md
-├── care-continuity.md
-└── balanced-enterprise.md
+├── competitiveness-output.md
+├── care-demographic-vitality.md
+└── mathesis-integrative.md
 ```
 
 ## Activation Model
@@ -136,6 +159,7 @@ The value lens should refine the definition of success, not replace the role.
 - the lens should be human-selected for high-stakes work
 - the lens should never be silently inferred from gender or identity
 - if no lens is chosen, default to a documented enterprise baseline
+- the default baseline for this repository is `mathesis-integrative`
 
 ## Comparison Mode
 
@@ -147,6 +171,7 @@ That means the agent can:
 2. score them under multiple lenses
 3. explain where the lenses agree
 4. explain where the lenses conflict
+5. show when speed gains create a Care Capital deficit or a negative Demographic Footprint
 
 This is safer than silently optimizing for one value system.
 
@@ -177,6 +202,8 @@ Operating profiles answer:
 Value lenses answer:
 
 - what does good mean here?
+- what is the Care Capital effect?
+- what is the Demographic Footprint?
 
 Both can be active at the same time, but they solve different problems.
 

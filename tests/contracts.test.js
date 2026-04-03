@@ -96,18 +96,22 @@ test('repo exposes the value lens framework, starter lenses, and template', () =
     const readme = read('README.md');
     const framework = read('docs/frameworks/value-lenses.md');
     const template = read('value-lenses/LENS_TEMPLATE.md');
-    const performance = read('value-lenses/performance-efficiency.md');
-    const care = read('value-lenses/care-continuity.md');
-    const balanced = read('value-lenses/balanced-enterprise.md');
+    const competitiveness = read('value-lenses/competitiveness-output.md');
+    const care = read('value-lenses/care-demographic-vitality.md');
+    const mathesis = read('value-lenses/mathesis-integrative.md');
 
     assert.match(readme, /value-lenses\//);
     assert.match(framework, /neutral operational names/i);
     assert.match(framework, /comparison mode/i);
+    assert.match(framework, /Demographic Math[ée]sis/i);
     assert.match(template, /## Core Success Question/);
+    assert.match(template, /## Success Criteria/);
+    assert.match(template, /## Care Capital/);
+    assert.match(template, /## Demographic Footprint/);
     assert.match(template, /## Failure Modes/);
-    assert.match(performance, /Lens ID:\*\* `performance-efficiency`/);
-    assert.match(care, /Lens ID:\*\* `care-continuity`/);
-    assert.match(balanced, /Lens ID:\*\* `balanced-enterprise`/);
+    assert.match(competitiveness, /Lens ID:\*\* `competitiveness-output`/);
+    assert.match(care, /Lens ID:\*\* `care-demographic-vitality`/);
+    assert.match(mathesis, /Lens ID:\*\* `mathesis-integrative`/);
 });
 
 test('repo exposes the visual guides and links them from the main entry docs', () => {
@@ -139,4 +143,20 @@ test('contributor guide documents the canonical validation and security flow', (
 test('root env template documents the shared Gemini runtime key', () => {
     const envTemplate = read('.env.template');
     assert.match(envTemplate, /^GEMINI_API_KEY=/m);
+});
+
+test('repo pins the Node baseline consistently across CI, package metadata, and local version files', () => {
+    const workflow = read('.github/workflows/validate.yml');
+    const packageJson = JSON.parse(read('package.json'));
+    const nvmrc = read('.nvmrc').trim();
+    const nodeVersion = read('.node-version').trim();
+    const readme = read('README.md');
+
+    assert.match(workflow, /actions\/checkout@v6/);
+    assert.match(workflow, /actions\/setup-node@v6/);
+    assert.match(workflow, /node-version: "24"/);
+    assert.equal(packageJson.engines.node, '>=24');
+    assert.equal(nvmrc, '24');
+    assert.equal(nodeVersion, '24');
+    assert.match(readme, /24\.x LTS recommended; 25\+ supported/);
 });

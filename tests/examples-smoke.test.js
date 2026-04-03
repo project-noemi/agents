@@ -116,6 +116,46 @@ test('localized operating profile docs separate culture from translation and gua
     assert.match(profilesReadme, /assumed identity/i);
 });
 
+test('value lens docs separate success logic from identity and define starter comparison lenses', () => {
+    const framework = read('docs/frameworks/value-lenses.md');
+    const lensesReadme = read('value-lenses/README.md');
+    const performance = read('value-lenses/performance-efficiency.md');
+    const care = read('value-lenses/care-continuity.md');
+    const balanced = read('value-lenses/balanced-enterprise.md');
+
+    assert.match(framework, /what counts as success here/i);
+    assert.match(framework, /should use \*\*neutral operational names\*\*/i);
+    assert.match(framework, /should never be silently inferred from gender or identity/i);
+    assert.match(lensesReadme, /explicit success criteria and tradeoff logic/i);
+    assert.match(performance, /speed/i);
+    assert.match(performance, /throughput/i);
+    assert.match(care, /continuity/i);
+    assert.match(care, /habitability/i);
+    assert.match(balanced, /business performance/i);
+    assert.match(balanced, /human sustainability/i);
+});
+
+test('visual guides provide distinct views for structure, navigation, execution, and workshop exploration', () => {
+    const visualsIndex = read('docs/visuals/README.md');
+    const systemMap = read('docs/visuals/noemi-system-map.md');
+    const audienceMap = read('docs/visuals/noemi-audience-entry-map.md');
+    const runtimeFlow = read('docs/visuals/noemi-runtime-flow.md');
+    const mindMap = read('docs/visuals/noemi-workshop-mind-map.md');
+
+    assert.match(visualsIndex, /system map/i);
+    assert.match(visualsIndex, /audience entry map/i);
+    assert.match(visualsIndex, /runtime flow/i);
+    assert.match(visualsIndex, /mind map/i);
+    assert.match(systemMap, /Phase 0 Security/i);
+    assert.match(systemMap, /Value Lenses/i);
+    assert.match(audienceMap, /Client \/ Buyer/i);
+    assert.match(audienceMap, /Builder \/ Accelerator/i);
+    assert.match(runtimeFlow, /Guardian and Governance/i);
+    assert.match(runtimeFlow, /Audit and ROI/i);
+    assert.match(mindMap, /mindmap/);
+    assert.match(mindMap, /Virtual Workforce/i);
+});
+
 test('n8n guidance avoids invented helper APIs and documents the real runtime surface', () => {
     const persona = read('docs/tool-usages/n8n-expert-persona.md');
     const protocol = read('mcp-protocols/n8n.md');

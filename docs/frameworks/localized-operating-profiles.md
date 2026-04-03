@@ -34,6 +34,8 @@ A localized operating profile defines **how that work should be carried out for 
 
 Keep those layers separate.
 
+For explicit success criteria and tradeoff logic, use the separate Value Lens layer described in [value-lenses.md](value-lenses.md).
+
 ## Recommended Layering Model
 
 Use inheritance from broad to specific:
@@ -135,6 +137,17 @@ The agent should receive:
 
 The operating profile should refine execution style, not replace the core role.
 
+Operating profiles answer:
+
+- how do we work here?
+
+They do not answer:
+
+- what counts as success overall?
+- which tradeoffs should dominate?
+
+Those belong in Value Lenses.
+
 ## Governance Rules
 
 - every profile needs an evidence source
@@ -168,3 +181,4 @@ But only after the content is reviewed by local operators who can separate real 
 
 - [`../../operating-profiles/README.md`](../../operating-profiles/README.md)
 - [`../../operating-profiles/PROFILE_TEMPLATE.md`](../../operating-profiles/PROFILE_TEMPLATE.md)
+- [`value-lenses.md`](value-lenses.md)

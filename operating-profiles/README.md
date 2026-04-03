@@ -24,6 +24,8 @@ An operating profile answers:
 
 - how should this work be carried out here?
 
+If you need to define what counts as success, what tradeoffs are acceptable, or whose benefit is being prioritized, use the separate Value Lens layer instead of putting that logic in an operating profile.
+
 ## Directory Pattern
 
 Recommended layout:
@@ -69,3 +71,5 @@ That is enough to prove the system before adding more profile depth.
 ## Template
 
 Use [`PROFILE_TEMPLATE.md`](PROFILE_TEMPLATE.md) as the canonical shape.
+
+For the companion framework, see [`../docs/frameworks/value-lenses.md`](../docs/frameworks/value-lenses.md).

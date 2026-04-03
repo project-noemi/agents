@@ -56,6 +56,16 @@ test('builder-facing docs point to the Docker Agent Home path', () => {
     assert.match(readme, /npm run validate/);
 });
 
+test('builder-facing docs expose the split Google Workspace implementation paths', () => {
+    const readme = read('README.md');
+    const mcpSetupIndex = read('docs/mcp-setup/README.md');
+
+    assert.match(readme, /docs\/tool-usages\/gemini-workspace-quickstart\.md/);
+    assert.match(readme, /docs\/examples\/n8n-google-workspace-quickstart\.md/);
+    assert.match(readme, /docs\/mcp-setup\/google-n8n-credential-matrix\.md/);
+    assert.match(mcpSetupIndex, /google-n8n-credential-matrix\.md/);
+});
+
 test('contributor guide documents the canonical validation and security flow', () => {
     const contributing = read('CONTRIBUTING.md');
     assert.match(contributing, /npm run validate/);

@@ -61,3 +61,40 @@ test('Docker Agent Home guide connects the current example topologies', () => {
     assert.match(guide, /examples\/gatekeeper-deployment/);
     assert.match(guide, /not a runtime or execution engine/i);
 });
+
+test('Google Workspace docs separate Gemini CLI, generic MCP, and n8n setup paths', () => {
+    const geminiQuickstart = read('docs/tool-usages/gemini-workspace-quickstart.md');
+    const n8nQuickstart = read('docs/examples/n8n-google-workspace-quickstart.md');
+    const genericGoogleSetup = read('docs/mcp-setup/google-workspace.md');
+    const matrix = read('docs/mcp-setup/google-n8n-credential-matrix.md');
+
+    assert.match(geminiQuickstart, /gemini extensions install https:\/\/github\.com\/gemini-cli-extensions\/workspace/);
+    assert.match(geminiQuickstart, /does \*\*not\*\* use the generic `GOOGLE_CLIENT_ID`/);
+    assert.match(n8nQuickstart, /uses \*\*n8n credentials\*\*, not the Gemini CLI Workspace extension/i);
+    assert.match(genericGoogleSetup, /generic Google Workspace MCP server pattern/i);
+    assert.match(genericGoogleSetup, /Gemini CLI with the official Workspace extension/i);
+    assert.match(genericGoogleSetup, /n8n Google Workspace nodes/i);
+    assert.match(matrix, /Gemini CLI \+ Workspace extension/);
+    assert.match(matrix, /n8n Gmail \/ Docs \/ Drive \/ Sheets nodes/);
+});
+
+test('n8n guidance avoids invented helper APIs and documents the real runtime surface', () => {
+    const persona = read('docs/tool-usages/n8n-expert-persona.md');
+    const protocol = read('mcp-protocols/n8n.md');
+
+    assert.doesNotMatch(persona, /tools_documentation\(\)|validate_node\(|validate_workflow/);
+    assert.match(persona, /n8n editor or API/i);
+    assert.match(protocol, /Do Not Assume Hidden Helper Tools/);
+});
+
+test('RFP responder workflow uses the current Google Gemini node path', () => {
+    const workflow = JSON.parse(read('examples/workflows/rfp-responder.json'));
+    const workflowText = read('examples/workflows/rfp-responder.json');
+    const geminiNode = workflow.nodes.find((node) => node.name === 'Analyze Request (Gemini)');
+
+    assert.ok(geminiNode, 'Expected Analyze Request (Gemini) node to exist');
+    assert.equal(geminiNode.type, '@n8n/n8n-nodes-langchain.googleGemini');
+    assert.match(workflowText, /models\/gemini-2\.5-flash/);
+    assert.match(workflowText, /REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID/);
+    assert.doesNotMatch(workflowText, /@n8n\/n8n-nodes-langchain\.chainLlm/);
+});

@@ -11,6 +11,7 @@ When our Practitioners build applications with Virtual Coworkers, hardcoding cre
 
 For the client-side readiness conversation that should happen before these implementation details, see [`../PHASE_ZERO_SECURITY_BASELINE.md`](../PHASE_ZERO_SECURITY_BASELINE.md) and the reusable templates in [`../phase-zero-assessment/`](../phase-zero-assessment/).
 For the builder-facing Docker layout that should come after secret injection is understood, see [`../examples/docker-agent-home.md`](../examples/docker-agent-home.md).
+For the runtime-side expectations that sit on top of secret injection, see [`orchestrator-runtime-contract.md`](orchestrator-runtime-contract.md).
 
 ## The Tool Matrix for Project NoéMI
 To replace the 1Password `op run` workflow, we need tools that support an Environment Injection CLI—meaning the secrets exist only in the process memory during runtime and never on the hard drive.

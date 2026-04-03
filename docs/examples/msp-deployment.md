@@ -12,6 +12,7 @@ NoéMI is a specification library — not a runtime. This makes it well-suited f
 - **Governance is built in** — AI TRiSM, red team gauntlets, and the 4D Framework apply uniformly across tenants
 
 Before onboarding a client into an AI workflow, establish their Phase 0 baseline first. Use the client-side guide at [`../PHASE_ZERO_SECURITY_BASELINE.md`](../PHASE_ZERO_SECURITY_BASELINE.md) and the reusable templates in [`../phase-zero-assessment/`](../phase-zero-assessment/) to document the minimum security posture, readiness gates, and remediation plan.
+When you operationalize tenants, pair this guide with the orchestrator runtime expectations in [`../tool-usages/orchestrator-runtime-contract.md`](../tool-usages/orchestrator-runtime-contract.md) so identity, approval boundaries, logging, and retry handling remain consistent across clients.
 
 ## Architecture
 

@@ -76,3 +76,11 @@ jobs:
 
       - name: Run Docker smoke suite
         run: npm run test:e2e
+
+      - name: Upload Docker smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-smoke-diagnostics
+          path: test-artifacts/docker-smoke
+          if-no-files-found: ignore

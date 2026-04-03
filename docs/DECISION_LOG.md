@@ -37,7 +37,7 @@
   - Identity verification is treated as an orchestrator or ingress responsibility rather than an agent-side Casdoor token contract.
   - English-first slug naming remains mandatory for exported workflows and similar artifacts.
   - Legacy Python examples remain allowed as historical references and should be migrated incrementally rather than through a blocking bulk rewrite.
-  - The ROI calculator should ultimately use a public Google Sheets template URL once that external artifact is available.
+  - The ROI calculator now uses a public anonymous-access Google Sheets URL in `tools/roi/README.md`.
 
 ## [2026-04-02] Balanced Reference + Implementation Alignment
 

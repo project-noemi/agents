@@ -5,6 +5,7 @@ This guide explains how to use Docker to build a **home for agents** around Proj
 Project NoeMI is **not a runtime or execution engine**. It provides the personas, governance, skills, MCP rules, and reference examples that a runtime consumes. A Docker-based "agent home" is the environment you build around those assets so agents can live somewhere consistent, observable, and secure.
 
 If you want the shortest guided path before you read the deeper topology discussion here, start with [`builder-first-30-minutes.md`](builder-first-30-minutes.md).
+For the runtime validation path that proves these homes actually boot on a Docker-capable host, see [`docker-runtime-verification.md`](docker-runtime-verification.md).
 
 ## What an Agent Home Includes
 
@@ -70,6 +71,7 @@ infisical run --env=dev -- docker compose up -d --build
 ```
 
 For the security baseline behind this pattern, see [`../tool-usages/secure-secret-management.md`](../tool-usages/secure-secret-management.md).
+For the runtime responsibilities your orchestrator must own around identity, logging, retries, and approval gates, see [`../tool-usages/orchestrator-runtime-contract.md`](../tool-usages/orchestrator-runtime-contract.md).
 
 ### 2. Generate Context Before You Launch
 
@@ -78,9 +80,10 @@ Your containers should consume the generated context, not hand-written copies.
 ```bash
 node scripts/generate_all.js
 npm run validate
+npm run test:e2e
 ```
 
-That gives your runtime a current `GEMINI.md`, `CLAUDE.md`, and a validated persona/MCP contract before the containers start.
+That gives your runtime a current `GEMINI.md`, `CLAUDE.md`, a validated persona/MCP contract, and a runtime smoke check before you start treating the stack as trustworthy.
 
 ### 3. Mount Specs and Context as Inputs
 
@@ -151,6 +154,8 @@ If you are unsure, start with the secure secret pattern, then the local builder 
 3. Validate the repo with `npm run validate`
 4. Start with [`../../examples/docker/`](../../examples/docker/)
 5. Move to [`../../examples/fleet-deployment/`](../../examples/fleet-deployment/) when you need a real operator home
+
+If the runtime smoke tier fails on a real host, inspect `test-artifacts/docker-smoke/` locally or the `docker-smoke-diagnostics` artifact in GitHub Actions.
 
 ## What This Guide Does Not Claim
 

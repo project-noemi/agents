@@ -4,3 +4,4 @@ node_modules/
 scratchpad
 __pycache__/
 *.pyc
+test-artifacts/

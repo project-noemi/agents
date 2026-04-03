@@ -10,8 +10,9 @@ Read these two guides first:
 
 1. [`../tool-usages/secure-secret-management.md`](../tool-usages/secure-secret-management.md)
 2. [`docker-agent-home.md`](docker-agent-home.md)
+3. [`../tool-usages/orchestrator-runtime-contract.md`](../tool-usages/orchestrator-runtime-contract.md)
 
-Those explain the security contract and the shape of the Docker home you are about to launch.
+Those explain the security contract, the shape of the Docker home you are about to launch, and the runtime responsibilities your orchestrator must own.
 
 ## Step 1: Verify the Local Toolchain
 
@@ -75,6 +76,7 @@ This is the slower runtime tier. It attempts to bring up the current Docker home
 - gatekeeper specialist home
 
 If Docker is not installed in your environment, the e2e suite skips cleanly.
+If it fails on a Docker-capable host, inspect `test-artifacts/docker-smoke/` or follow the deeper playbook in [`docker-runtime-verification.md`](docker-runtime-verification.md).
 
 ## Step 5: Launch the Local Builder Home
 
@@ -137,7 +139,7 @@ Then launch or relaunch the Docker home you are working on.
 - `npm run validate` fails:
   fix the contract or generator drift before launching Docker
 - `npm run test:e2e` fails:
-  inspect the relevant compose stack before assuming the persona or docs are wrong
+  inspect `test-artifacts/docker-smoke/` and the relevant compose stack before assuming the persona or docs are wrong
 - the container runs but the agent fails:
   check whether the required vault-backed variables were actually injected at launch
 

@@ -7,7 +7,7 @@ Project NoéMI is the **public reference architecture** for NewPush's AI fluency
 **Audience paths:**
 - **Client / Buyer:** [Project Reference](docs/PROJECT_REFERENCE.md) → [Phase 0 Security Baseline](docs/PHASE_ZERO_SECURITY_BASELINE.md) → [Phase 0 Assessment Kit](docs/phase-zero-assessment/README.md)
 - **MSP / MSSP:** [Project Reference](docs/PROJECT_REFERENCE.md) → [MSP Deployment Guide](docs/examples/msp-deployment.md) → [Fleet / governance docs](docs/agents/operations/)
-- **Builder / Accelerator:** [Project Reference](docs/PROJECT_REFERENCE.md) → [Secure Secret Management](docs/tool-usages/secure-secret-management.md) → [Builder First 30 Minutes](docs/examples/builder-first-30-minutes.md) → [Docker Agent Home](docs/examples/docker-agent-home.md)
+- **Builder / Accelerator:** [Project Reference](docs/PROJECT_REFERENCE.md) → [Secure Secret Management](docs/tool-usages/secure-secret-management.md) → [Builder First 30 Minutes](docs/examples/builder-first-30-minutes.md) → [Docker Agent Home](docs/examples/docker-agent-home.md) → [Orchestrator Runtime Contract](docs/tool-usages/orchestrator-runtime-contract.md)
 
 ## Table of Contents
 
@@ -61,6 +61,7 @@ infisical run --env=dev -- gemini -p GEMINI.md "List all open PRs in our org"
 The generated `GEMINI.md` and `CLAUDE.md` files contain your agent personas, security mandates, and MCP protocol definitions — everything an orchestrator needs to act as your agents.
 
 The same validation gates are enforced in GitHub Actions on pushes and pull requests targeting `develop` and `main`, so local validation mirrors the repository's CI contract.
+When Docker smoke fails on a real host or in CI, inspect `test-artifacts/docker-smoke/` or the uploaded `docker-smoke-diagnostics` artifact.
 
 ---
 
@@ -70,7 +71,7 @@ The same validation gates are enforced in GitHub Actions on pushes and pull requ
 |----------|------------|------------|
 | **Client / Buyer** | [`docs/PROJECT_REFERENCE.md`](docs/PROJECT_REFERENCE.md) | [`docs/PHASE_ZERO_SECURITY_BASELINE.md`](docs/PHASE_ZERO_SECURITY_BASELINE.md), [`docs/phase-zero-assessment/README.md`](docs/phase-zero-assessment/README.md) |
 | **MSP / MSSP** | [`docs/PROJECT_REFERENCE.md`](docs/PROJECT_REFERENCE.md) | [`docs/examples/msp-deployment.md`](docs/examples/msp-deployment.md), [`docs/agents/operations/`](docs/agents/operations/) |
-| **Builder / Accelerator** | [`docs/tool-usages/secure-secret-management.md`](docs/tool-usages/secure-secret-management.md) | [`docs/examples/builder-first-30-minutes.md`](docs/examples/builder-first-30-minutes.md), [`docs/examples/docker-agent-home.md`](docs/examples/docker-agent-home.md), [`docs/AGENT_TEMPLATE.md`](docs/AGENT_TEMPLATE.md) |
+| **Builder / Accelerator** | [`docs/tool-usages/secure-secret-management.md`](docs/tool-usages/secure-secret-management.md) | [`docs/examples/builder-first-30-minutes.md`](docs/examples/builder-first-30-minutes.md), [`docs/examples/docker-agent-home.md`](docs/examples/docker-agent-home.md), [`docs/examples/docker-runtime-verification.md`](docs/examples/docker-runtime-verification.md), [`docs/tool-usages/orchestrator-runtime-contract.md`](docs/tool-usages/orchestrator-runtime-contract.md), [`docs/AGENT_TEMPLATE.md`](docs/AGENT_TEMPLATE.md) |
 
 ---
 
@@ -85,6 +86,7 @@ The same validation gates are enforced in GitHub Actions on pushes and pull requ
 | Documentation | `docs/` | Framework docs, setup guides, agent-specific documentation |
 | Build scripts | `scripts/` | Context generation, repo auditing, retry helpers, and environment verification |
 | Test harness | `tests/`, `package.json` | Built-in Node contract, golden fixture, example smoke, and Docker e2e tests |
+| Runtime diagnostics | `test-artifacts/docker-smoke/` | Failure artifacts emitted by Docker smoke verification on real hosts and in CI |
 | Contribution workflow | `CONTRIBUTING.md`, `.github/pull_request_template.md` | Human contributor expectations, validation flow, and PR checklist |
 | ROI tools | `tools/roi/` | Methodology for calculating agent return on investment |
 

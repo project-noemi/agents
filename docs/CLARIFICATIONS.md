@@ -8,10 +8,6 @@ This file now tracks only active, unresolved questions that still require produc
 - Durable answers from the March-April 2026 clarification backlog were normalized into [DECISION_LOG.md](DECISION_LOG.md), especially the entries dated `2026-04-02`.
 - Questions that were superseded by implemented repo changes were closed as overtaken by events and removed from the active backlog.
 
-## Operational Follow-Up
-
-- Replace the placeholder ROI calculator reference in [tools/roi/README.md](../tools/roi/README.md) once the public Google Sheets template URL is available.
-
 ## Template for New Questions
 
 Add new questions below this line using the required format.

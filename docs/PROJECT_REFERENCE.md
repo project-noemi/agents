@@ -6,6 +6,8 @@
 
 This document is the canonical public reference for Project NoéMI. It introduces the project's philosophy, framework, curriculum, and technology stack, and serves as a guide to the other documents in this repository.
 
+At the highest level, NoéMI exists to help organizations respond to AI by increasing the productivity of the active population, not by normalizing a story of mass unemployment. The program teaches businesses how to redesign work so AI handles governed, repeatable first-pass tasks while people move upward into review, exception handling, decision-making, and governance. The intended result is a surge in output, resilience, and economic usefulness through a **Virtual Workforce** model, not a simplistic replacement model.
+
 Readers who want the fastest structural overview should start with the visual set in [`docs/visuals/`](visuals/).
 
 ---
@@ -35,6 +37,8 @@ Readers who want the fastest structural overview should start with the visual se
 Project NoéMI is a **global AI fluency accelerator program** delivered by **NewPush** and academically credentialed by **George Mason University (GMU)**. It trains *organizations* — not individuals — to build, govern, and deploy a "Virtual Workforce" of AI agents securely and at scale.
 
 It is **not** a generic "prompt engineering" course. It is an enterprise AI transformation program that begins with cybersecurity (Phase 0 Security) and ends with certified, production-ready AI workflows governed by trained human leaders.
+
+Its strategic aim is to help enterprises convert AI from a labor-displacement fear into a productivity system. In practice, that means enabling teams to produce more with the same people, shift skilled staff away from repetitive execution, and build the managerial capability to supervise AI doing bounded operational work.
 
 **Key facts:**
 
@@ -375,7 +379,15 @@ Phase 0 is what distinguishes NoéMI from other AI training programs. It is the 
 
 ### Client-Side Phase 0 Baseline
 
-Organizations should complete a short, written **Phase 0 baseline assessment** before starting an advanced AI initiative. This should evaluate identity, endpoint hygiene, backups, logging, secrets management, SaaS and vendor exposure, data boundaries, and incident readiness, then produce a prioritized roadmap of what must be fixed before AI goes live.
+Organizations should complete a short, written **Phase 0 initial assessment** before starting an advanced AI initiative. In NoeMI, this should now be treated as two linked tracks:
+
+- a **Security Assessment** that evaluates identity, endpoint hygiene, backups, logging, secrets management, SaaS and vendor exposure, data boundaries, and incident readiness
+- an **AI Readiness Assessment** that evaluates business use-case clarity, process stability, approval boundaries, role uplift, and measurement readiness
+
+Together, these two tracks answer both executive questions:
+
+- can we do this safely?
+- can we do this in a way that creates real business value?
 
 For a client-oriented guide on what to assess, how to work with an MSP or MSSP, and how to request a grounded baseline without turning the conversation into a product pitch, see [`docs/PHASE_ZERO_SECURITY_BASELINE.md`](PHASE_ZERO_SECURITY_BASELINE.md).
 For reusable assessment assets, see [`docs/phase-zero-assessment/`](phase-zero-assessment/).

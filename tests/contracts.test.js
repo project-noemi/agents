@@ -56,6 +56,8 @@ test('builder-facing docs point to the Docker Agent Home path', () => {
     assert.match(readme, /docs\/examples\/docker-agent-home\.md/);
     assert.match(readme, /npm run validate/);
     assert.match(readme, /verify-env\.sh --mode=builder/);
+    assert.match(readme, /productivity of the active workforce/i);
+    assert.match(readme, /mass unemployment as the strategy/i);
 });
 
 test('environment verification scripts expose path-aware beginner and docker modes', () => {

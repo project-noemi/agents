@@ -4,6 +4,8 @@ Project NoéMI treats **Phase 0 Security** as the prerequisite for serious AI ad
 
 This guide is written from the **client's perspective**. It is meant to help leadership teams, IT managers, and operational owners ask better questions of their internal team, their MSP, or their MSSP before they fund an advanced AI initiative.
 
+This guide covers the **security half** of that conversation. The paired **AI readiness half** of the initial assessment lives in the [Phase 0 Assessment Kit](phase-zero-assessment/README.md), where security readiness and AI readiness are treated as separate executive questions.
+
 ## Why Phase 0 Comes First
 
 AI accelerates execution. That is useful when your environment is governed, and dangerous when it is not.
@@ -180,6 +182,10 @@ Phase 0 is complete when the organization can answer:
 If you already have an MSP or MSSP, use them. But ask them to behave like a diagnostic partner, not a product reseller.
 
 The reusable templates that support this conversation live in the [Phase 0 Assessment Kit](phase-zero-assessment/README.md).
+That kit now separates:
+
+- the **Security Assessment**: "Can we do this safely?"
+- the **AI Readiness Assessment**: "Can we do this in a way that creates measurable business value?"
 ### What to Ask For
 
 - A Phase 0 baseline or cyber risk assessment tied to the AI initiative you are considering

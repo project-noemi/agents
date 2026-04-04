@@ -26,6 +26,8 @@ The CLI gives Builders, Practitioners, and Accelerators a repeatable place to le
 - MCP registration
 - portable launch commands
 
+If the immediate goal is Google Workspace on a real desktop or laptop, start with [`../mcp-setup/gws-cli-machine-setup.md`](../mcp-setup/gws-cli-machine-setup.md) before you build out a broader MCP story.
+
 Useful surfaces exposed by the current CLI include:
 
 ```bash
@@ -85,6 +87,7 @@ Once the MCP and secret-injection model is understood, the app becomes safer to 
 ## Recommended Next Docs
 
 - [`agentic-local-workspaces.md`](agentic-local-workspaces.md)
+- [`../mcp-setup/gws-cli-machine-setup.md`](../mcp-setup/gws-cli-machine-setup.md)
 - [`../mcp-setup/google-workspace-agentic-clients.md`](../mcp-setup/google-workspace-agentic-clients.md)
 - [`../mcp-setup/microsoft-365-agentic-clients.md`](../mcp-setup/microsoft-365-agentic-clients.md)
 

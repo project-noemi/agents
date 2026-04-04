@@ -33,6 +33,8 @@ It also uses a documented user config file at `~/.codex/config.toml`.
 
 OpenAI's docs also document MCP setup from the CLI and note that the MCP configuration is shared between the CLI and IDE extension.
 
+If the immediate goal is Google Workspace on a real desktop or laptop, start with [`../mcp-setup/gws-cli-machine-setup.md`](../mcp-setup/gws-cli-machine-setup.md) before you build out a broader MCP story.
+
 ## Where The App Fits
 
 The Codex app is valuable when you want a friendlier local cockpit around the same project:
@@ -86,6 +88,7 @@ Unlike Gemini's Google Workspace extension path, the clean Codex story for Googl
 ## Recommended Next Docs
 
 - [`agentic-local-workspaces.md`](agentic-local-workspaces.md)
+- [`../mcp-setup/gws-cli-machine-setup.md`](../mcp-setup/gws-cli-machine-setup.md)
 - [`../mcp-setup/google-workspace-agentic-clients.md`](../mcp-setup/google-workspace-agentic-clients.md)
 - [`../mcp-setup/microsoft-365-agentic-clients.md`](../mcp-setup/microsoft-365-agentic-clients.md)
 

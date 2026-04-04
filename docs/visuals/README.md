@@ -1,6 +1,13 @@
 # NoeMI Visual Guides
 
-These visual guides are the fastest way to understand how Project NoeMI fits together.
+These visual guides are the fastest way to understand how Project NoeMI fits together and why an organization would use it in the first place.
+
+The underlying business promise is simple:
+
+- more output from the same team
+- better consistency in repeatable work
+- lower unit cost on first-pass operational tasks
+- stronger governance than ad-hoc AI experimentation
 
 They are intentionally split by purpose:
 

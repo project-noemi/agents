@@ -118,27 +118,47 @@ test('phase zero assessment kit separates security readiness from AI readiness a
 test('front-door docs frame NoeMI as productivity uplift rather than labor replacement', () => {
     const readme = read('README.md');
     const projectReference = read('docs/PROJECT_REFERENCE.md');
+    const visualsIndex = read('docs/visuals/README.md');
 
+    assert.match(readme, /higher throughput without growing headcount at the same rate/i);
+    assert.match(readme, /lower delivery cost/i);
+    assert.match(readme, /more consistent first-pass output/i);
     assert.match(readme, /increase output/i);
     assert.match(readme, /Virtual Workforce/i);
     assert.match(readme, /mass unemployment/i);
     assert.match(projectReference, /increasing the productivity of the active population/i);
+    assert.match(projectReference, /What organizations should expect from this model/i);
+    assert.match(projectReference, /lower unit cost on repetitive operational work/i);
+    assert.match(projectReference, /identify the first safe, worthwhile pilot/i);
     assert.match(projectReference, /Virtual Workforce model/i);
     assert.match(projectReference, /labor-displacement fear/i);
+    assert.match(visualsIndex, /lower unit cost on first-pass operational tasks/i);
 });
 
 test('Google Workspace docs separate Gemini CLI, generic MCP, and n8n setup paths', () => {
+    const gwsMachineSetup = read('docs/mcp-setup/gws-cli-machine-setup.md');
     const geminiQuickstart = read('docs/tool-usages/gemini-workspace-quickstart.md');
     const n8nQuickstart = read('docs/examples/n8n-google-workspace-quickstart.md');
     const genericGoogleSetup = read('docs/mcp-setup/google-workspace.md');
+    const clientGuide = read('docs/mcp-setup/google-workspace-agentic-clients.md');
     const matrix = read('docs/mcp-setup/google-n8n-credential-matrix.md');
 
+    assert.match(gwsMachineSetup, /gws auth setup/);
+    assert.match(gwsMachineSetup, /gws auth login -s drive,gmail,sheets/);
+    assert.match(gwsMachineSetup, /gws drive files list --params/);
+    assert.match(gwsMachineSetup, /gemini extensions install https:\/\/github\.com\/googleworkspace\/cli/);
+    assert.match(gwsMachineSetup, /not an officially supported Google product/i);
+    assert.match(gwsMachineSetup, /Claude Code/);
+    assert.match(gwsMachineSetup, /Codex/);
     assert.match(geminiQuickstart, /gemini extensions install https:\/\/github\.com\/gemini-cli-extensions\/workspace/);
     assert.match(geminiQuickstart, /does \*\*not\*\* use the generic `GOOGLE_CLIENT_ID`/);
+    assert.match(geminiQuickstart, /gws-cli-machine-setup\.md/);
     assert.match(n8nQuickstart, /uses \*\*n8n credentials\*\*, not the Gemini CLI Workspace extension/i);
     assert.match(genericGoogleSetup, /generic Google Workspace MCP server pattern/i);
     assert.match(genericGoogleSetup, /Gemini CLI with the official Workspace extension/i);
     assert.match(genericGoogleSetup, /n8n Google Workspace nodes/i);
+    assert.match(clientGuide, /Shared Local Foundation: `gws`/);
+    assert.match(clientGuide, /gws-cli-machine-setup\.md/);
     assert.match(matrix, /Gemini CLI \+ Workspace extension/);
     assert.match(matrix, /n8n Gmail \/ Docs \/ Drive \/ Sheets nodes/);
 });
@@ -155,8 +175,11 @@ test('local workspace docs explain CLI-first builder habits across Gemini, Claud
     assert.match(overview, /Accelerators/i);
     assert.match(overview, /CLI is usually the most durable source of truth/i);
     assert.match(google, /Antigravity/i);
+    assert.match(google, /gws-cli-machine-setup\.md/);
     assert.match(google, /gemini mcp add/);
+    assert.match(claude, /gws-cli-machine-setup\.md/);
     assert.match(claude, /claude mcp add/);
+    assert.match(codex, /gws-cli-machine-setup\.md/);
     assert.match(codex, /codex mcp add/);
     assert.match(googleClients, /Gemini CLI/);
     assert.match(googleClients, /Antigravity/);

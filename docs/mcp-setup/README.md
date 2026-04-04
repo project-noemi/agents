@@ -8,6 +8,7 @@ Developer-facing setup guides for configuring MCP (Model Context Protocol) integ
 
 | Guide | Covers | Protocol Files |
 |-------|--------|----------------|
+| [GWS CLI Machine Setup](gws-cli-machine-setup.md) | Beginner-proof local-machine installation of `gws` for Gemini CLI, Claude Code, and Codex | Cross-cutting guide |
 | [Google Workspace](google-workspace.md) | Gmail, Calendar, Chat, Contacts, Docs, Drive, Forms, Keep, Meet, Sheets, Slides, Admin | `mcp-protocols/gmail.md`, `mcp-protocols/google-calendar.md`, `mcp-protocols/google-chat.md`, `mcp-protocols/google-contacts.md`, `mcp-protocols/google-docs.md`, `mcp-protocols/google-drive.md`, `mcp-protocols/google-forms.md`, `mcp-protocols/google-keep.md`, `mcp-protocols/google-meet.md`, `mcp-protocols/google-sheets.md`, `mcp-protocols/google-slides.md`, `mcp-protocols/google-admin.md` |
 | [Google Workspace For Agentic Clients](google-workspace-agentic-clients.md) | How Gemini CLI, Antigravity, Codex, and Claude Code connect to Google Workspace | Cross-cutting guide |
 | [Google + n8n Credential Matrix](google-n8n-credential-matrix.md) | How Gemini CLI, generic Google MCP auth, n8n Google nodes, and n8n Gemini credentials differ | Cross-cutting guide |

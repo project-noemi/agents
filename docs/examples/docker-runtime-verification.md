@@ -25,7 +25,7 @@ You need:
 
 - Docker CLI
 - Docker Compose
-- Node.js
+- Node.js 24.x LTS or newer
 - enough local CPU, RAM, and disk to boot the example stacks
 
 Before the runtime tier, run the fast gate:

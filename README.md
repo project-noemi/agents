@@ -1,13 +1,15 @@
 # Project NoéMI — Reference Architecture & Agents Library
 
-Project NoéMI is the **public reference architecture** for NewPush's AI fluency and Virtual Workforce model, and the **agent specification library** that backs it. It defines AI agent personas, MCP (Model Context Protocol) integrations, governance frameworks, and Phase 0 security guidance as Markdown files. It is **not** a runtime or execution engine — external orchestrators like [Gemini CLI](https://github.com/google-gemini/gemini-cli), [n8n](https://n8n.io/), or [LangChain](https://www.langchain.com/) consume these specifications to execute tasks.
+Project NoéMI is the **public reference architecture** for NewPush's AI fluency and Virtual Workforce model, and the **agent specification library** that backs it. It defines AI agent personas, MCP (Model Context Protocol) integrations, governance frameworks, and Phase 0 security guidance as Markdown files. It is **not** a runtime or execution engine — external orchestrators like [Gemini CLI](https://github.com/google-gemini/gemini-cli), Claude Code, OpenAI Codex, [n8n](https://n8n.io/), or [LangChain](https://www.langchain.com/) consume these specifications to execute tasks.
 
 > **New here?** Start with the [**Project Reference**](docs/PROJECT_REFERENCE.md) — the comprehensive public guide to NoéMI's philosophy, framework, curriculum, and technology stack.
+
+> **Need the fastest orientation?** Start with the [**Visual Guides**](docs/visuals/README.md) for the system map, audience path, runtime flow, and workshop mind map.
 
 **Audience paths:**
 - **Client / Buyer:** [Project Reference](docs/PROJECT_REFERENCE.md) → [Phase 0 Security Baseline](docs/PHASE_ZERO_SECURITY_BASELINE.md) → [Phase 0 Assessment Kit](docs/phase-zero-assessment/README.md)
 - **MSP / MSSP:** [Project Reference](docs/PROJECT_REFERENCE.md) → [MSP Deployment Guide](docs/examples/msp-deployment.md) → [Fleet / governance docs](docs/agents/operations/)
-- **Builder / Accelerator:** [Project Reference](docs/PROJECT_REFERENCE.md) → [Secure Secret Management](docs/tool-usages/secure-secret-management.md) → [Builder First 30 Minutes](docs/examples/builder-first-30-minutes.md) → [Docker Agent Home](docs/examples/docker-agent-home.md) → [Orchestrator Runtime Contract](docs/tool-usages/orchestrator-runtime-contract.md)
+- **Builder / Accelerator:** [Project Reference](docs/PROJECT_REFERENCE.md) → [Secure Secret Management](docs/tool-usages/secure-secret-management.md) → [Agentic Local Workspaces](docs/tool-usages/agentic-local-workspaces.md) → [Google Local Workspace](docs/tool-usages/google-local-workspace.md), [Claude Code Local Workspace](docs/tool-usages/claude-code-local-workspace.md), or [OpenAI Codex Local Workspace](docs/tool-usages/openai-codex-local-workspace.md) → [Google Workspace For Agentic Clients](docs/mcp-setup/google-workspace-agentic-clients.md) or [Microsoft 365 For Agentic Clients](docs/mcp-setup/microsoft-365-agentic-clients.md) → [Value Lenses](docs/frameworks/value-lenses.md) → [Gemini Workspace Quickstart](docs/tool-usages/gemini-workspace-quickstart.md) or [n8n Google Workspace Quickstart](docs/examples/n8n-google-workspace-quickstart.md) → [Builder First 30 Minutes](docs/examples/builder-first-30-minutes.md) → [Docker Agent Home](docs/examples/docker-agent-home.md) → [Orchestrator Runtime Contract](docs/tool-usages/orchestrator-runtime-contract.md)
 
 ## Table of Contents
 
@@ -30,7 +32,7 @@ Project NoéMI is the **public reference architecture** for NewPush's AI fluency
 
 ## Quick Start
 
-**Prerequisites:** [Node.js](https://nodejs.org/) (v18+), [Docker](https://www.docker.com/), and a secret manager ([Infisical CLI](https://infisical.com/docs/cli/overview) or [1Password CLI](https://developer.1password.com/docs/cli/))
+**Prerequisites:** [Node.js](https://nodejs.org/) (24.x LTS recommended; 25+ supported), [Docker](https://www.docker.com/), and a secret manager ([Infisical CLI](https://infisical.com/docs/cli/overview) or [1Password CLI](https://developer.1password.com/docs/cli/))
 
 ```bash
 # 1. Clone the repository
@@ -71,7 +73,7 @@ When Docker smoke fails on a real host or in CI, inspect `test-artifacts/docker-
 |----------|------------|------------|
 | **Client / Buyer** | [`docs/PROJECT_REFERENCE.md`](docs/PROJECT_REFERENCE.md) | [`docs/PHASE_ZERO_SECURITY_BASELINE.md`](docs/PHASE_ZERO_SECURITY_BASELINE.md), [`docs/phase-zero-assessment/README.md`](docs/phase-zero-assessment/README.md) |
 | **MSP / MSSP** | [`docs/PROJECT_REFERENCE.md`](docs/PROJECT_REFERENCE.md) | [`docs/examples/msp-deployment.md`](docs/examples/msp-deployment.md), [`docs/agents/operations/`](docs/agents/operations/) |
-| **Builder / Accelerator** | [`docs/tool-usages/secure-secret-management.md`](docs/tool-usages/secure-secret-management.md) | [`docs/examples/builder-first-30-minutes.md`](docs/examples/builder-first-30-minutes.md), [`docs/examples/docker-agent-home.md`](docs/examples/docker-agent-home.md), [`docs/examples/docker-runtime-verification.md`](docs/examples/docker-runtime-verification.md), [`docs/tool-usages/orchestrator-runtime-contract.md`](docs/tool-usages/orchestrator-runtime-contract.md), [`docs/AGENT_TEMPLATE.md`](docs/AGENT_TEMPLATE.md) |
+| **Builder / Accelerator** | [`docs/tool-usages/secure-secret-management.md`](docs/tool-usages/secure-secret-management.md) | [`docs/tool-usages/agentic-local-workspaces.md`](docs/tool-usages/agentic-local-workspaces.md), [`docs/tool-usages/google-local-workspace.md`](docs/tool-usages/google-local-workspace.md), [`docs/tool-usages/claude-code-local-workspace.md`](docs/tool-usages/claude-code-local-workspace.md), [`docs/tool-usages/openai-codex-local-workspace.md`](docs/tool-usages/openai-codex-local-workspace.md), [`docs/mcp-setup/google-workspace-agentic-clients.md`](docs/mcp-setup/google-workspace-agentic-clients.md), [`docs/mcp-setup/microsoft-365-agentic-clients.md`](docs/mcp-setup/microsoft-365-agentic-clients.md), [`docs/tool-usages/gemini-workspace-quickstart.md`](docs/tool-usages/gemini-workspace-quickstart.md), [`docs/examples/n8n-google-workspace-quickstart.md`](docs/examples/n8n-google-workspace-quickstart.md), [`docs/mcp-setup/google-n8n-credential-matrix.md`](docs/mcp-setup/google-n8n-credential-matrix.md), [`docs/examples/builder-first-30-minutes.md`](docs/examples/builder-first-30-minutes.md), [`docs/examples/docker-agent-home.md`](docs/examples/docker-agent-home.md), [`docs/examples/docker-runtime-verification.md`](docs/examples/docker-runtime-verification.md), [`docs/tool-usages/orchestrator-runtime-contract.md`](docs/tool-usages/orchestrator-runtime-contract.md), [`docs/AGENT_TEMPLATE.md`](docs/AGENT_TEMPLATE.md) |
 
 ---
 
@@ -84,6 +86,9 @@ When Docker smoke fails on a real host or in CI, inspect `test-artifacts/docker-
 | MCP protocol definitions | `mcp-protocols/` | Behavioral rules for 16 tool integrations (Google Workspace, Slack, GitHub, n8n, etc.) |
 | Deployment examples | `examples/` | Docker Compose stacks, workflow templates, and testing suites |
 | Documentation | `docs/` | Framework docs, setup guides, agent-specific documentation |
+| Visual guides | `docs/visuals/` | Mermaid system maps, onboarding diagrams, and workshop-friendly mental models |
+| Operating profiles | `operating-profiles/` | Localized language, regional, and audience overlays for culturally grounded agent execution |
+| Value lenses | `value-lenses/` | Explicit success criteria and tradeoff overlays for comparing outcomes under different enterprise logics |
 | Build scripts | `scripts/` | Context generation, repo auditing, retry helpers, and environment verification |
 | Test harness | `tests/`, `package.json` | Built-in Node contract, golden fixture, example smoke, and Docker e2e tests |
 | Runtime diagnostics | `test-artifacts/docker-smoke/` | Failure artifacts emitted by Docker smoke verification on real hosts and in CI |
@@ -124,12 +129,16 @@ When Docker smoke fails on a real host or in CI, inspect `test-artifacts/docker-
 │   ├── GOVERNANCE.md                # AI TRiSM and Red Teaming protocols
 │   ├── PHASE_ZERO_SECURITY_BASELINE.md # Client-side cybersecurity grounding guide
 │   ├── REQUIREMENTS.md              # Project requirements and drift tracking
+│   ├── frameworks/                  # Meta-frameworks such as localized operating profiles and value lenses
+│   ├── visuals/                     # Visual system maps, runtime flows, and onboarding diagrams
 │   ├── phase-zero-assessment/       # Consent, findings, roadmap, and readiness kit
 │   ├── agents/                      # Per-agent documentation (mirrors agents/)
 │   ├── examples/                    # Deployment guides (MSP, RFP responder, etc.)
 │   ├── mcp-setup/                   # MCP infrastructure setup guides
-│   ├── lifecycle/                   # 4D Framework lifecycle documentation
-│   └── frameworks/                  # Gartner TRiSM reference
+│   └── lifecycle/                   # 4D Framework lifecycle documentation
+│
+├── operating-profiles/              # Localized workstyle overlays and templates
+├── value-lenses/                    # Explicit success-criteria overlays and templates
 │
 ├── examples/                        # Deployable examples
 │   ├── docker/                      # Docker sandbox with pgvector memory
@@ -238,7 +247,7 @@ For setup instructions, see [`docs/mcp-setup/`](docs/mcp-setup/).
 
 ### Context Generation Pipeline
 
-The core build step combines your agent specs and MCP protocols into context files that orchestrators consume. Two parallel pipelines exist — one for Gemini CLI and one for Claude Code:
+The core build step combines your agent specs and MCP protocols into context files that orchestrators consume. Two generated context pipelines exist today — one for Gemini CLI and one for Claude Code:
 
 ```
 {GEMINI,CLAUDE}.template.md + mcp.config.json + AGENTS.md
@@ -278,6 +287,9 @@ Open this repository in Claude Code. It reads `CLAUDE.md` as project instruction
 ```bash
 infisical run --env=dev -- gemini -p GEMINI.md "Analyze the server logs on web01"
 ```
+
+**OpenAI Codex** (local agentic workspace):
+Use the repo's `AGENTS.md`, `mcp-protocols/`, and the builder-facing docs in [`docs/tool-usages/agentic-local-workspaces.md`](docs/tool-usages/agentic-local-workspaces.md). Codex configuration lives in `~/.codex/config.toml`, while project-level app actions and setup scripts can live in `.codex/`.
 
 **n8n** (automated workflows):
 Import workflow templates from `examples/workflows/` into your n8n instance. The workflows reference agent personas and MCP integrations defined in this repository.
@@ -492,6 +504,7 @@ All documentation lives in `docs/`. Here's where to find what:
 | Phase 0 assessment kit | [`docs/phase-zero-assessment/README.md`](docs/phase-zero-assessment/README.md) |
 | Builder onboarding walkthrough | [`docs/examples/builder-first-30-minutes.md`](docs/examples/builder-first-30-minutes.md) |
 | Builder-facing Docker home guide | [`docs/examples/docker-agent-home.md`](docs/examples/docker-agent-home.md) |
+| Visual orientation maps | [`docs/visuals/README.md`](docs/visuals/README.md) |
 | How to create a new agent | [`docs/AGENT_TEMPLATE.md`](docs/AGENT_TEMPLATE.md) |
 | The 4D Framework methodology | [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) |
 | Governance and compliance | [`docs/GOVERNANCE.md`](docs/GOVERNANCE.md) |

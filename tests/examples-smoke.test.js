@@ -61,3 +61,121 @@ test('Docker Agent Home guide connects the current example topologies', () => {
     assert.match(guide, /examples\/gatekeeper-deployment/);
     assert.match(guide, /not a runtime or execution engine/i);
 });
+
+test('Google Workspace docs separate Gemini CLI, generic MCP, and n8n setup paths', () => {
+    const geminiQuickstart = read('docs/tool-usages/gemini-workspace-quickstart.md');
+    const n8nQuickstart = read('docs/examples/n8n-google-workspace-quickstart.md');
+    const genericGoogleSetup = read('docs/mcp-setup/google-workspace.md');
+    const matrix = read('docs/mcp-setup/google-n8n-credential-matrix.md');
+
+    assert.match(geminiQuickstart, /gemini extensions install https:\/\/github\.com\/gemini-cli-extensions\/workspace/);
+    assert.match(geminiQuickstart, /does \*\*not\*\* use the generic `GOOGLE_CLIENT_ID`/);
+    assert.match(n8nQuickstart, /uses \*\*n8n credentials\*\*, not the Gemini CLI Workspace extension/i);
+    assert.match(genericGoogleSetup, /generic Google Workspace MCP server pattern/i);
+    assert.match(genericGoogleSetup, /Gemini CLI with the official Workspace extension/i);
+    assert.match(genericGoogleSetup, /n8n Google Workspace nodes/i);
+    assert.match(matrix, /Gemini CLI \+ Workspace extension/);
+    assert.match(matrix, /n8n Gmail \/ Docs \/ Drive \/ Sheets nodes/);
+});
+
+test('local workspace docs explain CLI-first builder habits across Gemini, Claude, and Codex', () => {
+    const overview = read('docs/tool-usages/agentic-local-workspaces.md');
+    const google = read('docs/tool-usages/google-local-workspace.md');
+    const claude = read('docs/tool-usages/claude-code-local-workspace.md');
+    const codex = read('docs/tool-usages/openai-codex-local-workspace.md');
+    const googleClients = read('docs/mcp-setup/google-workspace-agentic-clients.md');
+    const microsoftClients = read('docs/mcp-setup/microsoft-365-agentic-clients.md');
+
+    assert.match(overview, /Builders \/ Practitioners/i);
+    assert.match(overview, /Accelerators/i);
+    assert.match(overview, /CLI is usually the most durable source of truth/i);
+    assert.match(google, /Antigravity/i);
+    assert.match(google, /gemini mcp add/);
+    assert.match(claude, /claude mcp add/);
+    assert.match(codex, /codex mcp add/);
+    assert.match(googleClients, /Gemini CLI/);
+    assert.match(googleClients, /Antigravity/);
+    assert.match(googleClients, /OpenAI Codex/);
+    assert.match(googleClients, /Claude Code app/);
+    assert.match(googleClients, /Claude Code CLI/);
+    assert.match(microsoftClients, /Microsoft 365, also commonly called Office 365/i);
+    assert.match(microsoftClients, /gemini mcp add microsoft365/);
+    assert.match(microsoftClients, /codex mcp add microsoft365/);
+    assert.match(microsoftClients, /claude mcp add microsoft365/);
+});
+
+test('localized operating profile docs separate culture from translation and guard against stereotypes', () => {
+    const framework = read('docs/frameworks/localized-operating-profiles.md');
+    const profilesReadme = read('operating-profiles/README.md');
+
+    assert.match(framework, /without collapsing everything into simple translation/i);
+    assert.match(framework, /language family/i);
+    assert.match(framework, /subregion or city cluster/i);
+    assert.match(framework, /inferred gender/i);
+    assert.match(profilesReadme, /culturally grounded execution/i);
+    assert.match(profilesReadme, /assumed identity/i);
+});
+
+test('value lens docs separate success logic from identity and define starter comparison lenses', () => {
+    const framework = read('docs/frameworks/value-lenses.md');
+    const lensesReadme = read('value-lenses/README.md');
+    const performance = read('value-lenses/performance-efficiency.md');
+    const care = read('value-lenses/care-continuity.md');
+    const balanced = read('value-lenses/balanced-enterprise.md');
+
+    assert.match(framework, /what counts as success here/i);
+    assert.match(framework, /should use \*\*neutral operational names\*\*/i);
+    assert.match(framework, /should never be silently inferred from gender or identity/i);
+    assert.match(framework, /Demographic Math[ée]sis/i);
+    assert.match(lensesReadme, /explicit success criteria and tradeoff logic/i);
+    assert.match(lensesReadme, /Comparison Mode/i);
+    assert.match(performance, /ROI/i);
+    assert.match(performance, /Demographic Debt/i);
+    assert.match(care, /Care Capital/i);
+    assert.match(care, /10-year horizon/i);
+    assert.match(balanced, /default/i);
+    assert.match(balanced, /Demographic Footprint/i);
+    assert.match(balanced, /business viability/i);
+});
+
+test('visual guides provide distinct views for structure, navigation, execution, and workshop exploration', () => {
+    const visualsIndex = read('docs/visuals/README.md');
+    const systemMap = read('docs/visuals/noemi-system-map.md');
+    const audienceMap = read('docs/visuals/noemi-audience-entry-map.md');
+    const runtimeFlow = read('docs/visuals/noemi-runtime-flow.md');
+    const mindMap = read('docs/visuals/noemi-workshop-mind-map.md');
+
+    assert.match(visualsIndex, /system map/i);
+    assert.match(visualsIndex, /audience entry map/i);
+    assert.match(visualsIndex, /runtime flow/i);
+    assert.match(visualsIndex, /mind map/i);
+    assert.match(systemMap, /Phase 0 Security/i);
+    assert.match(systemMap, /Value Lenses/i);
+    assert.match(audienceMap, /Client \/ Buyer/i);
+    assert.match(audienceMap, /Builder \/ Accelerator/i);
+    assert.match(runtimeFlow, /Guardian and Governance/i);
+    assert.match(runtimeFlow, /Audit and ROI/i);
+    assert.match(mindMap, /mindmap/);
+    assert.match(mindMap, /Virtual Workforce/i);
+});
+
+test('n8n guidance avoids invented helper APIs and documents the real runtime surface', () => {
+    const persona = read('docs/tool-usages/n8n-expert-persona.md');
+    const protocol = read('mcp-protocols/n8n.md');
+
+    assert.doesNotMatch(persona, /tools_documentation\(\)|validate_node\(|validate_workflow/);
+    assert.match(persona, /n8n editor or API/i);
+    assert.match(protocol, /Do Not Assume Hidden Helper Tools/);
+});
+
+test('RFP responder workflow uses the current Google Gemini node path', () => {
+    const workflow = JSON.parse(read('examples/workflows/rfp-responder.json'));
+    const workflowText = read('examples/workflows/rfp-responder.json');
+    const geminiNode = workflow.nodes.find((node) => node.name === 'Analyze Request (Gemini)');
+
+    assert.ok(geminiNode, 'Expected Analyze Request (Gemini) node to exist');
+    assert.equal(geminiNode.type, '@n8n/n8n-nodes-langchain.googleGemini');
+    assert.match(workflowText, /models\/gemini-2\.5-flash/);
+    assert.match(workflowText, /REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID/);
+    assert.doesNotMatch(workflowText, /@n8n\/n8n-nodes-langchain\.chainLlm/);
+});

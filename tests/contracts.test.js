@@ -96,9 +96,9 @@ test('repo exposes the value lens framework, starter lenses, and template', () =
     const readme = read('README.md');
     const framework = read('docs/frameworks/value-lenses.md');
     const template = read('value-lenses/LENS_TEMPLATE.md');
-    const competitiveness = read('value-lenses/competitiveness-output.md');
-    const care = read('value-lenses/care-demographic-vitality.md');
-    const mathesis = read('value-lenses/mathesis-integrative.md');
+    const performance = read('value-lenses/performance-efficiency.md');
+    const care = read('value-lenses/care-continuity.md');
+    const balanced = read('value-lenses/balanced-enterprise.md');
 
     assert.match(readme, /value-lenses\//);
     assert.match(framework, /neutral operational names/i);
@@ -109,9 +109,9 @@ test('repo exposes the value lens framework, starter lenses, and template', () =
     assert.match(template, /## Care Capital/);
     assert.match(template, /## Demographic Footprint/);
     assert.match(template, /## Failure Modes/);
-    assert.match(competitiveness, /Lens ID:\*\* `competitiveness-output`/);
-    assert.match(care, /Lens ID:\*\* `care-demographic-vitality`/);
-    assert.match(mathesis, /Lens ID:\*\* `mathesis-integrative`/);
+    assert.match(performance, /Lens ID:\*\* `performance-efficiency`/);
+    assert.match(care, /Lens ID:\*\* `care-continuity`/);
+    assert.match(balanced, /Lens ID:\*\* `balanced-enterprise`/);
 });
 
 test('repo exposes the visual guides and links them from the main entry docs', () => {

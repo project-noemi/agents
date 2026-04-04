@@ -28,6 +28,8 @@ Make the active value system explicit instead of leaving it hidden inside prompt
 
 This layer is where Project NoeMI integrates traditional business efficiency with the Demographic Mathésis view of long-term human sustainability.
 
+For public-facing docs, workshops, and onboarding, Project NoeMI uses the more intuitive lens names below because they are easier to explain quickly to a broad audience.
+
 ## Directory Pattern
 
 Recommended layout:
@@ -35,9 +37,9 @@ Recommended layout:
 ```text
 value-lenses/
 ├── LENS_TEMPLATE.md
-├── competitiveness-output.md
-├── care-demographic-vitality.md
-└── mathesis-integrative.md
+├── performance-efficiency.md
+├── care-continuity.md
+└── balanced-enterprise.md
 ```
 
 ## Authoring Rules
@@ -83,9 +85,9 @@ Comparison Mode should highlight:
 
 The repository starts with three baseline lenses:
 
-1. `competitiveness-output`
-2. `care-demographic-vitality`
-3. `mathesis-integrative`
+1. `performance-efficiency`
+2. `care-continuity`
+3. `balanced-enterprise`
 
 ## Template
 

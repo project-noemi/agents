@@ -1,18 +1,18 @@
-# Competitiveness-Output Value Lens
+# Performance-Efficiency Value Lens
 
 ## Lens Metadata
 
-- **Lens ID:** `competitiveness-output`
+- **Lens ID:** `performance-efficiency`
 - **Owner:** `TBD`
 - **Status:** `starter`
-- **Last Validated On:** `2026-04-03`
+- **Last Validated On:** `2026-04-04`
 - **Evidence Sources:** `enterprise operations, delivery management, market-facing performance governance`
 
 ## Purpose
 
 Optimize for ROI, speed, throughput, and market predictability.
 
-This lens is useful when the organization must improve visible output quickly and can justify short-cycle optimization with clear commercial evidence.
+This is the public-facing name for the competitiveness-focused logic inside the Value Lens framework.
 
 ## Core Success Question
 

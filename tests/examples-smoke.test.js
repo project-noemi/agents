@@ -119,9 +119,9 @@ test('localized operating profile docs separate culture from translation and gua
 test('value lens docs separate success logic from identity and define starter comparison lenses', () => {
     const framework = read('docs/frameworks/value-lenses.md');
     const lensesReadme = read('value-lenses/README.md');
-    const competitiveness = read('value-lenses/competitiveness-output.md');
-    const care = read('value-lenses/care-demographic-vitality.md');
-    const mathesis = read('value-lenses/mathesis-integrative.md');
+    const performance = read('value-lenses/performance-efficiency.md');
+    const care = read('value-lenses/care-continuity.md');
+    const balanced = read('value-lenses/balanced-enterprise.md');
 
     assert.match(framework, /what counts as success here/i);
     assert.match(framework, /should use \*\*neutral operational names\*\*/i);
@@ -129,13 +129,13 @@ test('value lens docs separate success logic from identity and define starter co
     assert.match(framework, /Demographic Math[ée]sis/i);
     assert.match(lensesReadme, /explicit success criteria and tradeoff logic/i);
     assert.match(lensesReadme, /Comparison Mode/i);
-    assert.match(competitiveness, /ROI/i);
-    assert.match(competitiveness, /Demographic Debt/i);
+    assert.match(performance, /ROI/i);
+    assert.match(performance, /Demographic Debt/i);
     assert.match(care, /Care Capital/i);
     assert.match(care, /10-year horizon/i);
-    assert.match(mathesis, /default lens/i);
-    assert.match(mathesis, /Demographic Footprint/i);
-    assert.match(mathesis, /competitiveness and care/i);
+    assert.match(balanced, /default/i);
+    assert.match(balanced, /Demographic Footprint/i);
+    assert.match(balanced, /business viability/i);
 });
 
 test('visual guides provide distinct views for structure, navigation, execution, and workshop exploration', () => {

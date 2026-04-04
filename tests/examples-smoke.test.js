@@ -88,6 +88,45 @@ test('secret management guide leads beginners through a local-first choice betwe
     assert.match(guide, /machine identities/i);
 });
 
+test('phase zero assessment kit separates security readiness from AI readiness and speaks in business-value terms', () => {
+    const kit = read('docs/phase-zero-assessment/README.md');
+    const security = read('docs/phase-zero-assessment/security-assessment.md');
+    const readiness = read('docs/phase-zero-assessment/ai-readiness-assessment.md');
+    const report = read('docs/phase-zero-assessment/report-template.md');
+    const rubric = read('docs/phase-zero-assessment/readiness-rubric.md');
+    const roadmap = read('docs/phase-zero-assessment/roadmap-template.md');
+
+    assert.match(kit, /Security Assessment/);
+    assert.match(kit, /AI Readiness Assessment/);
+    assert.match(kit, /can we do this safely/i);
+    assert.match(kit, /can we do this in a way that creates real business value/i);
+    assert.match(security, /Can we begin this AI initiative safely/i);
+    assert.match(security, /business owner/i);
+    assert.match(readiness, /real business value/i);
+    assert.match(readiness, /manage AI doing the task/i);
+    assert.match(readiness, /more output/i);
+    assert.match(readiness, /lower unit cost/i);
+    assert.match(report, /Security readiness:/);
+    assert.match(report, /AI readiness:/);
+    assert.match(report, /Role Uplift And Operating Model Recommendation/);
+    assert.match(rubric, /Overall recommendation:/);
+    assert.match(rubric, /First pilot recommendation:/);
+    assert.match(roadmap, /Security Track/);
+    assert.match(roadmap, /AI Readiness Track/);
+});
+
+test('front-door docs frame NoeMI as productivity uplift rather than labor replacement', () => {
+    const readme = read('README.md');
+    const projectReference = read('docs/PROJECT_REFERENCE.md');
+
+    assert.match(readme, /increase output/i);
+    assert.match(readme, /Virtual Workforce/i);
+    assert.match(readme, /mass unemployment/i);
+    assert.match(projectReference, /increasing the productivity of the active population/i);
+    assert.match(projectReference, /Virtual Workforce model/i);
+    assert.match(projectReference, /labor-displacement fear/i);
+});
+
 test('Google Workspace docs separate Gemini CLI, generic MCP, and n8n setup paths', () => {
     const geminiQuickstart = read('docs/tool-usages/gemini-workspace-quickstart.md');
     const n8nQuickstart = read('docs/examples/n8n-google-workspace-quickstart.md');

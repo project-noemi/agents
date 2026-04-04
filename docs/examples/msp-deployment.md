@@ -11,7 +11,12 @@ NoéMI is a specification library — not a runtime. This makes it well-suited f
 - **Orchestration is external** — the MSP chooses the execution engine (Gemini CLI, n8n, LangChain) per client need
 - **Governance is built in** — AI TRiSM, red team gauntlets, and the 4D Framework apply uniformly across tenants
 
-Before onboarding a client into an AI workflow, establish their Phase 0 baseline first. Use the client-side guide at [`../PHASE_ZERO_SECURITY_BASELINE.md`](../PHASE_ZERO_SECURITY_BASELINE.md) and the reusable templates in [`../phase-zero-assessment/`](../phase-zero-assessment/) to document the minimum security posture, readiness gates, and remediation plan.
+Before onboarding a client into an AI workflow, establish their Phase 0 initial assessment first. Use the client-side guide at [`../PHASE_ZERO_SECURITY_BASELINE.md`](../PHASE_ZERO_SECURITY_BASELINE.md) and the reusable templates in [`../phase-zero-assessment/`](../phase-zero-assessment/) to document both:
+
+- the minimum **security posture** required to begin safely
+- the minimum **AI readiness** required to produce real business value
+
+That gives the MSP a grounded basis for readiness gates, first-pilot selection, and remediation planning.
 When you operationalize tenants, pair this guide with the orchestrator runtime expectations in [`../tool-usages/orchestrator-runtime-contract.md`](../tool-usages/orchestrator-runtime-contract.md) so identity, approval boundaries, logging, and retry handling remain consistent across clients.
 
 ## Architecture
@@ -155,7 +160,7 @@ The Fleet Dashboard aggregates reports across all client tenants. Use the three-
 
 ## Getting Started
 
-1. **Baseline the client** — Complete the Phase 0 baseline and document whether the client is `ready now`, `ready with guardrails`, or `not ready yet`
+1. **Assess the client** — Complete the two-track Phase 0 initial assessment and document security readiness, AI readiness, and the overall recommendation
 2. **Fork client configs** — Create `clients/{client-id}/mcp.config.json` from the base config
 3. **Provision vault** — Set up the client's vault compartment with required credentials
 4. **Select tier** — Enable the appropriate agents and MCPs

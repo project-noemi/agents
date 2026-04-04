@@ -22,10 +22,11 @@ It is not a runtime or execution engine. External orchestrators such as Gemini C
 - The repository must present **Phase 0 security** as the prerequisite for serious AI adoption.
 - Client and buyer navigation must reach [`PHASE_ZERO_SECURITY_BASELINE.md`](PHASE_ZERO_SECURITY_BASELINE.md) directly from the top-level experience.
 - The public documentation must include a reusable **Phase 0 Assessment Kit** with:
+  - separate security and AI readiness assessment guides
   - consent template
   - report-of-findings template
   - 30/60/90-day roadmap template
-  - readiness rubric (`ready now`, `ready with guardrails`, `not ready yet`)
+  - readiness rubric covering security readiness, AI readiness, and the overall recommendation
 
 ### 2. Persona Contract Is Mandatory
 

@@ -1,23 +1,43 @@
-# Phase 0 Report of Findings Template
+# Phase 0 Initial Assessment Report Template
 
 ## 1. Executive Summary
 
 - **Client:**
 - **Assessment date:**
 - **Planned AI initiative:**
-- **Overall readiness:** `ready now` | `ready with guardrails` | `not ready yet`
-- **Top risks:**
+- **Security readiness:** `ready now` | `ready with guardrails` | `not ready yet`
+- **AI readiness:** `ready now` | `ready with guardrails` | `not ready yet`
+- **Overall recommendation:** proceed | proceed with guardrails | pause for remediation
+- **Top security risks:**
+- **Top AI-readiness gaps:**
 - **Immediate recommendation:**
 
-## 2. Scope and Evidence Sources
+## 2. Business Context And Value Thesis
 
-- Stakeholders interviewed
-- Documents reviewed
-- Systems and services reviewed
-- Validation methods used
-- Constraints or exclusions that may affect confidence
+- **Business owner:**
+- **Target workflow:**
+- **Why this workflow matters now:**
+- **Current manual pain:**
+- **Expected business gain if improved:**
+- **Likely first pilot candidate:**
 
-## 3. Findings
+### Baseline Metrics To Capture
+
+- current volume
+- current turnaround time
+- current human effort
+- current rework or error rate
+- current approval points
+
+## 3. Scope And Evidence Sources
+
+- stakeholders interviewed
+- documents reviewed
+- systems and services reviewed
+- validation methods used
+- constraints or exclusions that may affect confidence
+
+## 4. Security Assessment Findings
 
 For each finding:
 
@@ -30,7 +50,19 @@ For each finding:
 - **Recommended action**
 - **Owner**
 
-## 4. Readiness by Control Area
+## 5. AI Readiness Assessment Findings
+
+For each finding:
+
+- **Title**
+- **Severity:** High | Moderate | Low
+- **Observation**
+- **Business impact**
+- **Why it matters for value realization**
+- **Recommended action**
+- **Owner**
+
+## 6. Security Readiness By Control Area
 
 | Area | Status | Notes |
 |------|--------|-------|
@@ -44,12 +76,47 @@ For each finding:
 | Third-party / vendor risk | | |
 | Incident response and governance | | |
 
-## 5. Go / No-Go Guidance
+## 7. AI Readiness By Operating Area
 
-- **Safe to proceed now**
-- **Safe to proceed only with guardrails**
-- **Must be remediated before launch**
+| Area | Status | Notes |
+|------|--------|-------|
+| Use-case clarity and ownership | | |
+| Process stability and repeatability | | |
+| Data and knowledge readiness | | |
+| Human approval and escalation design | | |
+| Workforce uplift and role redesign | | |
+| Tooling and integration practicality | | |
+| Change readiness and sponsorship | | |
+| Metrics and ROI baseline | | |
 
-## 6. Next-Step Roadmap
+## 8. Role Uplift And Operating Model Recommendation
+
+- **Current human role shape:**
+- **Recommended AI role in the workflow:**
+- **Recommended human role after AI enters the loop:**
+- **Approval boundary:**
+- **Exception-handling owner:**
+
+Use this section to explain the NoeMI shift clearly:
+
+- what work remains human
+- what work AI should perform first
+- how the team moves from doing the work manually to managing AI doing the first-pass work
+
+## 9. Go / Pilot / No-Go Guidance
+
+### Safe To Proceed Now
+
+- |
+
+### Safe To Proceed Only With Guardrails
+
+- |
+
+### Must Be Remediated Before Launch
+
+- |
+
+## 10. Next-Step Roadmap
 
 Reference [roadmap-template.md](roadmap-template.md) and tailor it to the client.

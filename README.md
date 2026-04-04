@@ -2,6 +2,8 @@
 
 Project NoéMI is the **public reference architecture** for NewPush's AI fluency and Virtual Workforce model, and the **agent specification library** that backs it. It defines AI agent personas, MCP (Model Context Protocol) integrations, governance frameworks, and Phase 0 security guidance as Markdown files. It is **not** a runtime or execution engine — external orchestrators like [Gemini CLI](https://github.com/google-gemini/gemini-cli), Claude Code, OpenAI Codex, [n8n](https://n8n.io/), or [LangChain](https://www.langchain.com/) consume these specifications to execute tasks.
 
+The goal of Project NoéMI is not to accelerate a replacement narrative around AI. The goal is to help businesses and enterprises raise the productivity of the active workforce by teaching people how to govern AI doing repeatable first-pass work, so organizations can increase output, improve consistency, and lower delivery cost **without** treating mass unemployment as the strategy. In NoéMI terms, this is the move from people doing every task themselves to people managing a governed **Virtual Workforce** of AI agents.
+
 > **New here?** Start with the [**Project Reference**](docs/PROJECT_REFERENCE.md) — the comprehensive public guide to NoéMI's philosophy, framework, curriculum, and technology stack.
 
 > **Need the fastest orientation?** Start with the [**Visual Guides**](docs/visuals/README.md) for the system map, audience path, runtime flow, and workshop mind map.

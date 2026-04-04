@@ -1,18 +1,18 @@
-# Mathesis-Integrative Value Lens
+# Balanced-Enterprise Value Lens
 
 ## Lens Metadata
 
-- **Lens ID:** `mathesis-integrative`
+- **Lens ID:** `balanced-enterprise`
 - **Owner:** `TBD`
 - **Status:** `default`
-- **Last Validated On:** `2026-04-03`
+- **Last Validated On:** `2026-04-04`
 - **Evidence Sources:** `enterprise governance, demographic Mathésis framing, operational sustainability practice`
 
 ## Purpose
 
-Optimize for the mathematical equilibrium between competitiveness and care.
+Optimize for practical business viability without degrading the human system that must sustain the result.
 
-This is the default lens for Project NoeMI. It seeks practical business viability without degrading the human system that must sustain the result.
+This is the public-facing default name for the integrative Mathésis logic inside the Value Lens framework.
 
 ## Core Success Question
 

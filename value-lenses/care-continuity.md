@@ -1,18 +1,18 @@
-# Care-Demographic-Vitality Value Lens
+# Care-Continuity Value Lens
 
 ## Lens Metadata
 
-- **Lens ID:** `care-demographic-vitality`
+- **Lens ID:** `care-continuity`
 - **Owner:** `TBD`
 - **Status:** `starter`
-- **Last Validated On:** `2026-04-03`
+- **Last Validated On:** `2026-04-04`
 - **Evidence Sources:** `care ethics, demographic sustainability research, continuity-focused operating design`
 
 ## Purpose
 
 Optimize for relational health, system habitability, and long-term human viability.
 
-This lens is designed to surface whether an apparently successful action actually supports or depletes the human ecosystem that must continue sustaining the organization.
+This is the public-facing name for the care-and-demographic-vitality logic inside the Value Lens framework.
 
 ## Core Success Question
 

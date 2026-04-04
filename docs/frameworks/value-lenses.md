@@ -70,7 +70,9 @@ That means the implementation can preserve the conceptual distinction without sa
 
 ## Recommended Starter Lenses
 
-### 1. Competitiveness-Output Lens
+These are the public-facing lens names used throughout the repository because they are clearer and more marketable for broad audiences, while still carrying the deeper Demographic Mathésis framework underneath.
+
+### 1. Performance-Efficiency Lens
 
 Optimizes for:
 
@@ -84,7 +86,7 @@ Blind spot:
 
 - high risk of demographic debt and erosion of trust networks
 
-### 2. Care-Demographic-Vitality Lens
+### 2. Care-Continuity Lens
 
 Optimizes for:
 
@@ -98,7 +100,7 @@ Core question:
 
 - does this action support or deplete the human ecosystem over a 10-year horizon?
 
-### 3. Mathesis-Integrative Lens
+### 3. Balanced-Enterprise Lens
 
 Optimizes for:
 
@@ -137,9 +139,9 @@ Default rule:
 value-lenses/
 ├── README.md
 ├── LENS_TEMPLATE.md
-├── competitiveness-output.md
-├── care-demographic-vitality.md
-└── mathesis-integrative.md
+├── performance-efficiency.md
+├── care-continuity.md
+└── balanced-enterprise.md
 ```
 
 ## Activation Model
@@ -159,7 +161,7 @@ The value lens should refine the definition of success, not replace the role.
 - the lens should be human-selected for high-stakes work
 - the lens should never be silently inferred from gender or identity
 - if no lens is chosen, default to a documented enterprise baseline
-- the default baseline for this repository is `mathesis-integrative`
+- the default baseline for this repository is `balanced-enterprise`
 
 ## Comparison Mode
 

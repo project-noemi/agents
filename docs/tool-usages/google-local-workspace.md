@@ -7,6 +7,8 @@ This guide explains the Google stack as a **local agentic workspace**:
 
 For NoeMI, the key idea is simple: Antigravity makes the experience friendlier, but Gemini CLI is still the layer that teaches durable builder habits.
 
+If your actual problem is "how do I get Google Workspace working on this machine for Gemini, Claude, and Codex without losing my mind?", start with [`../mcp-setup/gws-cli-machine-setup.md`](../mcp-setup/gws-cli-machine-setup.md).
+
 ## What This Stack Is Good At
 
 - Google Workspace-heavy day-to-day work
@@ -58,6 +60,7 @@ gemini extensions install https://github.com/gemini-cli-extensions/workspace
 ```
 
 See [`gemini-workspace-quickstart.md`](gemini-workspace-quickstart.md) for the Google-first path.
+If you want one shared local Google Workspace substrate across Gemini, Claude, and Codex, use [`../mcp-setup/gws-cli-machine-setup.md`](../mcp-setup/gws-cli-machine-setup.md).
 
 ### 2. Add MCP Servers When You Need Non-Google Systems
 
@@ -98,6 +101,7 @@ Once Gemini CLI, extensions, and any MCP server launches are understood, Antigra
 ## Recommended Next Docs
 
 - [`agentic-local-workspaces.md`](agentic-local-workspaces.md)
+- [`../mcp-setup/gws-cli-machine-setup.md`](../mcp-setup/gws-cli-machine-setup.md)
 - [`gemini-workspace-quickstart.md`](gemini-workspace-quickstart.md)
 - [`../mcp-setup/google-workspace-agentic-clients.md`](../mcp-setup/google-workspace-agentic-clients.md)
 - [`../mcp-setup/microsoft-365-agentic-clients.md`](../mcp-setup/microsoft-365-agentic-clients.md)

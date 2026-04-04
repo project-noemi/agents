@@ -8,6 +8,16 @@ This document is the canonical public reference for Project NoéMI. It introduce
 
 At the highest level, NoéMI exists to help organizations respond to AI by increasing the productivity of the active population, not by normalizing a story of mass unemployment. The program teaches businesses how to redesign work so AI handles governed, repeatable first-pass tasks while people move upward into review, exception handling, decision-making, and governance. The intended result is a surge in output, resilience, and economic usefulness through a **Virtual Workforce** model, not a simplistic replacement model.
 
+**What organizations should expect from this model:**
+
+- more throughput from the same team
+- lower unit cost on repetitive operational work
+- more consistent drafts, classifications, and first-pass decisions
+- less skilled human time lost to low-leverage repetition
+- stronger governance, auditability, and security around AI-enabled workflows
+
+That is the practical promise of NoéMI: not "use AI because it is trendy," but build the ability to manage AI doing bounded work so the organization produces more, with better control, and with less wasted human effort.
+
 Readers who want the fastest structural overview should start with the visual set in [`docs/visuals/`](visuals/).
 
 ---
@@ -39,6 +49,14 @@ Project NoéMI is a **global AI fluency accelerator program** delivered by **New
 It is **not** a generic "prompt engineering" course. It is an enterprise AI transformation program that begins with cybersecurity (Phase 0 Security) and ends with certified, production-ready AI workflows governed by trained human leaders.
 
 Its strategic aim is to help enterprises convert AI from a labor-displacement fear into a productivity system. In practice, that means enabling teams to produce more with the same people, shift skilled staff away from repetitive execution, and build the managerial capability to supervise AI doing bounded operational work.
+
+The expected business outcomes are concrete:
+
+- identify the first safe, worthwhile pilot
+- improve cycle time and throughput on targeted workflows
+- reduce the labor intensity of repetitive first-pass work
+- preserve human control over approvals, exceptions, and sensitive decisions
+- create the conditions for measurable ROI instead of endless experimentation
 
 **Key facts:**
 

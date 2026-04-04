@@ -56,7 +56,9 @@ test('builder-facing docs point to the Docker Agent Home path', () => {
     assert.match(readme, /docs\/examples\/docker-agent-home\.md/);
     assert.match(readme, /npm run validate/);
     assert.match(readme, /verify-env\.sh --mode=builder/);
+    assert.match(readme, /What value organizations should expect/i);
     assert.match(readme, /productivity of the active workforce/i);
+    assert.match(readme, /more output, better consistency, and lower unit cost/i);
     assert.match(readme, /mass unemployment as the strategy/i);
 });
 
@@ -75,9 +77,11 @@ test('builder-facing docs expose the split Google Workspace implementation paths
     const readme = read('README.md');
     const mcpSetupIndex = read('docs/mcp-setup/README.md');
 
+    assert.match(readme, /docs\/mcp-setup\/gws-cli-machine-setup\.md/);
     assert.match(readme, /docs\/tool-usages\/gemini-workspace-quickstart\.md/);
     assert.match(readme, /docs\/examples\/n8n-google-workspace-quickstart\.md/);
     assert.match(readme, /docs\/mcp-setup\/google-n8n-credential-matrix\.md/);
+    assert.match(mcpSetupIndex, /gws-cli-machine-setup\.md/);
     assert.match(mcpSetupIndex, /google-n8n-credential-matrix\.md/);
 });
 
@@ -141,6 +145,7 @@ test('repo exposes the visual guides and links them from the main entry docs', (
     assert.match(readme, /docs\/visuals\/README\.md/);
     assert.match(projectReference, /docs\/visuals\//);
     assert.match(visualsIndex, /noemi-system-map\.md/);
+    assert.match(visualsIndex, /more output from the same team/i);
     assert.match(systemMap, /```mermaid/);
     assert.match(audienceMap, /```mermaid/);
     assert.match(runtimeFlow, /```mermaid/);

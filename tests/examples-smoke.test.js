@@ -60,6 +60,32 @@ test('Docker Agent Home guide connects the current example topologies', () => {
     assert.match(guide, /examples\/fleet-deployment/);
     assert.match(guide, /examples\/gatekeeper-deployment/);
     assert.match(guide, /not a runtime or execution engine/i);
+    assert.match(guide, /zero-to-first-agent\.md/);
+    assert.match(guide, /node:24-alpine/);
+});
+
+test('beginner builder docs start with a safe local success before Docker', () => {
+    const beginnerGuide = read('docs/examples/zero-to-first-agent.md');
+    const builderGuide = read('docs/examples/builder-first-30-minutes.md');
+    const readme = read('README.md');
+
+    assert.match(beginnerGuide, /read-only AI task against local repository content/i);
+    assert.match(beginnerGuide, /does \*\*not\*\* require Docker/i);
+    assert.match(beginnerGuide, /engineering agents in this repository/i);
+    assert.match(beginnerGuide, /human approval before external action/i);
+    assert.match(builderGuide, /phase-two Docker path/i);
+    assert.match(builderGuide, /verify-env\.sh --mode=docker/);
+    assert.doesNotMatch(readme, /List all open PRs in our org/);
+});
+
+test('secret management guide leads beginners through a local-first choice between Infisical and 1Password', () => {
+    const guide = read('docs/tool-usages/secure-secret-management.md');
+
+    assert.match(guide, /Beginner Quick Path: Local First/);
+    assert.match(guide, /Infisical/);
+    assert.match(guide, /1Password CLI/);
+    assert.match(guide, /repo-only, read-only tasks can start without secrets/i);
+    assert.match(guide, /machine identities/i);
 });
 
 test('Google Workspace docs separate Gemini CLI, generic MCP, and n8n setup paths', () => {

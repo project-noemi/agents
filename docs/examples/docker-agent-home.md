@@ -4,7 +4,8 @@ This guide explains how to use Docker to build a **home for agents** around Proj
 
 Project NoeMI is **not a runtime or execution engine**. It provides the personas, governance, skills, MCP rules, and reference examples that a runtime consumes. A Docker-based "agent home" is the environment you build around those assets so agents can live somewhere consistent, observable, and secure.
 
-If you want the shortest guided path before you read the deeper topology discussion here, start with [`builder-first-30-minutes.md`](builder-first-30-minutes.md).
+If you are brand new to AI implementation, start with [`zero-to-first-agent.md`](zero-to-first-agent.md) first.
+If you already have a first local success and want the shortest guided Docker path, start with [`builder-first-30-minutes.md`](builder-first-30-minutes.md).
 For the runtime validation path that proves these homes actually boot on a Docker-capable host, see [`docker-runtime-verification.md`](docker-runtime-verification.md).
 
 ## What an Agent Home Includes
@@ -114,7 +115,7 @@ version: "3.8"
 
 services:
   agent-runtime:
-    image: node:20-alpine
+    image: node:24-alpine
     command: ["sh", "-lc", "sleep infinity"]
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
@@ -149,11 +150,12 @@ If you are unsure, start with the secure secret pattern, then the local builder 
 
 ## Suggested Builder Path
 
-1. Read [`../tool-usages/secure-secret-management.md`](../tool-usages/secure-secret-management.md)
-2. Generate context with `node scripts/generate_all.js`
-3. Validate the repo with `npm run validate`
-4. Start with [`../../examples/docker/`](../../examples/docker/)
-5. Move to [`../../examples/fleet-deployment/`](../../examples/fleet-deployment/) when you need a real operator home
+1. Read [`zero-to-first-agent.md`](zero-to-first-agent.md)
+2. Read [`../tool-usages/secure-secret-management.md`](../tool-usages/secure-secret-management.md)
+3. Generate context with `node scripts/generate_all.js`
+4. Validate the repo with `npm run validate`
+5. Start with [`../../examples/docker/`](../../examples/docker/)
+6. Move to [`../../examples/fleet-deployment/`](../../examples/fleet-deployment/) when you need a real operator home
 
 If the runtime smoke tier fails on a real host, inspect `test-artifacts/docker-smoke/` locally or the `docker-smoke-diagnostics` artifact in GitHub Actions.
 

@@ -109,15 +109,17 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 
 ### 10. Docker Guidance Must Describe the Home, Not a Fake Runtime
 
+- The builder path must include a beginner-safe onboarding guide that gets a new user from clone to one harmless local success before Docker becomes mandatory.
 - The builder path must include a Docker-oriented guide that explains how to build a home around the repo's assets without misrepresenting the repository as a runtime product.
 - That guide must connect the current local, fleet, and specialist Docker examples into one coherent progression.
-- The builder path must also include a short onboarding walkthrough that chains environment verification, context generation, validation, and initial Docker launch.
+- The builder path must also include a short Docker onboarding walkthrough that chains environment verification, context generation, validation, and initial Docker launch after the first local success.
 
 ## Runtime and Tooling Requirements
 
 - Node.js is the primary runtime for repository utilities and generation scripts.
 - The built-in Node test runner is the primary validation framework for repository contracts and smoke tests.
-- Docker, Git, and Gemini CLI remain part of the documented local toolchain.
+- Git, Node.js, and at least one supported local AI client (Gemini CLI, Claude Code CLI, or OpenAI Codex) remain part of the documented beginner toolchain.
+- Docker becomes part of the documented toolchain when a builder moves into runtime homes or Docker verification.
 - Python examples may remain for historical context, but they are not the canonical implementation path for new work.
 
 ## Current Known Limitations

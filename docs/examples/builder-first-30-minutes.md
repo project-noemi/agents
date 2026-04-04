@@ -1,6 +1,8 @@
 # Builder First 30 Minutes
 
-This walkthrough is the fastest safe path for a builder or accelerator who wants to move from clone to a working Docker-based agent home.
+This walkthrough is the fastest safe path from a **first local success** to a working Docker-based agent home.
+
+If you are completely new to AI implementation, start with [`zero-to-first-agent.md`](zero-to-first-agent.md) first. That guide gets you through the first harmless, read-only local task. This guide is the **phase-two Docker path**.
 
 It does not turn Project NoeMI into a runtime engine. It shows how to validate the reference architecture, generate the current agent context, and launch one local Docker home around those assets.
 
@@ -8,27 +10,26 @@ It does not turn Project NoeMI into a runtime engine. It shows how to validate t
 
 Read these guides first:
 
-1. [`../tool-usages/secure-secret-management.md`](../tool-usages/secure-secret-management.md)
-2. [`docker-agent-home.md`](docker-agent-home.md)
-3. [`../tool-usages/orchestrator-runtime-contract.md`](../tool-usages/orchestrator-runtime-contract.md)
-4. Read the local-workspace overview:
-   [`../tool-usages/agentic-local-workspaces.md`](../tool-usages/agentic-local-workspaces.md)
-5. Choose one implementation path:
+1. [`zero-to-first-agent.md`](zero-to-first-agent.md)
+2. [`../tool-usages/secure-secret-management.md`](../tool-usages/secure-secret-management.md)
+3. [`docker-agent-home.md`](docker-agent-home.md)
+4. [`../tool-usages/orchestrator-runtime-contract.md`](../tool-usages/orchestrator-runtime-contract.md)
+5. choose one implementation path:
    [`../tool-usages/gemini-workspace-quickstart.md`](../tool-usages/gemini-workspace-quickstart.md) for human-led Gemini CLI work or [`n8n-google-workspace-quickstart.md`](n8n-google-workspace-quickstart.md) for event-driven automation
 
 Those explain the security contract, the shape of the Docker home you are about to launch, and the runtime responsibilities your orchestrator must own.
 
-## Step 1: Verify the Local Toolchain
+## Step 1: Verify The Docker Toolchain
 
 From the repository root:
 
 ```bash
-bash scripts/verify-env.sh
+bash scripts/verify-env.sh --mode=docker
 ```
 
-This checks the core local prerequisites and reminds you that secrets must come from `op run` or `infisical run`, not local plaintext env files.
+This checks the Docker-oriented path without pretending Docker was required for the very first beginner task.
 
-## Step 2: Generate the Current Agent Context
+## Step 2: Generate The Current Agent Context
 
 ```bash
 node scripts/generate_all.js
@@ -47,7 +48,7 @@ Run this any time you change:
 - `mcp.config.json`
 - `AGENTS.md`
 
-## Step 3: Validate the Repository Contracts
+## Step 3: Validate The Repository Contracts
 
 ```bash
 npm run validate
@@ -67,7 +68,7 @@ If you intentionally changed generated sections, refresh the golden fixtures wit
 npm run test:update-fixtures
 ```
 
-## Step 4: Run Docker Smoke Validation When Docker Is Available
+## Step 4: Run Docker Smoke Validation
 
 ```bash
 npm run test:e2e
@@ -82,7 +83,7 @@ This is the slower runtime tier. It attempts to bring up the current Docker home
 If Docker is not installed in your environment, the e2e suite skips cleanly.
 If it fails on a Docker-capable host, inspect `test-artifacts/docker-smoke/` or follow the deeper playbook in [`docker-runtime-verification.md`](docker-runtime-verification.md).
 
-## Step 5: Launch the Local Builder Home
+## Step 5: Launch The Local Builder Home
 
 Start with the smallest Docker home:
 
@@ -92,13 +93,6 @@ cat .env.example
 op run --env-file=.env.example -- docker compose up -d --build
 ```
 
-Then enter the runtime container:
-
-```bash
-docker exec -it noemi-agent-runtime bash
-python agent.py
-```
-
 This gives you:
 
 - one runtime container
@@ -106,17 +100,32 @@ This gives you:
 - vault-injected secrets
 - a safe place to experiment without inventing your own topology first
 
-## Step 6: Try the Generated Context with an Orchestrator
-
-Back at the repository root:
+If you want to inspect the container directly:
 
 ```bash
-infisical run --env=dev -- gemini -p GEMINI.md "List the engineering agents in this repository"
+docker exec -it noemi-agent-runtime bash
 ```
 
-That confirms the generated context and orchestrator path are both usable.
+The historical Python sample inside this sandbox is optional and illustrative. The main goal here is to prove the home shape, secret injection, and container wiring.
 
-## Step 7: Choose the Next Home
+## Step 6: Try The Generated Context With An Orchestrator
+
+Back at the repository root, use a safe local task again:
+
+```bash
+gemini -p GEMINI.md "List the engineering agents in this repository and summarize what each one does in one sentence."
+```
+
+That confirms the generated context and orchestrator path are both usable after the Docker home is in place.
+If you are using Claude Code or Codex instead, reuse the same repo-local prompt there.
+
+If the task needs external credentials, switch to the Fetch-on-Demand wrapper:
+
+```bash
+infisical run --env=dev -- gemini
+```
+
+## Step 7: Choose The Next Home
 
 After the local builder home works:
 
@@ -125,10 +134,10 @@ After the local builder home works:
 
 ## Practical Working Rhythm
 
-The normal builder loop looks like this:
+The normal builder loop for Docker-facing work looks like this:
 
 ```bash
-bash scripts/verify-env.sh
+bash scripts/verify-env.sh --mode=docker
 node scripts/generate_all.js
 npm run validate
 npm run test:e2e
@@ -139,12 +148,12 @@ Then launch or relaunch the Docker home you are working on.
 ## If Something Fails
 
 - `verify-env.sh` fails:
-  install the missing tool or authenticate the SecretOps CLI first
+  install the missing tool for the Docker path first
 - `npm run validate` fails:
   fix the contract or generator drift before launching Docker
 - `npm run test:e2e` fails:
   inspect `test-artifacts/docker-smoke/` and the relevant compose stack before assuming the persona or docs are wrong
-- the container runs but the agent fails:
+- the container runs but the agent workflow fails:
   check whether the required vault-backed variables were actually injected at launch
 
 ## Outcome
@@ -153,6 +162,6 @@ By the end of this walkthrough you should have:
 
 - validated the repo
 - generated the current context
-- exercised the current Docker path
+- exercised the Docker path
 - launched one safe agent home
 - confirmed an orchestrator can consume the generated output

@@ -31,7 +31,7 @@ You need:
 Before the runtime tier, run the fast gate:
 
 ```bash
-bash scripts/verify-env.sh
+bash scripts/verify-env.sh --mode=docker
 node scripts/generate_all.js
 npm run validate
 ```

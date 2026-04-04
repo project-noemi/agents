@@ -52,8 +52,21 @@ test('context templates retain all required injection markers', () => {
 
 test('builder-facing docs point to the Docker Agent Home path', () => {
     const readme = read('README.md');
+    assert.match(readme, /docs\/examples\/zero-to-first-agent\.md/);
     assert.match(readme, /docs\/examples\/docker-agent-home\.md/);
     assert.match(readme, /npm run validate/);
+    assert.match(readme, /verify-env\.sh --mode=builder/);
+});
+
+test('environment verification scripts expose path-aware beginner and docker modes', () => {
+    const shellScript = read('scripts/verify-env.sh');
+    const powershellScript = read('scripts/verify-env.ps1');
+
+    assert.match(shellScript, /builder\|gemini\|claude\|codex\|docker\|n8n/);
+    assert.match(shellScript, /No supported local AI client found/);
+    assert.match(shellScript, /docs\/examples\/zero-to-first-agent\.md/);
+    assert.match(powershellScript, /ValidateSet\("builder", "gemini", "claude", "codex", "docker", "n8n"\)/);
+    assert.match(powershellScript, /No supported local AI client found/);
 });
 
 test('builder-facing docs expose the split Google Workspace implementation paths', () => {

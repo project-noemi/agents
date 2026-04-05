@@ -53,9 +53,12 @@ test('context templates retain all required injection markers', () => {
 test('builder-facing docs point to the Docker Agent Home path', () => {
     const readme = read('README.md');
     assert.match(readme, /docs\/examples\/zero-to-first-agent\.md/);
+    assert.match(readme, /docs\/examples\/windows-kickstart\.md/);
+    assert.match(readme, /docs\/examples\/chromeos-kickstart\.md/);
     assert.match(readme, /docs\/examples\/docker-agent-home\.md/);
     assert.match(readme, /npm run validate/);
     assert.match(readme, /verify-env\.sh --mode=builder/);
+    assert.match(readme, /verify-env\.ps1/);
     assert.match(readme, /What value organizations should expect/i);
     assert.match(readme, /productivity of the active workforce/i);
     assert.match(readme, /more output, better consistency, and lower unit cost/i);

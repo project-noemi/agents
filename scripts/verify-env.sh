@@ -19,6 +19,23 @@ check_tool "Node.js" "node" || ALL_GOOD=false
 check_tool "Docker" "docker" || ALL_GOOD=false
 check_tool "Gemini CLI" "gemini" || ALL_GOOD=false
 
+# Mandate SecretOps CLIs
+echo -e "\n🔐 Checking SecretOps CLIs..."
+HAS_INFISICAL=false
+HAS_OP=false
+command -v infisical >/dev/null 2>&1 && HAS_INFISICAL=true
+command -v op >/dev/null 2>&1 && HAS_OP=true
+
+if [ "$HAS_INFISICAL" = true ]; then
+    echo -e "✅ Infisical CLI is installed."
+elif [ "$HAS_OP" = true ]; then
+    echo -e "✅ 1Password CLI (op) is installed."
+else
+    echo -e "❌ Missing SecretOps CLI. Please install either 'infisical' or 'op'."
+    echo -e "   This is required for the Fetch-on-Demand security policy."
+    ALL_GOOD=false
+fi
+
 if [ "$ALL_GOOD" = false ]; then
     echo -e "\n⚠️ Please install the missing tools and run this script again.\n"
     exit 1

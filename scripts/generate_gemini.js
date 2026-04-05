@@ -9,6 +9,34 @@ const configPath = path.join(__dirname, '../mcp.config.json');
 const protocolsDir = path.join(__dirname, '../mcp-protocols');
 const skillsDir = path.join(__dirname, '../skills');
 const agentsMdPath = path.join(__dirname, '../AGENTS.md');
+const agentsDir = path.join(__dirname, '../agents');
+
+function discoverAgents(baseDir, prefix = '') {
+    const agents = [];
+    if (!fs.existsSync(baseDir)) return agents;
+
+    const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+    for (const entry of entries) {
+        const fullPath = path.join(baseDir, entry.name);
+        if (entry.isDirectory()) {
+            agents.push(...discoverAgents(fullPath, path.join(prefix, entry.name)));
+        } else if (entry.name.endsWith('.md')) {
+            const relativePath = path.join(prefix, entry.name);
+            const content = fs.readFileSync(fullPath, 'utf8');
+
+            // Extract H1 title (# Name — Domain Agent)
+            const titleMatch = content.match(/^#\s+(.+)/m);
+            const title = titleMatch ? titleMatch[1].trim() : entry.name.replace('.md', '');
+
+            agents.push({
+                path: `agents/${relativePath}`,
+                title,
+                domain: prefix.split(path.sep)[0] || 'root'
+            });
+        }
+    }
+    return agents;
+}
 
 function run() {
     console.log('Generating modular GEMINI.md...');
@@ -20,29 +48,52 @@ function run() {
     }
     let templateContent = fs.readFileSync(templatePath, 'utf8');
 
-    // 2. Read AGENTS.md for Global Security Mandates and Directives
+    // 2. Read AGENTS.md for Global Mandates (injecting all H1 sections)
     let globalMandates = '';
     if (fs.existsSync(agentsMdPath)) {
-        console.log('Injecting global security mandates from AGENTS.md...');
+        console.log('Injecting global mandates from AGENTS.md...');
         const agentsMdContent = fs.readFileSync(agentsMdPath, 'utf8');
-
-        // Extract "Mandatory Security Rules" and "Mandatory Directives"
-        const securityRulesMatch = agentsMdContent.match(/# 🔐 Secrets & Configuration([\s\S]*?)(?=# 🛡|$)/);
-        const directivesMatch = agentsMdContent.match(/# 🛡 Error Handling and Resilience([\s\S]*?)(?=# 🚀|$)/);
-
-        if (securityRulesMatch) {
-            globalMandates += `\n## 🔐 Global Security Mandates\n${securityRulesMatch[1].trim()}\n`;
-        } else {
-            console.warn('Warning: "Secrets & Configuration" section not found in AGENTS.md — security mandates will not be injected.');
-        }
-        if (directivesMatch) {
-            globalMandates += `\n## 🛡 Global Resilience Directives\n${directivesMatch[1].trim()}\n`;
-        } else {
-            console.warn('Warning: "Error Handling and Resilience" section not found in AGENTS.md — resilience directives will not be injected.');
+        
+        // Split by H1 headers
+        const sections = agentsMdContent.split(/^#\s+/m);
+        for (const section of sections) {
+            if (!section.trim()) continue;
+            const lines = section.split('\n');
+            const title = lines[0].trim();
+            const body = lines.slice(1).join('\n').trim();
+            globalMandates += `\n## ${title}\n${body}\n`;
         }
     }
 
-    // 3. Read the config to see which MCPs and skills to enable
+    // 3. Discover all agent specs and build an index
+    console.log('Discovering agent specifications...');
+    const agents = discoverAgents(agentsDir);
+    let agentIndex = '';
+    if (agents.length > 0) {
+        // Group by domain
+        const byDomain = {};
+        for (const agent of agents) {
+            if (!byDomain[agent.domain]) byDomain[agent.domain] = [];
+            byDomain[agent.domain].push(agent);
+        }
+
+        agentIndex = '\n## Agent Index\n\n';
+        agentIndex += `${agents.length} agent specifications across ${Object.keys(byDomain).length} domains:\n\n`;
+        agentIndex += '| Domain | Agent | Spec File |\n';
+        agentIndex += '|--------|-------|-----------|\n';
+
+        const sortedDomains = Object.keys(byDomain).sort();
+        for (const domain of sortedDomains) {
+            for (const agent of byDomain[domain]) {
+                agentIndex += `| ${domain} | ${agent.title} | \`${agent.path}\` |\n`;
+            }
+        }
+        agentIndex += '\nRead the relevant agent spec before performing domain-specific tasks.\n';
+
+        console.log(`Indexed ${agents.length} agents across ${Object.keys(byDomain).length} domains.`);
+    }
+
+    // 4. Read the config to see which MCPs and skills to enable
     let activeMcps = [];
     let activeSkills = [];
     if (fs.existsSync(configPath)) {
@@ -50,23 +101,13 @@ function run() {
             const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
             activeMcps = config.active_mcps || [];
             activeSkills = config.active_skills || [];
-            if (!Array.isArray(activeMcps)) {
-                console.error('Error: active_mcps in mcp.config.json must be an array.');
-                process.exit(1);
-            }
-            if (!Array.isArray(activeSkills)) {
-                console.error('Error: active_skills in mcp.config.json must be an array.');
-                process.exit(1);
-            }
         } catch (err) {
             console.error('Error parsing mcp.config.json:', err.message);
             process.exit(1);
         }
-    } else {
-        console.warn('Warning: mcp.config.json not found. Generating without specific MCP integrations or skills.');
     }
 
-    // 4. Gather Skill contents
+    // 5. Gather Skill contents
     let skillsContent = '';
     if (activeSkills.length === 0) {
         skillsContent = '<!-- No active skills configured in mcp.config.json -->\n';
@@ -84,9 +125,8 @@ function run() {
         }
     }
 
-    // 5. Gather MCP contents
+    // 6. Gather MCP contents
     let injectedContent = '';
-    
     if (activeMcps.length === 0) {
         injectedContent = '<!-- No active MCPs configured in mcp.config.json -->\n';
     } else {
@@ -103,10 +143,9 @@ function run() {
         }
     }
 
-    // 6. Replace all injection zones in the template
+    // 7. Replace all injection zones in the template
     let finalContent = templateContent;
 
-    // Helper to inject content between start/end markers
     function injectBetween(content, startTag, endTag, payload) {
         const startIdx = content.indexOf(startTag);
         const endIdx = content.indexOf(endTag);
@@ -118,25 +157,13 @@ function run() {
         return content;
     }
 
-    // Inject Global Mandates before MCP injections (preserves existing behavior)
-    if (globalMandates) {
-        finalContent = finalContent.replace('<!-- MCP_INJECTIONS_START -->', `${globalMandates}\n<!-- MCP_INJECTIONS_START -->`);
-    }
-
-    // Inject Skills
+    finalContent = injectBetween(finalContent, '<!-- GLOBAL_MANDATES_START -->', '<!-- GLOBAL_MANDATES_END -->', globalMandates);
+    finalContent = injectBetween(finalContent, '<!-- AGENT_INDEX_START -->', '<!-- AGENT_INDEX_END -->', agentIndex);
     finalContent = injectBetween(finalContent, '<!-- SKILLS_INJECTIONS_START -->', '<!-- SKILLS_INJECTIONS_END -->', skillsContent);
+    finalContent = injectBetween(finalContent, '<!-- MCP_INJECTIONS_START -->', '<!-- MCP_INJECTIONS_END -->', injectedContent);
 
-    // Inject MCPs
-    const mcpStartTag = '<!-- MCP_INJECTIONS_START -->';
-    const mcpEndTag = '<!-- MCP_INJECTIONS_END -->';
-    if (finalContent.includes(mcpStartTag) && finalContent.includes(mcpEndTag)) {
-        finalContent = injectBetween(finalContent, mcpStartTag, mcpEndTag, injectedContent);
-        fs.writeFileSync(outputPath, finalContent, 'utf8');
-        console.log(`Successfully generated GEMINI.md with ${activeSkills.length} skills and ${activeMcps.length} MCPs.`);
-    } else {
-        console.error('Error: MCP injection markers not found in GEMINI.template.md');
-        process.exit(1);
-    }
+    fs.writeFileSync(outputPath, finalContent, 'utf8');
+    console.log(`Successfully generated GEMINI.md with ${agents.length} agents, ${activeSkills.length} skills, and ${activeMcps.length} MCPs.`);
 }
 
 run();

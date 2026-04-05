@@ -17,6 +17,21 @@ if (-not (Check-Tool "Node.js" "node")) { $allGood = $false }
 if (-not (Check-Tool "Docker" "docker")) { $allGood = $false }
 if (-not (Check-Tool "Gemini CLI" "gemini")) { $allGood = $false }
 
+# Mandate SecretOps CLIs
+Write-Host "`n🔐 Checking SecretOps CLIs..." -ForegroundColor Cyan
+$hasInfisical = if (Get-Command "infisical" -ErrorAction SilentlyContinue) { $true } else { $false }
+$hasOp = if (Get-Command "op" -ErrorAction SilentlyContinue) { $true } else { $false }
+
+if ($hasInfisical) {
+    Write-Host "✅ Infisical CLI is installed." -ForegroundColor Green
+} elseif ($hasOp) {
+    Write-Host "✅ 1Password CLI (op) is installed." -ForegroundColor Green
+} else {
+    Write-Host "❌ Missing SecretOps CLI. Please install either 'infisical' or 'op'." -ForegroundColor Red
+    Write-Host "   This is required for the Fetch-on-Demand security policy." -ForegroundColor Red
+    $allGood = $false
+}
+
 if (-not $allGood) {
     Write-Host "`n⚠️ Please install the missing tools and run this script again." -ForegroundColor Yellow
     exit

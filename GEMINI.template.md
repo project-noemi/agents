@@ -40,6 +40,12 @@ If no specific agent specification matches the request:
 *   `docs/tool-usages/`: Specialized guides for tools (e.g., n8n, git).
 *   `docs/agents/`: Documentation mirroring the `agents/` structure.
 
+<!-- AGENT_INDEX_START -->
+<!-- AGENT_INDEX_END -->
+
+<!-- GLOBAL_MANDATES_START -->
+<!-- GLOBAL_MANDATES_END -->
+
 ---
 
 ## 🧩 Active Skills

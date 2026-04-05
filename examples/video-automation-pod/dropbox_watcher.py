@@ -1,3 +1,7 @@
+# LEGACY/ILLUSTRATIVE — This Python example is provided for historical reference only.
+# The canonical implementation path for Project NoéMI is Node.js.
+# See REQUIREMENTS.md Section 8 and AGENTS.md for details.
+
 import os
 import sys
 import time

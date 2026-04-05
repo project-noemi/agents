@@ -19,10 +19,12 @@ In plain business terms, NoéMI is useful because it helps an organization move 
 
 > **New to AI and want one safe first win?** Start with [**Zero To First Agent**](docs/examples/zero-to-first-agent.md).
 
+> **On Windows or ChromeOS?** Use the dedicated [**Windows Kickstart**](docs/examples/windows-kickstart.md) or [**ChromeOS Kickstart**](docs/examples/chromeos-kickstart.md) so you begin in the right shell and runtime.
+
 **Audience paths:**
 - **Client / Buyer:** [Project Reference](docs/PROJECT_REFERENCE.md) → [Phase 0 Security Baseline](docs/PHASE_ZERO_SECURITY_BASELINE.md) → [Phase 0 Assessment Kit](docs/phase-zero-assessment/README.md)
 - **MSP / MSSP:** [Project Reference](docs/PROJECT_REFERENCE.md) → [MSP Deployment Guide](docs/examples/msp-deployment.md) → [Fleet / governance docs](docs/agents/operations/)
-- **Builder / Accelerator:** [Zero To First Agent](docs/examples/zero-to-first-agent.md) → [Secure Secret Management](docs/tool-usages/secure-secret-management.md) → [Agentic Local Workspaces](docs/tool-usages/agentic-local-workspaces.md) → [Google Local Workspace](docs/tool-usages/google-local-workspace.md), [Claude Code Local Workspace](docs/tool-usages/claude-code-local-workspace.md), or [OpenAI Codex Local Workspace](docs/tool-usages/openai-codex-local-workspace.md) → [GWS CLI Machine Setup](docs/mcp-setup/gws-cli-machine-setup.md) → [Google Workspace For Agentic Clients](docs/mcp-setup/google-workspace-agentic-clients.md) or [Microsoft 365 For Agentic Clients](docs/mcp-setup/microsoft-365-agentic-clients.md) → [Value Lenses](docs/frameworks/value-lenses.md) → [Gemini Workspace Quickstart](docs/tool-usages/gemini-workspace-quickstart.md) or [n8n Google Workspace Quickstart](docs/examples/n8n-google-workspace-quickstart.md) → [Builder First 30 Minutes](docs/examples/builder-first-30-minutes.md) → [Docker Agent Home](docs/examples/docker-agent-home.md) → [Orchestrator Runtime Contract](docs/tool-usages/orchestrator-runtime-contract.md)
+- **Builder / Accelerator:** [Zero To First Agent](docs/examples/zero-to-first-agent.md) → [Windows Kickstart](docs/examples/windows-kickstart.md) or [ChromeOS Kickstart](docs/examples/chromeos-kickstart.md) when needed → [Secure Secret Management](docs/tool-usages/secure-secret-management.md) → [Agentic Local Workspaces](docs/tool-usages/agentic-local-workspaces.md) → [Google Local Workspace](docs/tool-usages/google-local-workspace.md), [Claude Code Local Workspace](docs/tool-usages/claude-code-local-workspace.md), or [OpenAI Codex Local Workspace](docs/tool-usages/openai-codex-local-workspace.md) → [GWS CLI Machine Setup](docs/mcp-setup/gws-cli-machine-setup.md) → [Google Workspace For Agentic Clients](docs/mcp-setup/google-workspace-agentic-clients.md) or [Microsoft 365 For Agentic Clients](docs/mcp-setup/microsoft-365-agentic-clients.md) → [Value Lenses](docs/frameworks/value-lenses.md) → [Gemini Workspace Quickstart](docs/tool-usages/gemini-workspace-quickstart.md) or [n8n Google Workspace Quickstart](docs/examples/n8n-google-workspace-quickstart.md) → [Builder First 30 Minutes](docs/examples/builder-first-30-minutes.md) → [Docker Agent Home](docs/examples/docker-agent-home.md) → [Orchestrator Runtime Contract](docs/tool-usages/orchestrator-runtime-contract.md)
 
 ## Table of Contents
 
@@ -45,7 +47,9 @@ In plain business terms, NoéMI is useful because it helps an organization move 
 
 ## Quick Start
 
-**Prerequisites:** [Node.js](https://nodejs.org/) (24.x LTS recommended; 25+ supported), [Git](https://git-scm.com/), one supported local client ([Gemini CLI](https://github.com/google-gemini/gemini-cli), Claude Code, or OpenAI Codex), and a secret manager ([Infisical CLI](https://infisical.com/docs/cli/overview) or [1Password CLI](https://developer.1password.com/docs/cli/)) before you connect business systems. [Docker](https://www.docker.com/) becomes part of the path when you are ready to build a runtime home.
+**Prerequisites:** [Node.js](https://nodejs.org/) (24.x LTS recommended; 25+ supported), [Git](https://git-scm.com/), one supported local client ([Gemini CLI](https://github.com/google-gemini/gemini-cli), Claude Code, or OpenAI Codex), and a secret manager ([Infisical CLI](https://infisical.com/docs/cli/overview) or [1Password CLI](https://developer.1password.com/docs/cli/)) before you connect business systems. [Docker](https://www.docker.com/) becomes part of the path when you are ready to build a runtime home. On ChromeOS, use the Linux development environment terminal. On Windows, use the PowerShell path below.
+
+### macOS, Linux, or ChromeOS Linux Terminal
 
 ```bash
 # 1. Clone the repository
@@ -79,8 +83,31 @@ op run --env-file=.env.template -- gemini
 # Codex can be launched through the same Fetch-on-Demand pattern
 ```
 
+### Windows PowerShell
+
+```powershell
+# 1. Clone the repository
+git clone https://github.com/newpush/agents.git
+cd agents
+
+# 2. Verify the beginner local-first path
+powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode builder
+
+# 3. Configure which MCP integrations are active (edit as needed)
+Get-Content mcp.config.json
+
+# 4. Generate context files consumed by orchestrators
+node scripts/generate_all.js
+
+# 5. Run the fast validation gate
+npm run validate
+
+# 6. Prove one safe local task first
+gemini -p GEMINI.md "List the engineering agents in this repository and summarize what each one does in one sentence."
+```
+
 The generated `GEMINI.md` and `CLAUDE.md` files contain your agent personas, security mandates, and MCP protocol definitions — everything an orchestrator needs to act as your agents.
-If you are completely new to AI implementation, follow [`docs/examples/zero-to-first-agent.md`](docs/examples/zero-to-first-agent.md) before the Docker-oriented builder path.
+If you are completely new to AI implementation, follow [`docs/examples/zero-to-first-agent.md`](docs/examples/zero-to-first-agent.md) before the Docker-oriented builder path. If you are on Windows or ChromeOS, start with [`docs/examples/windows-kickstart.md`](docs/examples/windows-kickstart.md) or [`docs/examples/chromeos-kickstart.md`](docs/examples/chromeos-kickstart.md) so the shell instructions match your machine.
 
 The same validation gates are enforced in GitHub Actions on pushes and pull requests targeting `develop` and `main`, so local validation mirrors the repository's CI contract.
 When Docker smoke fails on a real host or in CI, inspect `test-artifacts/docker-smoke/` or the uploaded `docker-smoke-diagnostics` artifact.
@@ -93,7 +120,7 @@ When Docker smoke fails on a real host or in CI, inspect `test-artifacts/docker-
 |----------|------------|------------|
 | **Client / Buyer** | [`docs/PROJECT_REFERENCE.md`](docs/PROJECT_REFERENCE.md) | [`docs/PHASE_ZERO_SECURITY_BASELINE.md`](docs/PHASE_ZERO_SECURITY_BASELINE.md), [`docs/phase-zero-assessment/README.md`](docs/phase-zero-assessment/README.md) |
 | **MSP / MSSP** | [`docs/PROJECT_REFERENCE.md`](docs/PROJECT_REFERENCE.md) | [`docs/examples/msp-deployment.md`](docs/examples/msp-deployment.md), [`docs/agents/operations/`](docs/agents/operations/) |
-| **Builder / Accelerator** | [`docs/examples/zero-to-first-agent.md`](docs/examples/zero-to-first-agent.md) | [`docs/tool-usages/secure-secret-management.md`](docs/tool-usages/secure-secret-management.md), [`docs/tool-usages/agentic-local-workspaces.md`](docs/tool-usages/agentic-local-workspaces.md), [`docs/tool-usages/google-local-workspace.md`](docs/tool-usages/google-local-workspace.md), [`docs/tool-usages/claude-code-local-workspace.md`](docs/tool-usages/claude-code-local-workspace.md), [`docs/tool-usages/openai-codex-local-workspace.md`](docs/tool-usages/openai-codex-local-workspace.md), [`docs/mcp-setup/gws-cli-machine-setup.md`](docs/mcp-setup/gws-cli-machine-setup.md), [`docs/mcp-setup/google-workspace-agentic-clients.md`](docs/mcp-setup/google-workspace-agentic-clients.md), [`docs/mcp-setup/microsoft-365-agentic-clients.md`](docs/mcp-setup/microsoft-365-agentic-clients.md), [`docs/tool-usages/gemini-workspace-quickstart.md`](docs/tool-usages/gemini-workspace-quickstart.md), [`docs/examples/n8n-google-workspace-quickstart.md`](docs/examples/n8n-google-workspace-quickstart.md), [`docs/mcp-setup/google-n8n-credential-matrix.md`](docs/mcp-setup/google-n8n-credential-matrix.md), [`docs/examples/builder-first-30-minutes.md`](docs/examples/builder-first-30-minutes.md), [`docs/examples/docker-agent-home.md`](docs/examples/docker-agent-home.md), [`docs/examples/docker-runtime-verification.md`](docs/examples/docker-runtime-verification.md), [`docs/tool-usages/orchestrator-runtime-contract.md`](docs/tool-usages/orchestrator-runtime-contract.md), [`docs/AGENT_TEMPLATE.md`](docs/AGENT_TEMPLATE.md) |
+| **Builder / Accelerator** | [`docs/examples/zero-to-first-agent.md`](docs/examples/zero-to-first-agent.md) | [`docs/examples/windows-kickstart.md`](docs/examples/windows-kickstart.md), [`docs/examples/chromeos-kickstart.md`](docs/examples/chromeos-kickstart.md), [`docs/tool-usages/secure-secret-management.md`](docs/tool-usages/secure-secret-management.md), [`docs/tool-usages/agentic-local-workspaces.md`](docs/tool-usages/agentic-local-workspaces.md), [`docs/tool-usages/google-local-workspace.md`](docs/tool-usages/google-local-workspace.md), [`docs/tool-usages/claude-code-local-workspace.md`](docs/tool-usages/claude-code-local-workspace.md), [`docs/tool-usages/openai-codex-local-workspace.md`](docs/tool-usages/openai-codex-local-workspace.md), [`docs/mcp-setup/gws-cli-machine-setup.md`](docs/mcp-setup/gws-cli-machine-setup.md), [`docs/mcp-setup/google-workspace-agentic-clients.md`](docs/mcp-setup/google-workspace-agentic-clients.md), [`docs/mcp-setup/microsoft-365-agentic-clients.md`](docs/mcp-setup/microsoft-365-agentic-clients.md), [`docs/tool-usages/gemini-workspace-quickstart.md`](docs/tool-usages/gemini-workspace-quickstart.md), [`docs/examples/n8n-google-workspace-quickstart.md`](docs/examples/n8n-google-workspace-quickstart.md), [`docs/mcp-setup/google-n8n-credential-matrix.md`](docs/mcp-setup/google-n8n-credential-matrix.md), [`docs/examples/builder-first-30-minutes.md`](docs/examples/builder-first-30-minutes.md), [`docs/examples/docker-agent-home.md`](docs/examples/docker-agent-home.md), [`docs/examples/docker-runtime-verification.md`](docs/examples/docker-runtime-verification.md), [`docs/tool-usages/orchestrator-runtime-contract.md`](docs/tool-usages/orchestrator-runtime-contract.md), [`docs/AGENT_TEMPLATE.md`](docs/AGENT_TEMPLATE.md) |
 
 ---
 
@@ -523,6 +550,8 @@ All documentation lives in `docs/`. Here's where to find what:
 | Client-side Phase 0 guidance | [`docs/PHASE_ZERO_SECURITY_BASELINE.md`](docs/PHASE_ZERO_SECURITY_BASELINE.md) |
 | Phase 0 assessment kit | [`docs/phase-zero-assessment/README.md`](docs/phase-zero-assessment/README.md) |
 | Beginner first-win guide | [`docs/examples/zero-to-first-agent.md`](docs/examples/zero-to-first-agent.md) |
+| Windows beginner guide | [`docs/examples/windows-kickstart.md`](docs/examples/windows-kickstart.md) |
+| ChromeOS beginner guide | [`docs/examples/chromeos-kickstart.md`](docs/examples/chromeos-kickstart.md) |
 | Google Workspace machine setup | [`docs/mcp-setup/gws-cli-machine-setup.md`](docs/mcp-setup/gws-cli-machine-setup.md) |
 | Builder onboarding walkthrough | [`docs/examples/builder-first-30-minutes.md`](docs/examples/builder-first-30-minutes.md) |
 | Builder-facing Docker home guide | [`docs/examples/docker-agent-home.md`](docs/examples/docker-agent-home.md) |

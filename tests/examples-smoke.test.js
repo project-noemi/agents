@@ -68,13 +68,28 @@ test('beginner builder docs start with a safe local success before Docker', () =
     const beginnerGuide = read('docs/examples/zero-to-first-agent.md');
     const builderGuide = read('docs/examples/builder-first-30-minutes.md');
     const readme = read('README.md');
+    const windowsGuide = read('docs/examples/windows-kickstart.md');
+    const chromeOsGuide = read('docs/examples/chromeos-kickstart.md');
 
     assert.match(beginnerGuide, /read-only AI task against local repository content/i);
     assert.match(beginnerGuide, /does \*\*not\*\* require Docker/i);
     assert.match(beginnerGuide, /engineering agents in this repository/i);
     assert.match(beginnerGuide, /human approval before external action/i);
+    assert.match(beginnerGuide, /windows-kickstart\.md/);
+    assert.match(beginnerGuide, /chromeos-kickstart\.md/);
+    assert.match(beginnerGuide, /powershell -ExecutionPolicy Bypass -File scripts\/verify-env\.ps1 -Mode builder/i);
     assert.match(builderGuide, /phase-two Docker path/i);
     assert.match(builderGuide, /verify-env\.sh --mode=docker/);
+    assert.match(builderGuide, /powershell -ExecutionPolicy Bypass -File scripts\/verify-env\.ps1 -Mode docker/i);
+    assert.match(windowsGuide, /PowerShell/i);
+    assert.match(windowsGuide, /powershell -ExecutionPolicy Bypass -File scripts\/verify-env\.ps1 -Mode builder/i);
+    assert.match(windowsGuide, /You do \*\*not\*\* need WSL/i);
+    assert.match(chromeOsGuide, /Linux development environment/i);
+    assert.match(chromeOsGuide, /bash scripts\/verify-env\.sh --mode=builder/i);
+    assert.match(chromeOsGuide, /ChromeOS is often \*\*not\*\* the easiest place to start the Docker phase/i);
+    assert.match(readme, /docs\/examples\/windows-kickstart\.md/);
+    assert.match(readme, /docs\/examples\/chromeos-kickstart\.md/);
+    assert.match(readme, /powershell -ExecutionPolicy Bypass -File scripts\/verify-env\.ps1 -Mode builder/i);
     assert.doesNotMatch(readme, /List all open PRs in our org/);
 });
 

@@ -19,12 +19,25 @@ Read these guides first:
 
 Those explain the security contract, the shape of the Docker home you are about to launch, and the runtime responsibilities your orchestrator must own.
 
+Platform note:
+
+- on Windows, use the PowerShell preflight script instead of the Bash script
+- on ChromeOS, finish the local-first path first and only continue here if your Linux environment or remote host is truly Docker-capable
+
 ## Step 1: Verify The Docker Toolchain
 
 From the repository root:
 
+macOS, Linux, or ChromeOS Linux terminal:
+
 ```bash
 bash scripts/verify-env.sh --mode=docker
+```
+
+Windows PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode docker
 ```
 
 This checks the Docker-oriented path without pretending Docker was required for the very first beginner task.

@@ -76,8 +76,8 @@ When running Python scripts or Node apps, wrap your execution:
 *(Infisical will automatically inject all secrets from the 'dev' environment into the process).*
 ```
 
-## Part 3: Configuring Local "Vibe Coding" (Gemini CLI)
-Context: When a Practitioner is "vibe coding" locally, they can authenticate using their human user identity (SSO) rather than managing long-lived machine tokens.
+## Part 3: Configuring Local Agentic Workspaces
+Context: When a Practitioner is working locally, they can authenticate using their human user identity (SSO) rather than managing long-lived machine tokens.
 
 **Step 1: Authenticate Locally**
 Practitioners log in via their browser (often via Casdoor SSO in NewPush Labs).
@@ -85,20 +85,35 @@ Practitioners log in via their browser (often via Casdoor SSO in NewPush Labs).
 infisical login
 ```
 
-**Step 2: Running the Agent Securely**
-To give the Gemini CLI access to secrets (e.g., if it needs to run a database script it just wrote), the Practitioner wraps the agent execution. Unlike 1Password, which requires a `.env.template` with reference strings, Infisical dynamically pulls the environment you specify.
+**Step 2: Running The Local Client Securely**
+To give a local client access to secrets, the Practitioner wraps the execution. Unlike 1Password, which requires a `.env.template` with reference strings, Infisical dynamically pulls the environment you specify.
 
-**Command:**
+**Examples:**
 ```bash
 # This injects the 'dev' secrets into the shell where Gemini runs
-infisical run --env=dev -- gemini chat
+infisical run --env=dev -- gemini
+
+# Claude Code CLI
+infisical run --env=dev -- claude
+
+# OpenAI Codex CLI
+infisical run --env=dev -- codex
 ```
 
 **Pro Tip (Alias):**
 Add this to your `~/.zshrc` or `~/.bashrc` to build secure muscle memory:
 ```bash
 alias safe-gemini='infisical run --env=dev -- gemini'
+alias safe-claude='infisical run --env=dev -- claude'
+alias safe-codex='infisical run --env=dev -- codex'
 ```
+
+For the client-by-client comparison and the role of Google's Antigravity, Claude Code app, and Codex app on top of these CLI habits, see:
+
+- [`agentic-local-workspaces.md`](agentic-local-workspaces.md)
+- [`google-local-workspace.md`](google-local-workspace.md)
+- [`claude-code-local-workspace.md`](claude-code-local-workspace.md)
+- [`openai-codex-local-workspace.md`](openai-codex-local-workspace.md)
 
 ## Part 4: The "Agent Contract" (Prompting Guide)
 To ensure the agent writes secure code, Practitioners must master Process Description.

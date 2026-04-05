@@ -1,6 +1,6 @@
 # End-to-End Example: Autonomous RFP/RFQ Responder
 
-This guide walks you through deploying an end-to-end event-driven agent workflow using **n8n**, **Gmail**, **Google Docs**, and the **Gemini LLM**.
+This guide walks you through deploying an end-to-end event-driven agent workflow using **n8n**, **Gmail**, **Google Docs**, and the **Google Gemini node**.
 
 ## The Scenario
 Your organization frequently receives Requests for Proposals (RFPs) and Requests for Quotes (RFQs) via email. Reviewing these, extracting the requirements, and setting up the initial draft documents takes valuable human time. 
@@ -17,10 +17,13 @@ We will deploy an agentic workflow that:
 
 ## Prerequisites
 1.  An active instance of **n8n** (Cloud or Self-Hosted).
-2.  Google Workspace Credentials configured in n8n for:
+2.  Google Workspace credentials configured in n8n for:
     *   **Gmail API** (Read and Compose Drafts)
     *   **Google Docs API** (Create Documents)
-3.  A Gemini API Key configured in n8n.
+3.  A Google Gemini credential configured in n8n.
+4.  Review the credential split first:
+    *   [`n8n-google-workspace-quickstart.md`](n8n-google-workspace-quickstart.md)
+    *   [`../mcp-setup/google-n8n-credential-matrix.md`](../mcp-setup/google-n8n-credential-matrix.md)
 
 ---
 
@@ -43,9 +46,9 @@ Once imported, you will see a visual representation of the **Delegation** phase 
 This node acts as the **Event-Driven Trigger**. It polls the authenticated Gmail account every minute for any new, unread emails. When one arrives, it pushes the email payload down the pipeline.
 
 ### 2. Analyze Request (Gemini)
-This is where the synthetic intelligence acts. It uses a LangChain LLM node powered by Gemini. 
+This is where the synthetic intelligence acts. It uses the current n8n Google Gemini node. 
 *   **The System Prompt:** We inject instructions telling the model to act as a triage agent. It reads the email body and is strictly instructed to return structured JSON containing an `is_rfp_rfq` boolean, a `summary`, `requirements`, and a `deadline`.
-*   *Note: In a production environment, you would use `generate_gemini.js` to build a robust context file and inject it into this node's System Message parameter.*
+*   *Note: In a production environment, use the repo personas as design input, but keep the node prompt narrowly scoped instead of pasting all of `GEMINI.md` into the workflow.*
 
 ### 3. Is RFP/RFQ? (IF Router)
 This node parses the JSON returned by Gemini. 
@@ -64,7 +67,7 @@ Instead, it uses the Gmail API to create a **Draft** reply to the original sende
 
 ## Step 3: Activate and Test
 
-1.  Open the credentials for the Gmail, Google Docs, and Gemini nodes and link them to your authenticated accounts.
+1.  Replace the placeholder credential IDs in [`../../examples/workflows/rfp-responder.json`](../../examples/workflows/rfp-responder.json) and link the Gmail, Google Docs, and Gemini nodes to your authenticated accounts.
 2.  Click the **Test Workflow** button in n8n.
 3.  Send an email to your connected Gmail account with a subject like "RFP: Enterprise Software Overhaul" and a body detailing some software requirements and a deadline.
 4.  Watch the workflow execute! Within a minute, you should see a new Google Doc appear in your Drive, and a Draft reply sitting in your Gmail outbox.

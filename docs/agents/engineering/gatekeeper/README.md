@@ -21,7 +21,7 @@ Every action is logged with a comment on the PR and reported to Slack and the Fl
 | GitHub CLI (`gh`) ≥ 2.40 | API interaction and PR management |
 | A GitHub PAT or App token | Scoped to `repo`, `read:org`, `write:discussion` |
 | 1Password CLI or Infisical CLI | Secrets injection at runtime |
-| Node.js ≥ 20 (optional) | For n8n orchestration |
+| Node.js 24.x LTS or newer (optional) | For n8n orchestration |
 | Docker + Compose (optional) | For containerized deployment |
 
 ## Secrets Setup

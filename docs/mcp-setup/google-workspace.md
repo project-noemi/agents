@@ -1,8 +1,17 @@
 # Google Workspace MCP Setup
 
-Covers setup for all 12 Google Workspace MCPs: Gmail, Calendar, Chat, Contacts, Docs, Drive, Forms, Keep, Meet, Sheets, Slides, and Admin.
+This guide covers the **generic Google Workspace MCP server pattern** for builders running a custom or self-hosted Google integration that expects `GOOGLE_*` environment variables.
 
-All Google MCPs share the same authentication and connection pattern — configure once, enable individually.
+It is **not** the primary setup guide for:
+
+- Gemini CLI with the official Workspace extension
+- n8n Google Workspace nodes
+
+Use these guides for those paths:
+
+- [`../tool-usages/gemini-workspace-quickstart.md`](../tool-usages/gemini-workspace-quickstart.md)
+- [`../examples/n8n-google-workspace-quickstart.md`](../examples/n8n-google-workspace-quickstart.md)
+- [`google-n8n-credential-matrix.md`](google-n8n-credential-matrix.md)
 
 ## Prerequisites
 
@@ -73,9 +82,8 @@ Scopes are configured per MCP. Enable only the scopes each agent needs (principl
 op run --env-file=.env.template -- node -e "
   console.log('Client ID:', process.env.GOOGLE_CLIENT_ID ? 'set' : 'MISSING');
   console.log('Client Secret:', process.env.GOOGLE_CLIENT_SECRET ? 'set' : 'MISSING');
+  console.log('Refresh Token:', process.env.GOOGLE_REFRESH_TOKEN ? 'set' : 'MISSING');
 "
-
-# Quick API smoke test (Gmail list labels)
-curl -s -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-  "https://gmail.googleapis.com/gmail/v1/users/me/labels" | head -20
 ```
+
+After env injection is confirmed, start your chosen Google Workspace MCP server with those variables and validate one low-risk read operation first.

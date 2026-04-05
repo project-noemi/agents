@@ -6,11 +6,15 @@ It does not turn Project NoeMI into a runtime engine. It shows how to validate t
 
 ## Before You Start
 
-Read these two guides first:
+Read these guides first:
 
 1. [`../tool-usages/secure-secret-management.md`](../tool-usages/secure-secret-management.md)
 2. [`docker-agent-home.md`](docker-agent-home.md)
 3. [`../tool-usages/orchestrator-runtime-contract.md`](../tool-usages/orchestrator-runtime-contract.md)
+4. Read the local-workspace overview:
+   [`../tool-usages/agentic-local-workspaces.md`](../tool-usages/agentic-local-workspaces.md)
+5. Choose one implementation path:
+   [`../tool-usages/gemini-workspace-quickstart.md`](../tool-usages/gemini-workspace-quickstart.md) for human-led Gemini CLI work or [`n8n-google-workspace-quickstart.md`](n8n-google-workspace-quickstart.md) for event-driven automation
 
 Those explain the security contract, the shape of the Docker home you are about to launch, and the runtime responsibilities your orchestrator must own.
 

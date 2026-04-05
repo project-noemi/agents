@@ -24,6 +24,13 @@ if [ "$ALL_GOOD" = false ]; then
     exit 1
 fi
 
+NODE_MAJOR="$(node -v | sed -E 's/^v([0-9]+).*/\1/')"
+if [ "${NODE_MAJOR}" -lt 24 ]; then
+    echo -e "❌ Node.js $(node -v) is too old. Install Node.js 24.x LTS for this repository."
+    exit 1
+fi
+echo -e "✅ Node.js $(node -v) meets the 24.x LTS baseline."
+
 echo -e "\n🔒 Checking SecretOps CLI (Fetch-on-Demand)..."
 SECRETS_CLI=false
 if command -v op >/dev/null 2>&1; then

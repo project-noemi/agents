@@ -10,108 +10,153 @@
             }
           ]
         },
+        "simple": false,
         "filters": {
           "labelIds": [
             "INBOX",
             "UNREAD"
           ]
-        }
+        },
+        "options": {}
       },
-      "id": "1",
-      "name": "Gmail Trigger (New Emails)",
       "type": "n8n-nodes-base.gmailTrigger",
-      "typeVersion": 1,
+      "typeVersion": 1.3,
       "position": [
-        250,
-        300
-      ]
+        120,
+        240
+      ],
+      "id": "e47b7bc9-a9ab-4b1d-b4d1-1b99fcadc4b1",
+      "name": "Gmail Trigger (New Emails)",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
     },
     {
       "parameters": {
-        "model": "gemini-1.5-pro",
-        "systemMessage": "You are the Knowledge Manager & Researcher agent. Analyze the incoming email to determine if it is a Request for Proposal (RFP) or a Request for Quote (RFQ).\n\nIf it IS an RFP/RFQ, extract the core requirements, deadlines, and key questions being asked. If it is NOT an RFP/RFQ, simply state so.\n\nOutput ONLY valid JSON in the following format:\n{\n  \"is_rfp_rfq\": true/false,\n  \"summary\": \"Brief summary of the request...\",\n  \"requirements\": [\"req 1\", \"req 2\"],\n  \"deadline\": \"YYYY-MM-DD or Not specified\"\n}",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
         "messages": {
-          "messageValues": [
+          "values": [
             {
-              "message": "=Subject: {{ $json.snippet }}\nBody: {{ $json.textPlain }}"
+              "content": "=You are the Knowledge Manager & Researcher agent. Analyze the incoming email to determine if it is a Request for Proposal (RFP) or a Request for Quote (RFQ).\n\nIf it IS an RFP/RFQ, extract the core requirements, deadlines, and key questions being asked. If it is NOT an RFP/RFQ, simply state so.\n\nReturn only valid JSON using this exact shape:\n{\n  \"is_rfp_rfq\": true,\n  \"summary\": \"Brief summary of the request\",\n  \"requirements\": [\"Requirement 1\", \"Requirement 2\"],\n  \"deadline\": \"YYYY-MM-DD or Not specified\"\n}\n\nSubject: {{ $('Gmail Trigger (New Emails)').item.json.subject || $('Gmail Trigger (New Emails)').item.json.snippet }}\nBody: {{ $('Gmail Trigger (New Emails)').item.json.textPlain || $('Gmail Trigger (New Emails)').item.json.text }}"
             }
           ]
-        }
+        },
+        "jsonOutput": true,
+        "simplify": false,
+        "builtInTools": {},
+        "options": {}
       },
-      "id": "2",
-      "name": "Analyze Request (Gemini)",
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1,
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
       "position": [
-        450,
-        300
-      ]
+        360,
+        240
+      ],
+      "id": "3fb03353-8b71-4854-ab46-c8c8481b8567",
+      "name": "Analyze Request (Gemini)",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
     },
     {
       "parameters": {
-        "options": {
-          "string": [
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
             {
-              "value": "={{ JSON.parse($json.text).is_rfp_rfq }}",
-              "action": "isTrue"
+              "id": "55c1a52d-d203-4f65-b905-f1be58b516fe",
+              "leftValue": "={{ $('Analyze Request (Gemini)').item.json.candidates[0].content.parts[0].text }}",
+              "rightValue": "\"is_rfp_rfq\": true",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
             }
-          ]
-        }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
-      "id": "3",
-      "name": "Is RFP/RFQ?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
+      "typeVersion": 2.3,
       "position": [
-        650,
-        300
-      ]
+        600,
+        240
+      ],
+      "id": "09bb633c-f2d2-4782-857d-80fbf97274ec",
+      "name": "Is RFP/RFQ?"
     },
     {
       "parameters": {
         "resource": "document",
         "operation": "create",
-        "title": "=RFP Draft: {{ $('Gmail Trigger (New Emails)').item.json.snippet }}",
-        "content": "=RFP / RFQ Analysis\n\nSender: {{ $('Gmail Trigger (New Emails)').item.json.from }}\nDate: {{ $('Gmail Trigger (New Emails)').item.json.date }}\n\nSummary:\n{{ JSON.parse($('Analyze Request (Gemini)').item.json.text).summary }}\n\nRequirements:\n{{ JSON.parse($('Analyze Request (Gemini)').item.json.text).requirements.join('\\n- ') }}\n\nDeadline: {{ JSON.parse($('Analyze Request (Gemini)').item.json.text).deadline }}\n\n---\nDraft Response Section:\n[Agent to continue drafting proposal here]"
+        "title": "=RFP Draft: {{ $('Gmail Trigger (New Emails)').item.json.subject || $('Gmail Trigger (New Emails)').item.json.snippet }}",
+        "content": "=RFP / RFQ Analysis\n\nSender: {{ $('Gmail Trigger (New Emails)').item.json.from }}\nDate: {{ $('Gmail Trigger (New Emails)').item.json.date }}\n\nSummary:\n{{ JSON.parse($('Analyze Request (Gemini)').item.json.candidates[0].content.parts[0].text).summary }}\n\nRequirements:\n{{ JSON.parse($('Analyze Request (Gemini)').item.json.candidates[0].content.parts[0].text).requirements.map((requirement) => '- ' + requirement).join('\\n') }}\n\nDeadline: {{ JSON.parse($('Analyze Request (Gemini)').item.json.candidates[0].content.parts[0].text).deadline }}\n\n---\nDraft Response Section:\n[Human reviewer to finalize proposal response here]"
       },
-      "id": "4",
-      "name": "Create Google Doc",
       "type": "n8n-nodes-base.googleDocs",
       "typeVersion": 2,
       "position": [
-        850,
-        150
-      ]
+        840,
+        120
+      ],
+      "id": "120ad01e-96a3-4c55-ae12-c5e9d53fd16c",
+      "name": "Create Google Doc"
     },
     {
       "parameters": {
         "resource": "draft",
         "operation": "create",
-        "subject": "=Re: {{ $('Gmail Trigger (New Emails)').item.json.snippet }}",
-        "message": "=Hello,\n\nThank you for reaching out with your request. Our internal Knowledge Manager agent has reviewed your requirements and prepared an initial draft for our team to finalize.\n\nInternal Reference Document: https://docs.google.com/document/d/{{ $json.documentId }}/edit\n\nWe will be in touch shortly.\n\nBest,\nProject NoeMI Team",
-        "toEmail": "={{ $('Gmail Trigger (New Emails)').item.json.from }}"
+        "subject": "=Re: {{ $('Gmail Trigger (New Emails)').item.json.subject || $('Gmail Trigger (New Emails)').item.json.snippet }}",
+        "message": "=Hello,\n\nThank you for reaching out with your request. We have created an internal draft document for our team to review before sending a final response.\n\nInternal Reference Document: https://docs.google.com/document/d/{{ $json.documentId }}/edit\n\nWe will follow up shortly.\n\nBest,\nProject NoeMI Team",
+        "toEmail": "={{ $('Gmail Trigger (New Emails)').item.json.from }}",
+        "options": {
+          "threadId": "={{ $('Gmail Trigger (New Emails)').item.json.threadId }}"
+        }
       },
-      "id": "5",
-      "name": "Draft Gmail Reply",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2,
+      "typeVersion": 2.2,
       "position": [
-        1050,
-        150
-      ]
+        1080,
+        120
+      ],
+      "id": "0c2e71d7-3a0a-48a3-bdb6-5ca5703561b7",
+      "name": "Draft Gmail Reply",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "REPLACE_WITH_YOUR_GMAIL_CREDENTIAL_ID",
+          "name": "Gmail account"
+        }
+      }
     },
     {
       "parameters": {},
-      "id": "6",
-      "name": "Ignore Non-RFPs",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        850,
-        450
-      ]
+        840,
+        360
+      ],
+      "id": "9355548b-8f79-4865-b09f-baad7d25e2e7",
+      "name": "Ignore Non-RFPs"
     }
   ],
+  "pinData": {},
   "connections": {
     "Gmail Trigger (New Emails)": {
       "main": [
@@ -164,5 +209,17 @@
         ]
       ]
     }
-  }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "REPLACE_WITH_YOUR_INSTANCE_ID"
+  },
+  "versionId": "cbf654e6-5ad2-45cf-9430-868a72b958d6",
+  "id": "rfpResponderTemplate",
+  "tags": []
 }

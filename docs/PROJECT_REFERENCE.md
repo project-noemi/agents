@@ -6,6 +6,8 @@
 
 This document is the canonical public reference for Project NoéMI. It introduces the project's philosophy, framework, curriculum, and technology stack, and serves as a guide to the other documents in this repository.
 
+Readers who want the fastest structural overview should start with the visual set in [`docs/visuals/`](visuals/).
+
 ---
 
 ## Table of Contents
@@ -465,6 +467,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/AGENT_TEMPLATE.md`](AGENT_TEMPLATE.md) | Canonical template for all agent specifications |
 | [`docs/PHASE_ZERO_SECURITY_BASELINE.md`](PHASE_ZERO_SECURITY_BASELINE.md) | Client-side guide to grounding cybersecurity before advanced AI work |
 | [`docs/phase-zero-assessment/`](phase-zero-assessment/) | Assessment kit: consent, findings, roadmap, and readiness rubric |
+| [`docs/visuals/`](visuals/) | Visual system map, audience entry map, runtime flow, and workshop mind map |
 
 ### Agent Documentation
 
@@ -485,6 +488,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | --- | --- |
 | [`docs/lifecycle/`](lifecycle/) | The 4D lifecycle documents (Delegation, Description, Discernment, Diligence) |
 | [`docs/frameworks/gartner-trism.md`](frameworks/gartner-trism.md) | Gartner AI TRiSM framework reference |
+| [`docs/frameworks/value-lenses.md`](frameworks/value-lenses.md) | Explicit success-criteria overlays for comparing outcomes under different enterprise logics |
 | [`docs/mcp-setup/`](mcp-setup/) | MCP server setup guides (Google Workspace, n8n, Slack, Web Search) |
 | [`docs/tool-usages/`](tool-usages/) | Tool-specific guides and integration patterns |
 | [`docs/examples/`](examples/) | Example implementations (Docker sandbox, RFP Responder, Video Automation) |

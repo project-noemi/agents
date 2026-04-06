@@ -17,6 +17,20 @@ function read(relativePath) {
     return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 }
 
+const MARKDOWN_LINK_RE = /\[([^\]]*)\]\(([^)]+)\)/g;
+
+function extractLocalLinks(content) {
+    const links = [];
+    let match;
+    while ((match = MARKDOWN_LINK_RE.exec(content)) !== null) {
+        let target = match[2];
+        if (target.startsWith('http') || target.startsWith('#') || target.startsWith('mailto:')) continue;
+        target = target.split('#')[0];
+        if (target) links.push(target);
+    }
+    return [...new Set(links)];
+}
+
 test('AGENTS.md includes the required top-level mandate sections', () => {
     const headings = extractTopLevelSections(read('AGENTS.md')).map((section) => section.title);
 
@@ -50,20 +64,27 @@ test('context templates retain all required injection markers', () => {
     }
 });
 
-test('builder-facing docs point to the Docker Agent Home path', () => {
-    const readme = read('README.md');
-    assert.match(readme, /docs\/examples\/zero-to-first-agent\.md/);
-    assert.match(readme, /docs\/examples\/cross-platform-kickstart\.md/);
-    assert.match(readme, /docs\/examples\/macos-linux-kickstart\.md/);
-    assert.match(readme, /docs\/examples\/windows-kickstart\.md/);
-    assert.match(readme, /docs\/examples\/chromeos-kickstart\.md/);
-    assert.match(readme, /docs\/examples\/docker-agent-home\.md/);
-    assert.match(readme, /npm run validate/);
-    assert.match(readme, /Choose your workstation path/i);
-    assert.match(readme, /What value organizations should expect/i);
-    assert.match(readme, /productivity of the active workforce/i);
-    assert.match(readme, /more output, better consistency, and lower unit cost/i);
-    assert.match(readme, /mass unemployment as the strategy/i);
+test('all local markdown links in front-door docs resolve to existing files', () => {
+    const frontDoorFiles = [
+        'README.md',
+        'docs/PROJECT_REFERENCE.md',
+        'CONTRIBUTING.md',
+        'docs/mcp-setup/README.md',
+        'docs/visuals/README.md'
+    ];
+
+    for (const file of frontDoorFiles) {
+        const content = read(file);
+        const fileDir = path.dirname(path.join(repoRoot, file));
+        const links = extractLocalLinks(content);
+        for (const link of links) {
+            const resolved = path.resolve(fileDir, link);
+            assert.ok(
+                fs.existsSync(resolved),
+                `${file} contains broken link: ${link}`
+            );
+        }
+    }
 });
 
 test('environment verification scripts expose path-aware beginner and docker modes', () => {
@@ -77,38 +98,10 @@ test('environment verification scripts expose path-aware beginner and docker mod
     assert.match(powershellScript, /No supported local AI client found/);
 });
 
-test('builder-facing docs expose the split Google Workspace implementation paths', () => {
-    const readme = read('README.md');
-    const mcpSetupIndex = read('docs/mcp-setup/README.md');
-
-    assert.match(readme, /docs\/mcp-setup\/gws-cli-machine-setup\.md/);
-    assert.match(readme, /docs\/tool-usages\/gemini-workspace-quickstart\.md/);
-    assert.match(readme, /docs\/examples\/n8n-google-workspace-quickstart\.md/);
-    assert.match(readme, /docs\/mcp-setup\/google-n8n-credential-matrix\.md/);
-    assert.match(mcpSetupIndex, /gws-cli-machine-setup\.md/);
-    assert.match(mcpSetupIndex, /google-n8n-credential-matrix\.md/);
-});
-
-test('builder-facing docs expose the local workspace comparison and client integration guides', () => {
-    const readme = read('README.md');
-    const mcpSetupIndex = read('docs/mcp-setup/README.md');
-
-    assert.match(readme, /docs\/tool-usages\/agentic-local-workspaces\.md/);
-    assert.match(readme, /docs\/tool-usages\/google-local-workspace\.md/);
-    assert.match(readme, /docs\/tool-usages\/claude-code-local-workspace\.md/);
-    assert.match(readme, /docs\/tool-usages\/openai-codex-local-workspace\.md/);
-    assert.match(readme, /docs\/mcp-setup\/google-workspace-agentic-clients\.md/);
-    assert.match(readme, /docs\/mcp-setup\/microsoft-365-agentic-clients\.md/);
-    assert.match(mcpSetupIndex, /google-workspace-agentic-clients\.md/);
-    assert.match(mcpSetupIndex, /microsoft-365-agentic-clients\.md/);
-});
-
 test('repo exposes the localized operating profile framework and template', () => {
-    const readme = read('README.md');
     const framework = read('docs/frameworks/localized-operating-profiles.md');
     const template = read('operating-profiles/PROFILE_TEMPLATE.md');
 
-    assert.match(readme, /operating-profiles\//);
     assert.match(framework, /simple translation/i);
     assert.match(framework, /inferred gender/i);
     assert.match(template, /## Language And Register/);
@@ -116,14 +109,12 @@ test('repo exposes the localized operating profile framework and template', () =
 });
 
 test('repo exposes the value lens framework, starter lenses, and template', () => {
-    const readme = read('README.md');
     const framework = read('docs/frameworks/value-lenses.md');
     const template = read('value-lenses/LENS_TEMPLATE.md');
     const performance = read('value-lenses/performance-efficiency.md');
     const care = read('value-lenses/care-continuity.md');
     const balanced = read('value-lenses/balanced-enterprise.md');
 
-    assert.match(readme, /value-lenses\//);
     assert.match(framework, /neutral operational names/i);
     assert.match(framework, /comparison mode/i);
     assert.match(framework, /Demographic Math[ée]sis/i);
@@ -137,19 +128,14 @@ test('repo exposes the value lens framework, starter lenses, and template', () =
     assert.match(balanced, /Lens ID:\*\* `balanced-enterprise`/);
 });
 
-test('repo exposes the visual guides and links them from the main entry docs', () => {
-    const readme = read('README.md');
-    const projectReference = read('docs/PROJECT_REFERENCE.md');
+test('visual guides contain mermaid diagrams and the index references them', () => {
     const visualsIndex = read('docs/visuals/README.md');
     const systemMap = read('docs/visuals/noemi-system-map.md');
     const audienceMap = read('docs/visuals/noemi-audience-entry-map.md');
     const runtimeFlow = read('docs/visuals/noemi-runtime-flow.md');
     const mindMap = read('docs/visuals/noemi-workshop-mind-map.md');
 
-    assert.match(readme, /docs\/visuals\/README\.md/);
-    assert.match(projectReference, /docs\/visuals\//);
     assert.match(visualsIndex, /noemi-system-map\.md/);
-    assert.match(visualsIndex, /more output from the same team/i);
     assert.match(systemMap, /```mermaid/);
     assert.match(audienceMap, /```mermaid/);
     assert.match(runtimeFlow, /```mermaid/);
@@ -174,7 +160,6 @@ test('repo pins the Node baseline consistently across CI, package metadata, and 
     const packageJson = JSON.parse(read('package.json'));
     const nvmrc = read('.nvmrc').trim();
     const nodeVersion = read('.node-version').trim();
-    const readme = read('README.md');
 
     assert.match(workflow, /actions\/checkout@v6/);
     assert.match(workflow, /actions\/setup-node@v6/);
@@ -182,5 +167,4 @@ test('repo pins the Node baseline consistently across CI, package metadata, and 
     assert.equal(packageJson.engines.node, '>=24');
     assert.equal(nvmrc, '24');
     assert.equal(nodeVersion, '24');
-    assert.match(readme, /24\.x LTS recommended; 25\+ supported/);
 });

@@ -30,10 +30,19 @@ If you are changing a specific area, read the closest guide too:
 
 ## Local Setup
 
-From the repo root:
+From the repo root, use the preflight that matches your machine:
 
 ```bash
-bash scripts/verify-env.sh
+bash scripts/verify-env.sh --mode=builder
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode builder
+```
+
+Then run:
+
+```bash
 node scripts/generate_all.js
 npm run validate
 ```
@@ -55,8 +64,8 @@ Run `node scripts/generate_all.js` when you change any of the following:
 - `skills/`
 - `mcp-protocols/`
 - `mcp.config.json`
-- `GEMINI.template.md`
-- `CLAUDE.template.md`
+- `templates/context/GEMINI.template.md`
+- `templates/context/CLAUDE.template.md`
 - generator helper logic in `scripts/`
 
 Generated outputs are committed to the repo. CI checks that `GEMINI.md` and `CLAUDE.md` stay fresh.

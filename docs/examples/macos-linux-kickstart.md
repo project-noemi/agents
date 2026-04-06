@@ -1,45 +1,35 @@
-# Windows Kickstart
+# macOS / Linux Kickstart
 
-Use this guide when your main machine is Windows and you want the safest beginner path into Project NoeMI.
+Use this guide when your main machine is macOS or Linux.
 
-If you have not chosen a workstation path yet, start with [`cross-platform-kickstart.md`](cross-platform-kickstart.md) first.
+This is the safest beginner path if:
 
-This is the right starting point if:
-
-- you are comfortable using Windows but not yet comfortable with Bash
+- you already have a normal Terminal workflow
 - you want one harmless, read-only AI success before Docker or business-system wiring
-- you want to use PowerShell instead of guessing which Linux-style command still applies on Windows
+- you want the cleanest path into later Docker work
+
+If your machine is ChromeOS, use [`chromeos-kickstart.md`](chromeos-kickstart.md) instead. ChromeOS starts with the Linux development environment first, then joins the same local-first flow.
 
 ## What You Need
 
 - Git
 - Node.js 24 or newer
 - one supported local AI client: Gemini CLI, Claude Code, or OpenAI Codex
-- PowerShell
-  - `powershell` works on stock Windows
-  - `pwsh` is recommended if you already use PowerShell 7
+- Terminal access with `bash` or `zsh`
 
 ## Step 1: Clone The Repository
 
-Open PowerShell and run:
+Open Terminal and run:
 
-```powershell
+```bash
 git clone https://github.com/newpush/agents.git
 cd agents
 ```
 
-## Step 2: Run The Windows Preflight
+## Step 2: Run The macOS / Linux Preflight
 
-If you are using the PowerShell that ships with Windows:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode builder
-```
-
-If you already have PowerShell 7:
-
-```powershell
-pwsh -File scripts/verify-env.ps1 -Mode builder
+```bash
+bash scripts/verify-env.sh --mode=builder
 ```
 
 This checks:
@@ -52,7 +42,7 @@ This checks:
 
 ## Step 3: Generate The Current Agent Context
 
-```powershell
+```bash
 node scripts/generate_all.js
 npm run validate
 ```
@@ -65,7 +55,7 @@ Use one read-only prompt against the local repository first.
 
 ### Gemini CLI
 
-```powershell
+```bash
 gemini -p GEMINI.md "List the engineering agents in this repository and summarize what each one does in one sentence. Then tell me which one would help first with PR review."
 ```
 
@@ -87,7 +77,7 @@ Do not start by pasting secrets into files.
 
 When you move beyond local read-only work, wrap the client at launch:
 
-```powershell
+```bash
 infisical run --env=dev -- gemini
 op run --env-file=.env.template -- gemini
 ```
@@ -103,17 +93,17 @@ After this local-first success:
 3. [`../tool-usages/agentic-local-workspaces.md`](../tool-usages/agentic-local-workspaces.md)
 4. [`builder-first-30-minutes.md`](builder-first-30-minutes.md) when you are ready for Docker
 
-## Windows Notes
+## macOS / Linux Notes
 
-- You do **not** need WSL for the first beginner path.
-- You do **not** need Docker Desktop for the first beginner path.
-- If you later move into Docker homes, use [`builder-first-30-minutes.md`](builder-first-30-minutes.md) and install Docker Desktop at that stage.
+- You do **not** need Docker for the first beginner path.
+- You do **not** need production credentials for the first beginner path.
+- macOS and Linux are usually the cleanest platforms for moving from the local-first path into Docker later.
 
 ## Outcome
 
 If this guide worked, you now have:
 
-- one Windows-safe verification path
+- one macOS / Linux-safe verification path
 - one working local AI client
 - one validated repository context
 - one first success you can show to a colleague before connecting business systems

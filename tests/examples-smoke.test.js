@@ -68,6 +68,8 @@ test('beginner builder docs start with a safe local success before Docker', () =
     const beginnerGuide = read('docs/examples/zero-to-first-agent.md');
     const builderGuide = read('docs/examples/builder-first-30-minutes.md');
     const readme = read('README.md');
+    const platformGuide = read('docs/examples/cross-platform-kickstart.md');
+    const macGuide = read('docs/examples/macos-linux-kickstart.md');
     const windowsGuide = read('docs/examples/windows-kickstart.md');
     const chromeOsGuide = read('docs/examples/chromeos-kickstart.md');
 
@@ -75,22 +77,46 @@ test('beginner builder docs start with a safe local success before Docker', () =
     assert.match(beginnerGuide, /does \*\*not\*\* require Docker/i);
     assert.match(beginnerGuide, /engineering agents in this repository/i);
     assert.match(beginnerGuide, /human approval before external action/i);
+    assert.match(beginnerGuide, /cross-platform-kickstart\.md/);
+    assert.match(beginnerGuide, /macos-linux-kickstart\.md/);
     assert.match(beginnerGuide, /windows-kickstart\.md/);
     assert.match(beginnerGuide, /chromeos-kickstart\.md/);
-    assert.match(beginnerGuide, /powershell -ExecutionPolicy Bypass -File scripts\/verify-env\.ps1 -Mode builder/i);
     assert.match(builderGuide, /phase-two Docker path/i);
+    assert.match(builderGuide, /Decision Point: Pick The Docker Host Path/i);
     assert.match(builderGuide, /verify-env\.sh --mode=docker/);
-    assert.match(builderGuide, /powershell -ExecutionPolicy Bypass -File scripts\/verify-env\.ps1 -Mode docker/i);
+    assert.match(builderGuide, /verify-env\.ps1 -Mode docker/i);
+    assert.match(platformGuide, /Choose Your Workstation Path First/i);
+    assert.match(platformGuide, /macos-linux-kickstart\.md/);
+    assert.match(platformGuide, /windows-kickstart\.md/);
+    assert.match(platformGuide, /chromeos-kickstart\.md/);
+    assert.match(macGuide, /macOS or Linux/i);
+    assert.match(macGuide, /bash scripts\/verify-env\.sh --mode=builder/i);
     assert.match(windowsGuide, /PowerShell/i);
     assert.match(windowsGuide, /powershell -ExecutionPolicy Bypass -File scripts\/verify-env\.ps1 -Mode builder/i);
     assert.match(windowsGuide, /You do \*\*not\*\* need WSL/i);
     assert.match(chromeOsGuide, /Linux development environment/i);
     assert.match(chromeOsGuide, /bash scripts\/verify-env\.sh --mode=builder/i);
     assert.match(chromeOsGuide, /ChromeOS is often \*\*not\*\* the easiest place to start the Docker phase/i);
+    assert.match(readme, /docs\/examples\/cross-platform-kickstart\.md/);
+    assert.match(readme, /docs\/examples\/macos-linux-kickstart\.md/);
     assert.match(readme, /docs\/examples\/windows-kickstart\.md/);
     assert.match(readme, /docs\/examples\/chromeos-kickstart\.md/);
-    assert.match(readme, /powershell -ExecutionPolicy Bypass -File scripts\/verify-env\.ps1 -Mode builder/i);
+    assert.match(readme, /Choose your workstation path/i);
     assert.doesNotMatch(readme, /List all open PRs in our org/);
+});
+
+test('template infrastructure is grouped under templates/context and the root no longer carries the old template files or stray n8n workflow folder', () => {
+    const templatesReadme = read('templates/README.md');
+    const geminiTemplate = read('templates/context/GEMINI.template.md');
+    const claudeTemplate = read('templates/context/CLAUDE.template.md');
+
+    assert.match(templatesReadme, /generated context templates/i);
+    assert.match(geminiTemplate, /<!-- GLOBAL_MANDATES_START -->/);
+    assert.match(claudeTemplate, /templates\/context\/\{GEMINI,CLAUDE\}\.template\.md/);
+    assert.ok(!fs.existsSync(path.join(repoRoot, 'GEMINI.template.md')));
+    assert.ok(!fs.existsSync(path.join(repoRoot, 'CLAUDE.template.md')));
+    assert.ok(!fs.existsSync(path.join(repoRoot, 'n8n')));
+    assert.ok(fs.existsSync(path.join(repoRoot, 'examples/workflows/legacy/invoice-downloader-no-ai-no-key.json')));
 });
 
 test('secret management guide leads beginners through a local-first choice between Infisical and 1Password', () => {

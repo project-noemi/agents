@@ -40,7 +40,7 @@ infisical run --env=dev -- [command]
 Both `GEMINI.md` and `CLAUDE.md` are generated from their respective templates:
 
 ```
-{GEMINI,CLAUDE}.template.md + mcp.config.json + AGENTS.md
+templates/context/{GEMINI,CLAUDE}.template.md + mcp.config.json + AGENTS.md
     → scripts/generate_{gemini,claude}.js
     → {GEMINI,CLAUDE}.md
 ```

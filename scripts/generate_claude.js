@@ -13,7 +13,7 @@ const {
     readConfig
 } = require('./context_helpers');
 
-const templatePath = path.join(__dirname, '../CLAUDE.template.md');
+const templatePath = path.join(__dirname, '../templates/context/CLAUDE.template.md');
 const outputPath = path.join(__dirname, '../CLAUDE.md');
 const defaultConfigPath = path.join(__dirname, '../mcp.config.json');
 const protocolsDir = path.join(__dirname, '../mcp-protocols');
@@ -26,7 +26,7 @@ function run() {
     const { configOverride } = parseCliArgs(process.argv.slice(2));
 
     if (!fs.existsSync(templatePath)) {
-        console.error('Error: CLAUDE.template.md not found.');
+        console.error('Error: templates/context/CLAUDE.template.md not found.');
         process.exit(1);
     }
     const templateContent = fs.readFileSync(templatePath, 'utf8');

@@ -28,7 +28,7 @@ Project NoeMI avoids that by generating `GEMINI.md` from only the active skills 
 
 The generation pipeline uses:
 
-1. `GEMINI.template.md`
+1. `templates/context/GEMINI.template.md`
 2. `AGENTS.md`
 3. `mcp.config.json`
 4. `scripts/generate_gemini.js`

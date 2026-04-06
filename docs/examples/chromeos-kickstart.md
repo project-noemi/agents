@@ -2,6 +2,8 @@
 
 Use this guide when your main machine is a Chromebook or ChromeOS device.
 
+If you have not chosen a workstation path yet, start with [`cross-platform-kickstart.md`](cross-platform-kickstart.md) first.
+
 The key idea is simple: on ChromeOS, Project NoeMI starts inside the **Linux development environment**. Once that terminal is available, the beginner path looks like the Linux path from this repository.
 
 ## What You Need

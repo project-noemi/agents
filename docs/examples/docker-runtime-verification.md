@@ -28,10 +28,16 @@ You need:
 - Node.js 24.x LTS or newer
 - enough local CPU, RAM, and disk to boot the example stacks
 
-Before the runtime tier, run the fast gate:
+Before the runtime tier, run the fast gate that matches your Docker-capable host:
 
 ```bash
 bash scripts/verify-env.sh --mode=docker
+node scripts/generate_all.js
+npm run validate
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode docker
 node scripts/generate_all.js
 npm run validate
 ```

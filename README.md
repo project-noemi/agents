@@ -19,12 +19,12 @@ In plain business terms, NoéMI is useful because it helps an organization move 
 
 > **New to AI and want one safe first win?** Start with [**Zero To First Agent**](docs/examples/zero-to-first-agent.md).
 
-> **On Windows or ChromeOS?** Use the dedicated [**Windows Kickstart**](docs/examples/windows-kickstart.md) or [**ChromeOS Kickstart**](docs/examples/chromeos-kickstart.md) so you begin in the right shell and runtime.
+> **Need the right workstation path first?** Start with [**Cross-Platform Kickstart**](docs/examples/cross-platform-kickstart.md), then follow the matching [**macOS/Linux**](docs/examples/macos-linux-kickstart.md), [**Windows**](docs/examples/windows-kickstart.md), or [**ChromeOS**](docs/examples/chromeos-kickstart.md) guide.
 
 **Audience paths:**
 - **Client / Buyer:** [Project Reference](docs/PROJECT_REFERENCE.md) → [Phase 0 Security Baseline](docs/PHASE_ZERO_SECURITY_BASELINE.md) → [Phase 0 Assessment Kit](docs/phase-zero-assessment/README.md)
 - **MSP / MSSP:** [Project Reference](docs/PROJECT_REFERENCE.md) → [MSP Deployment Guide](docs/examples/msp-deployment.md) → [Fleet / governance docs](docs/agents/operations/)
-- **Builder / Accelerator:** [Zero To First Agent](docs/examples/zero-to-first-agent.md) → [Windows Kickstart](docs/examples/windows-kickstart.md) or [ChromeOS Kickstart](docs/examples/chromeos-kickstart.md) when needed → [Secure Secret Management](docs/tool-usages/secure-secret-management.md) → [Agentic Local Workspaces](docs/tool-usages/agentic-local-workspaces.md) → [Google Local Workspace](docs/tool-usages/google-local-workspace.md), [Claude Code Local Workspace](docs/tool-usages/claude-code-local-workspace.md), or [OpenAI Codex Local Workspace](docs/tool-usages/openai-codex-local-workspace.md) → [GWS CLI Machine Setup](docs/mcp-setup/gws-cli-machine-setup.md) → [Google Workspace For Agentic Clients](docs/mcp-setup/google-workspace-agentic-clients.md) or [Microsoft 365 For Agentic Clients](docs/mcp-setup/microsoft-365-agentic-clients.md) → [Value Lenses](docs/frameworks/value-lenses.md) → [Gemini Workspace Quickstart](docs/tool-usages/gemini-workspace-quickstart.md) or [n8n Google Workspace Quickstart](docs/examples/n8n-google-workspace-quickstart.md) → [Builder First 30 Minutes](docs/examples/builder-first-30-minutes.md) → [Docker Agent Home](docs/examples/docker-agent-home.md) → [Orchestrator Runtime Contract](docs/tool-usages/orchestrator-runtime-contract.md)
+- **Builder / Accelerator:** [Zero To First Agent](docs/examples/zero-to-first-agent.md) → [Cross-Platform Kickstart](docs/examples/cross-platform-kickstart.md) → [macOS/Linux Kickstart](docs/examples/macos-linux-kickstart.md), [Windows Kickstart](docs/examples/windows-kickstart.md), or [ChromeOS Kickstart](docs/examples/chromeos-kickstart.md) → [Secure Secret Management](docs/tool-usages/secure-secret-management.md) → [Agentic Local Workspaces](docs/tool-usages/agentic-local-workspaces.md) → [Google Local Workspace](docs/tool-usages/google-local-workspace.md), [Claude Code Local Workspace](docs/tool-usages/claude-code-local-workspace.md), or [OpenAI Codex Local Workspace](docs/tool-usages/openai-codex-local-workspace.md) → [GWS CLI Machine Setup](docs/mcp-setup/gws-cli-machine-setup.md) → [Google Workspace For Agentic Clients](docs/mcp-setup/google-workspace-agentic-clients.md) or [Microsoft 365 For Agentic Clients](docs/mcp-setup/microsoft-365-agentic-clients.md) → [Value Lenses](docs/frameworks/value-lenses.md) → [Gemini Workspace Quickstart](docs/tool-usages/gemini-workspace-quickstart.md) or [n8n Google Workspace Quickstart](docs/examples/n8n-google-workspace-quickstart.md) → [Builder First 30 Minutes](docs/examples/builder-first-30-minutes.md) → [Docker Agent Home](docs/examples/docker-agent-home.md) → [Orchestrator Runtime Contract](docs/tool-usages/orchestrator-runtime-contract.md)
 
 ## Table of Contents
 
@@ -47,67 +47,42 @@ In plain business terms, NoéMI is useful because it helps an organization move 
 
 ## Quick Start
 
-**Prerequisites:** [Node.js](https://nodejs.org/) (24.x LTS recommended; 25+ supported), [Git](https://git-scm.com/), one supported local client ([Gemini CLI](https://github.com/google-gemini/gemini-cli), Claude Code, or OpenAI Codex), and a secret manager ([Infisical CLI](https://infisical.com/docs/cli/overview) or [1Password CLI](https://developer.1password.com/docs/cli/)) before you connect business systems. [Docker](https://www.docker.com/) becomes part of the path when you are ready to build a runtime home. On ChromeOS, use the Linux development environment terminal. On Windows, use the PowerShell path below.
+**Prerequisites:** [Node.js](https://nodejs.org/) (24.x LTS recommended; 25+ supported), [Git](https://git-scm.com/), one supported local client ([Gemini CLI](https://github.com/google-gemini/gemini-cli), Claude Code, or OpenAI Codex), and a secret manager ([Infisical CLI](https://infisical.com/docs/cli/overview) or [1Password CLI](https://developer.1password.com/docs/cli/)) before you connect business systems. [Docker](https://www.docker.com/) becomes part of the path when you are ready to build a runtime home.
 
-### macOS, Linux, or ChromeOS Linux Terminal
+### Step 1: Choose Your Workstation Path
+
+| If your main machine is | Start here | What it means |
+|-------------------------|------------|---------------|
+| macOS or Linux | [`docs/examples/macos-linux-kickstart.md`](docs/examples/macos-linux-kickstart.md) | Native Terminal path using `bash`/`zsh`, best for local-first work and later Docker |
+| Windows | [`docs/examples/windows-kickstart.md`](docs/examples/windows-kickstart.md) | PowerShell-first path, no Bash guessing required |
+| ChromeOS | [`docs/examples/chromeos-kickstart.md`](docs/examples/chromeos-kickstart.md) | Start inside the Linux development environment terminal, then follow the local-first path |
+
+If you want the decision tree in one place before you choose, use [`docs/examples/cross-platform-kickstart.md`](docs/examples/cross-platform-kickstart.md).
+
+### Step 2: Run The Common Repository Loop
+
+Once your workstation path is in place, the shared repository workflow is the same:
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/newpush/agents.git
-cd agents
-
-# 2. Verify the beginner local-first path
-bash scripts/verify-env.sh --mode=builder
-
-# 3. Configure which MCP integrations are active (edit as needed)
-cat mcp.config.json
-
-# 4. Generate context files consumed by orchestrators
-node scripts/generate_all.js      # Generates both GEMINI.md and CLAUDE.md
-
-# 5. Run the fast validation gate
-npm run validate
-
-# 6. Prove one safe local task first
-# Example with Gemini CLI. If you chose Claude Code or Codex, use the same repo-local prompt there instead.
-gemini -p GEMINI.md "List the engineering agents in this repository and summarize what each one does in one sentence."
-
-# 7. Run Docker smoke validation when Docker is available
-npm run test:e2e
-
-# 8. When you need secrets, wrap the client at launch time
-infisical run --env=dev -- gemini
-# or:
-op run --env-file=.env.template -- gemini
-# Claude Code reads CLAUDE.md automatically when opened in this repository
-# Codex can be launched through the same Fetch-on-Demand pattern
-```
-
-### Windows PowerShell
-
-```powershell
-# 1. Clone the repository
-git clone https://github.com/newpush/agents.git
-cd agents
-
-# 2. Verify the beginner local-first path
-powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode builder
-
-# 3. Configure which MCP integrations are active (edit as needed)
-Get-Content mcp.config.json
-
-# 4. Generate context files consumed by orchestrators
 node scripts/generate_all.js
-
-# 5. Run the fast validation gate
 npm run validate
-
-# 6. Prove one safe local task first
 gemini -p GEMINI.md "List the engineering agents in this repository and summarize what each one does in one sentence."
 ```
 
-The generated `GEMINI.md` and `CLAUDE.md` files contain your agent personas, security mandates, and MCP protocol definitions — everything an orchestrator needs to act as your agents.
-If you are completely new to AI implementation, follow [`docs/examples/zero-to-first-agent.md`](docs/examples/zero-to-first-agent.md) before the Docker-oriented builder path. If you are on Windows or ChromeOS, start with [`docs/examples/windows-kickstart.md`](docs/examples/windows-kickstart.md) or [`docs/examples/chromeos-kickstart.md`](docs/examples/chromeos-kickstart.md) so the shell instructions match your machine.
+The generated `GEMINI.md` and `CLAUDE.md` files contain your agent personas, security mandates, and MCP protocol definitions. Claude Code reads `CLAUDE.md` automatically when opened in this repository, and Codex can use the same generated context and local docs.
+
+### Step 3: Add Secrets Only When You Need Business Systems
+
+Keep the first win local and read-only. Once you connect Gmail, GitHub, Google Workspace, Microsoft 365, or n8n, launch through the Fetch-on-Demand wrapper:
+
+```bash
+infisical run --env=dev -- gemini
+op run --env-file=.env.template -- gemini
+```
+
+### Step 4: Move To Docker Only When You Are Ready
+
+The Docker phase is separate from the first win. Start with [`docs/examples/zero-to-first-agent.md`](docs/examples/zero-to-first-agent.md), then move to [`docs/examples/builder-first-30-minutes.md`](docs/examples/builder-first-30-minutes.md) and [`docs/examples/docker-agent-home.md`](docs/examples/docker-agent-home.md) when you are ready to build a governed runtime home.
 
 The same validation gates are enforced in GitHub Actions on pushes and pull requests targeting `develop` and `main`, so local validation mirrors the repository's CI contract.
 When Docker smoke fails on a real host or in CI, inspect `test-artifacts/docker-smoke/` or the uploaded `docker-smoke-diagnostics` artifact.
@@ -120,7 +95,7 @@ When Docker smoke fails on a real host or in CI, inspect `test-artifacts/docker-
 |----------|------------|------------|
 | **Client / Buyer** | [`docs/PROJECT_REFERENCE.md`](docs/PROJECT_REFERENCE.md) | [`docs/PHASE_ZERO_SECURITY_BASELINE.md`](docs/PHASE_ZERO_SECURITY_BASELINE.md), [`docs/phase-zero-assessment/README.md`](docs/phase-zero-assessment/README.md) |
 | **MSP / MSSP** | [`docs/PROJECT_REFERENCE.md`](docs/PROJECT_REFERENCE.md) | [`docs/examples/msp-deployment.md`](docs/examples/msp-deployment.md), [`docs/agents/operations/`](docs/agents/operations/) |
-| **Builder / Accelerator** | [`docs/examples/zero-to-first-agent.md`](docs/examples/zero-to-first-agent.md) | [`docs/examples/windows-kickstart.md`](docs/examples/windows-kickstart.md), [`docs/examples/chromeos-kickstart.md`](docs/examples/chromeos-kickstart.md), [`docs/tool-usages/secure-secret-management.md`](docs/tool-usages/secure-secret-management.md), [`docs/tool-usages/agentic-local-workspaces.md`](docs/tool-usages/agentic-local-workspaces.md), [`docs/tool-usages/google-local-workspace.md`](docs/tool-usages/google-local-workspace.md), [`docs/tool-usages/claude-code-local-workspace.md`](docs/tool-usages/claude-code-local-workspace.md), [`docs/tool-usages/openai-codex-local-workspace.md`](docs/tool-usages/openai-codex-local-workspace.md), [`docs/mcp-setup/gws-cli-machine-setup.md`](docs/mcp-setup/gws-cli-machine-setup.md), [`docs/mcp-setup/google-workspace-agentic-clients.md`](docs/mcp-setup/google-workspace-agentic-clients.md), [`docs/mcp-setup/microsoft-365-agentic-clients.md`](docs/mcp-setup/microsoft-365-agentic-clients.md), [`docs/tool-usages/gemini-workspace-quickstart.md`](docs/tool-usages/gemini-workspace-quickstart.md), [`docs/examples/n8n-google-workspace-quickstart.md`](docs/examples/n8n-google-workspace-quickstart.md), [`docs/mcp-setup/google-n8n-credential-matrix.md`](docs/mcp-setup/google-n8n-credential-matrix.md), [`docs/examples/builder-first-30-minutes.md`](docs/examples/builder-first-30-minutes.md), [`docs/examples/docker-agent-home.md`](docs/examples/docker-agent-home.md), [`docs/examples/docker-runtime-verification.md`](docs/examples/docker-runtime-verification.md), [`docs/tool-usages/orchestrator-runtime-contract.md`](docs/tool-usages/orchestrator-runtime-contract.md), [`docs/AGENT_TEMPLATE.md`](docs/AGENT_TEMPLATE.md) |
+| **Builder / Accelerator** | [`docs/examples/zero-to-first-agent.md`](docs/examples/zero-to-first-agent.md) | [`docs/examples/cross-platform-kickstart.md`](docs/examples/cross-platform-kickstart.md), [`docs/examples/macos-linux-kickstart.md`](docs/examples/macos-linux-kickstart.md), [`docs/examples/windows-kickstart.md`](docs/examples/windows-kickstart.md), [`docs/examples/chromeos-kickstart.md`](docs/examples/chromeos-kickstart.md), [`docs/tool-usages/secure-secret-management.md`](docs/tool-usages/secure-secret-management.md), [`docs/tool-usages/agentic-local-workspaces.md`](docs/tool-usages/agentic-local-workspaces.md), [`docs/tool-usages/google-local-workspace.md`](docs/tool-usages/google-local-workspace.md), [`docs/tool-usages/claude-code-local-workspace.md`](docs/tool-usages/claude-code-local-workspace.md), [`docs/tool-usages/openai-codex-local-workspace.md`](docs/tool-usages/openai-codex-local-workspace.md), [`docs/mcp-setup/gws-cli-machine-setup.md`](docs/mcp-setup/gws-cli-machine-setup.md), [`docs/mcp-setup/google-workspace-agentic-clients.md`](docs/mcp-setup/google-workspace-agentic-clients.md), [`docs/mcp-setup/microsoft-365-agentic-clients.md`](docs/mcp-setup/microsoft-365-agentic-clients.md), [`docs/tool-usages/gemini-workspace-quickstart.md`](docs/tool-usages/gemini-workspace-quickstart.md), [`docs/examples/n8n-google-workspace-quickstart.md`](docs/examples/n8n-google-workspace-quickstart.md), [`docs/mcp-setup/google-n8n-credential-matrix.md`](docs/mcp-setup/google-n8n-credential-matrix.md), [`docs/examples/builder-first-30-minutes.md`](docs/examples/builder-first-30-minutes.md), [`docs/examples/docker-agent-home.md`](docs/examples/docker-agent-home.md), [`docs/examples/docker-runtime-verification.md`](docs/examples/docker-runtime-verification.md), [`docs/tool-usages/orchestrator-runtime-contract.md`](docs/tool-usages/orchestrator-runtime-contract.md), [`docs/AGENT_TEMPLATE.md`](docs/AGENT_TEMPLATE.md) |
 
 ---
 
@@ -134,6 +109,7 @@ When Docker smoke fails on a real host or in CI, inspect `test-artifacts/docker-
 | Deployment examples | `examples/` | Docker Compose stacks, workflow templates, and testing suites |
 | Documentation | `docs/` | Framework docs, setup guides, agent-specific documentation |
 | Visual guides | `docs/visuals/` | Mermaid system maps, onboarding diagrams, and workshop-friendly mental models |
+| Infrastructure templates | `templates/` | Base templates that the generators use to build orchestrator context files |
 | Operating profiles | `operating-profiles/` | Localized language, regional, and audience overlays for culturally grounded agent execution |
 | Value lenses | `value-lenses/` | Explicit success criteria and tradeoff overlays for comparing outcomes under different enterprise logics |
 | Build scripts | `scripts/` | Context generation, repo auditing, retry helpers, and environment verification |
@@ -206,12 +182,14 @@ When Docker smoke fails on a real host or in CI, inspect `test-artifacts/docker-
 │   ├── retry-with-backoff.sh       # Reference retry helper for transient failures
 │   └── verify-env.sh               # Checks prerequisites by path (builder, client, Docker)
 │
+├── templates/
+│   ├── README.md                    # Why templates live below the repo root
+│   └── context/                     # Base templates for generated orchestrator context files
+│
 ├── tests/                          # Node built-in contract and smoke tests
 ├── package.json                    # Validation and generation entrypoints
 │
 ├── mcp.config.json                  # Declares which MCPs are active
-├── GEMINI.template.md               # Base template for Gemini context generation
-├── CLAUDE.template.md               # Base template for Claude Code context generation
 ├── AGENTS.md                        # Global security mandates and directives
 ├── GEMINI.md                        # Generated output for Gemini (do not edit directly)
 ├── CLAUDE.md                        # Generated output for Claude Code (do not edit directly)
@@ -297,7 +275,7 @@ For setup instructions, see [`docs/mcp-setup/`](docs/mcp-setup/).
 The core build step combines your agent specs and MCP protocols into context files that orchestrators consume. Two generated context pipelines exist today — one for Gemini CLI and one for Claude Code:
 
 ```
-{GEMINI,CLAUDE}.template.md + mcp.config.json + AGENTS.md
+templates/context/{GEMINI,CLAUDE}.template.md + mcp.config.json + AGENTS.md
          │                          │               │
          │              ┌───────────┘               │
          ▼              ▼                           ▼
@@ -306,7 +284,7 @@ The core build step combines your agent specs and MCP protocols into context fil
 
 Both scripts follow the same steps:
 
-1. Read the base template (`GEMINI.template.md` or `CLAUDE.template.md`)
+1. Read the base template (`templates/context/GEMINI.template.md` or `templates/context/CLAUDE.template.md`)
 2. Read `mcp.config.json` to determine which MCP integrations are active
 3. For each active MCP, inject the protocol definition from `mcp-protocols/`
 4. Extract the full global mandate set from `AGENTS.md`
@@ -550,6 +528,8 @@ All documentation lives in `docs/`. Here's where to find what:
 | Client-side Phase 0 guidance | [`docs/PHASE_ZERO_SECURITY_BASELINE.md`](docs/PHASE_ZERO_SECURITY_BASELINE.md) |
 | Phase 0 assessment kit | [`docs/phase-zero-assessment/README.md`](docs/phase-zero-assessment/README.md) |
 | Beginner first-win guide | [`docs/examples/zero-to-first-agent.md`](docs/examples/zero-to-first-agent.md) |
+| Cross-platform workstation decision guide | [`docs/examples/cross-platform-kickstart.md`](docs/examples/cross-platform-kickstart.md) |
+| macOS/Linux beginner guide | [`docs/examples/macos-linux-kickstart.md`](docs/examples/macos-linux-kickstart.md) |
 | Windows beginner guide | [`docs/examples/windows-kickstart.md`](docs/examples/windows-kickstart.md) |
 | ChromeOS beginner guide | [`docs/examples/chromeos-kickstart.md`](docs/examples/chromeos-kickstart.md) |
 | Google Workspace machine setup | [`docs/mcp-setup/gws-cli-machine-setup.md`](docs/mcp-setup/gws-cli-machine-setup.md) |

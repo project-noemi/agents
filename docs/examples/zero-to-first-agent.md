@@ -4,8 +4,12 @@ This is the safest beginner path in Project NoeMI.
 
 Use it when you are new to AI, comfortable around technology, and want one real success before you connect Google Workspace, Microsoft 365, GitHub, n8n, or Docker.
 
-If your machine is Windows or ChromeOS, use the matching platform guide alongside this one:
+## Decision Point: Choose The Matching Workstation Path
 
+Use the matching workstation guide alongside this one:
+
+- [`cross-platform-kickstart.md`](cross-platform-kickstart.md)
+- [`macos-linux-kickstart.md`](macos-linux-kickstart.md)
 - [`windows-kickstart.md`](windows-kickstart.md)
 - [`chromeos-kickstart.md`](chromeos-kickstart.md)
 
@@ -42,45 +46,14 @@ If you have not chosen yet, use the comparison guide in [`../tool-usages/agentic
 
 ## Step 2: Verify Only The Path You Need
 
-From the repository root, run the preflight mode that matches your first client.
+From the repository root, run the preflight mode from your matching workstation guide:
 
-If you are on macOS, Linux, or ChromeOS inside the Linux terminal:
+- `builder` if you want a general beginner check first
+- `gemini` if Gemini CLI is your first client
+- `claude` if Claude Code is your first client
+- `codex` if OpenAI Codex is your first client
 
-```bash
-bash scripts/verify-env.sh --mode=gemini
-```
-
-```bash
-bash scripts/verify-env.sh --mode=claude
-```
-
-```bash
-bash scripts/verify-env.sh --mode=codex
-```
-
-If you just want a general beginner check first, use:
-
-```bash
-bash scripts/verify-env.sh --mode=builder
-```
-
-If you are on Windows PowerShell:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode gemini
-```
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode claude
-```
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode codex
-```
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode builder
-```
+Your workstation guide gives you the exact shell command for that machine architecture.
 
 This verifies Git, Node.js, and the local client you actually plan to use. It does **not** require Docker for the beginner path.
 

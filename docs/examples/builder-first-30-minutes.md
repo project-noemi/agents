@@ -19,16 +19,19 @@ Read these guides first:
 
 Those explain the security contract, the shape of the Docker home you are about to launch, and the runtime responsibilities your orchestrator must own.
 
-Platform note:
+## Decision Point: Pick The Docker Host Path
 
-- on Windows, use the PowerShell preflight script instead of the Bash script
-- on ChromeOS, finish the local-first path first and only continue here if your Linux environment or remote host is truly Docker-capable
+| If your Docker host is | Use this path |
+|------------------------|---------------|
+| macOS or Linux | Run the Docker phase locally with the shell path below |
+| Windows | Use the PowerShell path below |
+| ChromeOS | Continue only if your Linux environment is truly Docker-capable; otherwise move the Docker phase to a stronger Linux, macOS, or Windows host |
 
 ## Step 1: Verify The Docker Toolchain
 
 From the repository root:
 
-macOS, Linux, or ChromeOS Linux terminal:
+macOS, Linux, or a Docker-capable ChromeOS Linux terminal:
 
 ```bash
 bash scripts/verify-env.sh --mode=docker
@@ -151,6 +154,15 @@ The normal builder loop for Docker-facing work looks like this:
 
 ```bash
 bash scripts/verify-env.sh --mode=docker
+node scripts/generate_all.js
+npm run validate
+npm run test:e2e
+```
+
+On Windows, use the same loop with the PowerShell preflight:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode docker
 node scripts/generate_all.js
 npm run validate
 npm run test:e2e

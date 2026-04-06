@@ -16,8 +16,8 @@ const repoRoot = path.join(__dirname, '..');
 const agentsDir = path.join(repoRoot, 'agents');
 const agentsMdPath = path.join(repoRoot, 'AGENTS.md');
 const templates = [
-    path.join(repoRoot, 'GEMINI.template.md'),
-    path.join(repoRoot, 'CLAUDE.template.md')
+    path.join(repoRoot, 'templates/context/GEMINI.template.md'),
+    path.join(repoRoot, 'templates/context/CLAUDE.template.md')
 ];
 const generatedOutputs = [
     path.join(repoRoot, 'GEMINI.md'),

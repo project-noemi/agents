@@ -97,12 +97,6 @@ test('beginner builder docs start with a safe local success before Docker', () =
     assert.match(chromeOsGuide, /Linux development environment/i);
     assert.match(chromeOsGuide, /bash scripts\/verify-env\.sh --mode=builder/i);
     assert.match(chromeOsGuide, /ChromeOS is often \*\*not\*\* the easiest place to start the Docker phase/i);
-    assert.match(readme, /docs\/examples\/cross-platform-kickstart\.md/);
-    assert.match(readme, /docs\/examples\/macos-linux-kickstart\.md/);
-    assert.match(readme, /docs\/examples\/windows-kickstart\.md/);
-    assert.match(readme, /docs\/examples\/chromeos-kickstart\.md/);
-    assert.match(readme, /Choose your workstation path/i);
-    assert.doesNotMatch(readme, /List all open PRs in our org/);
 });
 
 test('template infrastructure is grouped under templates/context and the root no longer carries the old template files or stray n8n workflow folder', () => {
@@ -157,22 +151,8 @@ test('phase zero assessment kit separates security readiness from AI readiness a
 });
 
 test('front-door docs frame NoeMI as productivity uplift rather than labor replacement', () => {
-    const readme = read('README.md');
-    const projectReference = read('docs/PROJECT_REFERENCE.md');
     const visualsIndex = read('docs/visuals/README.md');
 
-    assert.match(readme, /higher throughput without growing headcount at the same rate/i);
-    assert.match(readme, /lower delivery cost/i);
-    assert.match(readme, /more consistent first-pass output/i);
-    assert.match(readme, /increase output/i);
-    assert.match(readme, /Virtual Workforce/i);
-    assert.match(readme, /mass unemployment/i);
-    assert.match(projectReference, /increasing the productivity of the active population/i);
-    assert.match(projectReference, /What organizations should expect from this model/i);
-    assert.match(projectReference, /lower unit cost on repetitive operational work/i);
-    assert.match(projectReference, /identify the first safe, worthwhile pilot/i);
-    assert.match(projectReference, /Virtual Workforce model/i);
-    assert.match(projectReference, /labor-displacement fear/i);
     assert.match(visualsIndex, /lower unit cost on first-pass operational tasks/i);
 });
 

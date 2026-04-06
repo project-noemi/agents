@@ -42,7 +42,7 @@ All agent personas in `agents/` must include the following required headings:
 - `External Tooling Dependencies`
 - `Audit Log`
 
-The `Audit Log` requirement must define a lightweight JSON summary shape in prose and must explicitly exclude secrets, credentials, and PII.
+The `Audit Log` requirement must include a mandatory JSON shape: `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`. The audit record must explicitly exclude secrets, credentials, and PII.
 
 ### 3. Persona and Generator Drift Must Fail Fast
 
@@ -91,9 +91,9 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 ### 8. Reference Examples Must Tell the Truth
 
 - The Gatekeeper deployment example must use HMAC-signed dashboard submissions and a verifiable ingest path.
-- PowerShell preflight verification must check SecretOps availability to the same standard as the shell script.
-- The repository must contain at least one reusable reference pattern for exponential backoff and retry.
-- Historical Python examples must be clearly labeled as illustrative or legacy so they do not become the default first path for new builders.
+- PowerShell preflight verification must check SecretOps availability to the same standard as the shell script (currently defaulting to a warning/soft-fail to support local exploration).
+- The repository must contain at least one reusable reference pattern for exponential backoff and retry (Node.js implementation: `scripts/resilience_helpers.js`).
+- Historical Python and Bash examples are clearly labeled as LEGACY/ILLUSTRATIVE to distinguish them from the canonical Node.js implementation path.
 
 ### 9. Validation Must Be Easy to Run
 
@@ -122,16 +122,14 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - Git, Node.js, and at least one supported local AI client (Gemini CLI, Claude Code CLI, or OpenAI Codex) remain part of the documented beginner toolchain.
 - Docker becomes part of the documented toolchain when a builder moves into runtime homes or Docker verification.
 - Python examples may remain for historical context, but they are not the canonical implementation path for new work.
+- The `logging-mcp` is defined as a dual-backend protocol supporting both Loki/Grafana (structured log queries) and n8n webhooks (event-driven ingestion).
 
 ## Current Known Limitations
 
-- Historical Python examples remain in the repository as legacy references and are not yet fully converted to Node.js.
+- Historical Python examples remain in the repository as legacy references and are not yet fully converted to Node.js. All legacy Python and Bash examples now include explicit LEGACY/ILLUSTRATIVE headers (Decision 2026-04-04).
 - The Gatekeeper deployment example currently demonstrates safe scanning, signed reporting, and observability plumbing; it does not yet implement the full mutating action set described in the Gatekeeper persona.
 - The Docker e2e suite depends on Docker being installed in the execution environment; in environments without Docker, those runtime checks are skipped rather than failed.
 - `mcp.config.json` is the current source of truth for active MCPs and skills; any future schema expansion or dynamic service discovery should be treated as a separate contract change.
-- The `logging-mcp` is currently undefined in the repository and omitted from `mcp.config.json`; logging remains an orchestrator responsibility.
+- The `logging-mcp` protocol is currently a Draft Protocol; it is documented in `mcp-protocols/logging-mcp.md` but is not yet enabled in the default `mcp.config.json`.
 - Symbolic link mirroring in `docs/agents/` is not strictly enforced at the 1:1 file level; directory and guide-level documentation takes precedence.
 
-- **Node.js Exponential Backoff Helper**: `scripts/resilience_helpers.js` provides a `withRetry(fn, options)` utility satisfying the exponential backoff resilience mandate for Node.js agent runtimes.
-
-- **ROI Auditor Logging Protocol**: The `logging-mcp` must be defined as a dual-backend protocol supporting both Loki/Grafana (structured log queries) and n8n webhooks (event-driven ingestion). The ROI Auditor persona must be updated to reference this protocol.

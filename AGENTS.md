@@ -16,8 +16,8 @@ To ensure reliability and stability, agents and toolkit components must implemen
 
 ## Mandatory Directives
 - **Graceful Degradation**: If an MCP tool or external API fails, the agent must explain the error clearly and attempt alternative strategies if available, rather than silently failing.
-- **Exponential Backoff**: Implement exponential backoff retry logic for transient network errors or rate-limiting (429) responses.
-- **Standardized Logging**: All technical errors must be logged to `stderr` to allow the orchestrator to capture and report execution failures accurately.
+- **Exponential Backoff**: Implement exponential backoff retry logic for transient network errors or rate-limiting (429) responses. Use `scripts/resilience_helpers.js` as the canonical Node.js reference implementation.
+- **Standardized Logging**: All technical errors must be logged to `stderr` to allow the orchestrator to capture and report execution failures accurately. Agent observability should leverage the `logging-mcp` protocol for unified access to Loki/Grafana and n8n webhook backends.
 
 # 🚀 Execution Patterns
 The Infisical CLI or 1Password CLI is required in the environment. When you need to execute scripts, tests, or servers that require credentials, you must wrap the command using the following pattern:
@@ -48,4 +48,5 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 - **4D Framework Alignment**: All development must adhere to the 4D AI Fluency Framework (Delegation, Description, Discernment, Diligence). Personas must structurally incorporate these dimensions to ensure technical and ethical gating.
 - **Persona Standards**: Specialized agent personas must include the following required sections: `Role`, `Tone`, `Capabilities`, `Mission`, `Rules & Constraints`, `Boundaries`, `Workflow`, `External Tooling Dependencies`, and `Audit Log`.
 - **Naming Conventions**: All exported artifacts (n8n workflows, scripts, documentation) must use English-first, slug-based naming (e.g., `ai-triage-inbound.json`) to avoid localization drift.
+- **Legacy Examples**: All non-Node.js example scripts (e.g., Python, Bash) must include a top-level comment explicitly labeling them as "LEGACY" or "ILLUSTRATIVE" to distinguish them from the canonical Node.js implementation path.
 - **Audit Log (Mandatory)**: All agent personas must include a dedicated `Audit Log` section. The minimum lightweight shape is `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`. Audit logs must exclude secrets and PII and should be emitted separately from the primary payload so the orchestrator can capture them safely.

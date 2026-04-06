@@ -86,3 +86,29 @@
 ## [2026-04-02] - ROI Auditor Logging: Dual Protocol Support
 - **Decision:** The ROI Auditor must support BOTH Loki/Grafana protocol (for structured log querying) AND n8n webhook pattern (for event-driven ingestion). The `logging-mcp` protocol definition should be created to abstract both backends, allowing the ROI Auditor to ingest logs regardless of which observability stack is deployed.
 - **Reference:** CEO Decision — treat both cases.
+
+## [2026-04-03] - ROI Google Sheets Template URL — Confirmed
+- **Decision:** The public Google Sheets ROI Calculator template URL is confirmed as published in `tools/roi/README.md`. The placeholder has been replaced with the live URL. No further action needed.
+- **Reference:** Automated clarification resolution — URL verified at `https://docs.google.com/spreadsheets/d/1BFMzZFs9oXAdgccjq5y1A6xba-m4nVXC`.
+
+## [2026-04-03] - logging-mcp Configuration Scope
+- **Decision:** The `logging-mcp` protocol remains a reference documentation pattern in `mcp-protocols/logging-mcp.md` and is NOT added to the default `mcp.config.json` until a specific runtime environment is ready to consume it. This is consistent with the existing contract that `mcp.config.json` tracks only active, deployed MCPs.
+- **Reference:** Automated clarification resolution — consistent with existing decision "a repo-defined logging-mcp is not part of the current contract."
+
+## [2026-04-04] - Resilience Helpers: Core Script Integration Scope
+- **Decision:** The `resilience_helpers.js` module satisfies the REQUIREMENTS.md resilience mandate as a reusable reference pattern for agents and external-facing tools. It should NOT be force-integrated into `audit-repo.js` or `generate_all.js`, which perform local filesystem operations that do not benefit from exponential backoff. Retry logic is appropriate for network/API calls, not deterministic local file reads.
+- **Reference:** Automated clarification resolution — consistent with existing Decision [2026-04-02] "Node.js Exponential Backoff Reference Implementation" scope.
+
+## [2026-04-04] - Legacy Example Labeling: Bulk Update Approved
+- **Decision:** All non-Node.js example scripts (Python `.py` and Bash `.sh` files) in the `examples/` directory must include a top-level `LEGACY/ILLUSTRATIVE` comment header to distinguish them from the canonical Node.js implementation path. This implements the mandate added to `AGENTS.md` and satisfies REQUIREMENTS.md Section 8.
+- **Reference:** Automated clarification resolution — enforcing existing AGENTS.md "Legacy Examples" mandate.
+- **Status:** COMPLETED (2026-04-04) — Headers added to all 8 legacy example files.
+
+## [2026-04-04] Requirements and AI Context Alignment
+
+- **Decision:** Align `REQUIREMENTS.md` with the verified codebase state and resolved clarifications.
+- **Context:** Several requirements were either outdated (legacy example labeling) or lacked technical specificity (Audit Log JSON shape) compared to `AGENTS.md`.
+- **Impact:**
+  - Updated `REQUIREMENTS.md` to explicitly mandate the JSON Audit Log shape: `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`.
+  - Updated `REQUIREMENTS.md` to reflect the completed labeling of legacy Python and Bash examples.
+  - Identified two new actionable clarifications regarding environment variable drift and protocol alignment.

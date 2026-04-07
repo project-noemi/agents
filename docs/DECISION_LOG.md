@@ -104,11 +104,11 @@
 - **Reference:** Automated clarification resolution — enforcing existing AGENTS.md "Legacy Examples" mandate.
 - **Status:** COMPLETED (2026-04-04) — Headers added to all 8 legacy example files.
 
-## [2026-04-04] Requirements and AI Context Alignment
+## [2026-04-04] Requirements Alignment and Technical Drift Identification
 
-- **Decision:** Align `REQUIREMENTS.md` with the verified codebase state and resolved clarifications.
-- **Context:** Several requirements were either outdated (legacy example labeling) or lacked technical specificity (Audit Log JSON shape) compared to `AGENTS.md`.
+- **Decision:** Formalize identify drifts and limitations in `REQUIREMENTS.md` based on a holistic scan of the codebase and persona specifications.
+- **Context:** Several technical inconsistencies (e.g., onboarding directories, API paths, environment variable inventory) were identified between implemented reference examples and the core agent specifications.
 - **Impact:**
-  - Updated `REQUIREMENTS.md` to explicitly mandate the JSON Audit Log shape: `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`.
-  - Updated `REQUIREMENTS.md` to reflect the completed labeling of legacy Python and Bash examples.
-  - Identified two new actionable clarifications regarding environment variable drift and protocol alignment.
+  - Updated `REQUIREMENTS.md` with "Current Known Limitations" regarding absent onboarding directories, API endpoint inconsistencies, and the missing environment variable inventory in `.env.template`.
+  - Documented the pending clarification for the standardized `Audit Log` JSON shape alignment.
+  - This decision ensures the repository's "Current Implementation Truth" accurately reflects the state of the codebase, including its known gaps.

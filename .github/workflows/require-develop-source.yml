@@ -1,0 +1,20 @@
+name: Require develop source
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-source-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify PR source is develop branch
+        run: |
+          if [ "${{ github.head_ref }}" != "develop" ]; then
+            echo "❌ PRs to main must originate from the develop branch."
+            echo "   Source branch: ${{ github.head_ref }}"
+            echo "   Please merge your changes into develop first, then create a PR from develop to main."
+            exit 1
+          fi
+          echo "✅ PR source is develop branch. Proceeding."

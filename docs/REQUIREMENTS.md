@@ -136,3 +136,5 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - The `Client Onboarding` persona (`agents/operations/client-onboarding.md`) references `templates/tiers/` and `clients/` directories that are currently absent from the repository.
 - There is an API path inconsistency between the Fleet Dashboard persona (specifying `/api/v1/reports`) and the current reference implementation (using `/ingest`).
 - The standardized `Audit Log` JSON shape and its integration with the `logging-mcp` and `Structured Report` skill schemas remain under clarification for technical alignment.
+- The `Value Lenses` and `Operating Profiles` frameworks are documented but not yet integrated into the automated context generation scripts (`scripts/generate_gemini.js` and `scripts/generate_claude.js`).
+- The `SKILL_TEMPLATE.md` and existing reusable skills do not currently include a mandatory `Audit Log` section, creating a consistency gap with the agent persona mandate.

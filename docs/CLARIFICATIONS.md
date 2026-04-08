@@ -71,3 +71,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the Fleet Dashboard API ingest path be standardized to `/api/v1/reports` (matching the persona) or `/ingest` (matching the implementation)?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Standardize the Fleet Dashboard API ingest endpoint path across all persona specifications and implementation scripts to ensure technical alignment.*
+
+### ❓ Question [2026-04-04] - Framework Integration in Context Generators
+**Context:** The `Value Lenses` and `Operating Profiles` frameworks are documented in `docs/frameworks/` and presented as core layers of the NoéMI architecture. However, the context generators (`scripts/generate_gemini.js` and `scripts/generate_claude.js`) do not currently inject these frameworks into the generated context files.
+**Ambiguity / Drift:** Agents consuming `GEMINI.md` or `CLAUDE.md` lack direct access to the lens and profile definitions, making it difficult for them to adhere to these layers autonomously.
+**Question for Product Owner:** Should the context generators be updated to include `Value Lenses` and `Operating Profiles` as part of the global mandates or as separate injection sections?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/context_helpers.js` and the context generators to support `VALUE_LENS_INJECTIONS` and `OPERATING_PROFILE_INJECTIONS` markers.*
+
+### ❓ Question [2026-04-04] - Mandatory Audit Log for Skills
+**Context:** `REQUIREMENTS.md` and `AGENTS.md` mandate a specific `Audit Log` JSON shape for all **agent personas** in `agents/`. Reusable **skills** in `skills/` currently do not have this requirement, although they perform critical logic.
+**Ambiguity / Drift:** It is unclear if skills should also include an `Audit Log` section or if the calling agent is solely responsible for logging the skill's execution.
+**Question for Product Owner:** Should the `SKILL_TEMPLATE.md` be updated to include a mandatory `Audit Log` section, or should the audit responsibility remain at the agent level?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize `SKILL_TEMPLATE.md` and existing skills to include a mandatory `Audit Log` definition if required.*

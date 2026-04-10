@@ -95,15 +95,15 @@ Typical measures include:
 - human hours redirected
 - lower unit cost per completed item
 
-## How To Explain The Value To A Business Owner
+## Why This Assessment Matters
 
-The AI readiness assessment helps a NoeMI participant talk like an operator, not just a tool user.
+The AI readiness assessment goes beyond whether the technology works. It determines whether the organization is positioned to get real business value from it.
 
-The core value statement is:
+The core idea:
 
-> We are not just helping your team do the task faster. We are helping your team redesign the workflow so AI handles repeatable first-pass work while your people manage approvals, exceptions, and quality.
+> This is not just about doing the task faster. It is about redesigning the workflow so AI handles repeatable first-pass work while your people manage approvals, exceptions, and quality.
 
-That matters because the business outcome is bigger than convenience:
+The business outcome is bigger than convenience:
 
 - more output with the same team
 - faster turnaround on repetitive work
@@ -111,15 +111,15 @@ That matters because the business outcome is bigger than convenience:
 - less skilled human time spent on low-leverage repetition
 - clearer path to measurable ROI
 
-## The Role-Uplift Narrative
+## How Work Changes With AI
 
-This is the shift NoeMI participants should be able to explain clearly:
+When AI enters a workflow, the shape of work changes:
 
 - **Before AI:** skilled people spend valuable time doing every repetitive step themselves
 - **With governed AI:** AI handles the first-pass work inside defined boundaries
 - **After uplift:** people spend more time reviewing, improving, deciding, and governing
 
-This is how the organization moves from labor substitution thinking to **Virtual Workforce** thinking.
+This is how an organization moves from thinking about AI as labor substitution to building a **Virtual Workforce** — where the team is not just learning to perform the task with AI, but learning to manage AI doing the task.
 
 ## Recommended Output
 
@@ -159,8 +159,6 @@ Examples:
 - pilots with no baseline metrics
 - work where nobody agrees what "good" looks like
 
-## Deliverable Sentence
+## Executive Summary
 
-When presenting this assessment, the simplest executive summary is:
-
-> The AI readiness assessment tells us whether this organization can turn AI into governed output, measurable productivity, and lower delivery cost without confusing experimentation for transformation.
+> The AI readiness assessment tells us whether this organization can turn AI into governed output, measurable productivity, and lower delivery cost — without confusing experimentation for transformation.

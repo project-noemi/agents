@@ -99,3 +99,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the `logging-mcp` protocol be updated to explicitly support InfluxDB as a third canonical backend for structured log ingestion?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `mcp-protocols/logging-mcp.md` to include InfluxDB as a supported backend and define the corresponding query/ingestion patterns.*
+
+### ❓ Question [2026-04-05] - SecretOps Syntax Drift: `.env.template` vs `.env.example`
+**Context:** `AGENTS.md` specifies the 1Password command wrapper pattern using `--env-file=.env.template`, while `docs/tool-usages/secure-secret-management.md` and all `docker-compose.yml` files in `examples/` use `--env-file=.env.example`.
+**Ambiguity / Drift:** This inconsistency creates confusion for builders and may lead to execution failures if they use the wrong reference file for secret injection.
+**Question for Product Owner:** Should the repository standardize on `.env.template` (the root inventory) or `.env.example` (the per-example inventory) for all 1Password command wrapper documentation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize all 1Password command wrapper examples across `AGENTS.md`, `docs/tool-usages/`, and `examples/` to use the chosen reference file.*
+
+### ❓ Question [2026-04-05] - Incomplete Example Smoke Test Coverage
+**Context:** `REQUIREMENTS.md` Section 9 mandates "static smoke checks for example stacks and Docker env inventories." However, `tests/examples-smoke.test.js` currently omits several reference implementations including `examples/rfp-split`, `examples/gmu-validation`, and `examples/secure-secret-management`.
+**Ambiguity / Drift:** Reference examples that are not covered by the smoke test suite may drift from the core architecture (e.g., regarding secret handling or Node baseline) without being detected by the CI pipeline.
+**Question for Product Owner:** Should all subdirectories in `examples/` be covered by at least one static smoke check to satisfy Requirement 9?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Expand `tests/examples-smoke.test.js` to include static smoke checks for `rfp-split`, `gmu-validation`, and `secure-secret-management`, ensuring they adhere to the Fetch-on-Demand and Node 24 baselines.*
+
+### ❓ Question [2026-04-05] - Skill Template Structural Drift
+**Context:** `REQUIREMENTS.md` Section 2 mandates a specific `Audit Log` JSON shape for agent personas, but `skills/SKILL_TEMPLATE.md` and existing skills in `skills/` do not currently include an `Audit Log` or a `Rules & Constraints (4D Diligence)` section.
+**Ambiguity / Drift:** Reusable skills perform critical logic but currently lack the structural accountability and framework alignment enforced on the agents that call them.
+**Question for Product Owner:** Should the mandatory persona contract (Audit Log, Rules & Constraints) be extended to the `SKILL_TEMPLATE.md` and all reusable skills?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `skills/SKILL_TEMPLATE.md` and all existing skills to include mandatory `Audit Log` and `Rules & Constraints (4D Diligence)` sections to align with the agent persona contract.*

@@ -78,6 +78,10 @@ The security assessment does **not** tell the client whether the use case is com
 - SaaS risk
 - data-processing and contract concerns
 
+## Technical Validation Procedure
+
+For the concrete scan deployment procedure that maps automated tooling to these assessment areas, see [network-security-assessment.md](network-security-assessment.md). That document provides per-scan prerequisites, expected outputs, a client deployment guide, and guidance on adapting the workflow to any assessment platform.
+
 ## What Good Output Looks Like
 
 The client should receive:
@@ -89,11 +93,9 @@ The client should receive:
 - a security readiness classification:
   `ready now`, `ready with guardrails`, or `not ready yet`
 
-## How To Explain The Value To A Business Owner
+## Why This Assessment Matters
 
-The security assessment is not "extra overhead." It protects the value of the AI initiative itself.
-
-The business value is:
+For any business owner considering an AI initiative, this assessment protects the value of the initiative itself. The business value is:
 
 - fewer surprises after launch
 - lower chance of data leakage or uncontrolled Shadow AI behavior
@@ -101,9 +103,9 @@ The business value is:
 - clearer approval and accountability before the workflow touches sensitive systems
 - higher confidence that a future pilot can scale instead of being shut down by risk
 
-In business-owner language:
+In short:
 
-> We are reducing the chance that your AI project creates new operational risk faster than it creates value.
+> This assessment reduces the chance that an AI project creates new operational risk faster than it creates value.
 
 ## What It Does Not Claim
 
@@ -112,8 +114,6 @@ In business-owner language:
 - it does not guarantee no future incident
 - it does not replace ongoing MSP or MSSP operations where continuous monitoring is needed
 
-## Deliverable Sentence
-
-When presenting this assessment, the simplest executive summary is:
+## Executive Summary
 
 > The security assessment tells us whether the organization is grounded enough to start AI safely, what must be fixed first, and what controls must remain in place as the initiative grows.

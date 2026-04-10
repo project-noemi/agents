@@ -111,7 +111,7 @@ Start with mission-critical workflows, not products:
 - Which user groups will rely on it?
 - What would be the business impact if it malfunctioned, leaked data, or was abused?
 
-This keeps the assessment tied to real outcomes instead of abstract security theater.
+This keeps the assessment tied to real outcomes.
 
 ### 2. Review Existing Documentation
 
@@ -154,6 +154,8 @@ Depending on scope, this can include:
 
 This stage should not require disruptive production changes just to establish the baseline.
 
+For a concrete reference workflow that maps specific scan categories to these assessment areas — including a client deployment guide and scan-by-scan procedure details — see [phase-zero-assessment/network-security-assessment.md](phase-zero-assessment/network-security-assessment.md). That document uses one assessment platform as an example, but the scan categories and coverage expectations apply to any equivalent tooling.
+
 ### 5. Produce a Written Report of Findings
 
 Clients should expect a clear output, not a vague verbal summary. At minimum:
@@ -179,7 +181,7 @@ Phase 0 is complete when the organization can answer:
 
 ## How to Work With an MSP or MSSP on Phase 0
 
-If you already have an MSP or MSSP, use them. But ask them to behave like a diagnostic partner, not a product reseller.
+If you already have an MSP or MSSP, use them. Look for a diagnostic approach rather than a product pitch.
 
 The reusable templates that support this conversation live in the [Phase 0 Assessment Kit](phase-zero-assessment/README.md).
 That kit now separates:
@@ -213,9 +215,9 @@ That kit now separates:
 - They avoid discussing service accounts, privileged access, or third-party risk.
 - They cannot explain what evidence supports their conclusions.
 
-## A Practical, Non-Salesy Way to Reach Out
+## Sample Outreach to Your Provider
 
-The best outreach is direct and diagnostic. You are not asking for a proposal first. You are asking for a baseline.
+If you are reaching out to an MSP or MSSP for a Phase 0 baseline, the best approach is direct and diagnostic. Ask for a baseline, not a proposal.
 
 ### Sample Outreach Note
 
@@ -224,31 +226,22 @@ We are planning an advanced AI initiative and want to complete a Phase 0 securit
 
 Before we move forward, we want an external review of our current posture across identity, endpoint coverage, backups, logging, SaaS risk, data classification, and secrets management.
 
-We are not looking for a generic tool pitch. We are looking for a short diagnostic assessment, a written report of findings, and a practical roadmap that tells us what must be fixed before we proceed with AI.
+We are looking for a short diagnostic assessment, a written report of findings, and a practical roadmap that tells us what must be fixed before we proceed with AI.
 
 Can you let us know whether you offer that kind of baseline, what the scope includes, and what evidence or outputs we should expect at the end?
 ```
 
-This keeps the conversation grounded in risk reduction, not procurement theater.
-
 ## If You Do Not Have an MSP or MSSP
 
-Some organizations know they need a baseline but do not yet have a trusted provider. In that case, NewPush can help in a way that stays aligned with the Phase 0 philosophy.
+The strongest path forward is to work with a qualified local MSP or MSSP who understands your industry and can provide ongoing support beyond the initial assessment. A Phase 0 baseline is a starting point, but the real value comes from a long-term partnership with a provider who knows your environment.
 
-### A Sensible Free-Assessment Option
+### Finding the Right Provider
 
-If an organization does not already have an MSP or MSSP capable of performing a proper baseline, **NewPush can offer a no-cost Phase 0 assessment** designed to answer one question:
+The NoéMI platform includes an onboarding questionnaire designed to match organizations with an MSP or MSSP that is local to them and as close to their industry vertical as possible. If you do not already have a provider, that is a good place to start.
 
-**"Are we grounded enough, from a cybersecurity perspective, to begin an advanced AI project safely?"**
+### In the Interim
 
-To keep this non-salesy and useful, the offer should be framed like this:
-
-- it is educational and diagnostic, not a disguised procurement trap
-- it focuses on current risk and readiness, not on forcing a platform decision
-- the client keeps the written findings and can use them with their internal team, another MSP/MSSP, or NewPush
-- the goal is clarity on readiness gates, not pressure to buy downstream services
-
-### What the Free Assessment Should Include
+If the matching process takes time and you want to move forward with the assessment immediately, NewPush can help on an interim basis so that progress does not stall while you evaluate long-term partners. The assessment follows the same Phase 0 methodology described in this document:
 
 - a short stakeholder discovery session
 - review of key policies and operational artifacts
@@ -257,12 +250,14 @@ To keep this non-salesy and useful, the offer should be framed like this:
 - a prioritized 30/60/90-day action plan
 - a recommendation on whether the AI initiative can proceed now, should proceed with guardrails, or should pause pending remediation
 
-### What It Should Not Pretend To Be
+The findings belong to you regardless of which provider you ultimately choose. They can be used with your internal team, with the MSP or MSSP you select, or as a standalone reference.
 
-- not a full penetration test
-- not a formal compliance certification
-- not a guarantee that no future incident will occur
-- not a replacement for ongoing MSP/MSSP operations if the client needs continuous monitoring and response
+### What This Assessment Does Not Replace
+
+- It is not a full penetration test.
+- It is not a formal compliance certification.
+- It is not a guarantee that no future incident will occur.
+- It is not a replacement for ongoing MSP or MSSP operations if the organization needs continuous monitoring and response.
 
 ## Definition of "Ready Enough" for Phase 0
 

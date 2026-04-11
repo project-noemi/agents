@@ -140,3 +140,6 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - The `SKILL_TEMPLATE.md` and existing reusable skills do not currently include a mandatory `Audit Log` section, creating a consistency gap with the agent persona mandate.
 - The `Data Inventory` heading is mandated in `METHODOLOGY.md` as part of the 4D Description layer, but it is not yet included in the mandatory persona contract enforced by `scripts/audit-repo.js`.
 - The `logging-mcp` protocol definition does not currently include InfluxDB as a supported backend, despite InfluxDB being the primary time-series store in the reference implementation.
+- The Fleet Dashboard specification (90-day detailed / 1-year aggregate) drifts from the reference implementation (single 90-day bucket).
+- The `Client Onboarding` validation workflow references `red-team-gauntlet` test vectors that are currently missing from the repository.
+- Reference implementation services (e.g., `dashboard-ingest.js`) do not yet emit the mandated JSON Audit Log shape.

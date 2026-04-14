@@ -36,7 +36,7 @@ All agent personas in `agents/` must include the following required headings:
 - `Tone`
 - `Capabilities`
 - `Mission`
-- `Rules & Constraints` (incorporating 4D Diligence and the **Refusal Principle**)
+- `Rules & Constraints` (incorporating 4D Diligence; **must include a `### Refusal Criteria` subsection** — see Decision [2026-04-13])
 - `Boundaries`
 - `Workflow`
 - `External Tooling Dependencies`

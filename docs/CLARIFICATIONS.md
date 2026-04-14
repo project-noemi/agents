@@ -156,12 +156,10 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Standardize the technical emission channel for Audit Logs across all persona definitions and the `logging-mcp` protocol.*
 
-### ❓ Question [2026-04-05] - Technical Structure of the Refusal Principle
+### ✅ Question [2026-04-05] - Technical Structure of the Refusal Principle
 **Context:** The "Refusal Principle" is now a non-negotiable safety constraint in REQUIREMENTS.md, requiring agents to reject unsafe or out-of-scope tasks.
-**Ambiguity / Drift:** It is unclear if this should be a dedicated heading in the persona (e.g., ## Refusal Criteria) or if it should be integrated into the existing Rules & Constraints or Boundaries sections.
-**Question for Product Owner:** Should the Refusal Principle have its own mandatory heading in the persona contract, or should it be a specific subsection within Rules & Constraints?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update the AGENT_TEMPLATE.md and audit-repo.js to include and enforce the chosen structural representation of the Refusal Principle.*
+**Answer:** ✅ Resolved by Decision [2026-04-13]: Implement as a mandatory `### Refusal Criteria` subsection within `Rules & Constraints`. Must enumerate: (1) refused task types, (2) override-resistance clause, (3) escalation path. See DECISION_LOG.md for full rationale.
+**🤖 Jules Action Prompt:** *Update `AGENT_TEMPLATE.md` and `scripts/audit-repo.js` to include and enforce `### Refusal Criteria` as a mandatory subsection within `Rules & Constraints`.*
 
 ### ❓ Question [2026-04-06] - Mandatory Journal Section for Personas
 **Context:** `AGENT_TEMPLATE.md` lists `## Journal` as an Optional heading, but several core agents (`Sentinel`, `Bolt`, `Gatekeeper`) already implement it to track critical learnings.

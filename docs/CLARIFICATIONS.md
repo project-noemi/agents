@@ -156,9 +156,28 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Standardize the technical emission channel for Audit Logs across all persona definitions and the `logging-mcp` protocol.*
 
-### ❓ Question [2026-04-05] - Technical Structure of the Refusal Principle
+### ✅ Question [2026-04-05] - Technical Structure of the Refusal Principle
 **Context:** The "Refusal Principle" is now a non-negotiable safety constraint in REQUIREMENTS.md, requiring agents to reject unsafe or out-of-scope tasks.
-**Ambiguity / Drift:** It is unclear if this should be a dedicated heading in the persona (e.g., ## Refusal Criteria) or if it should be integrated into the existing Rules & Constraints or Boundaries sections.
-**Question for Product Owner:** Should the Refusal Principle have its own mandatory heading in the persona contract, or should it be a specific subsection within Rules & Constraints?
+**Answer:** ✅ Resolved by Decision [2026-04-13]: Implement as a mandatory `### Refusal Criteria` subsection within `Rules & Constraints`. Must enumerate: (1) refused task types, (2) override-resistance clause, (3) escalation path. See DECISION_LOG.md for full rationale.
+**🤖 Jules Action Prompt:** *Update `AGENT_TEMPLATE.md` and `scripts/audit-repo.js` to include and enforce `### Refusal Criteria` as a mandatory subsection within `Rules & Constraints`.*
+
+### ❓ Question [2026-04-06] - Mandatory Journal Section for Personas
+**Context:** `AGENT_TEMPLATE.md` lists `## Journal` as an Optional heading, but several core agents (`Sentinel`, `Bolt`, `Gatekeeper`) already implement it to track critical learnings.
+**Ambiguity / Drift:** There is no clear policy on when a `Journal` is required. If persistent learning is a core NoéMI value, this should be standardized.
+**Question for Product Owner:** Should `Journal` remain optional, or should it be elevated to a mandatory heading for all agents to ensure persistent learning across sessions?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update the AGENT_TEMPLATE.md and audit-repo.js to include and enforce the chosen structural representation of the Refusal Principle.*
+**🤖 Jules Action Prompt:** *If mandatory, update `scripts/context_helpers.js` and `scripts/audit-repo.js` to enforce the `Journal` heading across all agent personas.*
+
+### ❓ Question [2026-04-06] - Enforcement of the "Data Inventory" Persona Section
+**Context:** `METHODOLOGY.md` mandates a "data inventory with precision" as part of D2 (Description). However, this section is missing from the mandatory persona contract and the `AGENT_TEMPLATE.md`.
+**Ambiguity / Drift:** Current personas lack a standardized place to define their required data inputs and sources, leading to inconsistent D2 compliance.
+**Question for Product Owner:** Should `Data Inventory` be added as a mandatory heading for all agent personas to satisfy the D2 methodology mandate?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/context_helpers.js`, `AGENT_TEMPLATE.md`, and all existing personas to include the mandatory `Data Inventory` section.*
+
+### ❓ Question [2026-04-06] - Reference Example Redundancy vs. Consolidation
+**Context:** We have several overlapping reference examples for deployment (`examples/docker`, `examples/fleet-deployment`, `examples/gatekeeper-deployment`).
+**Ambiguity / Drift:** Maintaining three separate `docker-compose.yml` and `.env.example` files increases the risk of technical drift (as seen with the `/ingest` vs `/api/v1/reports` path mismatch).
+**Question for Product Owner:** Should we consolidate these into a single, modular "Fleet Reference Stack" with clear documentation on how to enable/disable components (Gatekeeper, Dashboard, etc.), or keep them separate?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Consolidate the deployment examples into a single `examples/reference-stack` directory using Docker Compose profiles for modularity.*

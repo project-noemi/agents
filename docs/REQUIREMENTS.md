@@ -36,7 +36,7 @@ All agent personas in `agents/` must include the following required headings:
 - `Tone`
 - `Capabilities`
 - `Mission`
-- `Rules & Constraints` (incorporating 4D Diligence and the **Refusal Principle**)
+- `Rules & Constraints` (incorporating 4D Diligence; **must include a `### Refusal Criteria` subsection** — see Decision [2026-04-13])
 - `Boundaries`
 - `Workflow`
 - `External Tooling Dependencies`
@@ -153,3 +153,6 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - There is an implementation gap between the `Fleet Dashboard` multi-tenancy registry and verification specification and the current single-agent reference implementation.
 - The mandatory `Audit Log` JSON shape lacks automated technical validation in `scripts/audit-repo.js`.
 - The `Data Inventory` heading is mandated in `METHODOLOGY.md` as part of the 4D Description layer, but it is not yet included in the mandatory persona contract enforced by `scripts/audit-repo.js`.
+- Several core agents (`Sentinel`, `Bolt`, `Gatekeeper`) use a `Journal` section for persistent learning, but it is not yet a mandatory heading in the persona contract.
+- There is a technical drift between `examples/` subdirectories: `gatekeeper-deployment` uses `/ingest` while the `fleet-dashboard` persona specifies `/api/v1/reports`.
+- Redundant deployment patterns across `examples/docker`, `examples/fleet-deployment`, and `examples/gatekeeper-deployment` create maintenance overhead and potential configuration drift.

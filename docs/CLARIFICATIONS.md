@@ -156,7 +156,16 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Standardize the technical emission channel for Audit Logs across all persona definitions and the `logging-mcp` protocol.*
 
-### ✅ Question [2026-04-05] - Technical Structure of the Refusal Principle
-**Context:** The "Refusal Principle" is now a non-negotiable safety constraint in REQUIREMENTS.md, requiring agents to reject unsafe or out-of-scope tasks.
-**Answer:** ✅ Resolved by Decision [2026-04-13]: Implement as a mandatory `### Refusal Criteria` subsection within `Rules & Constraints`. Must enumerate: (1) refused task types, (2) override-resistance clause, (3) escalation path. See DECISION_LOG.md for full rationale.
-**🤖 Jules Action Prompt:** *Update `AGENT_TEMPLATE.md` and `scripts/audit-repo.js` to include and enforce `### Refusal Criteria` as a mandatory subsection within `Rules & Constraints`.*
+### ❓ Question [2026-04-13] - Automated Validation for Persona Subsections and JSON Shapes
+**Context:** Decision [2026-04-13] mandated `### Refusal Criteria` as a subsection of `Rules & Constraints`, and `REQUIREMENTS.md` mandates a specific JSON shape for `Audit Log`.
+**Ambiguity / Drift:** `scripts/audit-repo.js` currently only validates top-level H2 headings and does not inspect subsections or JSON shape invariants within the markdown.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be expanded to perform deep-parsing of persona markdown to enforce H3 subsections (like `Refusal Criteria`) and validate the syntax/shape of the `Audit Log` JSON template?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `scripts/audit-repo.js` and `scripts/context_helpers.js` to support H3 subsection validation and JSON schema checks for the Audit Log section.*
+
+### ❓ Question [2026-04-13] - InfluxDB Integration in `logging-mcp` Protocol
+**Context:** The `logging-mcp` protocol definition (`mcp-protocols/logging-mcp.md`) currently lists Loki and n8n as backends, but the `Fleet Dashboard` reference implementation uses InfluxDB.
+**Ambiguity / Drift:** There is a technical drift between the documented protocol and the implemented reference architecture.
+**Question for Product Owner:** Should InfluxDB be formally added to the `logging-mcp` protocol as a third canonical backend, or should the reference implementation be migrated to Loki to align with the protocol?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `mcp-protocols/logging-mcp.md` to include InfluxDB backend specifications and ingestion patterns.*

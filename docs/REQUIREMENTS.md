@@ -145,11 +145,12 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - There is an API path inconsistency between the Fleet Dashboard persona (specifying `/api/v1/reports`) and the current reference implementation (using `/ingest`).
 - The standardized `Audit Log` JSON shape and its integration with the `logging-mcp` and `Structured Report` skill schemas remain under clarification for technical alignment.
 - The `Value Lenses` and `Operating Profiles` frameworks are documented but not yet integrated into the automated context generation scripts (`scripts/generate_gemini.js` and `scripts/generate_claude.js`).
-- The `SKILL_TEMPLATE.md` and existing reusable skills do not currently include a mandatory `Audit Log` section, creating a consistency gap with the agent persona mandate.
-- The `logging-mcp` protocol definition does not currently include InfluxDB as a supported backend, despite InfluxDB being the primary time-series store in the reference implementation.
+- The `SKILL_TEMPLATE.md` and existing reusable skills do not currently include mandatory `Audit Log` or `Rules & Constraints` sections, creating a consistency gap with the agent persona mandate.
+- The `logging-mcp` protocol definition (`mcp-protocols/logging-mcp.md`) does not currently include InfluxDB as a supported backend, despite InfluxDB being the primary time-series store in the reference implementation.
 - The Fleet Dashboard specification (90-day detailed / 1-year aggregate) drifts from the reference implementation (single 90-day bucket).
 - The `Client Onboarding` validation workflow references `red-team-gauntlet` test vectors that are currently missing from the repository.
 - Reference implementation services (e.g., `dashboard-ingest.js`) do not yet emit the mandated JSON Audit Log shape.
 - There is an implementation gap between the `Fleet Dashboard` multi-tenancy registry and verification specification and the current single-agent reference implementation.
-- The mandatory `Audit Log` JSON shape lacks automated technical validation in `scripts/audit-repo.js`.
-- The `Data Inventory` heading is mandated in `METHODOLOGY.md` as part of the 4D Description layer, but it is not yet included in the mandatory persona contract enforced by `scripts/audit-repo.js`.
+- The `Audit Log` JSON shape and the `### Refusal Criteria` subsection lack automated technical validation in `scripts/audit-repo.js`.
+- The `Data Inventory` heading is mandated in `METHODOLOGY.md` as part of the 4D Description layer, but it is not yet included in the mandatory persona contract enforced by `scripts/audit-repo.js` (confirmed missing from `REQUIRED_AGENT_SECTIONS` in `scripts/context_helpers.js`).
+- The `NOEMI_DOCKER_SMOKE_*` environment variables used in `tests/e2e/docker-smoke.test.js` are confirmed missing from the `.env.template` inventory.

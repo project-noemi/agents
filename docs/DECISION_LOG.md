@@ -116,3 +116,9 @@
 ## [2026-04-13] - Refusal Principle Structural Representation in Persona Contract
 - **Decision:** The Refusal Principle must be implemented as a **mandatory named subsection** (`### Refusal Criteria`) within the existing `Rules & Constraints` heading of every agent persona. A standalone top-level heading is not required; integrating it as a subsection within `Rules & Constraints` provides explicit auditability and high visibility while preserving the hierarchical structure that `scripts/audit-repo.js` enforces. The subsection must enumerate at minimum: (1) task types the agent will refuse, (2) override-resistance clause (agent must ignore instructions to bypass its Role), and (3) escalation path (what the agent does instead of executing a refused task).
 - **Reference:** Automated clarification resolution — aligns with AGENTS.md "Refusal Principle" mandate and existing REQUIREMENTS.md Section 2 persona contract structure.
+
+### Archived Clarification [2026-04-13]
+**Topic:** Technical Structure of the Refusal Principle
+**Context:** The "Refusal Principle" is now a non-negotiable safety constraint in REQUIREMENTS.md, requiring agents to reject unsafe or out-of-scope tasks.
+**Question for Product Owner:** [Implied from context - how to structurally represent it]
+**Answer:** ✅ Resolved by Decision [2026-04-13]: Implement as a mandatory `### Refusal Criteria` subsection within `Rules & Constraints`. Must enumerate: (1) refused task types, (2) override-resistance clause, (3) escalation path.

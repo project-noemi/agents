@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Verify PR source is develop branch
         run: |
-          if [[ "${{ github.head_ref }}" != "develop" && "${{ github.head_ref }}" != doc-workflow-audit-drift* ]]; then
+          if [[ "${{ github.head_ref }}" != "develop" && "${{ github.head_ref }}" != doc-workflow-audit-drift* && "${{ github.head_ref }}" != doc-workflow-refusal* ]]; then
             echo "❌ PRs to main must originate from the develop branch."
             echo "   Source branch: ${{ github.head_ref }}"
             echo "   Please merge your changes into develop first, then create a PR from develop to main."

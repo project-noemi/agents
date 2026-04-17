@@ -59,11 +59,18 @@ function checkPersonas() {
         const fullPath = path.join(repoRoot, agent.path);
         const content = fs.readFileSync(fullPath, 'utf8');
         const headings = extractAgentHeadings(content);
-        const missing = REQUIRED_AGENT_SECTIONS.filter(
+
+        // Check top-level headings
+        const missingTopLevel = REQUIRED_AGENT_SECTIONS.filter(
             (required) => !headings.some((heading) => heading === required || heading.startsWith(`${required} (`))
         );
-        if (missing.length > 0) {
-            fail(`${agent.path} missing required sections: ${missing.join(', ')}`);
+        if (missingTopLevel.length > 0) {
+            fail(`${agent.path} missing required sections: ${missingTopLevel.join(', ')}`);
+        }
+
+        // Check mandatory Refusal Criteria subsection
+        if (!headings.includes('Refusal Criteria')) {
+            fail(`${agent.path} missing required subsection: Refusal Criteria`);
         }
     }
 }

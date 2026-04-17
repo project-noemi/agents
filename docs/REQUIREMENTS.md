@@ -36,7 +36,8 @@ All agent personas in `agents/` must include the following required headings:
 - `Tone`
 - `Capabilities`
 - `Mission`
-- `Rules & Constraints` (incorporating 4D Diligence; **must include a `### Refusal Criteria` subsection** — see Decision [2026-04-13])
+- `Rules & Constraints` (incorporating 4D Diligence; **must include a mandatory `### Refusal Criteria` subsection** — see Decision [2026-04-13])
+- `Data Inventory` (Mandatory D2 requirement; specifies inputs, files, and state — see Decision [2026-04-13])
 - `Boundaries`
 - `Workflow`
 - `External Tooling Dependencies`
@@ -51,6 +52,9 @@ All agent personas in `agents/` must include the following required headings:
 
 #### Audit Log Shape
 The `Audit Log` requirement must include a mandatory JSON shape: `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`. The audit record must explicitly exclude secrets, credentials, and PII.
+
+#### Technical Emission
+Agents must emit their JSON Audit Log to `stderr` separately from the primary user-facing payload (Decision [2026-04-13]).
 
 ### 3. Persona and Generator Drift Must Fail Fast
 
@@ -111,7 +115,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
   - persona and template contracts
   - generator determinism and config override behavior
   - golden fixtures for generated context sections (Maintenance: `scripts/update-golden-fixtures.js` must be used to keep fixtures healthy when templates change).
-  - static smoke checks for example stacks and Docker env inventories
+  - static smoke checks for example stacks and Docker env inventories (including `NOEMI_DOCKER_SMOKE_*` variable validation).
 - The repository must expose a Docker-focused smoke entrypoint through `npm run test:e2e`.
 - The same validation contract must be enforced in GitHub Actions on pushes and pull requests targeting `develop` and `main`.
 - The Docker e2e suite must skip cleanly when Docker is unavailable and execute real compose-based runtime checks when it is available.
@@ -152,4 +156,3 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - Reference implementation services (e.g., `dashboard-ingest.js`) do not yet emit the mandated JSON Audit Log shape.
 - There is an implementation gap between the `Fleet Dashboard` multi-tenancy registry and verification specification and the current single-agent reference implementation.
 - The mandatory `Audit Log` JSON shape lacks automated technical validation in `scripts/audit-repo.js`.
-- The `Data Inventory` heading is mandated in `METHODOLOGY.md` as part of the 4D Description layer, but it is not yet included in the mandatory persona contract enforced by `scripts/audit-repo.js`.

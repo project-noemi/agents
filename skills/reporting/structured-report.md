@@ -41,7 +41,21 @@ Generate a standardized, machine-readable report from agent activity data. This 
 ## MCP Dependencies
 - None (format-only skill). Delivery to specific channels (Slack, Dashboard API) is handled by the `alert-notify` or `hmac-sign-submit` skills.
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Include `agent_id` and `cycle_timestamp` in every report. Validate all detail entries have required fields before formatting.
 - **Ask First:** Changing the report schema (requires Fleet Dashboard coordination).
 - **Never:** Include raw secrets, tokens, or credentials in report output. Omit the reasoning field from detail entries.
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}

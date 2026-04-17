@@ -29,11 +29,25 @@ Categorize items into risk tiers to determine the appropriate action path. This 
 }
 ```
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Default to the conservative (middle) tier when uncertain. Include the full reasoning in the output.
 - **Ask First:** Overriding a Blocked classification to a lower tier.
 - **Never:** Classify an item as Safe when any criterion is ambiguous or unresolvable. Skip the escape hatch check.
 
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
 ## Examples
 
 **PR Triage (Gatekeeper agent):**

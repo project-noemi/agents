@@ -44,13 +44,6 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Add a `baseline-config.json` to `tools/roi/` or update the `ROI Auditor` persona to include a specific `read_rows` capability for the Google Sheets MCP.*
 
-### ❓ Question [2026-04-04] - Environment Variable Inventory Drift
-**Context:** The `.env.template` file is intended to be a variable inventory for the repository. However, `tests/e2e/docker-smoke.test.js` references several `NOEMI_DOCKER_SMOKE_*` variables (e.g., `NOEMI_DOCKER_SMOKE_TIMEOUT_MS`, `NOEMI_DOCKER_SMOKE_POLL_INTERVAL_MS`, `NOEMI_DOCKER_SMOKE_ARTIFACT_DIR`) that are missing from `.env.template`.
-**Ambiguity / Drift:** Builders and CI/CD pipelines may be unaware of these configuration options, leading to inconsistent test environments.
-**Question for Product Owner:** Should these test-specific environment variables be added to `.env.template` to complete the variable inventory, or should they remain documented only within the test files?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `.env.template` to include the `NOEMI_DOCKER_SMOKE_*` variable set with sensible default placeholders.*
-
 ### ❓ Question [2026-04-04] - `logging-mcp` Standardized Log Shape vs. Audit Log
 **Context:** `mcp-protocols/logging-mcp.md` defines a "Standardized Log Shape" that includes `timestamp`, `agent`, `task`, `status`, `duration_ms`, and `metadata`. Meanwhile, `AGENTS.md` and `REQUIREMENTS.md` mandate a "lightweight JSON summary shape" for the `Audit Log` as `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`.
 **Ambiguity / Drift:** While complementary, it's unclear if the `Audit Log` is intended to be *part* of the `logging-mcp` payload (e.g., inside `metadata`) or if they are two separate emissions that need to be reconciled.
@@ -79,20 +72,6 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/context_helpers.js` and the context generators to support `VALUE_LENS_INJECTIONS` and `OPERATING_PROFILE_INJECTIONS` markers.*
 
-### ❓ Question [2026-04-04] - Mandatory Audit Log for Skills
-**Context:** `REQUIREMENTS.md` and `AGENTS.md` mandate a specific `Audit Log` JSON shape for all **agent personas** in `agents/`. Reusable **skills** in `skills/` currently do not have this requirement, although they perform critical logic.
-**Ambiguity / Drift:** It is unclear if skills should also include an `Audit Log` section or if the calling agent is solely responsible for logging the skill's execution.
-**Question for Product Owner:** Should the `SKILL_TEMPLATE.md` be updated to include a mandatory `Audit Log` section, or should the audit responsibility remain at the agent level?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Standardize `SKILL_TEMPLATE.md` and existing skills to include a mandatory `Audit Log` definition if required.*
-
-### ❓ Question [2026-04-05] - Data Inventory Persona Mandate
-**Context:** `METHODOLOGY.md` specifies that "Description" (D2) involves defining the "data inventory with precision," but `scripts/audit-repo.js` and `REQUIREMENTS.md` Section 2 do not include `Data Inventory` as a mandatory persona heading.
-**Ambiguity / Drift:** The 4D framework mandate in `METHODOLOGY.md` is not technically enforced, leading to personas that may lack the precise data definitions required for D2 compliance.
-**Question for Product Owner:** Should `Data Inventory` be added as a mandatory heading for all agent personas in `agents/` and enforced via `scripts/audit-repo.js`?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `scripts/context_helpers.js` and `REQUIREMENTS.md` to include "Data Inventory" in the mandatory persona contract, then update `AGENT_TEMPLATE.md` and all existing personas to include the new section.*
-
 ### ❓ Question [2026-04-05] - `logging-mcp` InfluxDB Backend Support
 **Context:** `mcp-protocols/logging-mcp.md` defines Loki/Grafana and n8n webhooks as the primary backends, but the reference implementation in `examples/gatekeeper-deployment/dashboard-ingest.js` and `docker-compose.yml` uses InfluxDB as the primary time-series datastore.
 **Ambiguity / Drift:** The protocol definition does not account for the primary storage mechanism used in the specialist deployment examples.
@@ -113,13 +92,6 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should all subdirectories in `examples/` be covered by at least one static smoke check to satisfy Requirement 9?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Expand `tests/examples-smoke.test.js` to include static smoke checks for `rfp-split`, `gmu-validation`, and `secure-secret-management`, ensuring they adhere to the Fetch-on-Demand and Node 24 baselines.*
-
-### ❓ Question [2026-04-05] - Skill Template Structural Drift
-**Context:** `REQUIREMENTS.md` Section 2 mandates a specific `Audit Log` JSON shape for agent personas, but `skills/SKILL_TEMPLATE.md` and existing skills in `skills/` do not currently include an `Audit Log` or a `Rules & Constraints (4D Diligence)` section.
-**Ambiguity / Drift:** Reusable skills perform critical logic but currently lack the structural accountability and framework alignment enforced on the agents that call them.
-**Question for Product Owner:** Should the mandatory persona contract (Audit Log, Rules & Constraints) be extended to the `SKILL_TEMPLATE.md` and all reusable skills?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `skills/SKILL_TEMPLATE.md` and all existing skills to include mandatory `Audit Log` and `Rules & Constraints (4D Diligence)` sections to align with the agent persona contract.*
 
 ### ❓ Question [2026-04-05] - Fleet Dashboard Retention Policy Drift
 **Context:** `agents/operations/fleet-dashboard.md` specifies "Retain detailed reports for 90 days, aggregate summaries for 1 year."
@@ -149,14 +121,9 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement the multi-tenant agent registry and asynchronous GitHub verification worker in the Fleet Dashboard reference stack.*
 
-### ❓ Question [2026-04-05] - Technical Sink for Standardized Audit Log Emission
-**Context:** `REQUIREMENTS.md` and `AGENTS.md` mandate that agent personas emit a JSON `Audit Log` "separately from the primary payload."
-**Ambiguity / Drift:** While the shape is mandated, the repository lacks a formalized technical standard for the emission channel (e.g., `stderr`, a dedicated `/logs/audit.json` file, or a specific `logging-mcp` tool).
-**Question for Product Owner:** What is the canonical technical sink for agent audit logs? Should we formalize `stderr` as the default channel to ensure orchestrator-agnostic capture?
+### ❓ Question [2026-04-13] - Automated Validation for Audit Log JSON Schema
+**Context:** `REQUIREMENTS.md` Section 2 mandates a specific JSON shape for Audit Logs. Currently, `scripts/audit-repo.js` only checks for the presence of the "Audit Log" heading.
+**Ambiguity / Drift:** There is no technical enforcement of the actual JSON schema within the agent files, leading to potential drift where the heading exists but the content is structurally invalid.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be expanded to include basic JSON schema validation for the Audit Log section in all agent and skill files?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Standardize the technical emission channel for Audit Logs across all persona definitions and the `logging-mcp` protocol.*
-
-### ✅ Question [2026-04-05] - Technical Structure of the Refusal Principle
-**Context:** The "Refusal Principle" is now a non-negotiable safety constraint in REQUIREMENTS.md, requiring agents to reject unsafe or out-of-scope tasks.
-**Answer:** ✅ Resolved by Decision [2026-04-13]: Implement as a mandatory `### Refusal Criteria` subsection within `Rules & Constraints`. Must enumerate: (1) refused task types, (2) override-resistance clause, (3) escalation path. See DECISION_LOG.md for full rationale.
-**🤖 Jules Action Prompt:** *Update `AGENT_TEMPLATE.md` and `scripts/audit-repo.js` to include and enforce `### Refusal Criteria` as a mandatory subsection within `Rules & Constraints`.*
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse and validate the JSON shape of the Audit Log section against the mandated schema.*

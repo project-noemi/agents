@@ -25,10 +25,24 @@
 <!-- Optional. List MCP protocols this skill requires.
      Omit if the skill is tool-agnostic. -->
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 <!-- Required. Safety constraints for this skill.
      Use the Always / Ask First / Never trichotomy. -->
 
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
 ## Examples
 <!-- Optional. One or two concrete examples showing the skill in use,
      including sample inputs and expected outputs. -->

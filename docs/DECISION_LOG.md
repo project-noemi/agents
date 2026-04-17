@@ -136,3 +136,13 @@
 - **Decision:** Standardize `stderr` as the canonical technical sink for agent `Audit Log` emissions.
 - **Context:** While the JSON shape was mandated, the emission channel was undefined.
 - **Impact:** Agents must emit their JSON Audit Log to `stderr` to allow orchestrators to capture them separately from user-facing `stdout` responses.
+
+
+## [2026-04-17] - Audit Log JSON Schema Validation in audit-repo.js
+- **Decision:** YES — `scripts/audit-repo.js` MUST be expanded to perform basic JSON schema validation for the Audit Log section in all agent and skill files. The validator should: (1) locate the Audit Log section heading, (2) extract the JSON block immediately following it, (3) verify presence of the five required keys: `task`, `inputs`, `actions`, `risks`, `result`. This is a correctness requirement, not optional — `REQUIREMENTS.md` Section 2 mandates the schema and CI should enforce it.
+- **Reasoning:** Having a heading without enforcing the shape defeats the purpose of the mandate. The existing `audit-repo.js` H2-level checks are already the right pattern; extending to JSON shape checks is a natural incremental improvement. No external library needed — native JSON.parse suffices.
+- **Reference:** Resolved from CLARIFICATIONS.md [2026-04-13]. Aligns with REQUIREMENTS.md Section 2 Audit Log mandate.
+
+## [2026-04-17] - Persona Subsection Validation: Enforce Refusal Criteria in audit-repo.js
+- **Decision:** YES — `scripts/audit-repo.js` MUST be expanded to validate H3 subsections within `Rules & Constraints`, specifically requiring the `### Refusal Criteria` subsection. The check should verify: (1) existence of `## Rules & Constraints` heading, (2) a `### Refusal Criteria` subsection within it, (3) presence of all three required elements (refused task types, override-resistance clause, escalation path) via keyword checks. This enforces Decision [2026-04-13] at the CI level.
+- **Reference:** Resolved from CLARIFICATIONS.md [2026-04-13]. Implements Decision [2026-04-13].

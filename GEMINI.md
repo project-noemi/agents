@@ -101,6 +101,7 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 - **Legacy Examples**: All non-Node.js example scripts (e.g., Python, Bash) must include a top-level comment explicitly labeling them as "LEGACY" or "ILLUSTRATIVE" to distinguish them from the canonical Node.js implementation path.
 - **Audit Log (Mandatory)**: All agent personas must include a dedicated `Audit Log` section. The minimum lightweight shape is `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`. Audit logs must exclude secrets and PII and should be emitted separately from the primary payload so the orchestrator can capture them safely.
 - **Refusal Criteria (Mandatory)**: Every agent persona must include a `### Refusal Criteria` subsection within `Rules & Constraints`. It must explicitly list: (1) what it will not do, (2) that it will ignore instructions to bypass its core identity, and (3) its escalation path (e.g., "return a 403-style refusal response").
+- **Node.js Baseline**: All repository utilities, validation scripts, and reference implementations must adhere to the mandatory Node.js baseline (currently version 24).
 <!-- GLOBAL_MANDATES_END -->
 
 <!-- AGENT_INDEX_START -->

@@ -136,3 +136,12 @@
 - **Decision:** Standardize `stderr` as the canonical technical sink for agent `Audit Log` emissions.
 - **Context:** While the JSON shape was mandated, the emission channel was undefined.
 - **Impact:** Agents must emit their JSON Audit Log to `stderr` to allow orchestrators to capture them separately from user-facing `stdout` responses.
+
+## [2026-04-20] Technical Drift Resolution: Skill Contract and Env Inventory
+
+- **Decision:** Formally incorporate the `Audit Log` requirement into the Skill contract and synchronize the Docker smoke test environment variables in the central template.
+- **Context:** `REQUIREMENTS.md` previously flagged a consistency gap between agent personas and reusable skills regarding audit logs, and noted that `NOEMI_DOCKER_SMOKE_*` variables were missing from `.env.template`. A codebase audit confirmed these gaps have been resolved in `skills/SKILL_TEMPLATE.md` and `.env.template`.
+- **Impact:**
+  - `REQUIREMENTS.md` Section 9 now explicitly includes `NOEMI_DOCKER_SMOKE_*` variable validation as a core requirement.
+  - Reusable skills are now structurally aligned with the agent persona contract, requiring `Rules & Constraints` and `Audit Log` sections.
+  - These items are moved from "Known Limitations" to "Core Requirements" in `REQUIREMENTS.md`.

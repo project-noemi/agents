@@ -127,3 +127,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `scripts/audit-repo.js` be expanded to include basic JSON schema validation for the Audit Log section in all agent and skill files?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse and validate the JSON shape of the Audit Log section against the mandated schema.*
+
+### ❓ Question [2026-04-20] - Node.js Version Baseline Enforcement
+**Context:** `package.json`, `.nvmrc`, `.node-version`, and `.github/workflows/validate.yml` all strictly enforce Node.js version 24. However, `REQUIREMENTS.md` only states that "Node.js is the primary runtime" without specifying the version baseline.
+**Ambiguity / Drift:** Builders using older LTS versions (e.g., Node 18 or 20) may encounter execution failures with repo utilities or tests that rely on Node 24 features (like the built-in test runner or `fetch`).
+**Question for Product Owner:** Should the Node 24 requirement be formally added to `REQUIREMENTS.md` as the mandatory baseline for the repository?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` to explicitly specify Node.js 24 as the mandatory baseline for all repository utilities, validation scripts, and reference implementations.*
+
+### ❓ Question [2026-04-20] - Verification Script Mode Alignment
+**Context:** `scripts/verify-env.sh` and `scripts/verify-env.ps1` implement specific validation modes: `builder`, `gemini`, `claude`, `codex`, `docker`, and `n8n`. These modes are enforced in `tests/contracts.test.js`.
+**Ambiguity / Drift:** `REQUIREMENTS.md` Section 9 mentions the validation gate but does not define these specific operational modes, which are critical for the onboarding workflows described in Section 10.
+**Question for Product Owner:** Should the specific operational modes for environment verification be documented in `REQUIREMENTS.md` to ensure future implementations of verification scripts remain consistent?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Document the mandatory verification modes (`builder`, `gemini`, `claude`, `codex`, `docker`, `n8n`) in `REQUIREMENTS.md` Section 9.*
+
+### ❓ Question [2026-04-20] - Mermaid Diagram Mandate for Visual Guides
+**Context:** `tests/contracts.test.js` enforces that visual guides in `docs/visuals/` must contain Mermaid diagrams and be referenced in the index.
+**Ambiguity / Drift:** This technical constraint ensures that architectural visuals remain "live" and editable within the repo, but it is not currently listed as a requirement in `REQUIREMENTS.md`.
+**Question for Product Owner:** Should the use of Mermaid.js for all architectural diagrams be mandated in `REQUIREMENTS.md` to prevent a drift toward static image artifacts?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Add a requirement to `REQUIREMENTS.md` Section 8 stating that all architectural diagrams must be implemented using Mermaid.js within Markdown files.*

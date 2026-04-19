@@ -136,3 +136,53 @@
 - **Decision:** Standardize `stderr` as the canonical technical sink for agent `Audit Log` emissions.
 - **Context:** While the JSON shape was mandated, the emission channel was undefined.
 - **Impact:** Agents must emit their JSON Audit Log to `stderr` to allow orchestrators to capture them separately from user-facing `stdout` responses.
+
+## [2026-04-19] - CEO-Directed Decisions (Based on Codebase Review)
+
+### Node.js Resilience Helper Integration
+- **Decision:** `scripts/resilience_helpers.js` MUST be integrated into `scripts/audit-repo.js` and `scripts/generate_all.js` using the `withRetry` helper for all filesystem operations. The resilience mandate applies to the repository's own tooling, not just agent deployments.
+- **Status:** Pending Implementation — current sprint.
+
+### logging-mcp Activation
+- **Decision:** `logging-mcp` MUST be added to the default `active_mcps` list in `mcp.config.json`. The ROI Auditor cannot be validated as active without it. Activate immediately to unblock Guardian agent development.
+- **Status:** Pending Implementation — P0.
+
+### ROI Auditor Baseline Data: Local JSON File
+- **Decision:** Add a `tools/roi/baseline-config.json` file as the local source of truth for Human Baseline Time and Labor Rate data. The `ROI Auditor` persona reads this file. Google Sheets is used for log appending only — not as a data dictionary for configuration reads. This eliminates the dependency on a Google Sheets read capability for configuration access.
+- **Status:** Pending Implementation.
+
+### logging-mcp: Incorporate Audit Log Shape as Primary Payload
+- **Decision:** The `logging-mcp` protocol MUST be updated so that the mandated Audit Log JSON shape `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }` is the primary payload for "success" events. The existing `logging-mcp` standardized shape wraps it (Audit Log goes inside `metadata`). Update `mcp-protocols/logging-mcp.md`.
+- **Status:** Pending Implementation.
+
+### Client Onboarding Directories
+- **Decision:** Create `templates/tiers/` with Basic, Standard, and Premium tier templates, and initialize `clients/` directory with a `.gitignore` to support the Client Onboarding workflow.
+- **Status:** Pending Implementation.
+
+### Fleet Dashboard API Path: Standardize to /api/v1/reports
+- **Decision:** The canonical ingest path is `/api/v1/reports` as defined in the persona spec (`agents/operations/fleet-dashboard.md`). The reference implementation in `examples/gatekeeper-deployment/dashboard-ingest.js` MUST be updated from `/ingest` to `/api/v1/reports`. Persona specs take precedence over examples.
+- **Status:** Pending Implementation.
+
+### SecretOps: Standardize on .env.template
+- **Decision:** All 1Password command wrapper documentation across `AGENTS.md`, `docs/tool-usages/`, and `examples/` MUST use `--env-file=.env.template`. The root `.env.template` is the authoritative inventory. Per-example `.env.example` files are supplementary only.
+- **Status:** Pending Implementation.
+
+### Smoke Test Coverage: All Examples Required
+- **Decision:** All subdirectories in `examples/` MUST be covered by at least one static smoke check in `tests/examples-smoke.test.js`, including `rfp-split`, `gmu-validation`, and `secure-secret-management`. This is mandatory per Requirement 9.
+- **Status:** Pending Implementation.
+
+### Audit Repo: Enforce Skill Contract Compliance
+- **Decision:** `scripts/audit-repo.js` MUST be expanded to audit all files in the `skills/` directory for structural compliance (Required Headings: Rules & Constraints, Audit Log, Refusal Criteria). Same contract enforced for agents AND skills.
+- **Status:** Pending Implementation — current sprint.
+
+### Audit Log: Strict JSON Schema Validation
+- **Decision:** `scripts/audit-repo.js` MUST perform strict JSON schema validation for the Audit Log section — not just presence check. Validate that the block contains syntactically valid JSON with all required keys: `task`, `inputs`, `actions`, `risks`, `result`.
+- **Status:** Pending Implementation — current sprint.
+
+### Data Inventory for Skills
+- **Decision:** The `Data Inventory` section MUST be added to `SKILL_TEMPLATE.md` as a mandatory section, replacing or consolidating the current `Inputs`/`Outputs` headings. All existing skills must be updated. Architectural symmetry with agent personas is required.
+- **Status:** Pending Implementation.
+
+### Red Team Gauntlet: Create Test Vectors
+- **Decision:** `examples/red-team-gauntlet/test-vectors.yaml` MUST be created with at least 5 starter cases (Prompt Injection + PII patterns) required by the Client Onboarding validation workflow.
+- **Status:** Pending Implementation.

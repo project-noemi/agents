@@ -127,3 +127,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `scripts/audit-repo.js` be expanded to include basic JSON schema validation for the Audit Log section in all agent and skill files?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse and validate the JSON shape of the Audit Log section against the mandated schema.*
+
+### ❓ Question [2026-04-22] - Technical Enforcement of Skill Contracts
+**Context:** Decision [2026-04-13] mandated specific sections (Rules & Constraints, Audit Log) for skills, but `scripts/audit-repo.js` currently only audits agent personas in `agents/`.
+**Ambiguity / Drift:** Skills perform critical logic but their structural integrity is not automatically enforced in CI, leading to potential silent drift where new skills skip safety-critical sections.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be expanded to enforce the same structural contract (Required Headings, Refusal Criteria) on all files in the `skills/` directory?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to discover and audit all files in the `skills/` directory for structural compliance with the mandatory skill contract.*
+
+### ❓ Question [2026-04-22] - Audit Log JSON Schema Validation Level
+**Context:** `REQUIREMENTS.md` Section 2 mandates a specific JSON shape for Audit Logs. Currently, the "Audit Log" heading presence is enforced (for agents), but its content is not validated.
+**Ambiguity / Drift:** Agents may emit malformed JSON or JSON that lacks required keys (task, inputs, actions, risks, result), breaking downstream observability and ROI calculation.
+**Question for Product Owner:** Should the repository audit script perform strict JSON schema validation for the Audit Log section, or merely verify that the block contains syntactically valid JSON?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse the Audit Log section and validate it against the mandated JSON schema `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`.*
+
+### ❓ Question [2026-04-22] - Data Inventory for Skills
+**Context:** Agent personas have a mandatory `Data Inventory` (D2) section to satisfy 4D Description requirements. Reusable skills currently use `Inputs` and `Outputs` headings but lack a consolidated `Data Inventory`.
+**Ambiguity / Drift:** Inconsistency between agent and skill documentation makes it harder for builders to maintain a unified data dictionary across the fleet.
+**Question for Product Owner:** Should the `Data Inventory` heading be added to the mandatory skill contract (`SKILL_TEMPLATE.md`) for architectural symmetry with agent personas?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `SKILL_TEMPLATE.md` and all existing skills to include a mandatory `Data Inventory` section, replacing or consolidating the current `Inputs`/`Outputs` logic where appropriate.*

@@ -1,5 +1,7 @@
 # Docker AI Sandbox: Isolated Agent Environment
 
+> Historical example: this Python-based sandbox is retained as an illustrative legacy reference. For the recommended current entry path, start with [`zero-to-first-agent.md`](zero-to-first-agent.md), then [`../tool-usages/secure-secret-management.md`](../tool-usages/secure-secret-management.md), then [`docker-agent-home.md`](docker-agent-home.md).
+
 This guide walks you through setting up a containerized AI agent environment using **Docker**, **PostgreSQL with pgvector**, and the **Gemini API**.
 
 ## Overview
@@ -29,14 +31,13 @@ The environment consists of two primary layers defined in `docker-compose.yml`:
 
 ### Prerequisites
 1.  **Docker Desktop** installed and running.
-2.  A **Gemini API Key**.
-3.  A `.env` file in the same directory (containing `GEMINI_API_KEY=your_key_here`).
+2.  A vault-backed env file containing only **vault references**, not real secret values. See [`../../examples/docker/.env.example`](../../examples/docker/.env.example).
 
 ### Step 1: Start the Environment
 Run the following command in your terminal from the `examples/docker/` directory:
 
 ```bash
-docker compose up -d --build
+op run --env-file=.env.example -- docker compose up -d --build
 ```
 *Docker will download the database, build the Python image, and start them both in the background.*
 

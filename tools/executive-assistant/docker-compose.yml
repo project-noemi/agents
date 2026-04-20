@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - NODE_ENV=development
+      - MONGO_URI=mongodb://mongo:27017/noemi_ea
+      # Cloud providers will inject these dynamically at runtime. Locally, they are resolved by infisical `infisical run -- docker-compose up`
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GMAIL_REFRESH_TOKEN=${GMAIL_REFRESH_TOKEN}
+      - PROJECT_ID=${PROJECT_ID}
+    depends_on:
+      - mongo
+  
+  mongo:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  ngrok:
+    image: wernight/ngrok
+    ports:
+      - "4040:4040"
+    environment:
+      - NGROK_PROTOCOL=http
+      - NGROK_PORT=app:8080
+    depends_on:
+      - app
+
+volumes:
+  mongo_data:

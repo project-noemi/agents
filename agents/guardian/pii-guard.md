@@ -52,3 +52,18 @@ Analyze the incoming payload (prompt, document, or JSON) against the following c
 ```json
 { "status": "APPROVED | FLAGGED | REDACTED | BLOCKED", "reason": "<optional explanation>", "payload": "<original or sanitized payload>" }
 ```
+
+## Audit Log
+Emit a separate JSON audit record for each payload review:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets, credentials, and raw PII. Capture only the classification, redaction decision, and whether escalation was required.

@@ -14,7 +14,8 @@
     "google-forms",
     "google-contacts",
     "google-admin",
-    "web-search"
+    "web-search",
+    "github"
   ],
   "active_skills": [
     "classification/risk-triage",

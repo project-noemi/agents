@@ -1,12 +1,19 @@
+# LEGACY/ILLUSTRATIVE — This Python example is provided for historical reference only.
+# The canonical implementation path for Project NoéMI is Node.js.
+# See REQUIREMENTS.md Section 8 and AGENTS.md for details.
+
 import os
+import sys
 import time
 import dropbox
-from dotenv import load_dotenv
 import subprocess
 
-# Load credentials from .env
-load_dotenv()
-DROPBOX_TOKEN = os.getenv("DROPBOX_ACCESS_TOKEN")
+# Fetch-on-Demand: credentials are injected at runtime via vault CLI wrappers.
+# Usage:  op run --env-file=.env.template -- python dropbox_watcher.py
+#    or:  infisical run --env=dev -- python dropbox_watcher.py
+DROPBOX_TOKEN = os.environ.get("DROPBOX_ACCESS_TOKEN")
+if not DROPBOX_TOKEN:
+    sys.exit("DROPBOX_ACCESS_TOKEN not set. Use 'op run' or 'infisical run' to inject secrets.")
 dbx = dropbox.Dropbox(DROPBOX_TOKEN)
 
 # Configuration
@@ -30,7 +37,7 @@ def check_for_pairs():
         
         return list(projects)
     except Exception as e:
-        print(f"❌ Error scanning Dropbox: {e}")
+        print(f"❌ Error scanning Dropbox: {e}", file=sys.stderr)
         return []
 
 def download_and_process(project_id):
@@ -50,12 +57,20 @@ def download_and_process(project_id):
     
     # TRIGGER THE MANAGER
     print(f"⚡ Triggering Marketing Pod for {project_id}...")
-    subprocess.run([
-        "python", "manager.py", 
+    result = subprocess.run([
+        sys.executable, "manager.py",
         "--project", project_id, 
         "--rough_cut", local_rough, 
         "--pose_clip", local_pose
-    ])
+    ], check=False)
+
+    if result.returncode != 0:
+        print(
+            f"❌ Manager failed for {project_id} with exit code {result.returncode}. "
+            "Leaving source files in Dropbox inbound for retry.",
+            file=sys.stderr,
+        )
+        return False
     
     # Cleanup: Move to processed
     print(f"✅ Cleanup: Moving {project_id} to Processed folder...")
@@ -65,6 +80,7 @@ def download_and_process(project_id):
     # Remove local temp files
     os.remove(local_rough)
     os.remove(local_pose)
+    return True
 
 if __name__ == "__main__":
     while True:

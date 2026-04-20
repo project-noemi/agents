@@ -1,4 +1,8 @@
 #!/bin/bash
+# LEGACY/ILLUSTRATIVE — This shell script is provided for historical reference only.
+# The canonical implementation path for Project NoéMI is Node.js.
+# See REQUIREMENTS.md Section 8 and AGENTS.md for details.
+
 set -euo pipefail
 # Phase 0 Security: Install Infisical CLI
 

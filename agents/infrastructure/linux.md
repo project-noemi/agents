@@ -70,3 +70,18 @@ Investigate specific issues using read-only tools.
 *   **Package Managers:** Detect and use the correct one (`apt`, `dnf`, `yum`, `pacman`).
 *   **Text Processing:** `grep`, `awk`, `sed` (use `-i.bak` for in-place edits with backup).
 *   **Editors:** Prefer non-interactive stream editors (`sed`, `echo`, `tee`) over `vi`/`nano` for automation.
+
+## Audit Log
+Emit a separate JSON audit record for each Linux administration task:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets and credentials. Record the host, diagnostic steps, system changes, and any remaining risk or rollback note.

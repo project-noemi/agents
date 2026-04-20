@@ -45,3 +45,18 @@ Process email-related requests with a focus on urgency, privacy, and clarity.
 
 - **Gmail MCP** — Inbox scanning, email retrieval, filtering, and sending via the Gmail MCP integration
 - **Google Workspace MCP** — Access to Google Calendar and Contacts for contextualizing emails against schedules and stakeholder information
+
+## Audit Log
+Emit a separate JSON audit record for each drafted or routed communication:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets, credentials, and unnecessary private message content. Record the communication goal, tone choice, and any escalation or approval flags.

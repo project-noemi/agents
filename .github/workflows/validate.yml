@@ -1,75 +1,86 @@
-name: Validate Specs
+name: Validate Reference Architecture
 
 on:
   push:
-    branches: [develop]
+    branches:
+      - develop
+      - main
   pull_request:
-    branches: [develop]
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  gemini-freshness:
-    name: GEMINI.md Freshness
+  validate-fast:
+    name: Audit, Generate, and Fast Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
-      - name: Regenerate GEMINI.md
-        run: node scripts/generate_gemini.js
-      - name: Check for drift
+          node-version: "24"
+
+      - name: Show Node toolchain versions
         run: |
-          if ! git diff --exit-code GEMINI.md; then
-            echo "::error::GEMINI.md is stale. Run 'node scripts/generate_gemini.js' and commit the result."
+          node --version
+          npm --version
+
+      - name: Run repository audit
+        run: npm run audit
+
+      - name: Run fast validation suite
+        run: npm test
+
+      - name: Regenerate context outputs
+        run: npm run generate
+
+      - name: Check generated context freshness
+        run: |
+          if ! git diff --exit-code -- GEMINI.md CLAUDE.md; then
+            echo "::error::Generated context is stale. Run 'node scripts/generate_all.js' and commit the result."
             exit 1
           fi
 
-  agent-spec-structure:
-    name: Agent Spec Structure
+  docker-smoke:
+    name: Docker Smoke Validation
+    needs: validate-fast
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Validate required sections
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Show Docker versions
         run: |
-          failed=0
-          required_sections=("## Role" "## Tone" "## Capabilities" "## Rules & Constraints" "## Boundaries")
+          docker version
+          docker compose version
 
-          for spec in $(find agents -name '*.md' -not -name 'README.md'); do
-            # Check H1 format: # Name — Domain Agent
-            if ! head -1 "$spec" | grep -qP '^# .+ — .+ Agent$'; then
-              echo "::error file=$spec::H1 must match '# {Name} — {Domain} Agent'"
-              failed=1
-            fi
+      - name: Run Docker smoke suite
+        run: npm run test:e2e
 
-            for section in "${required_sections[@]}"; do
-              if ! grep -q "^${section}" "$spec"; then
-                echo "::error file=$spec::Missing required section: $section"
-                failed=1
-              fi
-            done
-          done
-
-          if [ "$failed" -eq 1 ]; then
-            exit 1
-          fi
-          echo "All agent specs pass structural validation."
-
-  docs-mirror:
-    name: Docs Mirror Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verify docs/agents/ mirrors agents/
-        run: |
-          failed=0
-          for domain in $(find agents -mindepth 1 -maxdepth 1 -type d -printf '%f\n'); do
-            if [ ! -d "docs/agents/$domain" ]; then
-              echo "::error::Missing docs mirror: docs/agents/$domain/ does not exist"
-              failed=1
-            fi
-          done
-
-          if [ "$failed" -eq 1 ]; then
-            exit 1
-          fi
-          echo "All agent domains have matching docs/agents/ directories."
+      - name: Upload Docker smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-smoke-diagnostics
+          path: test-artifacts/docker-smoke
+          if-no-files-found: ignore

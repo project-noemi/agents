@@ -1,0 +1,508 @@
+{
+  "name": "Invoice Downloader (Szamlazz & Billingo) M365 - NoAI NoKEY",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "dataPropertyName": "body.content",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "=link",
+              "cssSelector": "=a[style*=\"background-color:#ff6630\"]",
+              "returnValue": "=attribute",
+              "attribute": "=href",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        16,
+        0
+      ],
+      "id": "8d5562f3-a520-4a10-8249-d48dc08da520",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.link[0] }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "szla_link_text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        224,
+        0
+      ],
+      "id": "95187b19-5cc5-4256-b338-f36373b8747f",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "dataPropertyName": "szla_link_text",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "pdf_link",
+              "cssSelector": "a[href*=\"pdf\"]",
+              "returnValue": "attribute",
+              "attribute": "href"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        432,
+        0
+      ],
+      "id": "d8aeea10-57dd-4c22-9f02-c5a2c4d92ed5",
+      "name": "HTML1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "09c1f3c7-1eb1-4da8-ad40-d3e436479854",
+              "name": "vegleges_pdf_link",
+              "value": "=https://www.szamlazz.hu{{ $json.pdf_link }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        0
+      ],
+      "id": "315de058-73a0-45fd-a216-8e76cad96f19",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.vegleges_pdf_link }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "szamla_pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        848,
+        0
+      ],
+      "id": "b77dcb90-1807-450b-bddd-88cc665149d1",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "toRecipients": "",
+        "subject": "n8n - számlázz.hu számla",
+        "additionalFields": {
+          "attachments": {
+            "attachments": [
+              {
+                "binaryPropertyName": "=szamla_pdf"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        0
+      ],
+      "id": "385079f9-8dc9-4365-b338-f819257b6830",
+      "name": "Send a message",
+      "webhookId": "",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "09c1f3c7-1eb1-4da8-ad40-d3e436479854",
+              "name": "vegleges_pdf_link",
+              "value": "={{ $json.body.content }}/view",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        240
+      ],
+      "id": "260a347f-0e9d-4b94-a847-83e4af9467b1",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.vegleges_pdf_link }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "szamla_pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        240
+      ],
+      "id": "fedc2079-2b92-4dee-b974-5c27db6d25e1",
+      "name": "HTTP Request3"
+    },
+    {
+      "parameters": {
+        "toRecipients": "",
+        "subject": "n8n - billingo számla",
+        "additionalFields": {
+          "attachments": {
+            "attachments": [
+              {
+                "binaryPropertyName": "=szamla_pdf"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        672,
+        240
+      ],
+      "id": "6d93b827-b5d0-43d6-bc44-6a29ab5bae8a",
+      "name": "Send a message1",
+      "webhookId": "",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8b8722a4-acba-40d0-92da-5a3e19d68798",
+              "name": "body.content",
+              "value": "={{ $json.body.content.match(/https:%2F%2Fapp\\.billingo\\.hu%2Fdocument-access%2F[^\"\\/]+/)[0].replace(/%2F/g, '/') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        240
+      ],
+      "id": "8540eeb7-bc43-43a3-90bc-50f7d7d2c499",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1104,
+        128
+      ],
+      "id": "685c6457-652f-49b7-ae29-a0aa3d1d033b",
+      "name": "Naponta egyszer"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 400,
+        "output": "fields",
+        "fields": [
+          "from",
+          "receivedDateTime",
+          "body"
+        ],
+        "filtersUI": {
+          "values": {
+            "filters": {
+              "custom": "={{ \"receivedDateTime ge \" + DateTime.fromISO($json.timestamp).minus({ days: 30 }).toFormat(\"yyyy-MM-dd'T'HH:mm:ss'Z'\") }}"
+            }
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        128
+      ],
+      "id": "9cd6f415-3850-40e4-8d71-b16e6c1c7441",
+      "name": "Levelek lekérése (utolsó 24h)",
+      "webhookId": "",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c1",
+                    "leftValue": "={{ $json.from.emailAddress.address }}",
+                    "rightValue": "@szamlazz.hu",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "szamlazz"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "c2",
+                    "leftValue": "={{ $json.from.emailAddress.address }}",
+                    "rightValue": "noreply@billingo.hu",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "billingo"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -640,
+        128
+      ],
+      "id": "c534caa3-2e73-4466-8c00-18a9fedf40bb",
+      "name": "Szolgáltató választó"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTML1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Naponta egyszer": {
+      "main": [
+        [
+          {
+            "node": "Levelek lekérése (utolsó 24h)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Levelek lekérése (utolsó 24h)": {
+      "main": [
+        [
+          {
+            "node": "Szolgáltató választó",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Szolgáltató választó": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "",
+  "meta": {
+    "instanceId": ""
+  },
+  "id": "",
+  "tags": []
+}

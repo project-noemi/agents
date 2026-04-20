@@ -1,14 +1,12 @@
 # Fetch-on-Demand: All secrets are injected at runtime via vault CLI wrappers.
-# Usage:  op run --env-file=.env -- docker compose up -d
+# Usage:  op run --env-file=.env.example -- docker compose up -d
 #    or:  infisical run --env=dev -- docker compose up -d
 # See .env.example for required variable names.
-
-version: '3.8'
 
 services:
   # 1. The Memory Layer: Where the agent stores embeddings and past conversations
   agent-memory:
-    image: ankane/pgvector:v0.8.0 # PostgreSQL pre-loaded with vector search
+    image: ankane/pgvector:latest # PostgreSQL pre-loaded with vector search
     container_name: noemi-agent-memory
     environment:
       POSTGRES_USER: ai_user
@@ -33,9 +31,8 @@ services:
     depends_on:
       agent-memory:
         condition: service_healthy
-    env_file:
-      - .env # Automatically loads the API key the script generated
     environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - DB_HOST=agent-memory
       - DB_USER=ai_user
       - DB_PASSWORD=${POSTGRES_PASSWORD}

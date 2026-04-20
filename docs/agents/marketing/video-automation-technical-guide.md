@@ -1,5 +1,7 @@
 # Video Automation Pod: Technical Guide (System Setup)
 
+> Historical example: this guide documents a Python-based legacy implementation kept for illustration. It is not the recommended starting point for new NoéMI builds.
+
 This guide provides the technical configuration, architecture, and environment setup for the Video Automation Pod.
 
 ---
@@ -17,15 +19,15 @@ The pod follows a **Decoupled Multi-Agent Orchestration** pattern:
 
 ## 🛠️ Environment Configuration
 
-To run the pod, you must configure a `.env` file in `examples/video-automation-pod/`.
+To run the pod with Fetch-on-Demand, use a vault-reference env file such as [`../../../examples/video-automation-pod/.env.example`](../../../examples/video-automation-pod/.env.example).
 
-### `.env` File Template
+### Vault-Reference Env File Template
 ```env
 # Google Gemini API Key
-GEMINI_API_KEY=your_gemini_key
+GEMINI_API_KEY=op://noemi/gemini/api-key
 
 # Dropbox API credentials
-DROPBOX_ACCESS_TOKEN=your_dropbox_token
+DROPBOX_ACCESS_TOKEN=op://noemi/dropbox/access-token
 ```
 
 ### 📦 Python Dependencies
@@ -47,7 +49,7 @@ To use the Dropbox Watcher, you must create a Dropbox App:
     - `files.content.write`
     - `files.metadata.read`
     - `files.metadata.write`
-4.  **Generate Access Token**: Click "Generate" and copy the token into your `.env` file.
+4.  **Generate Access Token**: Click "Generate" and store the token in your SecretOps vault rather than in a local plaintext env file.
 
 ---
 

@@ -150,3 +150,18 @@ See the report template in Workflow § 4. All reports use GitHub-flavored Markdo
 - `.github/CODEOWNERS` — reviewer resolution for flagged PRs.
 - `.gatekeeper/config.yml` — per-repo overrides (allowlisted file patterns, custom thresholds).
 - `.gatekeeper/journal.md` — persistent learning log.
+
+## Audit Log
+Emit a separate JSON audit record for every triage cycle and every mutating PR action:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets and tokens. Include repository and PR identifiers, classification reasons, any retries or errors, and the final action taken.

@@ -118,3 +118,18 @@ onboarding_report:
   timestamp: "<ISO 8601>"
   actor: "client-onboarding-agent"
 ```
+
+## Audit Log
+Emit a separate JSON audit record for each onboarding run:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets and credentials. Record the tenant or client identifier, setup actions completed, validation results, and any manual follow-up required.

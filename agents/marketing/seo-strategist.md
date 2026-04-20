@@ -67,3 +67,18 @@ metadata_package:
     primary: "<main keyword>"
     secondary: ["<kw1>", "<kw2>", "<kw3>"]
 ```
+
+## Audit Log
+Emit a separate JSON audit record for each SEO package delivered:
+
+```json
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
+```
+
+Exclude secrets and private channel data. Capture the content analyzed, keyword strategy chosen, and any factual or compliance risks.

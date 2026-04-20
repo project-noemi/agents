@@ -1,9 +1,7 @@
 # Fetch-on-Demand: All secrets are injected at runtime via vault CLI wrappers.
-# Usage:  op run --env-file=.env.template -- docker compose up -d
+# Usage:  op run --env-file=.env.example -- docker compose up -d
 #    or:  infisical run --env=dev -- docker compose up -d
-# See .env.template for required variable names.
-
-version: "3.8"
+# See .env.example for required variable names.
 
 # Project NoéMI: Gatekeeper + Fleet Dashboard Deployment
 # Includes the Gatekeeper PR triage agent, Fleet Dashboard (Grafana + InfluxDB),
@@ -66,6 +64,31 @@ services:
       - gatekeeper-net
     restart: unless-stopped
 
+  dashboard-ingest:
+    image: node:20-alpine
+    container_name: fleet-dashboard-ingest
+    working_dir: /app
+    command: ["node", "dashboard-ingest.js"]
+    environment:
+      - PORT=8081
+      - DASHBOARD_API_TOKEN=${INFLUXDB_ADMIN_TOKEN}
+      - GATEKEEPER_HMAC_SECRET=${GATEKEEPER_HMAC_SECRET}
+      - INFLUXDB_WRITE_URL=http://influxdb:8086/api/v2/write?org=noemi&bucket=agent_reports&precision=ns
+      - INFLUXDB_AUTH_TOKEN=${INFLUXDB_ADMIN_TOKEN}
+    volumes:
+      - ./dashboard-ingest.js:/app/dashboard-ingest.js:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8081/health').then((res) => process.exit(res.status === 200 ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    networks:
+      - gatekeeper-net
+    restart: unless-stopped
+
   # --------------------------------------------------------
   # GATEKEEPER AGENT
   # Runs on a schedule, triages PRs, posts reports
@@ -83,11 +106,11 @@ services:
       - GATEKEEPER_DRY_RUN=${GATEKEEPER_DRY_RUN:-true}
       - GATEKEEPER_INTERVAL_HOURS=${GATEKEEPER_INTERVAL_HOURS:-4}
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
-      - DASHBOARD_API_URL=http://influxdb:8086/api/v2/write?org=noemi&bucket=agent_reports
+      - DASHBOARD_API_URL=http://dashboard-ingest:8081/ingest
       - DASHBOARD_AUTH_TOKEN=${INFLUXDB_ADMIN_TOKEN}
       - GATEKEEPER_HMAC_SECRET=${GATEKEEPER_HMAC_SECRET}
     depends_on:
-      influxdb:
+      dashboard-ingest:
         condition: service_healthy
     networks:
       - gatekeeper-net

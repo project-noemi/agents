@@ -1,7 +1,7 @@
 # The 4D Framework & Methodology
 
 ## Overview
-Project NoeMI employs a proprietary **4D Framework** for institutional-grade AI orchestration. This framework, taught in academic partnership with George Mason University, merges the principles of the Montessori Method with advanced Synthetic Fluency. The goal is not merely to teach tools, but to build "architects of the new cognitive era."
+Project NoeMI employs the **4D Framework** for institutional-grade AI orchestration. The framework is taught in academic partnership with George Mason University and gives the repository a common operating model for building, evaluating, and governing AI systems. The goal is not merely to teach tools, but to build organizations that can deploy AI with judgment and accountability.
 
 Every agent designed, developed, and deployed within this repository must adhere to this methodology.
 
@@ -9,21 +9,21 @@ Every agent designed, developed, and deployed within this repository must adhere
 
 ## 1. The 4D Framework
 
-### D1: Description (Mastering High-Precision Instruction)
-The foundation of effective agentic behavior is clarity. Agents must be given instructions that translate a broad vision into a structured reality. 
-*   **Application:** When writing an agent persona (e.g., in `agents/`), define the Role, Tone, Capabilities, and Rules with absolute precision. Ambiguity leads to hallucination. The canonical format for all agent specifications is [`docs/AGENT_TEMPLATE.md`](AGENT_TEMPLATE.md).
+### D1: Delegation (Knowing WHEN and WHETHER to use AI)
+Delegation is the first architectural decision: whether the task should be handled by AI, a human, or a governed collaboration between the two.
+*   **Application:** Define the business objective, acceptance criteria, refusal boundary, and escalation path before building. Use MCP integrations only after the task is proven safe and valuable to automate.
 
-### D2: Discernment (Human vs. Synthetic Intelligence)
-Not all tasks are suited for AI. Discernment is the architectural skill of identifying which tasks require human empathy, complex judgment, or physical interaction, versus tasks that can be securely handled by synthetic agents.
-*   **Application:** Agents should be scoped narrowly. Do not build an "omni-agent." Build specialized agents (e.g., a "QA & Risk Manager" or "Brand Strategist") and orchestrate their interactions.
+### D2: Description (Mastering High-Precision Instruction)
+The foundation of effective agentic behavior is clarity. Agents must be given instructions that translate a broad vision into a structured reality.
+*   **Application:** When writing an agent persona or workflow, define the role, desired outputs, operating procedure, and data inventory with precision. Description is where the implementation contract becomes explicit.
 
-### D3: Delegation (Autonomous Workflows)
-The paradigm shift from prompt-based chatbots to true agentic development. Delegation involves creating autonomous workflows that independently seek goals rather than waiting for turn-by-turn conversational input.
-*   **Application:** Utilize MCP integrations (like n8n for workflows or Google Workspace for data access) to allow agents to execute complex, multi-step actions autonomously.
+### D3: Discernment (Human vs. Synthetic Intelligence)
+Discernment is the validation layer: identifying when human judgment is still required and verifying whether AI behavior stays within policy, quality, and trust boundaries.
+*   **Application:** Agents should be scoped narrowly. Do not build an "omni-agent." Build specialized agents, test them against edge cases, and deploy Guardian patterns where trust matters. Discernment is where red teaming, readiness checks, and quality review happen.
 
 ### D4: Diligence (Ethics, Verification, and Security)
 Generative models are probabilistic. Diligence requires continuous verification, ethical alignment, and robust security protocols for all outputs.
-*   **Application:** Implement Gartner AI TRiSM standards, Red Teaming protocols, and secure "Fetch-on-Demand" credential management (via Infisical) for every deployed agent.
+*   **Application:** Implement Gartner AI TRiSM standards, Red Teaming protocols, auditability, and secure "Fetch-on-Demand" credential management for every deployed agent.
 
 ---
 

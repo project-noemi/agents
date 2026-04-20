@@ -1,9 +1,7 @@
 # Fetch-on-Demand: All secrets are injected at runtime via vault CLI wrappers.
-# Usage:  op run --env-file=.env -- docker compose up -d
+# Usage:  op run --env-file=.env.example -- docker compose up -d
 #    or:  infisical run --env=dev -- docker compose up -d
 # See .env.example for required variable names.
-
-version: "3.8"
 
 # Project NoéMI: Fleet Deployment Infrastructure (Docker Compose)
 # This simulates the multi-tenant architecture for running 10 parallel boot camp cohorts.
@@ -56,7 +54,7 @@ services:
       - noemi-fleet-net
 
   casdoor:
-    image: casdoor/casdoor:v2.366.0
+    image: casbin/casdoor:2.377.0
     container_name: fleet-casdoor
     environment:
       - driverName=postgres

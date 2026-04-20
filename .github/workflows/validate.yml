@@ -38,6 +38,20 @@ jobs:
           node --version
           npm --version
 
+      - name: Verify SecretOps CLIs availability
+        run: |
+          echo "Checking for mandatory SecretOps CLIs..."
+          has_infisical=false
+          has_op=false
+          if command -v infisical >/dev/null 2>&1; then has_infisical=true; fi
+          if command -v op >/dev/null 2>&1; then has_op=true; fi
+          
+          if [ "$has_infisical" = false ] && [ "$has_op" = false ]; then
+            echo "::warning::Neither Infisical nor 1Password CLI found in the CI environment. While CI may pass, local development mandates at least one."
+          else
+            echo "SecretOps CLI(s) found."
+          fi
+
       - name: Run repository audit
         run: npm run audit
 

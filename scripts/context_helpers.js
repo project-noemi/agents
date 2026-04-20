@@ -196,12 +196,13 @@ function buildAgentIndex(agents) {
 
     let output = '## Agent Index\n\n';
     output += `${agents.length} agent specifications across ${Object.keys(byDomain).length} domains:\n\n`;
-    output += '| Domain | Agent | Spec File |\n';
-    output += '|--------|-------|-----------|\n';
+    output += '| Domain | Agent | Role | Spec File |\n';
+    output += '|--------|-------|------|-----------|\n';
 
     for (const domain of Object.keys(byDomain).sort()) {
         for (const agent of byDomain[domain]) {
-            output += `| ${domain} | ${agent.title} | \`${agent.path}\` |\n`;
+            const role = agent.role ? agent.role.replace(/\|/g, '\\|') : '';
+            output += `| ${domain} | ${agent.title} | ${role} | \`${agent.path}\` |\n`;
         }
     }
 

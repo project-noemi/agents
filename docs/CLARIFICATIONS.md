@@ -148,3 +148,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the `Data Inventory` heading be added to the mandatory skill contract (`SKILL_TEMPLATE.md`) for architectural symmetry with agent personas?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `SKILL_TEMPLATE.md` and all existing skills to include a mandatory `Data Inventory` section, replacing or consolidating the current `Inputs`/`Outputs` logic where appropriate.*
+
+### ❓ Question [2026-04-25] - Fleet Dashboard Ingest Path Standardization
+**Context:** The `Fleet Dashboard` persona (`agents/operations/fleet-dashboard.md`) specifies `/api/v1/reports` as the ingestion endpoint, but the reference implementation in `examples/gatekeeper-deployment/dashboard-ingest.js` uses `/ingest`.
+**Ambiguity / Drift:** Agents following the persona specification fail when communicating with the reference dashboard implementation.
+**Question for Product Owner:** Should the Fleet Dashboard API ingest path be standardized to `/api/v1/reports` (matching the persona) or `/ingest` (matching the implementation)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize the Fleet Dashboard API ingest endpoint path across all persona specifications and implementation scripts to ensure technical alignment.*
+
+### ❓ Question [2026-04-25] - Skill Contract Audit Enforcement
+**Context:** Decision [2026-04-13] mandated specific sections (Rules & Constraints, Audit Log) for skills, but `scripts/audit-repo.js` currently only audits agent personas in `agents/`.
+**Ambiguity / Drift:** Reusable skills perform critical logic, but their structural integrity is not automatically enforced, leading to silent drift where new skills skip safety-critical sections or the Refusal Criteria subsection.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be expanded to enforce the same structural contract (Required Headings, Refusal Criteria) on all files in the `skills/` directory?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to discover and audit all files in the `skills/` directory for structural compliance with the mandatory skill contract.*
+
+### ❓ Question [2026-04-25] - Audit Log JSON Schema Validation
+**Context:** `REQUIREMENTS.md` Section 2 mandates a specific JSON shape for Audit Logs. Currently, `scripts/audit-repo.js` only checks for the heading's presence.
+**Ambiguity / Drift:** There is no technical enforcement of the actual JSON schema, allowing for malformed or incomplete audit logs that break downstream observability and ROI calculation.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be enhanced to perform strict JSON schema validation for the Audit Log section in both agents and skills?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse the Audit Log section and validate it against the mandated JSON schema `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`.*

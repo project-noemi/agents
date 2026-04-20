@@ -68,6 +68,11 @@ function checkPersonas() {
         if (missing.length > 0) {
             fail(`${agent.path} is missing required sections: ${missing.join(', ')}`);
         }
+
+        // Check mandatory Refusal Criteria subsection (aligned with main)
+        if (!headings.includes('Refusal Criteria')) {
+            fail(`${agent.path} missing required subsection: Refusal Criteria`);
+        }
     }
     console.log(`Audited ${agents.length} agents.`);
 }

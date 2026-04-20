@@ -38,7 +38,21 @@ Verify that a claimed action actually occurred by checking it against an authori
 ## MCP Dependencies
 - Depends on the MCP for the source of truth being queried (e.g., `github` MCP for PR verification)
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Respect rate limits on the source of truth API. Record evidence for every verification. Flag all mismatches immediately.
 - **Ask First:** Increasing batch_size beyond the default. Marking a mismatch as "resolved" without investigation.
 - **Never:** Modify the source of truth during verification. Silently ignore mismatches. Assume a claim is true without querying.
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}

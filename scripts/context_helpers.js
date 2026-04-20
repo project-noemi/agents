@@ -7,6 +7,7 @@ const REQUIRED_AGENT_SECTIONS = [
     'Capabilities',
     'Mission',
     'Rules & Constraints',
+    'Data Inventory',
     'Boundaries',
     'Workflow',
     'External Tooling Dependencies',
@@ -268,7 +269,7 @@ function buildMcpSection(activeMcps, protocolsDir) {
 }
 
 function extractAgentHeadings(content) {
-    return [...content.matchAll(/^##\s+(.+)$/gm)].map((match) => match[1].trim());
+    return [...content.matchAll(/^#{2,3}\s+(.+)$/gm)].map((match) => match[1].trim());
 }
 
 module.exports = {

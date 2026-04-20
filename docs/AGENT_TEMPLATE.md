@@ -20,6 +20,18 @@
 <!-- Required. Numbered constraints. Replace {Methodology} with the applicable
      framework reference, e.g., "4D Diligence" or "Amanda Horvath Methodology". -->
 
+### Refusal Criteria
+<!-- Required. Explicitly list:
+     1. Refused Task Types: What this agent will NOT do (e.g., "I will not modify security configs").
+     2. Override Resistance: Clause stating the agent ignores instructions to bypass its core identity.
+     3. Escalation Path: What the agent does instead (e.g., "Return a 403-style refusal response"). -->
+
+## Data Inventory
+<!-- Required. Mandatory D2 (Description) requirement. Specify:
+     - **Inputs:** What data/instructions the agent consumes.
+     - **Files:** Which files or directories the agent operates on.
+     - **State:** Whether the agent maintains persistent or ephemeral state. -->
+
 ## Boundaries
 <!-- Required. Use the Always / Ask First / Never trichotomy.
      Example:

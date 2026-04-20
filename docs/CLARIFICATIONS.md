@@ -44,13 +44,6 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Add a `baseline-config.json` to `tools/roi/` or update the `ROI Auditor` persona to include a specific `read_rows` capability for the Google Sheets MCP.*
 
-### ❓ Question [2026-04-04] - Environment Variable Inventory Drift
-**Context:** The `.env.template` file is intended to be a variable inventory for the repository. However, `tests/e2e/docker-smoke.test.js` references several `NOEMI_DOCKER_SMOKE_*` variables (e.g., `NOEMI_DOCKER_SMOKE_TIMEOUT_MS`, `NOEMI_DOCKER_SMOKE_POLL_INTERVAL_MS`, `NOEMI_DOCKER_SMOKE_ARTIFACT_DIR`) that are missing from `.env.template`.
-**Ambiguity / Drift:** Builders and CI/CD pipelines may be unaware of these configuration options, leading to inconsistent test environments.
-**Question for Product Owner:** Should these test-specific environment variables be added to `.env.template` to complete the variable inventory, or should they remain documented only within the test files?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `.env.template` to include the `NOEMI_DOCKER_SMOKE_*` variable set with sensible default placeholders.*
-
 ### ❓ Question [2026-04-04] - `logging-mcp` Standardized Log Shape vs. Audit Log
 **Context:** `mcp-protocols/logging-mcp.md` defines a "Standardized Log Shape" that includes `timestamp`, `agent`, `task`, `status`, `duration_ms`, and `metadata`. Meanwhile, `AGENTS.md` and `REQUIREMENTS.md` mandate a "lightweight JSON summary shape" for the `Audit Log` as `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`.
 **Ambiguity / Drift:** While complementary, it's unclear if the `Audit Log` is intended to be *part* of the `logging-mcp` payload (e.g., inside `metadata`) or if they are two separate emissions that need to be reconciled.
@@ -79,23 +72,100 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/context_helpers.js` and the context generators to support `VALUE_LENS_INJECTIONS` and `OPERATING_PROFILE_INJECTIONS` markers.*
 
-### ❓ Question [2026-04-04] - Mandatory Audit Log for Skills
-**Context:** `REQUIREMENTS.md` and `AGENTS.md` mandate a specific `Audit Log` JSON shape for all **agent personas** in `agents/`. Reusable **skills** in `skills/` currently do not have this requirement, although they perform critical logic.
-**Ambiguity / Drift:** It is unclear if skills should also include an `Audit Log` section or if the calling agent is solely responsible for logging the skill's execution.
-**Question for Product Owner:** Should the `SKILL_TEMPLATE.md` be updated to include a mandatory `Audit Log` section, or should the audit responsibility remain at the agent level?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Standardize `SKILL_TEMPLATE.md` and existing skills to include a mandatory `Audit Log` definition if required.*
-
-### ❓ Question [2026-04-05] - Data Inventory Persona Mandate
-**Context:** `METHODOLOGY.md` specifies that "Description" (D2) involves defining the "data inventory with precision," but `scripts/audit-repo.js` and `REQUIREMENTS.md` Section 2 do not include `Data Inventory` as a mandatory persona heading.
-**Ambiguity / Drift:** The 4D framework mandate in `METHODOLOGY.md` is not technically enforced, leading to personas that may lack the precise data definitions required for D2 compliance.
-**Question for Product Owner:** Should `Data Inventory` be added as a mandatory heading for all agent personas in `agents/` and enforced via `scripts/audit-repo.js`?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `scripts/context_helpers.js` and `REQUIREMENTS.md` to include "Data Inventory" in the mandatory persona contract, then update `AGENT_TEMPLATE.md` and all existing personas to include the new section.*
-
 ### ❓ Question [2026-04-05] - `logging-mcp` InfluxDB Backend Support
 **Context:** `mcp-protocols/logging-mcp.md` defines Loki/Grafana and n8n webhooks as the primary backends, but the reference implementation in `examples/gatekeeper-deployment/dashboard-ingest.js` and `docker-compose.yml` uses InfluxDB as the primary time-series datastore.
 **Ambiguity / Drift:** The protocol definition does not account for the primary storage mechanism used in the specialist deployment examples.
 **Question for Product Owner:** Should the `logging-mcp` protocol be updated to explicitly support InfluxDB as a third canonical backend for structured log ingestion?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `mcp-protocols/logging-mcp.md` to include InfluxDB as a supported backend and define the corresponding query/ingestion patterns.*
+
+### ❓ Question [2026-04-05] - SecretOps Syntax Drift: `.env.template` vs `.env.example`
+**Context:** `AGENTS.md` specifies the 1Password command wrapper pattern using `--env-file=.env.template`, while `docs/tool-usages/secure-secret-management.md` and all `docker-compose.yml` files in `examples/` use `--env-file=.env.example`.
+**Ambiguity / Drift:** This inconsistency creates confusion for builders and may lead to execution failures if they use the wrong reference file for secret injection.
+**Question for Product Owner:** Should the repository standardize on `.env.template` (the root inventory) or `.env.example` (the per-example inventory) for all 1Password command wrapper documentation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize all 1Password command wrapper examples across `AGENTS.md`, `docs/tool-usages/`, and `examples/` to use the chosen reference file.*
+
+### ❓ Question [2026-04-05] - Incomplete Example Smoke Test Coverage
+**Context:** `REQUIREMENTS.md` Section 9 mandates "static smoke checks for example stacks and Docker env inventories." However, `tests/examples-smoke.test.js` currently omits several reference implementations including `examples/rfp-split`, `examples/gmu-validation`, and `examples/secure-secret-management`.
+**Ambiguity / Drift:** Reference examples that are not covered by the smoke test suite may drift from the core architecture (e.g., regarding secret handling or Node baseline) without being detected by the CI pipeline.
+**Question for Product Owner:** Should all subdirectories in `examples/` be covered by at least one static smoke check to satisfy Requirement 9?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Expand `tests/examples-smoke.test.js` to include static smoke checks for `rfp-split`, `gmu-validation`, and `secure-secret-management`, ensuring they adhere to the Fetch-on-Demand and Node 24 baselines.*
+
+### ❓ Question [2026-04-05] - Fleet Dashboard Retention Policy Drift
+**Context:** `agents/operations/fleet-dashboard.md` specifies "Retain detailed reports for 90 days, aggregate summaries for 1 year."
+**Ambiguity / Drift:** The reference implementation in `examples/gatekeeper-deployment/docker-compose.yml` configures a single InfluxDB bucket with a 90-day retention policy (`DOCKER_INFLUXDB_INIT_RETENTION=90d`) and no mechanism for long-term aggregate storage.
+**Question for Product Owner:** Should the reference implementation be updated to include a second InfluxDB bucket (e.g., `agent_summaries`) with a 1-year retention policy and a downsampling task, or should the persona be updated to reflect a single 90-day retention period?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `examples/gatekeeper-deployment/docker-compose.yml` to provision an `agent_summaries` bucket and implement an InfluxDB task for report downsampling.*
+
+### ❓ Question [2026-04-05] - Red Team Gauntlet Test Vector Absence
+**Context:** The `Client Onboarding` agent (`agents/operations/client-onboarding.md`) mandates running a validation suite using 5 specific test cases from `examples/red-team-gauntlet/`.
+**Ambiguity / Drift:** The `examples/red-team-gauntlet/` directory only contains a `README.md` and lacks the actual test vectors (Prompts/PII patterns) required to execute the mandated validation workflow.
+**Question for Product Owner:** Should the `red-team-gauntlet` example be populated with a starter set of YAML/JSON test vectors to support the `Client Onboarding` validation requirement?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create `examples/red-team-gauntlet/test-vectors.yaml` with the 5 starter cases (Prompt Injection and PII) required by the Onboarding workflow.*
+
+### ❓ Question [2026-04-05] - Reference Service Audit Log Compliance
+**Context:** `REQUIREMENTS.md` and `AGENTS.md` mandate a JSON Audit Log shape for all personas. Reference implementation services like `examples/gatekeeper-deployment/dashboard-ingest.js` perform critical ingestion tasks.
+**Ambiguity / Drift:** The `dashboard-ingest.js` service does not currently emit its own internal audit logs in the mandated `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }` shape, making it harder for orchestrators to monitor the health of the observability stack itself.
+**Question for Product Owner:** Should reference implementation services (e.g., `dashboard-ingest.js`) also adhere to the mandatory Audit Log JSON emission standard?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `examples/gatekeeper-deployment/dashboard-ingest.js` to emit a JSON audit log for every accepted and rejected report ingestion.*
+
+### ❓ Question [2026-04-05] - Fleet Dashboard Multi-tenancy Implementation Gap
+**Context:** The `Fleet Dashboard` persona (`agents/operations/fleet-dashboard.md`) specifies a multi-tenant registry system with per-agent HMAC secrets and asynchronous verification of mutating claims (merges, closes).
+**Ambiguity / Drift:** The current reference implementation in `examples/gatekeeper-deployment/dashboard-ingest.js` is a single-agent sink with hardcoded validation logic and no registry or verification workflow.
+**Question for Product Owner:** Should the `Fleet Dashboard` reference implementation be expanded to include the registry and asynchronous verification logic, or should the persona be simplified to reflect the current single-tenant implementation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement the multi-tenant agent registry and asynchronous GitHub verification worker in the Fleet Dashboard reference stack.*
+
+### ❓ Question [2026-04-13] - Automated Validation for Audit Log JSON Schema
+**Context:** `REQUIREMENTS.md` Section 2 mandates a specific JSON shape for Audit Logs. Currently, `scripts/audit-repo.js` only checks for the presence of the "Audit Log" heading.
+**Ambiguity / Drift:** There is no technical enforcement of the actual JSON schema within the agent files, leading to potential drift where the heading exists but the content is structurally invalid.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be expanded to include basic JSON schema validation for the Audit Log section in all agent and skill files?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse and validate the JSON shape of the Audit Log section against the mandated schema.*
+
+### ❓ Question [2026-04-22] - Technical Enforcement of Skill Contracts
+**Context:** Decision [2026-04-13] mandated specific sections (Rules & Constraints, Audit Log) for skills, but `scripts/audit-repo.js` currently only audits agent personas in `agents/`.
+**Ambiguity / Drift:** Skills perform critical logic but their structural integrity is not automatically enforced in CI, leading to potential silent drift where new skills skip safety-critical sections.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be expanded to enforce the same structural contract (Required Headings, Refusal Criteria) on all files in the `skills/` directory?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to discover and audit all files in the `skills/` directory for structural compliance with the mandatory skill contract.*
+
+### ❓ Question [2026-04-22] - Audit Log JSON Schema Validation Level
+**Context:** `REQUIREMENTS.md` Section 2 mandates a specific JSON shape for Audit Logs. Currently, the "Audit Log" heading presence is enforced (for agents), but its content is not validated.
+**Ambiguity / Drift:** Agents may emit malformed JSON or JSON that lacks required keys (task, inputs, actions, risks, result), breaking downstream observability and ROI calculation.
+**Question for Product Owner:** Should the repository audit script perform strict JSON schema validation for the Audit Log section, or merely verify that the block contains syntactically valid JSON?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse the Audit Log section and validate it against the mandated JSON schema `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`.*
+
+### ❓ Question [2026-04-22] - Data Inventory for Skills
+**Context:** Agent personas have a mandatory `Data Inventory` (D2) section to satisfy 4D Description requirements. Reusable skills currently use `Inputs` and `Outputs` headings but lack a consolidated `Data Inventory`.
+**Ambiguity / Drift:** Inconsistency between agent and skill documentation makes it harder for builders to maintain a unified data dictionary across the fleet.
+**Question for Product Owner:** Should the `Data Inventory` heading be added to the mandatory skill contract (`SKILL_TEMPLATE.md`) for architectural symmetry with agent personas?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `SKILL_TEMPLATE.md` and all existing skills to include a mandatory `Data Inventory` section, replacing or consolidating the current `Inputs`/`Outputs` logic where appropriate.*
+
+### ❓ Question [2026-04-25] - Fleet Dashboard Ingest Path Standardization
+**Context:** The `Fleet Dashboard` persona (`agents/operations/fleet-dashboard.md`) specifies `/api/v1/reports` as the ingestion endpoint, but the reference implementation in `examples/gatekeeper-deployment/dashboard-ingest.js` uses `/ingest`.
+**Ambiguity / Drift:** Agents following the persona specification fail when communicating with the reference dashboard implementation.
+**Question for Product Owner:** Should the Fleet Dashboard API ingest path be standardized to `/api/v1/reports` (matching the persona) or `/ingest` (matching the implementation)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize the Fleet Dashboard API ingest endpoint path across all persona specifications and implementation scripts to ensure technical alignment.*
+
+### ❓ Question [2026-04-25] - Skill Contract Audit Enforcement
+**Context:** Decision [2026-04-13] mandated specific sections (Rules & Constraints, Audit Log) for skills, but `scripts/audit-repo.js` currently only audits agent personas in `agents/`.
+**Ambiguity / Drift:** Reusable skills perform critical logic, but their structural integrity is not automatically enforced, leading to silent drift where new skills skip safety-critical sections or the Refusal Criteria subsection.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be expanded to enforce the same structural contract (Required Headings, Refusal Criteria) on all files in the `skills/` directory?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to discover and audit all files in the `skills/` directory for structural compliance with the mandatory skill contract.*
+
+### ❓ Question [2026-04-25] - Audit Log JSON Schema Validation
+**Context:** `REQUIREMENTS.md` Section 2 mandates a specific JSON shape for Audit Logs. Currently, `scripts/audit-repo.js` only checks for the heading's presence.
+**Ambiguity / Drift:** There is no technical enforcement of the actual JSON schema, allowing for malformed or incomplete audit logs that break downstream observability and ROI calculation.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be enhanced to perform strict JSON schema validation for the Audit Log section in both agents and skills?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse the Audit Log section and validate it against the mandated JSON schema `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`.*

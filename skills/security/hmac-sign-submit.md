@@ -38,11 +38,25 @@ Sign an outgoing payload with HMAC-SHA256 and submit it to a receiving API that 
 }
 ```
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Use deterministic key ordering for serialization. Include both Bearer token and HMAC signature. Log every submission attempt (success or failure) with timestamp.
 - **Ask First:** Retrying after a 401 response. Changing the signing algorithm.
 - **Never:** Log or expose the signing secret or auth token in outputs. Retry 401 responses automatically. Submit without both authentication headers.
 
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
 ## Examples
 
 **Fleet Dashboard submission (Gatekeeper agent):**

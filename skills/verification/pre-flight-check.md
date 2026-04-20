@@ -37,11 +37,25 @@ Validate that preconditions are met before executing a state-changing action. Th
 }
 ```
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Perform read-only operations only during checks. Create backups before file modifications. Document the rollback plan.
 - **Ask First:** Proceeding when any check fails. Skipping the backup step.
 - **Never:** Execute the state-changing action during the pre-flight check. Modify the target system during verification.
 
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
 ## Examples
 
 **Linux config change (SysAdmin agent):**

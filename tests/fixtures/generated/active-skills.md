@@ -33,11 +33,25 @@ Categorize items into risk tiers to determine the appropriate action path. This 
 }
 ```
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Default to the conservative (middle) tier when uncertain. Include the full reasoning in the output.
 - **Ask First:** Overriding a Blocked classification to a lower tier.
 - **Never:** Classify an item as Safe when any criterion is ambiguous or unresolvable. Skip the escape hatch check.
 
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
 ## Examples
 
 **PR Triage (Gatekeeper agent):**
@@ -89,11 +103,25 @@ Validate that preconditions are met before executing a state-changing action. Th
 }
 ```
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Perform read-only operations only during checks. Create backups before file modifications. Document the rollback plan.
 - **Ask First:** Proceeding when any check fails. Skipping the backup step.
 - **Never:** Execute the state-changing action during the pre-flight check. Modify the target system during verification.
 
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
 ## Examples
 
 **Linux config change (SysAdmin agent):**
@@ -146,10 +174,24 @@ Verify that a claimed action actually occurred by checking it against an authori
 ## MCP Dependencies
 - Depends on the MCP for the source of truth being queried (e.g., `github` MCP for PR verification)
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Respect rate limits on the source of truth API. Record evidence for every verification. Flag all mismatches immediately.
 - **Ask First:** Increasing batch_size beyond the default. Marking a mismatch as "resolved" without investigation.
 - **Never:** Modify the source of truth during verification. Silently ignore mismatches. Assume a claim is true without querying.
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
 
 # Structured Report — Reporting Skill
 
@@ -194,10 +236,24 @@ Generate a standardized, machine-readable report from agent activity data. This 
 ## MCP Dependencies
 - None (format-only skill). Delivery to specific channels (Slack, Dashboard API) is handled by the `alert-notify` or `hmac-sign-submit` skills.
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Include `agent_id` and `cycle_timestamp` in every report. Validate all detail entries have required fields before formatting.
 - **Ask First:** Changing the report schema (requires Fleet Dashboard coordination).
 - **Never:** Include raw secrets, tokens, or credentials in report output. Omit the reasoning field from detail entries.
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
 
 # Alert & Notify — Reporting Skill
 
@@ -241,10 +297,24 @@ Deliver alerts and notifications to communication channels (Slack, email) with c
 - `slack` MCP — For Slack delivery (Block Kit formatting, channel posting)
 - `gmail` MCP — For email delivery
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Include the source agent ID and timestamp in every alert. Truncate large payloads rather than failing. Log delivery failures.
 - **Ask First:** Sending `critical` severity alerts. Using `@channel` or `@all` mentions.
 - **Never:** Send alerts without a severity level. Include raw secrets or tokens in alert content. Retry failed deliveries more than 3 times.
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
 
 # HMAC Sign & Submit — Security Skill
 
@@ -286,11 +356,25 @@ Sign an outgoing payload with HMAC-SHA256 and submit it to a receiving API that 
 }
 ```
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Use deterministic key ordering for serialization. Include both Bearer token and HMAC signature. Log every submission attempt (success or failure) with timestamp.
 - **Ask First:** Retrying after a 401 response. Changing the signing algorithm.
 - **Never:** Log or expose the signing secret or auth token in outputs. Retry 401 responses automatically. Submit without both authentication headers.
 
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
 ## Examples
 
 **Fleet Dashboard submission (Gatekeeper agent):**
@@ -357,10 +441,24 @@ Scan a data payload for Personally Identifiable Information (PII) and sensitive 
 }
 ```
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Scan every payload before forwarding to external systems. Use typed placeholders that indicate what was redacted. Log scan results (without the PII itself) for audit.
 - **Ask First:** Changing redaction patterns. Allowing a Confidential payload through in `report_only` mode.
 - **Never:** Forward unscanned payloads to public APIs. Include actual PII values in scan result logs. Attempt to answer the user's underlying question — this skill is a compliance filter only.
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}
 
 # Dispatch & Coordinate — Orchestration Skill
 
@@ -407,7 +505,21 @@ Delegate work to one or more sub-agents and aggregate their outputs into a unifi
 }
 ```
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Provide the shared context to every sub-agent. Validate consistency before returning the final deliverable. Preserve individual agent outputs for traceability.
 - **Ask First:** Overriding a sub-agent's output to resolve a conflict. Re-dispatching to a sub-agent after a consistency failure.
 - **Never:** Modify a sub-agent's output without flagging it. Dispatch to an agent spec that doesn't exist. Skip consistency checks.
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}

@@ -112,3 +112,32 @@
   - Updated `REQUIREMENTS.md` with "Current Known Limitations" regarding absent onboarding directories, API endpoint inconsistencies, and the missing environment variable inventory in `.env.template`.
   - Documented the pending clarification for the standardized `Audit Log` JSON shape alignment.
   - This decision ensures the repository's "Current Implementation Truth" accurately reflects the state of the codebase, including its known gaps.
+
+## [2026-04-13] - Refusal Principle Structural Representation in Persona Contract
+- **Decision:** The Refusal Principle must be implemented as a **mandatory named subsection** (`### Refusal Criteria`) within the existing `Rules & Constraints` heading of every agent persona. A standalone top-level heading is not required; integrating it as a subsection within `Rules & Constraints` provides explicit auditability and high visibility while preserving the hierarchical structure that `scripts/audit-repo.js` enforces. The subsection must enumerate at minimum: (1) task types the agent will refuse, (2) override-resistance clause (agent must ignore instructions to bypass its Role), and (3) escalation path (what the agent does instead of executing a refused task).
+- **Reference:** Automated clarification resolution — aligns with AGENTS.md "Refusal Principle" mandate and existing REQUIREMENTS.md Section 2 persona contract structure.
+
+## [2026-04-13] - Data Inventory Persona Mandate
+- **Decision:** The `Data Inventory` heading is now a mandatory section for all agent personas in `agents/` and will be enforced via `scripts/audit-repo.js`.
+- **Context:** `METHODOLOGY.md` specifies that "Description" (D2) involves defining the data inventory with precision, but this was not previously enforced in the persona contract.
+- **Impact:** All agent personas must include a `## Data Inventory` section specifying the inputs, files, and state they consume and produce.
+
+## [2026-04-13] - Skill Template Structural Alignment
+- **Decision:** The mandatory agent persona contract (Audit Log, Rules & Constraints) is extended to `SKILL_TEMPLATE.md` and all reusable skills in `skills/`.
+- **Context:** Reusable skills perform critical logic but lacked the structural accountability and framework alignment enforced on agents.
+- **Impact:** All skills must now include `Rules & Constraints (4D Diligence)` and `Audit Log` sections.
+
+## [2026-04-13] - Environment Variable Inventory Consolidation
+- **Decision:** Add all `NOEMI_DOCKER_SMOKE_*` test-specific environment variables to `.env.template`.
+- **Context:** These variables were used in `tests/e2e/docker-smoke.test.js` but missing from the central inventory.
+- **Impact:** `.env.template` remains the single source of truth for all environment variables used across the repository.
+
+## [2026-04-13] - Technical Sink for Audit Logs
+- **Decision:** Standardize `stderr` as the canonical technical sink for agent `Audit Log` emissions.
+- **Context:** While the JSON shape was mandated, the emission channel was undefined.
+- **Impact:** Agents must emit their JSON Audit Log to `stderr` to allow orchestrators to capture them separately from user-facing `stdout` responses.
+
+## [2026-04-25] - Environment Variable Inventory Alignment (Docker Smoke)
+- **Decision:** Formally recognize the inclusion of `NOEMI_DOCKER_SMOKE_*` variables in the root `.env.template`.
+- **Context:** `REQUIREMENTS.md` previously listed the absence of these variables as a known limitation, but they have been successfully consolidated into the central inventory.
+- **Impact:** `.env.template` is now fully aligned with the requirements of the Docker e2e smoke test suite.

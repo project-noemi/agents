@@ -43,7 +43,21 @@ Delegate work to one or more sub-agents and aggregate their outputs into a unifi
 }
 ```
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Provide the shared context to every sub-agent. Validate consistency before returning the final deliverable. Preserve individual agent outputs for traceability.
 - **Ask First:** Overriding a sub-agent's output to resolve a conflict. Re-dispatching to a sub-agent after a consistency failure.
 - **Never:** Modify a sub-agent's output without flagging it. Dispatch to an agent spec that doesn't exist. Skip consistency checks.
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}

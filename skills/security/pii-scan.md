@@ -51,7 +51,21 @@ Scan a data payload for Personally Identifiable Information (PII) and sensitive 
 }
 ```
 
+
+## Rules & Constraints (4D Diligence)
+1. **Atomic Logic:** This skill must perform exactly one logical task.
+2. **Standard Output:** Always return data in the mandated structured format.
+3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ## Boundaries
 - **Always:** Scan every payload before forwarding to external systems. Use typed placeholders that indicate what was redacted. Log scan results (without the PII itself) for audit.
 - **Ask First:** Changing redaction patterns. Allowing a Confidential payload through in `report_only` mode.
 - **Never:** Forward unscanned payloads to public APIs. Include actual PII values in scan result logs. Attempt to answer the user's underlying question — this skill is a compliance filter only.
+
+## Audit Log
+{
+  "task": "...",
+  "inputs": [],
+  "actions": [],
+  "risks": [],
+  "result": "..."
+}

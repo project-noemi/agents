@@ -136,3 +136,8 @@
 - **Decision:** Standardize `stderr` as the canonical technical sink for agent `Audit Log` emissions.
 - **Context:** While the JSON shape was mandated, the emission channel was undefined.
 - **Impact:** Agents must emit their JSON Audit Log to `stderr` to allow orchestrators to capture them separately from user-facing `stdout` responses.
+
+## [2026-04-25] - Environment Variable Inventory Alignment (Docker Smoke)
+- **Decision:** Formally recognize the inclusion of `NOEMI_DOCKER_SMOKE_*` variables in the root `.env.template`.
+- **Context:** `REQUIREMENTS.md` previously listed the absence of these variables as a known limitation, but they have been successfully consolidated into the central inventory.
+- **Impact:** `.env.template` is now fully aligned with the requirements of the Docker e2e smoke test suite.

@@ -168,7 +168,16 @@ function discoverAgents(baseDir, prefix = '') {
         const titleMatch = content.match(/^#\s+(.+)/m);
         const roleMatch = content.match(/## Role\s*\n([\s\S]*?)(?=\n## |\n$)/);
         const title = titleMatch ? titleMatch[1].trim() : entry.name.replace('.md', '');
-        const role = roleMatch ? roleMatch[1].trim().split('\n')[0] : '';
+        
+        let role = '';
+        if (roleMatch) {
+            role = roleMatch[1].trim().split('\n')[0];
+            // Take only the first sentence if it exists
+            const sentenceMatch = role.match(/^[^.!?]+[.!?]/);
+            if (sentenceMatch) {
+                role = sentenceMatch[0];
+            }
+        }
 
         agents.push({
             path: `agents/${relativePath}`,

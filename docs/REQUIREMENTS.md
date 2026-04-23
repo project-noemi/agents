@@ -145,14 +145,16 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - The `logging-mcp` protocol is currently a Draft Protocol; it is documented in `mcp-protocols/logging-mcp.md` but is not yet enabled in the default `mcp.config.json`.
 - Symbolic link mirroring in `docs/agents/` is not strictly enforced at the 1:1 file level; directory and guide-level documentation takes precedence.
 - The `Client Onboarding` persona (`agents/operations/client-onboarding.md`) references `templates/tiers/` and `clients/` directories that are currently absent from the repository.
-- There is an API path inconsistency between the Fleet Dashboard persona (specifying `/api/v1/reports`) and the current reference implementation (using `/ingest`).
+- There is an API path inconsistency between the Fleet Dashboard persona (specifying `/api/v1/reports`) and the current reference implementation (`examples/gatekeeper-deployment/dashboard-ingest.js` using `/ingest`).
 - The standardized `Audit Log` JSON shape and its integration with the `logging-mcp` and `Structured Report` skill schemas remain under clarification for technical alignment.
-- The `Value Lenses` and `Operating Profiles` frameworks are documented but not yet integrated into the automated context generation scripts (`scripts/generate_gemini.js` and `scripts/generate_claude.js`).
+- The `Value Lenses` and `Operating Profiles` frameworks are documented in `docs/frameworks/` but not yet integrated into the automated context generation scripts (`scripts/generate_gemini.js` and `scripts/generate_claude.js`).
 - The `logging-mcp` protocol definition does not currently include InfluxDB as a supported backend, despite InfluxDB being the primary time-series store in the reference implementation.
 - The Fleet Dashboard specification (90-day detailed / 1-year aggregate) drifts from the reference implementation (single 90-day bucket).
 - The `Client Onboarding` validation workflow references `red-team-gauntlet` test vectors that are currently missing from the repository.
 - Reference implementation services (e.g., `dashboard-ingest.js`) do not yet emit the mandated JSON Audit Log shape.
 - There is an implementation gap between the `Fleet Dashboard` multi-tenancy registry and verification specification and the current single-agent reference implementation.
 - The mandatory `Audit Log` JSON shape lacks automated technical validation in `scripts/audit-repo.js`.
+- **Audit Script Gaps**: `scripts/audit-repo.js` currently only audits files in the `agents/` directory. It does not yet enforce structural contracts (Required Headings, Refusal Criteria) on the `skills/` directory, nor does it perform JSON schema validation for the `Audit Log` content.
+- **Test Suite Gaps**: `tests/examples-smoke.test.js` lacks the mandated static smoke check validation for `NOEMI_DOCKER_SMOKE_*` environment variables required by Section 9.
 - **Structural vs. Substantive Compliance**: 100% of agent personas currently use identical placeholder text for the mandatory `Data Inventory` and `Refusal Criteria` sections. While these satisfy structural audit checks, they fail to provide role-specific technical and safety context required by the 4D framework.
 - **Reference Example Completeness**: Several reference examples, notably `examples/red-team-gauntlet/`, lack the actual assets (test vectors, prompts) required to execute the workflows described in agent specifications.

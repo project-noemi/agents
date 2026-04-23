@@ -183,3 +183,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should we prioritize populating these example directories with starter assets to make the agent specifications "truthful" and testable?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Populate `examples/red-team-gauntlet/` and other referenced example directories with the starter assets, test vectors, and templates required by the agent specifications.*
+
+### ❓ Question [2026-04-23] - Missing NOEMI_DOCKER_SMOKE_* Smoke Test Validation
+**Context:** `REQUIREMENTS.md` Section 9 mandates static smoke checks for `NOEMI_DOCKER_SMOKE_*` environment variables, but these are currently missing from `tests/examples-smoke.test.js`.
+**Ambiguity / Drift:** Without these checks, the repository lacks automated validation that the mandatory Docker smoke test configuration is correctly present and formatted in `.env.template`.
+**Question for Product Owner:** Should Jules be tasked with implementing these specific smoke checks in `tests/examples-smoke.test.js` to satisfy Requirement 9?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement static smoke checks in `tests/examples-smoke.test.js` to validate the presence and format of `NOEMI_DOCKER_SMOKE_*` variables in the root `.env.template`.*
+
+### ❓ Question [2026-04-23] - Gatekeeper Reference Implementation Mutating Actions
+**Context:** The `Gatekeeper` agent persona describes mutating actions (merging PRs, closing issues), but the reference implementation in `examples/gatekeeper-deployment/` is currently limited to signed reporting.
+**Ambiguity / Drift:** The implementation truth drifts from the persona specification, leaving the "Accelerator" role partially unimplemented in the reference stack.
+**Question for Product Owner:** Should we extend the Gatekeeper reference implementation to include "dry-run" or optional mutating actions to better reflect the persona's mission?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Extend the Gatekeeper deployment example and `entrypoint.sh` to include a placeholder or dry-run mode for the mutating actions defined in the Gatekeeper persona.*

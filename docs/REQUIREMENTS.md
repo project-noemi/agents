@@ -154,5 +154,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - Reference implementation services (e.g., `dashboard-ingest.js`) do not yet emit the mandated JSON Audit Log shape.
 - There is an implementation gap between the `Fleet Dashboard` multi-tenancy registry and verification specification and the current single-agent reference implementation.
 - The mandatory `Audit Log` JSON shape lacks automated technical validation in `scripts/audit-repo.js`.
+- **Audit Script Gaps**: `scripts/audit-repo.js` currently only audits the `agents/` directory; it does not yet enforce structural contracts (Required Headings, Refusal Criteria) for files in the `skills/` directory.
+- **Test Suite Gaps**: Section 9 mandates `NOEMI_DOCKER_SMOKE_*` variable validation within the static smoke check suite, but this is currently missing from `tests/examples-smoke.test.js`.
 - **Structural vs. Substantive Compliance**: 100% of agent personas currently use identical placeholder text for the mandatory `Data Inventory` and `Refusal Criteria` sections. While these satisfy structural audit checks, they fail to provide role-specific technical and safety context required by the 4D framework.
 - **Reference Example Completeness**: Several reference examples, notably `examples/red-team-gauntlet/`, lack the actual assets (test vectors, prompts) required to execute the workflows described in agent specifications.

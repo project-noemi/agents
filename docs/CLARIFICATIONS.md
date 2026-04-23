@@ -183,3 +183,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should we prioritize populating these example directories with starter assets to make the agent specifications "truthful" and testable?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Populate `examples/red-team-gauntlet/` and other referenced example directories with the starter assets, test vectors, and templates required by the agent specifications.*
+
+### ❓ Question [2026-04-26] - Automated Skill and Schema Validation
+**Context:** The `scripts/audit-repo.js` tool currently only audits the `agents/` directory and only checks for the presence of headings, while `REQUIREMENTS.md` mandates a specific JSON shape for Audit Logs across both agents and skills.
+**Ambiguity / Drift:** There is no technical enforcement of the mandatory skill contract (Decision [2026-04-13]) or the JSON schema of the Audit Log, leading to silent drift where skills skip safety-critical sections or emit malformed logs.
+**Question for Product Owner:** Should we prioritize expanding `scripts/audit-repo.js` to audit the `skills/` directory and perform strict JSON schema validation for the Audit Log section?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to audit all files in the `skills/` directory and implement strict JSON schema validation for the `Audit Log` section in both agents and skills.*
+
+### ❓ Question [2026-04-26] - Docker Smoke Variable Validation
+**Context:** `REQUIREMENTS.md` Section 9 mandates "static smoke checks for example stacks and Docker env inventories (including `NOEMI_DOCKER_SMOKE_*` variable validation)."
+**Ambiguity / Drift:** `tests/examples-smoke.test.js` currently validates that `.env.example` files use vault references, but it does not perform the mandated validation of the `NOEMI_DOCKER_SMOKE_*` variables themselves.
+**Question for Product Owner:** Should the `examples-smoke.test.js` be expanded to specifically validate the presence and format of the `NOEMI_DOCKER_SMOKE_*` variables in the `.env.template` and example inventories?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Expand `tests/examples-smoke.test.js` to include explicit validation for the `NOEMI_DOCKER_SMOKE_*` environment variables to satisfy Requirement 9.*

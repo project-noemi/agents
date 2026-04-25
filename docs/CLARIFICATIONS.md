@@ -197,3 +197,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should we extend the Gatekeeper reference implementation to include "dry-run" or optional mutating actions to better reflect the persona's mission?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Extend the Gatekeeper deployment example and `entrypoint.sh` to include a placeholder or dry-run mode for the mutating actions defined in the Gatekeeper persona.*
+
+### ❓ Question [2026-04-26] - Persona "Journal" Section Standardization
+**Context:** `REQUIREMENTS.md` lists inconsistent `Journal` section usage as a known limitation. A codebase audit confirmed that only 4 out of 22 agent personas currently include a `## Journal` heading.
+**Ambiguity / Drift:** The `Journal` section is not part of the mandatory persona contract enforced by `scripts/audit-repo.js`, leading to fragmented usage. It is unclear if this should be a mandatory requirement for all agents to support long-term memory or remains an optional feature.
+**Question for Product Owner:** Should the `Journal` section be added to the mandatory persona contract for all agents, or should it remain optional/reserved for specific agent types?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/context_helpers.js` and `scripts/audit-repo.js` to include "Journal" as a mandatory persona heading and perform a fleet-wide update to add the section to all agents.*
+
+### ❓ Question [2026-04-26] - Node.js 24 Baseline Compliance Drift
+**Context:** `AGENTS.md` and `REQUIREMENTS.md` mandate Node.js 24 as the baseline for all repository logic and utilities.
+**Ambiguity / Drift:** The reference implementation in `examples/gatekeeper-deployment/docker-compose.yml` currently uses `image: node:20-alpine`. This creates a drift where reference examples lag behind the project's official technical baseline.
+**Question for Product Owner:** Should the `gatekeeper-deployment` and any other reference examples be immediately updated to `node:24-alpine` to ensure consistency with the repository's baseline?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update all `docker-compose.yml` files and Dockerfiles in the `examples/` directory to use Node.js 24 images.*

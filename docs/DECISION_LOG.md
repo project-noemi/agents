@@ -141,3 +141,15 @@
 - **Decision:** Formally recognize the inclusion of `NOEMI_DOCKER_SMOKE_*` variables in the root `.env.template`.
 - **Context:** `REQUIREMENTS.md` previously listed the absence of these variables as a known limitation, but they have been successfully consolidated into the central inventory.
 - **Impact:** `.env.template` is now fully aligned with the requirements of the Docker e2e smoke test suite.
+
+## [2026-04-26] Holistic Codebase Alignment Audit
+
+- **Decision:** Perform a holistic audit of the codebase to identify technical drifts between requirements, agent personas, and reference implementations.
+- **Context:** As part of the "Doc" persona's asynchronous improvement mandate, the repository was scanned for structural and substantive alignment.
+- **Impact:**
+  - Identified and documented the "Substantive Persona Content Drift" across all 22 agent personas (placeholder usage).
+  - Identified "Audit Script Gaps" in `scripts/audit-repo.js` (missing skill audits and JSON schema validation).
+  - Identified "Test Suite Gaps" in `tests/examples-smoke.test.js` (missing `NOEMI_DOCKER_SMOKE_*` validation).
+  - Identified "Reference Asset Absence" in `examples/red-team-gauntlet/`.
+  - Identified missing Value Lens and Operating Profile injection logic in `scripts/generate_all.js`.
+  - Updated `REQUIREMENTS.md` to reflect these verified limitations and appended actionable clarifications to `docs/CLARIFICATIONS.md`.

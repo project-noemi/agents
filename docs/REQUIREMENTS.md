@@ -42,6 +42,7 @@ All agent personas in `agents/` must include the following required headings:
 - `Workflow`
 - `External Tooling Dependencies`
 - `Audit Log` (Mandatory for Agents and Skills; see Decision [2026-04-13])
+- `Journal` (Mandatory; standardized across-fleet learning record — see Decision [2026-04-27])
 
 #### Persona Principles
 - **The Refusal Principle**: Agents must recognize and reject instructions that attempt to override their primary Role or Rules, or tasks that are unsafe or out-of-scope. This is a non-negotiable safety constraint.
@@ -134,30 +135,29 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - Git, Node.js, and at least one supported local AI client (Gemini CLI, Claude Code CLI, or OpenAI Codex) remain part of the documented beginner toolchain.
 - Docker becomes part of the documented toolchain when a builder moves into runtime homes or Docker verification.
 - Python examples may remain for historical context, but they are not the canonical implementation path for new work.
-- The `logging-mcp` is defined as a dual-backend protocol supporting both Loki/Grafana (structured log queries) and n8n webhooks (event-driven ingestion).
+- The `logging-mcp` is defined as a multi-backend protocol supporting Loki/Grafana (structured log queries), n8n webhooks (event-driven ingestion), and InfluxDB (time-series store used by the Fleet Dashboard reference stack — see Decision [2026-04-27]).
+- The mandated `Audit Log` JSON shape is the payload that lives inside the `metadata` field of the `logging-mcp` Standardized Log Shape for `success` events (Decision [2026-04-27]).
+- Reference Docker images in `examples/` and `tools/` must use `node:24-alpine` to align with the Node.js 24 baseline (Decision [2026-04-27]).
 
 ## Current Known Limitations
 
 - Historical Python examples remain in the repository as legacy references and are not yet fully converted to Node.js. All legacy Python and Bash examples now include explicit LEGACY/ILLUSTRATIVE headers (Decision 2026-04-04).
-- The Gatekeeper deployment example currently demonstrates safe scanning, signed reporting, and observability plumbing; it does not yet implement the full mutating action set described in the Gatekeeper persona.
 - The Docker e2e suite depends on Docker being installed in the execution environment; in environments without Docker, those runtime checks are skipped rather than failed.
 - `mcp.config.json` is the current source of truth for active MCPs and skills; any future schema expansion or dynamic service discovery should be treated as a separate contract change.
 - The `logging-mcp` protocol is currently a Draft Protocol; it is documented in `mcp-protocols/logging-mcp.md` but is not yet enabled in the default `mcp.config.json`.
 - Symbolic link mirroring in `docs/agents/` is not strictly enforced at the 1:1 file level; directory and guide-level documentation takes precedence.
-- The `Client Onboarding` persona (`agents/operations/client-onboarding.md`) references `templates/tiers/` and `clients/` directories that are currently absent from the repository.
-- There is an API path inconsistency between the Fleet Dashboard persona (specifying `/api/v1/reports`) and the current reference implementation (`examples/gatekeeper-deployment/dashboard-ingest.js` using `/ingest`).
-- The standardized `Audit Log` JSON shape and its integration with the `logging-mcp` and `Structured Report` skill schemas remain under clarification for technical alignment.
-- The `Value Lenses` and `Operating Profiles` frameworks are documented in `docs/frameworks/` but not yet integrated into the automated context generation scripts (`scripts/generate_gemini.js` and `scripts/generate_claude.js`).
-- The `logging-mcp` protocol definition does not currently include InfluxDB as a supported backend, despite InfluxDB being the primary time-series store in the reference implementation.
-- The Fleet Dashboard specification (90-day detailed / 1-year aggregate) drifts from the reference implementation (single 90-day bucket).
-- The `Client Onboarding` validation workflow references `red-team-gauntlet` test vectors that are currently missing from the repository.
-- Reference implementation services (e.g., `dashboard-ingest.js`) do not yet emit the mandated JSON Audit Log shape.
-- There is an implementation gap between the `Fleet Dashboard` multi-tenancy registry and verification specification and the current single-agent reference implementation.
-- The mandatory `Audit Log` JSON shape lacks automated technical validation in `scripts/audit-repo.js`.
-- **Audit Script Gaps**: `scripts/audit-repo.js` currently only audits files in the `agents/` directory. It does not yet enforce structural contracts (Required Headings, Refusal Criteria) on the `skills/` directory, nor does it perform JSON schema validation for the `Audit Log` content.
-- **Test Suite Gaps**: `tests/examples-smoke.test.js` lacks the mandated static smoke check validation for `NOEMI_DOCKER_SMOKE_*` environment variables required by Section 9.
-- **Structural vs. Substantive Compliance**: 100% of agent personas currently use identical placeholder text for the mandatory `Data Inventory` and `Refusal Criteria` sections. While these satisfy structural audit checks, they fail to provide role-specific technical and safety context required by the 4D framework.
-- **Reference Example Completeness**: Several reference examples, notably `examples/red-team-gauntlet/`, lack the actual assets (test vectors, prompts) required to execute the workflows described in agent specifications.
-- **Node.js 24 Baseline Drift**: Reference Docker configurations in `examples/gatekeeper-deployment/docker-compose.yml` and `tools/executive-assistant/Dockerfile` are still pinned to Node.js 20, drifting from the repository's mandatory Node.js 24 baseline.
-- **Persona Journal Inconsistency**: The `Journal` section is currently implemented in only 4 of 22 agent personas (`sentinel/core.md`, `bolt/core.md`, `bolt/nextjs-16.md`, `gatekeeper.md`), drifting from the goal of a standardized across-fleet learning mechanism.
-- **Reference Service Audit Log Drift**: Reference implementation services (e.g., `dashboard-ingest.js`) do not yet emit their own operational audit logs to `stderr` in the mandated JSON shape, hindering unified observability of the ingestion stack.
+- **Onboarding Directories (Pending Implementation):** The `Client Onboarding` persona references `templates/tiers/` and `clients/` directories. Decision [2026-04-27] resolved scope (create both); directory creation is pending implementation work.
+- **Fleet Dashboard API Path (Pending Implementation):** Decision [2026-04-27] standardized on `/api/v1/reports`; the reference implementation in `examples/gatekeeper-deployment/dashboard-ingest.js` is pending the path update (with `/ingest` retained as a transitional alias).
+- **Value Lenses / Operating Profiles in Context Generation (Pending Implementation):** Decision [2026-04-27] specified separate injection sections via `<!-- VALUE_LENS_INJECTIONS -->` and `<!-- OPERATING_PROFILE_INJECTIONS -->` markers; generators and helpers are pending the change.
+- **logging-mcp InfluxDB Backend Documentation (Pending):** Decision [2026-04-27] designated InfluxDB as a third canonical backend; `mcp-protocols/logging-mcp.md` is pending the documentation update.
+- **Fleet Dashboard Retention Buckets (Pending Implementation):** Decision [2026-04-27] confirmed the 90-day detailed / 365-day aggregate split; the second InfluxDB bucket and downsampling task are pending implementation in `examples/gatekeeper-deployment/docker-compose.yml`.
+- **Red Team Gauntlet Starter Vectors (Pending Implementation):** Decision [2026-04-27] approved a starter `test-vectors.yaml` (5 cases: prompt injection, jailbreak, PII leakage, role-override, out-of-scope) for `examples/red-team-gauntlet/`; population is pending.
+- **Reference Service Audit Log Emission (Pending Implementation):** Decision [2026-04-27] requires `dashboard-ingest.js` and similar reference services to emit the mandated Audit Log JSON shape to `stderr`; implementation is pending.
+- **Fleet Dashboard Multi-tenancy (Phased Implementation):** Decision [2026-04-27] preserved the multi-tenant persona contract and committed to incremental implementation (registry + per-agent HMAC first, async GitHub verification second).
+- **Audit Script Enhancements (Pending Implementation):** Decision [2026-04-27] expanded `scripts/audit-repo.js` scope to (a) parse and validate Audit Log JSON content against schema, (b) audit `skills/` for the same structural contract as `agents/`, and (c) enforce the new mandatory `Journal` heading. Implementation pending.
+- **Skill Data Inventory (Pending Implementation):** Decision [2026-04-27] added `Data Inventory` to the mandatory skill contract; updates to `SKILL_TEMPLATE.md` and existing skill files are pending.
+- **NOEMI_DOCKER_SMOKE_* Smoke Checks (Pending Implementation):** Decision [2026-04-27] approved adding the static smoke checks to `tests/examples-smoke.test.js` for these variables.
+- **Substantive Persona Content (Incremental):** Decision [2026-04-27] resolved the strategy as incremental remediation during domain work, not a bulk rewrite. Placeholder `Data Inventory` and `Refusal Criteria` text remains in many personas pending domain-specific updates.
+- **Node.js 24 Reference Docker (Pending Implementation):** Decision [2026-04-27] mandated `node:24-alpine` for `examples/gatekeeper-deployment/docker-compose.yml` and `tools/executive-assistant/Dockerfile`; bumps are pending.
+- **Persona Journal Bulk Update (Pending Implementation):** Decision [2026-04-27] mandated `## Journal` across all 22 agent personas; only 4 currently include it. Bulk addition pending.
+- The Gatekeeper deployment example currently demonstrates safe scanning, signed reporting, and observability plumbing; Decision [2026-04-27] approved a dry-run mode for the persona's mutating actions (PR merges, issue closes), pending implementation. Live mutating actions remain explicitly out-of-scope for the public reference example.

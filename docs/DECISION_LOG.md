@@ -141,3 +141,87 @@
 - **Decision:** Formally recognize the inclusion of `NOEMI_DOCKER_SMOKE_*` variables in the root `.env.template`.
 - **Context:** `REQUIREMENTS.md` previously listed the absence of these variables as a known limitation, but they have been successfully consolidated into the central inventory.
 - **Impact:** `.env.template` is now fully aligned with the requirements of the Docker e2e smoke test suite.
+
+## [2026-04-27] - ROI Auditor Baseline Data Access
+- **Decision:** ROI Auditor baseline data (Human Baseline Time and Labor Rate dictionaries) will be supplied via a local JSON reference file at `tools/roi/baseline-config.json`. The `google-sheets` MCP retains its append-only role for execution logs; baseline lookups should not require runtime Sheets reads. The Google Sheets template in `tools/roi/README.md` remains the human-editable source for editing baselines, but a JSON snapshot is committed for deterministic agent consumption.
+- **Reference:** Automated clarification resolution — separates editable source-of-truth (Sheets) from machine-consumable artifact (JSON), consistent with the Fetch-on-Demand and definitions-library posture.
+
+## [2026-04-27] - logging-mcp and Audit Log Layering
+- **Decision:** The mandated `Audit Log` JSON shape (`{ task, inputs, actions, risks, result }`) is the **payload** that lives inside the `metadata` field of the `logging-mcp` Standardized Log Shape (`{ timestamp, agent, task, status, duration_ms, metadata }`) for `success` events. The two layers are complementary: `logging-mcp` is the transport/observability envelope, the Audit Log is the content. Reference services emitting to `stderr` should emit the Audit Log JSON directly; orchestrators that ship logs through `logging-mcp` wrap that payload inside the standardized envelope.
+- **Reference:** Automated clarification resolution — resolves [2026-04-04] Standardized Log Shape vs. Audit Log question.
+
+## [2026-04-27] - Onboarding Directory Scaffolding
+- **Decision:** Create `templates/tiers/` (with `basic.md`, `standard.md`, `premium.md` starter files) and `clients/` (with a `.gitignore` to keep client-specific configs out of source control by default). The `Client Onboarding` persona (`agents/operations/client-onboarding.md`) becomes truthful against the repository structure.
+- **Reference:** Automated clarification resolution — closes [2026-04-04] Onboarding Directory Drift.
+
+## [2026-04-27] - Fleet Dashboard API Path Standardization
+- **Decision:** The canonical Fleet Dashboard ingest path is `/api/v1/reports`, matching the persona specification. The reference implementation in `examples/gatekeeper-deployment/dashboard-ingest.js` and its `docker-compose.yml` must be updated to expose `/api/v1/reports` (the existing `/ingest` path may remain as a deprecated alias during transition). Persona specifications are the durable contract; reference implementations follow.
+- **Reference:** Automated clarification resolution — closes [2026-04-04] Fleet Dashboard API Path Mismatch.
+
+## [2026-04-27] - Value Lenses and Operating Profiles in Context Generation
+- **Decision:** `scripts/generate_gemini.js` and `scripts/generate_claude.js` (via shared helpers in `scripts/context_helpers.js`) must inject `Value Lenses` and `Operating Profiles` content as **separate, named sections** in the generated context, not merged into the global mandates block. New marker tokens `<!-- VALUE_LENS_INJECTIONS -->` and `<!-- OPERATING_PROFILE_INJECTIONS -->` will be supported in the templates so the framework content can be discovered from `value-lenses/` and `operating-profiles/` and surfaced to consuming agents without diluting the mandate set.
+- **Reference:** Automated clarification resolution — closes [2026-04-04] Framework Integration in Context Generators.
+
+## [2026-04-27] - logging-mcp InfluxDB Backend Support
+- **Decision:** `mcp-protocols/logging-mcp.md` must be updated to recognize InfluxDB as a third canonical backend alongside Loki/Grafana and n8n webhooks. InfluxDB is the primary time-series store in the `examples/gatekeeper-deployment/` reference stack, so the protocol must document the line-protocol ingestion pattern and Flux query pattern for it.
+- **Reference:** Automated clarification resolution — closes [2026-04-05] InfluxDB Backend Support; updates Runtime and Tooling Requirements in `REQUIREMENTS.md`.
+
+## [2026-04-27] - SecretOps Reference File Standardization
+- **Decision:** `.env.template` is the **root inventory** and is the correct reference file for repository-level command wrappers documented in `AGENTS.md` and root-level scripts. `.env.example` is the **per-example inventory** and is the correct reference file for command wrappers inside `examples/<name>/` and `tools/<name>/`. Documentation in `docs/tool-usages/secure-secret-management.md` must reflect this split: pick the file scoped to the directory you are running from. This preserves the existing root vs. per-example separation rather than collapsing them.
+- **Reference:** Automated clarification resolution — closes [2026-04-05] SecretOps Syntax Drift.
+
+## [2026-04-27] - Smoke Test Coverage Expansion
+- **Decision:** All subdirectories under `examples/` must be covered by at least one static smoke check in `tests/examples-smoke.test.js`. The minimum check is presence of either a `docker-compose.yml`, a runnable script, or an `.env.example`/README that declares its dependencies. `rfp-split`, `gmu-validation`, and `secure-secret-management` are added to the explicit coverage list. This satisfies REQUIREMENTS.md Section 9.
+- **Reference:** Automated clarification resolution — closes [2026-04-05] Incomplete Example Smoke Test Coverage.
+
+## [2026-04-27] - Fleet Dashboard Retention Policy
+- **Decision:** Persona specification (90-day detailed retention, 1-year aggregate retention) is the durable contract. The reference implementation in `examples/gatekeeper-deployment/docker-compose.yml` must be extended with a second InfluxDB bucket (`agent_summaries`) at 365-day retention plus an InfluxDB downsampling task. Single-bucket configurations are interim and should not be normalized into the persona.
+- **Reference:** Automated clarification resolution — closes [2026-04-05] Fleet Dashboard Retention Policy Drift.
+
+## [2026-04-27] - Red Team Gauntlet Starter Vectors
+- **Decision:** The `examples/red-team-gauntlet/` directory must include a starter `test-vectors.yaml` with at minimum the 5 cases referenced by the `Client Onboarding` validation workflow (covering prompt injection, jailbreak, PII leakage, role-override, and out-of-scope task patterns). This makes the persona's mandated workflow runnable against the repository as published.
+- **Reference:** Automated clarification resolution — closes [2026-04-05] Red Team Gauntlet Test Vector Absence and [2026-04-26] Reference Asset Absence (red-team-gauntlet portion).
+
+## [2026-04-27] - Reference Service Audit Log Compliance
+- **Decision:** Reference implementation services that perform agent-like work (notably `examples/gatekeeper-deployment/dashboard-ingest.js`) must emit the mandated Audit Log JSON shape to `stderr` for each accepted and rejected ingestion. Reference services are exemplars of the persona contract and must obey the same observability rules; the audit log requirement is not limited to in-`agents/` personas.
+- **Reference:** Automated clarification resolution — closes [2026-04-05] Reference Service Audit Log Compliance and [2026-05-01] Audit Log Emission to Stderr in Reference Services.
+
+## [2026-04-27] - Fleet Dashboard Multi-tenancy Phasing
+- **Decision:** The `Fleet Dashboard` persona specification (multi-tenant registry, per-agent HMAC secrets, asynchronous verification of mutating claims) is preserved as the durable contract. The reference implementation will be expanded incrementally — registry and HMAC-per-agent first, asynchronous GitHub verification worker second — rather than simplifying the persona to match the current single-agent sink. The persona is intentionally aspirational so the reference architecture can evolve toward it without doc rewrites at every step.
+- **Reference:** Automated clarification resolution — closes [2026-04-05] Fleet Dashboard Multi-tenancy Implementation Gap.
+
+## [2026-04-27] - Audit Log JSON Schema Validation in audit-repo.js
+- **Decision:** `scripts/audit-repo.js` must be expanded beyond heading-presence checks to parse the `Audit Log` section content of every persona file and validate it against the mandated JSON schema (`{ task, inputs, actions, risks, result }`). Files where the `Audit Log` section exists but does not contain a parseable JSON example matching the schema must fail the audit. This converts structural compliance into substantive compliance.
+- **Reference:** Automated clarification resolution — closes [2026-04-25] Audit Log JSON Schema Validation.
+
+## [2026-04-27] - Skill Contract Audit Enforcement
+- **Decision:** `scripts/audit-repo.js` must discover and audit all files under `skills/` (excluding `SKILL_TEMPLATE.md`) using the same structural contract defined in Decision [2026-04-13] (`Rules & Constraints` with mandatory `### Refusal Criteria` subsection, and `Audit Log`). Skills that drift from this contract must fail the audit identically to agent personas.
+- **Reference:** Automated clarification resolution — closes [2026-04-25] Skill Contract Audit Enforcement.
+
+## [2026-04-27] - Data Inventory in Skill Contract
+- **Decision:** `Data Inventory` becomes a mandatory section of `SKILL_TEMPLATE.md` and all files in `skills/`, replacing or consolidating the existing `Inputs`/`Outputs` headings. This brings skill documentation into structural symmetry with agent personas (Decision [2026-04-13]) and supports a unified data dictionary across the fleet. `scripts/audit-repo.js` will enforce this section once the skills audit pass (this date) lands.
+- **Reference:** Automated clarification resolution — closes [2026-04-22] Data Inventory for Skills.
+
+## [2026-04-27] - Substantive Persona Content Remediation
+- **Decision:** The placeholder-text drift in `Data Inventory` and `Refusal Criteria` across all 22 agent personas will be remediated **incrementally during domain-specific work** rather than via a single bulk rewrite. The audit-repo.js enhancements (Decision [2026-04-27] Audit Log JSON Schema Validation; Skill Contract Audit Enforcement) provide the technical guard against future drift. A bulk find-and-replace of role-specific safety/data text without domain context risks producing equally generic but more confidently-wrong content; the incremental approach ties content to the practitioner closest to each persona's domain.
+- **Reference:** Automated clarification resolution — closes [2026-04-26] Substantive Persona Content Drift.
+
+## [2026-04-27] - Reference Example Asset Population Priority
+- **Decision:** Populating empty reference example directories with starter assets is a P1 priority (right after audit-script enhancements) because agent specifications currently describe workflows that cannot be executed against the published repository. Order: `examples/red-team-gauntlet/test-vectors.yaml` first (blocks Client Onboarding), then any other empty example directories surfaced by the smoke test expansion.
+- **Reference:** Automated clarification resolution — closes [2026-04-26] Reference Asset Absence.
+
+## [2026-04-27] - NOEMI_DOCKER_SMOKE_* Smoke Test Implementation
+- **Decision:** `tests/examples-smoke.test.js` must add static smoke checks that validate the presence and basic format of `NOEMI_DOCKER_SMOKE_*` variables in the root `.env.template`. These checks are part of the canonical fast gate (`npm run validate`) and satisfy REQUIREMENTS.md Section 9.
+- **Reference:** Automated clarification resolution — closes [2026-04-23] Missing NOEMI_DOCKER_SMOKE_* Smoke Test Validation.
+
+## [2026-04-27] - Gatekeeper Reference Implementation Mutating Actions (Dry-Run)
+- **Decision:** The `examples/gatekeeper-deployment/` reference implementation will be extended to include a **dry-run mode** for the Gatekeeper persona's mutating actions (PR merges, issue closes). Dry-run mode logs the intended action via the standard Audit Log shape but does not call GitHub mutation APIs. Live mutating actions remain explicitly out-of-scope for the public reference example for the same safety reasons that motivate the Refusal Principle; orchestrator-side environments can flip the flag.
+- **Reference:** Automated clarification resolution — closes [2026-04-23] Gatekeeper Reference Implementation Mutating Actions.
+
+## [2026-04-27] - Node.js 24 Baseline Enforcement in Reference Docker
+- **Decision:** All `Dockerfile` and `docker-compose.yml` files in `examples/` and `tools/` must pin to `node:24-alpine` to align with the AGENTS.md Node.js 24 baseline. Specifically: `examples/gatekeeper-deployment/docker-compose.yml` (currently `node:20-alpine`) and `tools/executive-assistant/Dockerfile` (currently `node:20-alpine` in both builder and runtime stages) must be bumped. Future reference Docker examples must be born on `node:24-alpine`.
+- **Reference:** Automated clarification resolution — closes [2026-05-01] and [2026-05-02] Node.js 24 Baseline Enforcement in Docker (duplicate questions consolidated).
+
+## [2026-04-27] - Persona Journal Section Mandate
+- **Decision:** The `## Journal` section is added to the **mandatory** persona contract in `AGENTS.md`, `REQUIREMENTS.md` Section 2, and `docs/AGENT_TEMPLATE.md` (the template already includes it). All 22 agent personas must include a `## Journal` section to support standardized cross-fleet learning. `scripts/audit-repo.js` will be extended to enforce this heading. This formalizes a pattern already present in 4 personas (`sentinel/core.md`, `bolt/core.md`, `bolt/nextjs-16.md`, `gatekeeper.md`).
+- **Reference:** Automated clarification resolution — closes [2026-05-01] and [2026-05-02] Persona Journal Section Standardization (duplicate questions consolidated).

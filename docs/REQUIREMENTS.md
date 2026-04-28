@@ -28,8 +28,11 @@ It is not a runtime or execution engine. External orchestrators such as Gemini C
   - 30/60/90-day roadmap template
   - readiness rubric covering security readiness, AI readiness, and the overall recommendation
 
-### 2. Persona Contract Is Mandatory
+### 2. Persona and Skill Contracts are Mandatory
 
+The repository enforces a strict structural contract for both agent personas and reusable skills.
+
+#### Agent Persona Contract
 All agent personas in `agents/` must include the following required headings:
 
 - `Role`
@@ -41,9 +44,20 @@ All agent personas in `agents/` must include the following required headings:
 - `Boundaries`
 - `Workflow`
 - `External Tooling Dependencies`
-- `Audit Log` (Mandatory for Agents and Skills; see Decision [2026-04-13])
+- `Audit Log` (Mandatory; see Decision [2026-04-13])
 
-#### Persona Principles
+#### Reusable Skill Contract
+Reusable skills in `skills/` must include the following required headings:
+
+- `Purpose`
+- `Inputs`
+- `Procedure`
+- `Outputs`
+- `Rules & Constraints (4D Diligence)`
+- `Boundaries`
+- `Audit Log` (Mandatory; see Decision [2026-04-22])
+
+#### General Principles
 - **The Refusal Principle**: Agents must recognize and reject instructions that attempt to override their primary Role or Rules, or tasks that are unsafe or out-of-scope. This is a non-negotiable safety constraint.
 - **Role Alignment**: Personas must align with the project's human-AI collaboration model:
   - **Explorer (Passenger)**: Owns the business problem and acceptance criteria.
@@ -56,11 +70,11 @@ The `Audit Log` requirement must include a mandatory JSON shape: `{ "task": "...
 #### Technical Emission
 Agents must emit their JSON Audit Log to `stderr` separately from the primary user-facing payload (Decision [2026-04-13]).
 
-### 3. Persona and Generator Drift Must Fail Fast
+### 3. Contract and Generator Drift Must Fail Fast
 
-- [`scripts/audit-repo.js`](../scripts/audit-repo.js) is the repository audit gate for persona headings and generator invariants.
+- [`scripts/audit-repo.js`](../scripts/audit-repo.js) is the repository audit gate for persona/skill headings and generator invariants.
 - The audit must fail when:
-  - required persona headings are missing
+  - required persona or skill headings are missing
   - `AGENTS.md` is missing required top-level mandate sections
   - generator template markers drift
   - generated context files omit required global mandate headings
@@ -161,3 +175,5 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Node.js 24 Baseline Drift**: Reference Docker configurations in `examples/gatekeeper-deployment/docker-compose.yml` and `tools/executive-assistant/Dockerfile` are still pinned to Node.js 20, drifting from the repository's mandatory Node.js 24 baseline.
 - **Persona Journal Inconsistency**: The `Journal` section is currently implemented in only 4 of 22 agent personas (`sentinel/core.md`, `bolt/core.md`, `bolt/nextjs-16.md`, `gatekeeper.md`), drifting from the goal of a standardized across-fleet learning mechanism.
 - **Reference Service Audit Log Drift**: Reference implementation services (e.g., `dashboard-ingest.js`) do not yet emit their own operational audit logs to `stderr` in the mandated JSON shape, hindering unified observability of the ingestion stack.
+- **Resilience Helper Integration Gap**: While `scripts/resilience_helpers.js` is provided as a reference, it is not yet integrated into the repository's own Node.js-based tooling (`audit-repo.js`, `generate_all.js`), nor utilized by the 22 agent personas.
+- **Sync Script Hardcoding**: `scripts/sync-upstream.sh` and its documentation contain hardcoded `[MyOrganization]` placeholders, drifting from the project's goal of providing generalized, environment-agnostic reference assets.

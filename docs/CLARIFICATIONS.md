@@ -184,6 +184,20 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `AGENTS.md` and `docs/AGENT_TEMPLATE.md` to include `Journal` as a mandatory section, then perform a bulk update to add it to all 22 agent personas.*
 
+### ❓ Question [2026-05-02] - SecretOps Authentication Verification
+**Context:** `verify-env.sh` and `verify-env.ps1` check for the *presence* of the Infisical or 1Password CLI but do not verify whether the user is actually *authenticated* to their respective vault.
+**Ambiguity / Drift:** A successful pre-flight check may still lead to runtime failures if the user is not logged in, as "Fetch-on-Demand" commands (`infisical run`, `op run`) will fail to resolve secrets.
+**Question for Product Owner:** Should the pre-flight verification scripts be updated to include an authentication check (e.g., `infisical whoami` or `op get user`) for the detected SecretOps provider?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to perform an active authentication check for Infisical or 1Password when in `builder` or `docker` modes.*
+
+### ❓ Question [2026-05-02] - Sync Script Generalization
+**Context:** `scripts/sync-upstream.sh` and `docs/UPSTREAM_SYNC.md` contain hardcoded `[MyOrganization]` placeholders and use fixed repository URLs.
+**Ambiguity / Drift:** This forces every "forking" organization to manually find and replace these strings in a script that is intended to be a reusable, low-friction reference utility.
+**Question for Product Owner:** Should the synchronization script be generalized to use environment variables or a local `.noemi-sync.json` configuration file for the organization name and repository URLs?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Generalize `scripts/sync-upstream.sh` to read its configuration from environment variables or a local config file, and update `docs/UPSTREAM_SYNC.md` to reflect the new standardized usage.*
+
 ### ❓ Question [2026-05-01] - Audit Log Emission to Stderr in Reference Services
 **Context:** `REQUIREMENTS.md` mandates that agents emit JSON Audit Logs to `stderr`.
 **Ambiguity / Drift:** Reference implementation services that perform agent-like ingestion and processing, such as `examples/gatekeeper-deployment/dashboard-ingest.js`, do not currently emit their own audit logs to `stderr` in the mandated JSON shape.

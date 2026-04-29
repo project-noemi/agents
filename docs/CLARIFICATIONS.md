@@ -184,6 +184,20 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `AGENTS.md` and `docs/AGENT_TEMPLATE.md` to include `Journal` as a mandatory section, then perform a bulk update to add it to all 22 agent personas.*
 
+### ❓ Question [2026-05-02] - Framework Markers in Context Templates
+**Context:** The `Value Lenses` and `Operating Profiles` frameworks are core NoéMI layers, but the context generators and templates (`GEMINI.template.md`, `CLAUDE.template.md`) lack the corresponding `<!-- VALUE_LENS_INJECTIONS_START -->` and `<!-- OPERATING_PROFILE_INJECTIONS_START -->` markers.
+**Ambiguity / Drift:** Agents cannot currently receive these frameworks in their context files, even though they are documented as mandatory layers.
+**Question for Product Owner:** Should we prioritize adding these markers to the templates and updating the generators to support framework injection?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Add `VALUE_LENS_INJECTIONS` and `OPERATING_PROFILE_INJECTIONS` markers to context templates and update `scripts/context_helpers.js` to support their injection.*
+
+### ❓ Question [2026-05-02] - Case-Insensitive Heading Audits
+**Context:** `scripts/audit-repo.js` currently performs strict string matching for required headings like `Refusal Criteria`.
+**Ambiguity / Drift:** Minor casing differences (e.g., "Refusal criteria") can cause audit failures for files that are substantively compliant.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be updated to perform case-insensitive heading validation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` and `scripts/context_helpers.js` to perform case-insensitive matching for all required persona and skill headings.*
+
 ### ❓ Question [2026-05-02] - SecretOps Authentication Verification
 **Context:** `verify-env.sh` and `verify-env.ps1` check for the *presence* of the Infisical or 1Password CLI but do not verify whether the user is actually *authenticated* to their respective vault.
 **Ambiguity / Drift:** A successful pre-flight check may still lead to runtime failures if the user is not logged in, as "Fetch-on-Demand" commands (`infisical run`, `op run`) will fail to resolve secrets.

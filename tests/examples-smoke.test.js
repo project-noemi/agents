@@ -43,7 +43,7 @@ test('gatekeeper deployment includes the signed dashboard ingest path', () => {
     const entrypoint = read('examples/gatekeeper-deployment/entrypoint.sh');
 
     assert.match(compose, /dashboard-ingest:/);
-    assert.match(compose, /DASHBOARD_API_URL=http:\/\/dashboard-ingest:8081\/ingest/);
+    assert.match(compose, /DASHBOARD_API_URL=http:\/\/dashboard-ingest:8081\/api\/v1\/reports/);
     assert.match(entrypoint, /X-Signature-256/);
     assert.match(entrypoint, /retry_with_backoff/);
 });
@@ -275,6 +275,81 @@ test('n8n guidance avoids invented helper APIs and documents the real runtime su
     assert.doesNotMatch(persona, /tools_documentation\(\)|validate_node\(|validate_workflow/);
     assert.match(persona, /n8n editor or API/i);
     assert.match(protocol, /Do Not Assume Hidden Helper Tools/);
+});
+
+test('rfp-split, gmu-validation, and secure-secret-management examples meet baseline contracts', () => {
+    // rfp-split is a static fixture set used by example workflows; ensure all six section files are present in both PDF and TXT form.
+    const rfpSections = [
+        'Section_1_General_Information',
+        'Section_2_Authority_Overview_Scope',
+        'Section_3_Procurement_Requirements',
+        'Section_4_Solicitation_Process',
+        'Section_5_Award_and_Negotiation',
+        'Section_6_Additional_Information'
+    ];
+    for (const section of rfpSections) {
+        assert.ok(
+            fs.existsSync(path.join(repoRoot, `examples/rfp-split/${section}.pdf`)),
+            `rfp-split missing ${section}.pdf`
+        );
+        assert.ok(
+            fs.existsSync(path.join(repoRoot, `examples/rfp-split/${section}.txt`)),
+            `rfp-split missing ${section}.txt`
+        );
+    }
+
+    // gmu-validation: must remain a Node.js example aligned with the canonical runtime baseline.
+    const gmuBot = read('examples/gmu-validation/verification-bot.js');
+    assert.match(gmuBot, /Phase 0 Security/);
+    assert.match(gmuBot, /Red Team Gauntlet/);
+
+    // secure-secret-management: legacy header on Python sample, vault wrapper in setup.
+    const secretAgent = read('examples/secure-secret-management/agent_logic.py');
+    const secretSetup = read('examples/secure-secret-management/setup.sh');
+    assert.match(secretAgent, /LEGACY\/ILLUSTRATIVE/);
+    assert.match(secretAgent, /os\.getenv\(/);
+    assert.doesNotMatch(secretAgent, /load_dotenv|dotenv\.parse/);
+    assert.match(secretSetup, /infisical|op /);
+});
+
+test('red-team-gauntlet exposes machine-readable test vectors for the onboarding validation suite', () => {
+    const vectors = read('examples/red-team-gauntlet/test-vectors.yaml');
+    assert.match(vectors, /id: PI-01-direct-override/);
+    assert.match(vectors, /id: PI-02-roleplay-context-switch/);
+    assert.match(vectors, /id: PI-03-invisible-prompting/);
+    assert.match(vectors, /id: PII-01-standard-leak-redact/);
+    assert.match(vectors, /id: PII-02-confidential-block/);
+    assert.match(vectors, /target: PromptShield/);
+    assert.match(vectors, /target: PIIGuard/);
+});
+
+test('client onboarding tier templates exist for basic, standard, and premium', () => {
+    const readme = read('templates/tiers/README.md');
+    assert.match(readme, /Client Tier Templates/);
+    for (const tier of ['basic', 'standard', 'premium']) {
+        const content = read(`templates/tiers/${tier}.yaml`);
+        assert.match(content, new RegExp(`tier:\\s+${tier}`));
+        assert.match(content, /active_mcps:/);
+        assert.match(content, /agents:/);
+    }
+    const clientsReadme = read('clients/README.md');
+    assert.match(clientsReadme, /Client Onboarding/);
+});
+
+test('ROI baseline configuration is available as a local JSON fallback', () => {
+    const baseline = JSON.parse(read('tools/roi/baseline-config.json'));
+    assert.equal(baseline.currency, 'USD');
+    assert.ok(baseline.human_baseline_minutes && Object.keys(baseline.human_baseline_minutes).length > 0);
+    assert.ok(baseline.labor_rates_per_hour && Object.keys(baseline.labor_rates_per_hour).length > 0);
+    assert.ok(baseline.labor_savings_categories.standard);
+    assert.ok(baseline.labor_savings_categories.complex);
+});
+
+test('logging-mcp protocol documents InfluxDB and the embedded audit-log shape', () => {
+    const protocol = read('mcp-protocols/logging-mcp.md');
+    assert.match(protocol, /InfluxDB \(Time-Series Aggregation\)/);
+    assert.match(protocol, /Audit Log Embedding/);
+    assert.match(protocol, /metadata\.audit_log/);
 });
 
 test('RFP responder workflow uses the current Google Gemini node path', () => {

@@ -106,7 +106,7 @@ services:
       - GATEKEEPER_DRY_RUN=${GATEKEEPER_DRY_RUN:-true}
       - GATEKEEPER_INTERVAL_HOURS=${GATEKEEPER_INTERVAL_HOURS:-4}
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
-      - DASHBOARD_API_URL=http://dashboard-ingest:8081/ingest
+      - DASHBOARD_API_URL=http://dashboard-ingest:8081/api/v1/reports
       - DASHBOARD_AUTH_TOKEN=${INFLUXDB_ADMIN_TOKEN}
       - GATEKEEPER_HMAC_SECRET=${GATEKEEPER_HMAC_SECRET}
     depends_on:

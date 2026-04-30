@@ -1,0 +1,27 @@
+# Premium Tier — Client Onboarding Template
+# Full fleet configuration with multi-tenant fleet dashboard and ROI auditing.
+tier: premium
+description: Full agent fleet with HMAC-signed dashboard ingestion and ROI tracking.
+active_mcps:
+  - github
+  - slack
+  - google-sheets
+active_skills:
+  - reporting/structured-report
+  - reporting/alert-notify
+  - security/pii-scan
+  - security/hmac-sign-submit
+  - verification/cross-reference
+  - verification/pre-flight-check
+  - orchestration/dispatch-coordinate
+agents:
+  - coding/code-reviewer
+  - guardian/sentinel
+  - operations/qa-risk-manager
+  - operations/fleet-dashboard
+  - operations/client-onboarding
+operating_profile: balanced-enterprise
+value_lens: balanced-enterprise
+retention:
+  detailed_reports_days: 90
+  aggregate_summaries_days: 365

@@ -31,7 +31,7 @@ Use `infisical run` or `op run` to dynamically pull the specified environment an
 - Infisical Pattern: `infisical run --env=dev -- <command>`
 
 
-- 1Password Pattern: `op run --env-file=.env.template -- <command>`
+- 1Password Pattern: `op run --env-file=.env.template -- <command>` (root inventory) or `op run --env-file=.env.example -- <command>` (per-example inventory inside `examples/`)
 
 
 - Starting a Chat Session: `infisical run --env=dev -- gemini chat`

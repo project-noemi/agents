@@ -1,0 +1,20 @@
+# Standard Tier — Client Onboarding Template
+# Default configuration for production tenants with guardian-layer monitoring.
+tier: standard
+description: Engineering plus guardian agents, structured reporting, and PII scanning.
+active_mcps:
+  - github
+  - slack
+active_skills:
+  - reporting/structured-report
+  - reporting/alert-notify
+  - security/pii-scan
+agents:
+  - coding/code-reviewer
+  - guardian/sentinel
+  - operations/qa-risk-manager
+operating_profile: balanced-enterprise
+value_lens: balanced-enterprise
+retention:
+  detailed_reports_days: 90
+  aggregate_summaries_days: 365

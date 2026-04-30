@@ -134,7 +134,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - Git, Node.js, and at least one supported local AI client (Gemini CLI, Claude Code CLI, or OpenAI Codex) remain part of the documented beginner toolchain.
 - Docker becomes part of the documented toolchain when a builder moves into runtime homes or Docker verification.
 - Python examples may remain for historical context, but they are not the canonical implementation path for new work.
-- The `logging-mcp` is defined as a dual-backend protocol supporting both Loki/Grafana (structured log queries) and n8n webhooks (event-driven ingestion).
+- The `logging-mcp` is defined as a multi-backend protocol supporting Loki/Grafana (structured log queries), n8n webhooks (event-driven ingestion), and InfluxDB (time-series aggregation for the Fleet Dashboard reference deployment). The persona-mandated `Audit Log` JSON is embedded as `metadata.audit_log` on `success` events (Decision [2026-04-30]).
 
 ## Current Known Limitations
 
@@ -144,13 +144,13 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - `mcp.config.json` is the current source of truth for active MCPs and skills; any future schema expansion or dynamic service discovery should be treated as a separate contract change.
 - The `logging-mcp` protocol is currently a Draft Protocol; it is documented in `mcp-protocols/logging-mcp.md` but is not yet enabled in the default `mcp.config.json`.
 - Symbolic link mirroring in `docs/agents/` is not strictly enforced at the 1:1 file level; directory and guide-level documentation takes precedence.
-- The `Client Onboarding` persona (`agents/operations/client-onboarding.md`) references `templates/tiers/` and `clients/` directories that are currently absent from the repository.
-- There is an API path inconsistency between the Fleet Dashboard persona (specifying `/api/v1/reports`) and the current reference implementation (using `/ingest`).
-- The standardized `Audit Log` JSON shape and its integration with the `logging-mcp` and `Structured Report` skill schemas remain under clarification for technical alignment.
-- The `Value Lenses` and `Operating Profiles` frameworks are documented but not yet integrated into the automated context generation scripts (`scripts/generate_gemini.js` and `scripts/generate_claude.js`).
-- The `logging-mcp` protocol definition does not currently include InfluxDB as a supported backend, despite InfluxDB being the primary time-series store in the reference implementation.
-- The Fleet Dashboard specification (90-day detailed / 1-year aggregate) drifts from the reference implementation (single 90-day bucket).
-- The `Client Onboarding` validation workflow references `red-team-gauntlet` test vectors that are currently missing from the repository.
-- Reference implementation services (e.g., `dashboard-ingest.js`) do not yet emit the mandated JSON Audit Log shape.
-- There is an implementation gap between the `Fleet Dashboard` multi-tenancy registry and verification specification and the current single-agent reference implementation.
-- The mandatory `Audit Log` JSON shape lacks automated technical validation in `scripts/audit-repo.js`.
+- Tier defaults for the `Client Onboarding` persona now live in `templates/tiers/` (basic, standard, premium); provisioned tenant configurations land in `clients/` and remain uncommitted (Decision [2026-04-30]).
+- The Fleet Dashboard ingestion endpoint is standardized to `/api/v1/reports` across persona, implementation, and compose env (Decision [2026-04-30]).
+- The `logging-mcp` protocol now lists InfluxDB as a third supported backend and embeds the mandatory `Audit Log` JSON as `metadata.audit_log` on success events (Decision [2026-04-30]).
+- The `Value Lenses` and `Operating Profiles` frameworks remain opt-in for context generators; auto-injection markers are deferred until a runtime consumer requires them (Decision [2026-04-30]).
+- The Fleet Dashboard specification (90-day detailed / 1-year aggregate) still drifts from the reference implementation (single 90-day bucket); reconciliation requires Product Owner judgment.
+- The `red-team-gauntlet` example now ships starter test vectors (`examples/red-team-gauntlet/test-vectors.yaml`) for the Client Onboarding validation workflow (Decision [2026-04-30]).
+- Reference implementation services (e.g., `dashboard-ingest.js`) do not yet emit the mandated JSON Audit Log shape; refactoring scope is open for Product Owner judgment.
+- There is an implementation gap between the `Fleet Dashboard` multi-tenancy registry and verification specification and the current single-agent reference implementation; reconciliation is open for Product Owner judgment.
+- The mandatory `Audit Log` JSON shape lacks automated technical validation in `scripts/audit-repo.js`; the structural-enforcement scope (also covering the `Refusal Criteria` subsection and skill contracts) remains open for Product Owner judgment.
+- The ROI Auditor uses `tools/roi/baseline-config.json` as the offline default for human-baseline-time and labor-rate dictionaries, with the published Google Sheets template as the canonical per-tenant override (Decision [2026-04-30]).

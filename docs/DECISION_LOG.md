@@ -1,5 +1,50 @@
 # Decision Log
 
+## [2026-04-30] - Fleet Dashboard API Path Standardized to `/api/v1/reports`
+- **Decision:** The Fleet Dashboard ingestion endpoint is standardized to `/api/v1/reports`. The persona specification (`agents/operations/fleet-dashboard.md`) is the source of truth, and the reference implementation in `examples/gatekeeper-deployment/dashboard-ingest.js` and `docker-compose.yml` has been updated to match.
+- **Context:** A long-running drift between the persona spec (`/api/v1/reports`) and the implementation (`/ingest`) caused agents following the persona to fail against the reference dashboard.
+- **Impact:** Updated `dashboard-ingest.js`, `docker-compose.yml`, and `tests/examples-smoke.test.js` to enforce the standardized path. The `Audit Log` skill examples (already on `/api/v1/reports`) no longer drift from the implementation.
+
+## [2026-04-30] - Client Onboarding Tier Templates and Clients Directory
+- **Decision:** Provide starter `templates/tiers/` (basic, standard, premium YAML manifests) and a `clients/` directory with a `.gitignore` so the `Client Onboarding` persona has a real layout to operate against. Tenant configurations remain uncommitted.
+- **Context:** The persona referenced both directories but neither existed, leaving the workflow undefined.
+- **Impact:** Builders can now copy a tier template into `clients/<slug>/` as the durable provisioning starting point.
+
+## [2026-04-30] - Red Team Gauntlet Test Vectors
+- **Decision:** Adopt `examples/red-team-gauntlet/test-vectors.yaml` with five starter cases (three prompt-injection, two PII) keyed by `id`, `target`, and `expected` so orchestrators can execute the gauntlet programmatically.
+- **Context:** The Client Onboarding validation workflow required machine-readable vectors; only a prose README existed.
+- **Impact:** The onboarding suite can now run the canonical gauntlet against PromptShield and PIIGuard without re-translating the README.
+
+## [2026-04-30] - ROI Auditor Baseline Data Access
+- **Decision:** The ROI Auditor reads the human-baseline-time and labor-rate dictionaries from a local JSON reference (`tools/roi/baseline-config.json`) by default and may override them with the published Google Sheets template per tenant. This avoids requiring a `google-sheets-read` capability for every agent.
+- **Context:** The persona referenced "dictionaries" without specifying an access mechanism; the Google Sheets MCP was used only for append.
+- **Impact:** A repeatable offline default exists; tenants can still override values via the canonical Sheets template documented in `tools/roi/README.md`.
+
+## [2026-04-30] - logging-mcp Backend Set Expanded to Include InfluxDB
+- **Decision:** `mcp-protocols/logging-mcp.md` now formally lists InfluxDB as a third supported backend alongside Loki/Grafana and n8n webhooks, since the Gatekeeper reference deployment writes to InfluxDB.
+- **Context:** The protocol described only Loki and n8n while the reference implementation persists structured cycle reports to InfluxDB.
+- **Impact:** The protocol now matches the implementation surface. Numeric counters live in InfluxDB; full audit-log text continues to flow through Loki or n8n.
+
+## [2026-04-30] - logging-mcp Audit Log Embedding
+- **Decision:** The mandatory project-wide `Audit Log` JSON shape is embedded as `metadata.audit_log` inside the `logging-mcp` envelope on `success` events. The two payloads are not duplicated; the `logging-mcp` envelope carries observability fields and the audit shape is its content for successful tasks.
+- **Context:** Clarification required whether the two structures were redundant or complementary.
+- **Impact:** Implementations have a single canonical place to publish both the observability envelope and the persona-mandated audit record.
+
+## [2026-04-30] - SecretOps `.env` File Standardization
+- **Decision:** Use `.env.template` for the **root-level** vault-reference inventory and `.env.example` for **per-example** vault-reference inventories under `examples/`. `AGENTS.md` and the Secret Management guide document both locations explicitly so builders pick the correct reference file for their working directory.
+- **Context:** `AGENTS.md` and `docs/tool-usages/secure-secret-management.md` referenced `.env.template`, while every `examples/*/docker-compose.yml` referenced `.env.example`, causing apparent contradiction.
+- **Impact:** Both file names remain valid for their respective scopes; documentation now explains the split rather than picking one and breaking the other.
+
+## [2026-04-30] - Framework Injection in Context Generators (Deferred)
+- **Decision:** `Value Lenses` and `Operating Profiles` injections into `GEMINI.md`/`CLAUDE.md` remain **opt-in** and are not added to the default context generation pipeline. The frameworks remain in `docs/frameworks/` and `value-lenses/`/`operating-profiles/`, and agents that need them reference them explicitly.
+- **Context:** Auto-injection would substantially grow generated context without a confirmed consumer; the markers can be added when a runtime needs them.
+- **Impact:** Generators stay deterministic and lean. Future injection markers (`VALUE_LENS_INJECTIONS`, `OPERATING_PROFILE_INJECTIONS`) are a future contract change, not a current requirement.
+
+## [2026-04-30] - Examples Smoke Coverage Expanded
+- **Decision:** `tests/examples-smoke.test.js` now includes baseline static checks for `examples/rfp-split`, `examples/gmu-validation`, and `examples/secure-secret-management` (file presence, LEGACY/ILLUSTRATIVE labeling, no `.env` parsing libraries, vault wrappers in setup). The red-team-gauntlet vectors and tier templates are also covered.
+- **Context:** Requirement 9 mandates static smoke checks for example stacks; several reference examples were uncovered.
+- **Impact:** CI now detects drift in these previously unchecked examples.
+
 ## [2026-04-02] Docker Image and Compose Version Update
 
 - **Decision:** Bump `pgvector` and `Casdoor` image tags to their current versions, correct repository names, and remove the obsolete `version` attribute from `docker-compose.yml` files.

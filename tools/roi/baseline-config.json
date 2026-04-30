@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "description": "Reference baseline-time and labor-rate dictionary for the ROI Auditor. The Google Sheets template (tools/roi/README.md) remains the canonical source for production tuning; this JSON file is the offline default that orchestrators can mount when the sheet is unreachable.",
+  "currency": "USD",
+  "human_baseline_minutes": {
+    "code_review_pr": 25,
+    "documentation_update": 30,
+    "rfp_section_response": 60,
+    "security_triage_alert": 15,
+    "incident_postmortem": 90,
+    "client_onboarding_provisioning": 120
+  },
+  "labor_rates_per_hour": {
+    "junior_engineer": 60,
+    "senior_engineer": 110,
+    "security_analyst": 95,
+    "operations_lead": 100,
+    "documentation_specialist": 70
+  },
+  "labor_savings_categories": {
+    "standard": "Routine, low-risk task automation (e.g. PR triage, doc reformatting).",
+    "complex": "Higher-judgment task assistance (e.g. RFP response drafting, incident analysis)."
+  },
+  "notes": [
+    "Values are conservative starter estimates; tenants must override via the Google Sheets template before publishing ROI claims.",
+    "PII-bearing or revenue-tied calculations must be tuned per tenant in private storage."
+  ]
+}

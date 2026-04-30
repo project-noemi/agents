@@ -1,0 +1,5 @@
+# Provisioned client configurations are tenant-specific and must not be committed.
+# The Client Onboarding agent populates this directory at runtime.
+*
+!.gitignore
+!README.md

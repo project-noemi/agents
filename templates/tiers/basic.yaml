@@ -1,0 +1,15 @@
+# Basic Tier — Client Onboarding Template
+# Minimal configuration for evaluation, pilot, or low-volume tenants.
+tier: basic
+description: Single engineering agent with read-only repository access and stderr-only audit logging.
+active_mcps:
+  - github
+active_skills:
+  - reporting/structured-report
+agents:
+  - coding/code-reviewer
+operating_profile: balanced-enterprise
+value_lens: balanced-enterprise
+retention:
+  detailed_reports_days: 30
+  aggregate_summaries_days: 180

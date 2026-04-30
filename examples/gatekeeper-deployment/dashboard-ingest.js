@@ -90,7 +90,7 @@ const server = http.createServer(async (request, response) => {
         return;
     }
 
-    if (request.method !== 'POST' || request.url !== '/ingest') {
+    if (request.method !== 'POST' || request.url !== '/api/v1/reports') {
         sendJson(response, 404, { error: 'Not found' });
         return;
     }

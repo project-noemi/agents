@@ -148,17 +148,15 @@
 - **Context:** Decision [2026-04-13] updated `SKILL_TEMPLATE.md`, but the mandate was not yet formalized in the core requirements.
 - **Impact:** All skills must include: Purpose, Inputs, Procedure, Outputs, Rules & Constraints (4D Diligence), Boundaries, and Audit Log.
 
-## [2026-05-02] Holistic Codebase Alignment Audit
+## [2026-05-02] Holistic Codebase Alignment Audit (Phase 2)
 
-- **Decision:** Perform a whole-codebase audit to identify and document technical drifts in `REQUIREMENTS.md`.
-- **Context:** The repository as a reference architecture must accurately reflect implementation gaps to guide future work.
-- **Impact:** Documented drifts for Node.js 24 baseline, `resilience_helpers.js` integration, `sync-upstream.sh` placeholders, and `audit-repo.js` script gaps.
-
-## [2026-05-02] Incremental Requirements Refinement (Structural & Naming Drift)
-
-- **Decision:** Formally document verified drifts regarding structural audit gaps, artifact naming, and pre-flight validation depth.
-- **Context:** Incremental audit by "Doc" identified specific technical inconsistencies with `AGENTS.md` mandates that were not previously captured in `REQUIREMENTS.md`.
+- **Decision:** Document further technical drifts and structural gaps identified during the May 2026 Doc persona audit.
+- **Context:** Incremental improvement of REQUIREMENTS.md requires continuous monitoring of the codebase state to ensure the reference architecture remains truthful.
 - **Impact:**
-  - Added "Audit Script Structural Blindness" to Known Limitations (scripts/audit-repo.js ignores H3 hierarchy mandate).
-  - Added "Artifact Naming Drift" to Known Limitations (spaces in `docs/n8n workflows/`).
-  - Added "Pre-flight Script Shallow Validation" to Known Limitations (lack of active authentication checks).
+  - Refined "Known Limitations" in `REQUIREMENTS.md` with specific file paths for Node.js baseline drift (`node:20-alpine` in Dockerfiles).
+  - Identified and documented Audit Log emission gaps in reference services (e.g., `dashboard-ingest.js`).
+  - Documented "Audit Script Structural Blindness" regarding the H3 hierarchy mandate for Refusal Criteria.
+  - Flagged "Artifact Naming Drift" in `docs/n8n workflows/` (spaces vs. slugs).
+  - Noted "Pre-flight Script Shallow Validation" (missing active SecretOps auth checks).
+  - Identified "Agent Index Role Extraction Drift" as a potential inconsistency in generated context.
+  - Confirmed that `scripts/audit-repo.js` lacks verification for active skill/MCP injection in generated output.

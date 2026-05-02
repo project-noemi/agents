@@ -267,3 +267,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the `## Journal` section be added to the mandatory persona contract in `AGENTS.md` and enforced across all agents to support standardized across-fleet learning?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `AGENTS.md` and `docs/AGENT_TEMPLATE.md` to include `Journal` as a mandatory section, then perform a bulk update to add it to all 22 agent personas.*
+
+### ❓ Question [2026-05-02] - Agent Index Role Extraction Drift
+**Context:** `scripts/context_helpers.js` extracts the first sentence of the `## Role` section for the Agent Index.
+**Ambiguity / Drift:** In some agents (e.g., `sentinel/core.md`), the role description is multi-sentence or lacks a clear period, leading to truncated or overly long entries in the Index. This drifts from the "Description" (D2) mandate for precision.
+**Question for Product Owner:** Should we standardize the Role section to require a single-sentence summary on the first line, or update the extraction logic to be more resilient to varied Markdown structures?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize the Role section across all 22 agent personas and update `scripts/context_helpers.js` to use a strictly defined extraction pattern (e.g., first paragraph or a dedicated `summary` field).*
+
+### ❓ Question [2026-05-02] - Incomplete Audit of Generated Context
+**Context:** `scripts/audit-repo.js` verifies that global mandates are present in `GEMINI.md` and `CLAUDE.md`, but it does not verify that the *active* skills and MCPs from `mcp.config.json` are correctly injected.
+**Ambiguity / Drift:** This allows for silent drift where the generator fails to inject specific protocol rules or skill procedures into the context, but the audit passes because the global mandate headings still exist.
+**Question for Product Owner:** Should the audit script be expanded to cross-reference the generated context against the `active_mcps` and `active_skills` lists in `mcp.config.json`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to verify that every skill and MCP listed in `mcp.config.json` has a corresponding entry in the generated context files.*
+
+### ❓ Question [2026-05-02] - Pre-flight Script Mode Requirements
+**Context:** `scripts/verify-env.sh` supports multiple modes (`builder`, `gemini`, `docker`, etc.), each with different tool requirements.
+**Ambiguity / Drift:** These modes and their specific technical requirements (e.g., which modes require Docker vs. which require a local AI CLI) are not formally documented in `REQUIREMENTS.md`.
+**Question for Product Owner:** Should the mode-specific requirements of the pre-flight scripts be formalized in Section 9 of `REQUIREMENTS.md` to ensure the scripts remain aligned with the documented onboarding path?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Formalize the technical requirements for each pre-flight mode (builder, gemini, claude, codex, docker, n8n) in `REQUIREMENTS.md` Section 9.*

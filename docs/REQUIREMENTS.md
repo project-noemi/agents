@@ -53,7 +53,8 @@ Reusable skills in `skills/` must include the following required headings:
 - `Inputs`
 - `Procedure`
 - `Outputs`
-- `Rules & Constraints (4D Diligence)`
+- `Rules & Constraints` (incorporating 4D Diligence; **must include a mandatory `### Refusal Criteria` subsection**)
+- `Data Inventory` (Mandatory D2 requirement; specifies inputs and outputs)
 - `Boundaries`
 - `Audit Log` (Mandatory; see Decision [2026-04-22])
 
@@ -149,6 +150,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - Docker becomes part of the documented toolchain when a builder moves into runtime homes or Docker verification.
 - Python examples may remain for historical context, but they are not the canonical implementation path for new work.
 - The `logging-mcp` is defined as a dual-backend protocol supporting both Loki/Grafana (structured log queries) and n8n webhooks (event-driven ingestion).
+- **Mandatory MCP Protocols**: The repository baseline includes active support and protocol documentation for `n8n`, `slack`, `github`, `web-search`, and the `google-workspace` suite (Gmail, Drive, Calendar, etc.).
 
 ## Current Known Limitations
 
@@ -170,7 +172,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - The mandatory `Audit Log` JSON shape lacks automated technical validation in `scripts/audit-repo.js`.
 - **Audit Script Gaps**: `scripts/audit-repo.js` currently only audits files in the `agents/` directory. It does not yet enforce structural contracts (Required Headings, Refusal Criteria) on the `skills/` directory, nor does it perform JSON schema validation for the `Audit Log` content.
 - **Test Suite Gaps**: `tests/examples-smoke.test.js` lacks the mandated static smoke check validation for `NOEMI_DOCKER_SMOKE_*` environment variables required by Section 9.
-- **Structural vs. Substantive Compliance**: 100% of agent personas currently use identical placeholder text for the mandatory `Data Inventory` and `Refusal Criteria` sections. While these satisfy structural audit checks, they fail to provide role-specific technical and safety context required by the 4D framework.
+- **Structural vs. Substantive Compliance**: 100% of agent personas and skills currently use identical placeholder text for the mandatory `Data Inventory`, `Audit Log`, and `Refusal Criteria` sections (skills currently omit Refusal Criteria entirely). While these may satisfy structural audit checks, they fail to provide role-specific technical and safety context required by the 4D framework.
 - **Reference Example Completeness**: Several reference examples, notably `examples/red-team-gauntlet/`, lack the actual assets (test vectors, prompts) required to execute the workflows described in agent specifications.
 - **Node.js 24 Baseline Drift**: Reference Docker configurations in `examples/gatekeeper-deployment/docker-compose.yml` and `tools/executive-assistant/Dockerfile` are still pinned to Node.js 20, drifting from the repository's mandatory Node.js 24 baseline.
 - **Persona Journal Inconsistency**: The `Journal` section is currently implemented in only 4 of 22 agent personas (`sentinel/core.md`, `bolt/core.md`, `bolt/nextjs-16.md`, `gatekeeper.md`), drifting from the goal of a standardized across-fleet learning mechanism.
@@ -183,4 +185,3 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Artifact Naming Drift**: `docs/n8n workflows/` contains spaces, drifting from the mandatory "English-first, slug-based naming" convention defined in `AGENTS.md`.
 - **Pre-flight Script Shallow Validation**: `scripts/verify-env.sh` and `scripts/verify-env.ps1` check for the presence of SecretOps CLIs but do not perform active authentication verification (e.g., `op whoami`), leading to potential runtime failures in "Fetch-on-Demand" mode.
 - **Audit Log Emission Gaps in Tooling**: Current build and audit utilities (`generate_all.js`, `audit-repo.js`) use standard `console.error` for errors but do not emit the mandated JSON Audit Log shape to `stderr`, drifting from the observability requirements set for agents and reference services.
-- **Undocumented Protocol Support**: `mcp.config.json` includes active protocols (e.g., `web-search`, `github`) that are implemented in `mcp-protocols/` but not yet formally documented as mandatory baseline requirements in `REQUIREMENTS.md`.

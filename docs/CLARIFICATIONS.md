@@ -267,3 +267,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the `## Journal` section be added to the mandatory persona contract in `AGENTS.md` and enforced across all agents to support standardized across-fleet learning?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `AGENTS.md` and `docs/AGENT_TEMPLATE.md` to include `Journal` as a mandatory section, then perform a bulk update to add it to all 22 agent personas.*
+
+### ❓ Question [2026-05-02] - Prioritization of Substantive Persona/Skill Content
+**Context:** A repository-wide audit confirms that 100% of agent personas (22/22) and all skills use identical placeholder text for `Audit Log`, `Data Inventory`, and `Refusal Criteria`.
+**Ambiguity / Drift:** While the repository passes structural audits, it has drifted into substantive non-compliance with the 4D framework (D2 Description) and the Refusal Principle.
+**Question for Product Owner:** Should "Doc" be tasked with a bulk update to replace these placeholders with role-specific substantive content, or should this be handled incrementally during domain-specific work? If bulk, which domains (Infrastructure, Operations, etc.) take priority?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a whole-fleet update of all agent personas and skills to replace placeholder Data Inventory, Audit Log, and Refusal Criteria sections with role-specific, technically accurate content.*
+
+### ❓ Question [2026-05-02] - Skill Contract Technical Enforcement
+**Context:** Decision [2026-04-22] and the latest `REQUIREMENTS.md` formalize a strict contract for skills (including Refusal Criteria and Data Inventory), but `scripts/audit-repo.js` currently only audits the `agents/` directory.
+**Ambiguity / Drift:** Reusable skills currently omit the `Refusal Criteria` and `Data Inventory` sections entirely, and there is no automated gate to prevent further drift as new skills are added.
+**Question for Product Owner:** Should the update of `scripts/audit-repo.js` to include `skills/` auditing and structural validation for the new required headings be prioritized as the next technical fix?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to discover and audit all files in the `skills/` directory for structural compliance with the mandatory skill contract, including the H3 hierarchy for Refusal Criteria.*
+
+### ❓ Question [2026-05-02] - Data Inventory vs. Inputs/Outputs in Skills
+**Context:** Agents use a consolidated `Data Inventory` section. Skills currently use separate `Inputs` and `Outputs` headings. `REQUIREMENTS.md` now mandates `Data Inventory` for skills for architectural symmetry.
+**Ambiguity / Drift:** It is unclear if `Data Inventory` should *replace* the `Inputs` and `Outputs` headings in skills, or if it should be a separate summary section.
+**Question for Product Owner:** For skills, should we replace `Inputs` and `Outputs` with a unified `Data Inventory` section, or keep them as subsections within `Data Inventory`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize all skills by consolidating the existing `Inputs` and `Outputs` content into a mandatory `Data Inventory` section to match the Agent Persona Contract.*

@@ -267,3 +267,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the `## Journal` section be added to the mandatory persona contract in `AGENTS.md` and enforced across all agents to support standardized across-fleet learning?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `AGENTS.md` and `docs/AGENT_TEMPLATE.md` to include `Journal` as a mandatory section, then perform a bulk update to add it to all 22 agent personas.*
+
+### ❓ Question [2026-05-02] - `logging-mcp` Reference Implementation Prioritization
+**Context:** The `logging-mcp` protocol definition (`mcp-protocols/logging-mcp.md`) specifies Loki and n8n as backends and a standardized JSON shape. However, the reference implementation in `examples/gatekeeper-deployment/dashboard-ingest.js` uses InfluxDB and line protocol.
+**Ambiguity / Drift:** This mismatch prevents the `ROI Auditor` and other observability-dependent agents from using the reference implementation as a truthful source of data.
+**Question for Product Owner:** Should we prioritize updating `dashboard-ingest.js` to support the `logging-mcp` JSON schema and dual backends, or should we update the protocol to include InfluxDB?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Align `examples/gatekeeper-deployment/dashboard-ingest.js` with the `logging-mcp` protocol by implementing JSON ingestion and supporting both InfluxDB and n8n webhook backends.*
+
+### ❓ Question [2026-05-02] - Automated Mapping Validation for `mcp.config.json`
+**Context:** `mcp.config.json` defines the active skills and protocols injected into agent context, but `scripts/audit-repo.js` does not verify that the referenced files (e.g., in `skills/` or `mcp-protocols/`) actually exist.
+**Ambiguity / Drift:** This allows for "broken" context files to be generated if a configuration entry is added without a corresponding markdown file, violating the "Truthful Implementation" requirement.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be enhanced to fail the audit if any entry in `mcp.config.json` is missing its corresponding protocol or skill file?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse `mcp.config.json` and verify the physical existence of every skill and protocol file listed in the active configuration.*

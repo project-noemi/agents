@@ -162,3 +162,11 @@
   - Added "Audit Script Structural Blindness" to Known Limitations (scripts/audit-repo.js ignores H3 hierarchy mandate).
   - Added "Artifact Naming Drift" to Known Limitations (spaces in `docs/n8n workflows/`).
   - Added "Pre-flight Script Shallow Validation" to Known Limitations (lack of active authentication checks).
+
+## [2026-05-02] Requirements Refinement (Logging and Asset Mapping)
+
+- **Decision:** Formally document drifts regarding the logging protocol implementation and the lack of configuration-to-asset mapping validation.
+- **Context:** A targeted audit identified that the `logging-mcp` protocol drifts from the reference ingestion implementation, and the audit script fails to verify the physical existence of assets referenced in `mcp.config.json`.
+- **Impact:**
+  - Added "Logging Protocol Implementation Gap" to Known Limitations in `REQUIREMENTS.md`.
+  - Added "Config-to-Asset Mapping Drift" to Known Limitations in `REQUIREMENTS.md`.

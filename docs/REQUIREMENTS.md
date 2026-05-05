@@ -146,6 +146,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - Node.js is the primary runtime for repository utilities and generation scripts.
 - The built-in Node test runner is the primary validation framework for repository contracts and smoke tests.
 - Git, Node.js, and at least one supported local AI client (Gemini CLI, Claude Code CLI, or OpenAI Codex) remain part of the documented beginner toolchain.
+- The following MCP protocols are formally recognized as baseline requirements: `n8n`, `slack`, `gmail`, `google-*` suite, `web-search`, and `github`.
 - Docker becomes part of the documented toolchain when a builder moves into runtime homes or Docker verification.
 - Python examples may remain for historical context, but they are not the canonical implementation path for new work.
 - The `logging-mcp` is defined as a dual-backend protocol supporting both Loki/Grafana (structured log queries) and n8n webhooks (event-driven ingestion).
@@ -183,4 +184,6 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Artifact Naming Drift**: `docs/n8n workflows/` contains spaces, drifting from the mandatory "English-first, slug-based naming" convention defined in `AGENTS.md`.
 - **Pre-flight Script Shallow Validation**: `scripts/verify-env.sh` and `scripts/verify-env.ps1` check for the presence of SecretOps CLIs but do not perform active authentication verification (e.g., `op whoami`), leading to potential runtime failures in "Fetch-on-Demand" mode.
 - **Audit Log Emission Gaps in Tooling**: Current build and audit utilities (`generate_all.js`, `audit-repo.js`) use standard `console.error` for errors but do not emit the mandated JSON Audit Log shape to `stderr`, drifting from the observability requirements set for agents and reference services.
-- **Undocumented Protocol Support**: `mcp.config.json` includes active protocols (e.g., `web-search`, `github`) that are implemented in `mcp-protocols/` but not yet formally documented as mandatory baseline requirements in `REQUIREMENTS.md`.
+- **Agent Index Accuracy Drift**: `scripts/context_helpers.js` extracts only the first sentence of the 'Role' section for the Agent Index, which may lead to truncated or misleading descriptions for complex agents.
+- **Config-to-Asset Mapping Drift**: The repository lacks automated verification that `active_mcps` and `active_skills` entries in `mcp.config.json` actually correspond to existing files in `mcp-protocols/` and `skills/`.
+- **Skill Data Inventory Inconsistency**: Reusable skills currently lack the mandatory `Data Inventory` section required for agent personas, drifting from the 4D Description (D2) standard across the fleet.

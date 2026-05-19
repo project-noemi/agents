@@ -140,7 +140,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - The builder path must include a beginner-safe onboarding guide that gets a new user from clone to one harmless local success before Docker becomes mandatory.
 - The builder path must include a Docker-oriented guide that explains how to build a home around the repo's assets without misrepresenting the repository as a runtime product.
 - That guide must connect the current local, fleet, and specialist Docker examples into one coherent progression.
-- The builder path must also include a short Docker onboarding walkthrough that chains environment verification, context generation, validation, and initial Docker launch after the first local success.
+- That guide must also include a short Docker onboarding walkthrough that chains environment verification, context generation, validation, and initial Docker launch after the first local success.
 
 ## Runtime and Tooling Requirements
 
@@ -163,7 +163,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Audit Script Gaps**: `scripts/audit-repo.js` only audits the `agents/` directory; it skips `skills/` and lacks JSON schema validation for the `Audit Log` section.
 - **Test Suite Gaps**: `tests/examples-smoke.test.js` lacks validation for mandated `NOEMI_DOCKER_SMOKE_*` environment variables (Requirement 9).
 - **Missing Onboarding and Configuration Directories**: `clients/`, `.gatekeeper/`, and `templates/tiers/` directories referenced in agent specifications (`Client Onboarding`, `Gatekeeper`, `QBR Presenter`) do not exist in the repository root.
-- **Structural vs. Substantive Compliance**: All 22 agent personas use identical placeholder text for `Data Inventory`, `Refusal Criteria`, and `Audit Log`, satisfying structural audits but failing framework requirements.
+- **Structural vs. Substantive Compliance**: Most agent personas use identical placeholder text for `Data Inventory`, `Refusal Criteria`, and `Audit Log`, satisfying structural audits but failing framework requirements for role-specific precision.
 - **Pre-flight Script Shallow Validation**: `scripts/verify-env.sh` and `scripts/verify-env.ps1` check for CLI tool presence but lack active authentication verification (e.g., `infisical whoami` or `op get user`).
 - **Pre-flight Logic Contradiction**: `scripts/verify-env.sh` contains redundant and contradictory SecretOps checks; one block treats the absence of `infisical` or `op` as a hard failure (exit 1), while a subsequent block treats it as a warning for local-only work.
 - **Internal Tool Observability Gap**: Node.js tools in `tools/` (e.g., `executive-assistant`) and reference services in `examples/` (e.g., `dashboard-ingest.js`) lack structured JSON Audit Log emission to `stderr`, drifting from the observability standards set for agent personas.
@@ -176,9 +176,9 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Sync Script Hardcoding**: `scripts/sync-upstream.sh` contains hardcoded `[MyOrganization]` placeholders and fixed URLs, requiring manual find-and-replace by organizations forking the reference architecture.
 - **Audit Log Emission Gaps**: Build utilities (`generate_all.js`, `audit-repo.js`), reference services (`dashboard-ingest.js`), and tools (`executive-assistant`) lack structured JSON Audit Log emission to `stderr`, hindering fleet-wide observability.
 - **Naming Convention Drift (Examples)**: `examples/rfp-split/` contains assets (e.g., `Section_1_General_Information.pdf`) that use spaces and uppercase, violating the English-first, slug-based naming mandate.
-- **Pre-flight Active Authentication Gap**: `scripts/verify-env.sh` and `scripts/verify-env.ps1` check only for CLI tool presence and lack active authentication verification (e.g., `infisical whoami` or `op get user`), allowing pre-flight success with expired sessions.
 - **Audit Script JSON Schema Blindness**: `scripts/audit-repo.js` verifies only the presence of the "Audit Log" heading and does not validate the mandated JSON schema or its technical emission to `stderr`.
 - **Test Suite Reinforcement of Technical Drift**: `tests/examples-smoke.test.js` explicitly asserts the `/ingest` path, codifying a technical drift against the Fleet Dashboard persona mandate of `/api/v1/reports`.
 - **Skill-to-Agent Reference Integrity Gap**: `scripts/audit-repo.js` does not verify that skills referenced in agent `Workflow` sections exist in the `skills/` directory or are enabled in `mcp.config.json`, leading to potentially broken agent specifications.
 - **Phase 0 Assessment Kit Inventory Under-reporting**: Section 1 mandates a specific template set, but the codebase contains additional critical assets (`PRACTITIONER_NOTES.md`, `network-security-assessment.md`) not tracked by the requirements suite.
-- **AI Model Version Drift**: Reference workflows and smoke tests are pinned to `models/gemini-2.5-flash` without a corresponding baseline requirement in `REQUIREMENTS.md` or `AGENTS.md`.
+- **AI Model Version Baseline Absence**: Reference workflows and smoke tests are pinned to `models/gemini-2.5-flash` without a corresponding baseline requirement in `REQUIREMENTS.md` or `AGENTS.md`.
+- **Branch Protection Enforcement Gap**: `scripts/setup-branch-protection.sh` exists to automate governance rules, but its execution and verification are not currently mandated or tracked in the core requirements suite.

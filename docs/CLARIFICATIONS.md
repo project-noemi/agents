@@ -498,3 +498,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should we use `infisical whoami` and `op user get --me` as the standard authentication checks, and should their failure be treated as a "Hard Fail" (exit 1) in `builder` and `docker` modes?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to implement active authentication checks with the specified commands.*
+
+### ❓ Question [2026-05-19] - Audit Script JSON Schema Validation Mandate
+**Context:** `REQUIREMENTS.md` Section 2 mandates a specific JSON shape for Audit Logs, but `scripts/audit-repo.js` currently only verifies the presence of the "Audit Log" heading.
+**Ambiguity / Drift:** There is no technical enforcement of the mandated schema (`{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`), allowing agents to pass audits with structurally invalid or placeholder JSON.
+**Question for Product Owner:** Should Jules be tasked with implementing strict JSON schema validation within `scripts/audit-repo.js` for all agent and skill files to ensure technical compliance?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse and validate the JSON Audit Log section in all agents and skills against the mandated schema.*
+
+### ❓ Question [2026-05-19] - Internal Tool Observability Standard
+**Context:** `AGENTS.md` and `REQUIREMENTS.md` mandate that agents and reference services emit JSON Audit Logs to `stderr`.
+**Ambiguity / Drift:** Build utilities (`generate_all.js`, `audit-repo.js`) and internal tools (`executive-assistant`) currently use unstructured logs, drifting from the observability standard set for external agents.
+**Question for Product Owner:** Should internal repository tools and build utilities also be required to emit a structured JSON Audit Log to `stderr` upon completion for fleet-wide observability?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `scripts/generate_all.js`, `scripts/audit-repo.js`, and `tools/executive-assistant/server.js` to emit structured JSON Audit Logs to `stderr`.*

@@ -114,6 +114,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - Project NoéMI aligns agent design and deployment with Gartner AI TRiSM.
 - Red Team validation is required for agent deployment readiness.
 - Guardian-layer patterns remain a core architectural requirement where trust, data protection, or prompt integrity matters.
+- **Branch protection enforcement is mandatory** (Decision [2026-05-20] — Branch Protection: Mandatory Enforcement). All forks of the reference architecture MUST run `scripts/setup-branch-protection.sh` (or an equivalent automated mechanism) on first setup to enforce the canonical `develop → main` flow. `scripts/audit-repo.js` SHOULD surface missing protection as a non-fatal warning in non-CI runs and as a fatal error in CI.
 
 ### 8. Reference Examples Must Tell the Truth
 

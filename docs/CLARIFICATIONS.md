@@ -208,7 +208,7 @@ Add new questions below this line using the required format.
 ### ❓ Question [2026-05-02] - Automated Naming Convention Audit
 **Context:** `AGENTS.md` mandates English-first, slug-based naming for all artifacts, but `scripts/audit-repo.js` does not yet enforce this. A drift was identified in `docs/n8n workflows/`.
 **Ambiguity / Drift:** Without automated enforcement, the repository will continue to accumulate naming drifts that hinder cross-platform compatibility and localization.
-**Question for Product Owner:** Should Jules implement a regex-based naming convention check in `scripts/audit-repo.js` for all files in `docs/`, `agents/`, `skills/`, and `examples/`?
+**Question for Product Owner:** Should Jules implement a regex-based naming convention check in any key directory?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Add a regex-based filename validation check to `scripts/audit-repo.js` to enforce the English-first, slug-based naming convention across all key directories.*
 
@@ -512,3 +512,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should internal repository tools and build utilities also be required to emit a structured JSON Audit Log to `stderr` upon completion for fleet-wide observability?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Refactor `scripts/generate_all.js`, `scripts/audit-repo.js`, and `tools/executive-assistant/server.js` to emit structured JSON Audit Logs to `stderr`.*
+
+### ❓ Question [2026-05-20] - Audit Script Enforcement Depth (Skills & Schema)
+**Context:** `REQUIREMENTS.md` and `AGENTS.md` mandate strict structural contracts for both agents and skills, including a specific JSON shape for Audit Logs. Currently, `scripts/audit-repo.js` only audits the `agents/` directory and only checks for the presence of the "Audit Log" heading.
+**Ambiguity / Drift:** Reusable skills and Audit Log structural integrity are currently unenforced by the repository's own gates, leading to silent drift in safety-critical sections.
+**Question for Product Owner:** Should the audit script expansion (to include `skills/` and JSON schema validation) be prioritized as a mandatory governance fix?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to audit all files in `skills/` and implement JSON schema validation for the `Audit Log` section across all personas and skills.*
+
+### ❓ Question [2026-05-20] - Fleet Dashboard API Path Standardization
+**Context:** The `Fleet Dashboard` persona mandates `/api/v1/reports` as the ingestion endpoint. However, the reference implementation in `dashboard-ingest.js` uses `/ingest`, and `tests/examples-smoke.test.js` explicitly asserts that `/ingest` is correct.
+**Ambiguity / Drift:** The test suite is currently codifying a technical drift, making it harder to remediate the inconsistency without breaking the build.
+**Question for Product Owner:** Should we standardize on the persona-mandated `/api/v1/reports` path across the implementation and test suite immediately?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize the Fleet Dashboard API ingest path to `/api/v1/reports` across `fleet-dashboard.md`, `dashboard-ingest.js`, and `examples-smoke.test.js`.*
+
+### ❓ Question [2026-05-20] - Branch Protection Enforcement Mandate
+**Context:** The repository contains `scripts/setup-branch-protection.sh` to automate GitHub governance rules (e.g., `develop` -> `main` flow).
+**Ambiguity / Drift:** While the workflow is mandated, the use of the enforcement script is not currently a mandatory requirement in `REQUIREMENTS.md`.
+**Question for Product Owner:** Should the execution of `scripts/setup-branch-protection.sh` (or an equivalent automated enforcement) be added as a mandatory requirement for NoéMI governance?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` Section 7 to include mandatory branch protection enforcement using the provided script and add a validation check to `audit-repo.js`.*

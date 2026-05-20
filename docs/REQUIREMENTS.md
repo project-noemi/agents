@@ -182,3 +182,4 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Phase 0 Assessment Kit Inventory Under-reporting**: Section 1 mandates a specific template set, but the codebase contains additional critical assets (`PRACTITIONER_NOTES.md`, `network-security-assessment.md`) not tracked by the requirements suite.
 - **AI Model Version Baseline Absence**: Reference workflows and smoke tests are pinned to `models/gemini-2.5-flash` without a corresponding baseline requirement in `REQUIREMENTS.md` or `AGENTS.md`.
 - **Branch Protection Enforcement Gap**: `scripts/setup-branch-protection.sh` exists to automate governance rules, but its execution and verification are not currently mandated or tracked in the core requirements suite.
+- **Audit Script Structural Limitation**: `scripts/audit-repo.js` only audits the `agents/` directory, skipping `skills/`, and lacks technical validation for mandated JSON Audit Log schemas or `stderr` emission.

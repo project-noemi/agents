@@ -513,4 +513,25 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Refactor `scripts/generate_all.js`, `scripts/audit-repo.js`, and `tools/executive-assistant/server.js` to emit structured JSON Audit Logs to `stderr`.*
 
+### ❓ Question [2026-05-20] - AI Model Version Baseline Formalization
+**Context:** Multiple reference workflows (e.g., `rfp-responder.json`) and n8n lab examples are pinned to `models/gemini-2.5-flash`.
+**Ambiguity / Drift:** There is no "AI Model Baseline" requirement in `REQUIREMENTS.md` or `AGENTS.md` comparable to the "Node.js 24 Baseline." This makes it unclear if `gemini-2.5-flash` is the mandated reference model for all NoéMI examples or if it's just a placeholder that can drift.
+**Question for Product Owner:** Should the repository establish a canonical AI Model Baseline (e.g., Gemini 2.5 Flash) for all reference workflows and examples to ensure predictable performance and cost during validation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Define a "Reference AI Model Baseline" in `AGENTS.md` and `REQUIREMENTS.md` and update all example workflows and smoke tests to adhere to this standard.*
+
+### ❓ Question [2026-05-20] - Phase 0 Assessment Kit Inventory Completion
+**Context:** `REQUIREMENTS.md` Section 1 specifies a list of templates for the Phase 0 Assessment Kit. The `docs/phase-zero-assessment/` directory currently contains additional critical assets: `PRACTITIONER_NOTES.md` and `network-security-assessment.md`.
+**Ambiguity / Drift:** These assets are currently "extra-canonical" and not tracked by the requirement suite, leading to potential inventory drift or under-reporting of the kit's true capabilities.
+**Question for Product Owner:** Should the Phase 0 Assessment Kit requirement in `REQUIREMENTS.md` be expanded to explicitly include `PRACTITIONER_NOTES.md` and `network-security-assessment.md` as canonical components?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` Section 1 to include `PRACTITIONER_NOTES.md` and `network-security-assessment.md` in the canonical Phase 0 Assessment Kit inventory.*
+
+### ❓ Question [2026-05-20] - Automated Branch Protection Verification Depth
+**Context:** Branch protection is now mandatory (Decision [2026-05-20]). `scripts/setup-branch-protection.sh` exists to automate this.
+**Ambiguity / Drift:** It is unclear if the repository's audit gate (`audit-repo.js`) should perform an active API check against the GitHub repository to verify protection status, or if it should simply verify the existence of the governance script and documentation.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be enhanced to perform an active GitHub API check to verify that branch protection is enabled on the current repository?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to optionally verify branch protection status via the GitHub API when a `GITHUB_TOKEN` is present in the environment.*
+
 _The three 2026-05-20 questions previously listed here (Audit Script Enforcement Depth, Fleet Dashboard API Path Standardization, Branch Protection Enforcement Mandate) were resolved on 2026-05-20 — see `DECISION_LOG.md` entries dated 2026-05-20 and the corresponding amendments under `REQUIREMENTS.md` §7 (Governance) and §"Current Known Limitations"._

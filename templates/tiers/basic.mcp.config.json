@@ -1,0 +1,15 @@
+{
+  "_comment": "Basic tier — minimal evaluation fleet. See templates/tiers/README.md.",
+  "active_mcps": [
+    "gmail",
+    "google-drive",
+    "google-calendar",
+    "web-search"
+  ],
+  "active_skills": [
+    "classification/risk-triage",
+    "verification/pre-flight-check",
+    "reporting/structured-report",
+    "security/pii-scan"
+  ]
+}

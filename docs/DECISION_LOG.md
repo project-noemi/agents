@@ -219,6 +219,65 @@
 - **Context:** Resolves Q [2026-05-20] (Branch Protection Enforcement Mandate). Branch protection is baseline governance for any repository with multiple maintainers — leaving it optional creates a silent integrity gap that can be exploited by an inattentive direct push to `main`.
 - **Impact:** Closes the `Branch Protection Enforcement Gap` item from `REQUIREMENTS.md` Current Known Limitations. Section 7 of `REQUIREMENTS.md` is updated in this PR to include the new mandate.
 
+## [2026-05-22-0001] Skill Contract Substantive Remediation
+
+- **Decision:** All 8 reusable skills under `skills/` and `skills/SKILL_TEMPLATE.md` MUST include a role-specific `## Data Inventory` section and an `### Refusal Criteria` H3 subsection nested under `## Rules & Constraints (4D Diligence)`. Placeholder text is not acceptable; each section must reference the skill's actual inputs, outputs, refused task types, override-resistance posture, and escalation path.
+- **Context:** Resolves the recurring clarifications [2026-04-22], [2026-05-02] (Skill Data Inventory Inconsistency), [2026-05-10] (Substantive Persona Remediation Strategy — skills side), [2026-05-12] (Skill Contract Substantive Drift), [2026-05-13] (Skill Directory Audit Enforcement), [2026-05-16] (Skill Template and Library Substantive Remediation). These were duplicates of the same root cause: the skill library structurally diverged from the persona contract codified in Decision [2026-04-22].
+- **Impact:** `skills/SKILL_TEMPLATE.md` and all 8 skill files updated with substantive Data Inventory and Refusal Criteria H3 in this PR. `scripts/audit-repo.js` now enforces both sections across the entire `skills/` directory.
+
+## [2026-05-22-0002] Audit Script Coverage Expansion — Implementation
+
+- **Decision:** Implement the audit-script expansion mandated by Decision [2026-05-20] (Audit Script Coverage Expansion). `scripts/audit-repo.js` now (1) walks `skills/` and applies the persona-contract checks to every file; (2) validates the `## Audit Log` JSON shape against the canonical schema `{ "task", "inputs", "actions", "risks", "result" }` for all agents; (3) enforces `### Refusal Criteria` as an H3 subsection under `## Rules & Constraints` for agents and skills; (4) performs referential-integrity checks on `mcp.config.json` against `mcp-protocols/` and `skills/`; (5) performs case-insensitive heading matching; (6) emits a JSON Audit Log to `stderr` per the observability mandate; (7) surfaces English-first slug-naming violations as a non-fatal warning to support incremental remediation.
+- **Context:** Resolves clarifications [2026-04-25] (Audit Log JSON Schema Validation), [2026-04-25] (Skill Contract Audit Enforcement), [2026-05-02] (Case-Insensitive Heading Audits, Config-to-Asset Mapping Validation, Refusal Criteria Structural Enforcement, Automated Audit Script Coverage Gaps, Automated Naming Convention Audit), [2026-05-10] (Audit Script Coverage Expansion), [2026-05-13] (Skill Directory Audit Enforcement), [2026-05-16] (Referential Integrity Enforcement for Context Configuration), [2026-05-19] (Audit Script JSON Schema Validation Mandate). All are symptoms of the same audit-gate blindness identified in Decision [2026-05-20].
+- **Impact:** Closes seven "Current Known Limitations" in `REQUIREMENTS.md` under one coherent unit of work: Audit Script Structural Blindness, Audit Script Gaps, Audit Script JSON Schema Blindness, Audit Script Structural Limitation, Config-to-Asset Mapping Drift, Skill Contract Substantive Drift (gate side), and Naming Convention Drift (Examples). Naming convention surfaces as a warning rather than a hard failure to avoid blocking docs work on PascalCase React components and conventional `Dockerfile` filenames.
+
+## [2026-05-22-0003] Agent Index Role Extraction — Full First Paragraph
+
+- **Decision:** `scripts/context_helpers.js` `discoverAgents` MUST extract the full first paragraph of the `## Role` section (everything up to the first blank line) for the Agent Index table, capped at 400 characters. The previous behavior of extracting only the first sentence is deprecated.
+- **Context:** Resolves clarification [2026-05-02] (Agent Index Role Truncation). Multi-sentence Role definitions (e.g., PromptShield, QA & Risk Manager) were being truncated in `GEMINI.md` and `CLAUDE.md`, leading to misleading agent descriptions.
+- **Impact:** Closes the "Agent Index Accuracy Drift" limitation in `REQUIREMENTS.md`. Generated context files now carry richer Role descriptions; golden fixtures regenerated to match.
+
+## [2026-05-22-0004] Template Marker De-duplication
+
+- **Decision:** `templates/context/GEMINI.template.md` MUST contain exactly one `GLOBAL_MANDATES_START`/`_END` marker pair and one `AGENT_INDEX_START`/`_END` marker pair. Duplicates are removed.
+- **Context:** Resolves clarification [2026-05-11] (Template Marker Duplication Resolution). The duplicate markers caused redundant section injection into generated `GEMINI.md`, wasting tokens and risking agent confusion.
+- **Impact:** Closes the "Template Marker Duplication" limitation in `REQUIREMENTS.md`. Single canonical placement is now: AGENT_INDEX after the document-level guidance, GLOBAL_MANDATES after the agent index.
+
+## [2026-05-22-0005] Pre-flight SecretOps Failure Policy by Mode
+
+- **Decision:** `scripts/verify-env.sh` resolves the contradictory SecretOps check blocks by standardizing on mode-aware behavior: `docker` mode treats missing `infisical`/`op` as a hard failure (exit 1); all other modes (`builder`, `gemini`, `claude`, `codex`, `n8n`) treat it as a soft warning. This matches the "beginner-safe" requirement in `REQUIREMENTS.md` §8 and resolves the redundant duplicate block.
+- **Context:** Resolves clarifications [2026-05-12] (Pre-flight Script Logic Contradiction) and [2026-05-21] (SecretOps Pre-flight Failure Policy).
+- **Impact:** Closes the "Pre-flight Logic Contradiction" limitation in `REQUIREMENTS.md`. Active authentication checks (Q [2026-05-11], [2026-05-13], [2026-05-17]) remain pending PO decision on canonical commands and PowerShell parity.
+
+## [2026-05-22-0006] Missing Onboarding Directories Created
+
+- **Decision:** Create `clients/` and `templates/tiers/` at the repository root to make `Client Onboarding`, `Fleet Dashboard`, and `QBR Presenter` persona workflows executable in a fresh fork. `clients/` is shipped with a `.gitignore` that excludes per-client provisioned material from upstream while preserving the directory; `templates/tiers/` ships three starter tier configs (`basic`, `standard`, `premium`) as `mcp.config.json`-shaped templates.
+- **Context:** Resolves clarifications [2026-04-04] (Onboarding Directory Drift), [2026-05-02] (Missing Referenced Assets and Directories), [2026-05-10] (Missing Infrastructure Assets for Agent Validation — directory portion). The `examples/red-team-gauntlet/` test-vector population remains PO-pending because it requires defining the canonical 5 test cases (3 prompt injection, 2 PII leak) and that is a content/security decision, not a structural one.
+- **Impact:** Closes the "Missing Onboarding and Configuration Directories" limitation in `REQUIREMENTS.md`. Red Team Gauntlet test vectors remain tracked as a separate limitation.
+
+## [2026-05-22-0007] RFP-split Asset Naming Normalization
+
+- **Decision:** Rename all `examples/rfp-split/Section_*_*.{pdf,txt}` files to slug-compliant `section-N-description.{pdf,txt}` form (lowercase, hyphen-separated).
+- **Context:** Resolves clarification [2026-05-13] (RFP Split Naming Convention Remediation). The previous filenames violated the English-first slug-based naming mandate in `AGENTS.md` and `REQUIREMENTS.md`.
+- **Impact:** Closes the "Naming Convention Drift (Examples)" limitation in `REQUIREMENTS.md`. The audit script's slug-naming check now reports zero violations across the canonical roots.
+
+## [2026-05-22-0008] Phase 0 Assessment Kit Inventory Expansion
+
+- **Decision:** Expand the canonical Phase 0 Assessment Kit inventory in `REQUIREMENTS.md` §1 to explicitly include `docs/phase-zero-assessment/PRACTITIONER_NOTES.md` and `docs/phase-zero-assessment/network-security-assessment.md` alongside the existing security/AI readiness guides, consent, report-of-findings, roadmap, and rubric templates.
+- **Context:** Resolves clarifications [2026-05-17] and [2026-05-20] (Phase 0 Assessment Kit Inventory Drift / Completion). The "extra-canonical" assets exist in the codebase and have been in use, but the requirement only listed the original templates.
+- **Impact:** Closes the "Phase 0 Assessment Kit Inventory Under-reporting" limitation in `REQUIREMENTS.md`.
+
+## [2026-05-22-0009] Closure of Overtaken Clarifications
+
+- **Decision:** The following clarifications are closed as **Overtaken by Events** — the underlying conditions described in the questions have already been remediated in a previous PR or by a previous decision, and no further action is required:
+  - **[2026-05-01] / [2026-05-02] Node.js 24 Baseline in Docker / Reference Examples** — `examples/gatekeeper-deployment/docker-compose.yml` (`dashboard-ingest` service) and `tools/executive-assistant/Dockerfile` both use `node:24-alpine` in the current `main`. Remediation completed under Decision [2026-05-10].
+  - **[2026-05-02] Tool Baseline Alignment (Executive Assistant)** — Same root cause; Dockerfile already at `node:24-alpine`. Audit-log emission tracked under the still-open "Internal Tool Observability Gap" item which remains PO-pending pending shared logger design.
+  - **[2026-04-04] Fleet Dashboard API Path Mismatch**, **[2026-05-15] / [2026-05-16] Test Suite Reinforcement of API Path Drift** — Decision [2026-05-20] (Fleet Dashboard Ingestion Path: Standardize on `/api/v1/reports`) is the authoritative resolution. Coordinated implementation change is tracked separately.
+  - **[2026-05-17] Branch Protection Enforcement Mandate** — Resolved by Decision [2026-05-20] (Branch Protection: Mandatory Enforcement). `REQUIREMENTS.md` §7 already carries the mandate; an audit-script check is tracked as a follow-up.
+  - **[2026-05-02] / [2026-05-20] Automated Branch Protection Verification Depth** — Remains PO-pending pending decision on whether the audit script should hit the GitHub API (requires token plumbing); this is a separate question from the mandate itself.
+- **Context:** A cross-check between `CLARIFICATIONS.md`, `DECISION_LOG.md`, and the current codebase confirmed that these questions were already resolved in earlier work or are duplicates of newer decisions. Keeping them in the active queue muddies the actual PO backlog.
+- **Impact:** Active clarifications queue shrinks; remaining items are genuine PO-decisions or architecture work.
+
 ## [2026-05-20] Formalization of Technical Drift Tracking
 
 - **Decision:** Establish a formal requirement to track and surface newly identified technical drifts in `REQUIREMENTS.md` to ensure the "Current Implementation Truth" remains grounded in the codebase state.

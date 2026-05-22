@@ -1,0 +1,17 @@
+# Project NoéMI - Client tenant configuration directory.
+#
+# This directory holds per-client provisioned configurations produced by the
+# Client Onboarding agent (agents/operations/client-onboarding.md).
+# Each subdirectory `clients/<client-id>/` typically contains:
+#   - mcp.config.json   (per-client active MCP and skill assignment)
+#   - GEMINI.md         (generated context, vendored per client)
+#   - notes.md          (operator-managed handoff notes; never secrets)
+#
+# Client configurations are environment-specific and not committed to the
+# public reference architecture. The `.gitkeep` file below preserves the
+# directory while ignoring all generated client tenants.
+
+*
+!.gitignore
+!.gitkeep
+!README.md

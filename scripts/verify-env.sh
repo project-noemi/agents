@@ -124,23 +124,6 @@ case "$MODE" in
         ;;
 esac
 
-# Mandate SecretOps CLIs
-echo -e "\n🔐 Checking SecretOps CLIs..."
-HAS_INFISICAL=false
-HAS_OP=false
-command -v infisical >/dev/null 2>&1 && HAS_INFISICAL=true
-command -v op >/dev/null 2>&1 && HAS_OP=true
-
-if [ "$HAS_INFISICAL" = true ]; then
-    echo -e "✅ Infisical CLI is installed."
-elif [ "$HAS_OP" = true ]; then
-    echo -e "✅ 1Password CLI (op) is installed."
-else
-    echo -e "❌ Missing SecretOps CLI. Please install either 'infisical' or 'op'."
-    echo -e "   This is required for the Fetch-on-Demand security policy."
-    ALL_GOOD=false
-fi
-
 if [ "$ALL_GOOD" = false ]; then
     echo -e "\n⚠️ Please install the missing tools for the selected path and run this script again.\n"
     exit 1
@@ -164,10 +147,20 @@ if command -v infisical >/dev/null 2>&1; then
     SECRETS_CLI=true
 fi
 if [ "$SECRETS_CLI" = false ]; then
-    echo -e "⚠️ No SecretOps CLI found. Install at least one before you connect business systems:"
-    echo -e "   - 1Password CLI: https://developer.1password.com/docs/cli/get-started/"
-    echo -e "   - Infisical CLI: https://infisical.com/docs/cli/overview"
-    echo -e "   Local repo-only prompts can still work without secrets, but Gmail, GitHub, n8n, and Workspace flows should use Fetch-on-Demand wrappers."
+    case "$MODE" in
+        docker)
+            echo -e "❌ No SecretOps CLI found. Docker mode requires Fetch-on-Demand wrappers."
+            echo -e "   - 1Password CLI: https://developer.1password.com/docs/cli/get-started/"
+            echo -e "   - Infisical CLI: https://infisical.com/docs/cli/overview"
+            exit 1
+            ;;
+        *)
+            echo -e "⚠️ No SecretOps CLI found. Install at least one before you connect business systems:"
+            echo -e "   - 1Password CLI: https://developer.1password.com/docs/cli/get-started/"
+            echo -e "   - Infisical CLI: https://infisical.com/docs/cli/overview"
+            echo -e "   Local repo-only prompts can still work without secrets, but Gmail, GitHub, n8n, and Workspace flows should use Fetch-on-Demand wrappers."
+            ;;
+    esac
 fi
 
 echo -e "\n🔑 Checking common API key env vars in the current shell..."

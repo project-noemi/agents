@@ -14,6 +14,17 @@ const REQUIRED_AGENT_SECTIONS = [
     'Audit Log'
 ];
 
+const REQUIRED_SKILL_SECTIONS = [
+    'Purpose',
+    'Inputs',
+    'Procedure',
+    'Outputs',
+    'Data Inventory',
+    'Rules & Constraints',
+    'Boundaries',
+    'Audit Log'
+];
+
 const REQUIRED_GLOBAL_SECTIONS = [
     '🔐 Secrets & Configuration',
     '🛡 Error Handling and Resilience',
@@ -172,18 +183,18 @@ function discoverAgents(baseDir, prefix = '') {
         
         let role = '';
         if (roleMatch) {
-            role = roleMatch[1].trim().split('\n')[0];
-            // Take only the first sentence if it exists
-            const sentenceMatch = role.match(/^[^.!?]+[.!?]/);
-            if (sentenceMatch) {
-                role = sentenceMatch[0];
-            }
+            // Extract the full first paragraph (everything up to the first blank line),
+            // not just the first sentence. This preserves descriptive accuracy for
+            // multi-sentence Role definitions in the Agent Index. (Resolves drift
+            // noted in the 2026-05-02 clarification "Agent Index Role Truncation".)
+            const paragraph = roleMatch[1].trim().split(/\n\s*\n/)[0] || '';
+            role = paragraph.replace(/\s+/g, ' ').trim();
         }
 
         agents.push({
             path: `agents/${relativePath}`,
             title,
-            role: role.slice(0, 200),
+            role: role.slice(0, 400),
             domain: prefix.split(path.sep)[0] || 'root'
         });
     }
@@ -272,10 +283,144 @@ function extractAgentHeadings(content) {
     return [...content.matchAll(/^#{2,3}\s+(.+)$/gm)].map((match) => match[1].trim());
 }
 
+function extractHeadingsWithLevel(content) {
+    return [...content.matchAll(/^(#{2,4})\s+(.+)$/gm)].map((match) => ({
+        level: match[1].length,
+        text: match[2].trim(),
+        index: match.index
+    }));
+}
+
+function headingMatches(actual, required) {
+    // Case-insensitive match, also accepting "Required (annotation)" forms.
+    const lowerActual = actual.toLowerCase();
+    const lowerRequired = required.toLowerCase();
+    return lowerActual === lowerRequired || lowerActual.startsWith(`${lowerRequired} (`);
+}
+
+function refusalCriteriaIsH3UnderRules(content) {
+    const headings = extractHeadingsWithLevel(content);
+    let inRulesBlock = false;
+    let rulesBlockEnded = false;
+    for (const heading of headings) {
+        const text = heading.text.toLowerCase();
+        if (heading.level === 2) {
+            // Crossing into a new H2 ends the previous H2's subsection scope.
+            inRulesBlock = text === 'rules & constraints' || text.startsWith('rules & constraints (');
+            rulesBlockEnded = !inRulesBlock;
+        } else if (heading.level === 3 && text === 'refusal criteria') {
+            return inRulesBlock;
+        }
+    }
+    return false;
+}
+
+const AUDIT_LOG_SCHEMA_KEYS = ['task', 'inputs', 'actions', 'risks', 'result'];
+
+function validateAuditLogShape(content) {
+    // Find the Audit Log section body by locating the H2 heading and slicing to
+    // the next top-level (H1/H2) heading or end of file.
+    const headingRe = /^##\s+Audit Log\s*$/m;
+    const startMatch = content.match(headingRe);
+    if (!startMatch) {
+        return { ok: false, reason: 'Audit Log section not found' };
+    }
+    const startIndex = startMatch.index + startMatch[0].length;
+    const tail = content.slice(startIndex);
+    const nextHeading = tail.match(/^#{1,2}\s+/m);
+    const body = nextHeading ? tail.slice(0, nextHeading.index) : tail;
+    // Try fenced JSON code block first, then a bare brace block.
+    let jsonText = null;
+    const fenced = body.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+    if (fenced) {
+        jsonText = fenced[1];
+    } else {
+        const bare = body.match(/(\{[\s\S]*?\})/);
+        if (bare) {
+            jsonText = bare[1];
+        }
+    }
+    if (!jsonText) {
+        return { ok: false, reason: 'no JSON object found in Audit Log section' };
+    }
+    let parsed;
+    try {
+        parsed = JSON.parse(jsonText);
+    } catch (error) {
+        return { ok: false, reason: `Audit Log JSON parse error: ${error.message}` };
+    }
+    const missing = AUDIT_LOG_SCHEMA_KEYS.filter((key) => !(key in parsed));
+    if (missing.length > 0) {
+        return { ok: false, reason: `Audit Log missing keys: ${missing.join(', ')}` };
+    }
+    for (const arrayKey of ['inputs', 'actions', 'risks']) {
+        if (!Array.isArray(parsed[arrayKey])) {
+            return { ok: false, reason: `Audit Log key '${arrayKey}' must be an array` };
+        }
+    }
+    for (const stringKey of ['task', 'result']) {
+        if (typeof parsed[stringKey] !== 'string') {
+            return { ok: false, reason: `Audit Log key '${stringKey}' must be a string` };
+        }
+    }
+    return { ok: true };
+}
+
+// Conventional filenames that are exempt from the slug rule. These are widely
+// used by tooling and conventions (Docker, React components, license files).
+const SLUG_EXEMPT_FILENAMES = new Set([
+    'Dockerfile',
+    'Makefile',
+    'LICENSE',
+    'Procfile',
+    'Gemfile'
+]);
+
+// Conventional prefixes that should also be tolerated (e.g., Dockerfile.gatekeeper).
+const SLUG_EXEMPT_PREFIXES = ['Dockerfile.', 'Makefile.'];
+
+function isSlugCompliantName(name) {
+    // Slug rule: English-first, no spaces. Allowed characters are lowercase letters,
+    // digits, hyphen, underscore, and dot. SHOUTY_SNAKE_CASE.md style files are
+    // tolerated as canonical docs (REQUIREMENTS.md, AGENTS.md, README.md, etc.).
+    // Dotfiles, Dockerfile/Makefile, and conventional PascalCase component files are allowed.
+    if (name.startsWith('.')) {
+        return true;
+    }
+    if (SLUG_EXEMPT_FILENAMES.has(name)) {
+        return true;
+    }
+    for (const prefix of SLUG_EXEMPT_PREFIXES) {
+        if (name.startsWith(prefix)) return true;
+    }
+    // Reject any whitespace.
+    if (/\s/.test(name)) {
+        return false;
+    }
+    // Allow canonical SHOUTY-style filenames: all-uppercase letters/digits/underscores
+    // optionally followed by a lowercase extension (e.g., README.md, AGENT_TEMPLATE.md).
+    if (/^[A-Z0-9_]+(?:\.[A-Za-z0-9]+)*$/.test(name)) {
+        return true;
+    }
+    // Allow PascalCase component files commonly produced by React/Vue tooling
+    // (e.g., AdminDashboard.js, UserList.tsx). These are out of scope for the
+    // English-first slug rule which targets shipped artifacts (workflows, docs).
+    if (/^[A-Z][A-Za-z0-9]*\.[a-z0-9]+$/.test(name)) {
+        return true;
+    }
+    // Allow standard slug-based names (lowercase letters/digits with - _ . separators).
+    if (/^[a-z0-9]+(?:[-_.][a-z0-9]+)*$/.test(name)) {
+        return true;
+    }
+    return false;
+}
+
 module.exports = {
     REQUIRED_AGENT_SECTIONS,
     REQUIRED_GLOBAL_SECTIONS,
+    REQUIRED_SKILL_SECTIONS,
     REQUIRED_TEMPLATE_MARKERS,
+    AUDIT_LOG_SCHEMA_KEYS,
     buildAgentIndex,
     buildGlobalMandates,
     buildMcpSection,
@@ -283,8 +428,13 @@ module.exports = {
     discoverAgents,
     extractAgentHeadings,
     extractBetweenMarkers,
+    extractHeadingsWithLevel,
     extractTopLevelSections,
+    headingMatches,
     injectBetween,
+    isSlugCompliantName,
     parseCliArgs,
-    readConfig
+    readConfig,
+    refusalCriteriaIsH3UnderRules,
+    validateAuditLogShape
 };

@@ -1,0 +1,24 @@
+{
+  "_comment": "Standard tier — production-ready Workspace and Slack collaboration fleet. Superset of basic. See templates/tiers/README.md.",
+  "active_mcps": [
+    "n8n",
+    "slack",
+    "gmail",
+    "google-drive",
+    "google-calendar",
+    "google-docs",
+    "google-sheets",
+    "google-meet",
+    "web-search",
+    "github"
+  ],
+  "active_skills": [
+    "classification/risk-triage",
+    "verification/pre-flight-check",
+    "verification/cross-reference",
+    "reporting/structured-report",
+    "reporting/alert-notify",
+    "security/pii-scan",
+    "security/hmac-sign-submit"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "_comment": "Premium tier — full Workspace, governance, and dashboard fleet. Superset of standard. See templates/tiers/README.md.",
+  "active_mcps": [
+    "n8n",
+    "slack",
+    "gmail",
+    "google-drive",
+    "google-calendar",
+    "google-docs",
+    "google-sheets",
+    "google-slides",
+    "google-meet",
+    "google-chat",
+    "google-keep",
+    "google-forms",
+    "google-contacts",
+    "google-admin",
+    "web-search",
+    "github"
+  ],
+  "active_skills": [
+    "classification/risk-triage",
+    "verification/pre-flight-check",
+    "verification/cross-reference",
+    "reporting/structured-report",
+    "reporting/alert-notify",
+    "security/hmac-sign-submit",
+    "security/pii-scan",
+    "orchestration/dispatch-coordinate"
+  ]
+}

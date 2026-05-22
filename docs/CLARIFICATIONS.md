@@ -534,4 +534,25 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to optionally verify branch protection status via the GitHub API when a `GITHUB_TOKEN` is present in the environment.*
 
+### ❓ Question [2026-05-21] - SecretOps Pre-flight Failure Policy
+**Context:** `AGENTS.md` and `REQUIREMENTS.md` Section 8 suggest that SecretOps pre-flight checks in `scripts/verify-env.sh` should warn/soft-fail to support local exploration. However, the current implementation of `verify-env.sh` treats the absence of both `infisical` and `op` as a hard failure (`ALL_GOOD=false` and exit 1).
+**Ambiguity / Drift:** This creates a barrier for beginners performing the "zero-to-first-agent" local task, contradicting the "beginner-safe" requirement.
+**Question for Product Owner:** Should `scripts/verify-env.sh` be refactored to treat missing SecretOps CLIs as a Warning (exit 0) rather than a Failure (exit 1) for the default `builder` mode?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `scripts/verify-env.sh` to downgrade missing SecretOps CLIs to a Warning for `builder` and `n8n` modes.*
+
+### ❓ Question [2026-05-21] - Framework Marker Injection Standardization
+**Context:** `REQUIREMENTS.md` identifies a "Framework Injection Gap" where `Value Lenses` and `Operating Profiles` are not injected into generated context.
+**Ambiguity / Drift:** The templates (`GEMINI.template.md`, `CLAUDE.template.md`) lack the corresponding markers, and the generators don't have the injection logic. We need to standardize the naming and placement of these markers.
+**Question for Product Owner:** Should we use `<!-- VALUE_LENS_INJECTIONS_START -->` and `<!-- OPERATING_PROFILE_INJECTIONS_START -->` as the canonical markers, and should they be placed before or after the Global Mandates?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Add the canonical framework markers to all context templates and update `scripts/context_helpers.js` to support their injection.*
+
+### ❓ Question [2026-05-21] - Internal Tool Audit Log Implementation
+**Context:** `AGENTS.md` now mandates structured JSON Audit Logs to `stderr` for internal tools like `executive-assistant`.
+**Ambiguity / Drift:** Implementing this requires standardizing on a shared logging utility or pattern across Node.js tools.
+**Question for Product Owner:** Should we introduce a shared `scripts/audit_logger.js` utility that all Node.js tools and services must use to ensure consistent Audit Log formatting and emission to `stderr`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create a shared `scripts/audit_logger.js` utility and refactor `tools/executive-assistant/server.js` and `examples/gatekeeper-deployment/dashboard-ingest.js` to use it for all operational events.*
+
 _The three 2026-05-20 questions previously listed here (Audit Script Enforcement Depth, Fleet Dashboard API Path Standardization, Branch Protection Enforcement Mandate) were resolved on 2026-05-20 — see `DECISION_LOG.md` entries dated 2026-05-20 and the corresponding amendments under `REQUIREMENTS.md` §7 (Governance) and §"Current Known Limitations"._

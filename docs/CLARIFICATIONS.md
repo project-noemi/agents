@@ -556,3 +556,17 @@ Add new questions below this line using the required format.
 **🤖 Jules Action Prompt:** *Create a shared `scripts/audit_logger.js` utility and refactor `tools/executive-assistant/server.js` and `examples/gatekeeper-deployment/dashboard-ingest.js` to use it for all operational events.*
 
 _The three 2026-05-20 questions previously listed here (Audit Script Enforcement Depth, Fleet Dashboard API Path Standardization, Branch Protection Enforcement Mandate) were resolved on 2026-05-20 — see `DECISION_LOG.md` entries dated 2026-05-20 and the corresponding amendments under `REQUIREMENTS.md` §7 (Governance) and §"Current Known Limitations"._
+
+### ❓ Question [2026-05-21] - AI Model Version Baseline Formalization
+**Context:** Multiple reference workflows (e.g., `rfp-responder.json`) and smoke tests (`tests/examples-smoke.test.js`) are pinned to `models/gemini-2.5-flash`.
+**Ambiguity / Drift:** There is no "AI Model Baseline" requirement in `REQUIREMENTS.md` or `AGENTS.md` comparable to the "Node.js 24 Baseline." This makes it unclear if `gemini-2.5-flash` is the mandated reference model for all NoéMI examples or if it's just a placeholder that can drift.
+**Question for Product Owner:** Should the repository establish a canonical AI Model Baseline (e.g., Gemini 2.5 Flash) for all reference workflows and examples to ensure predictable performance and cost during validation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Define a "Reference AI Model Baseline" in `AGENTS.md` and `REQUIREMENTS.md` and update all example workflows and smoke tests to adhere to this standard.*
+
+### ❓ Question [2026-05-21] - Audit Log Emission Descriptor Standardization
+**Context:** The requirement to emit logs "separately from the primary user-facing payload" is currently interpreted as "to stderr".
+**Ambiguity / Drift:** In some orchestrator environments (e.g., n8n, custom Docker wrappers), `stderr` may be used for both technical crashes and structured audit logs, potentially leading to parsing errors.
+**Question for Product Owner:** Should we standardize on a specific file descriptor (e.g., `FD 3`) or a prefixed format (e.g., `AUDIT_LOG: {...}`) to ensure unambiguous capture of the audit record?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `AGENTS.md` and `REQUIREMENTS.md` to specify a prefixed logging format or a dedicated file descriptor for unambiguous Audit Log capture.*

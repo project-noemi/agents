@@ -73,6 +73,19 @@ function checkPersonas() {
         if (!headings.includes('Refusal Criteria')) {
             fail(`${agent.path} missing required subsection: Refusal Criteria`);
         }
+
+        // Substantive JSON validation for Audit Log (aligned with main)
+        const auditLogMatch = content.match(/## Audit Log\s*\n([\s\S]*?)(?=\n## |\n$)/);
+        if (auditLogMatch) {
+            const jsonText = auditLogMatch[1].trim();
+            if (jsonText.startsWith('{') && jsonText.endsWith('}')) {
+                try {
+                    JSON.parse(jsonText);
+                } catch (error) {
+                    fail(`${agent.path} contains malformed JSON in Audit Log: ${error.message}`);
+                }
+            }
+        }
     }
     console.log(`Audited ${agents.length} agents.`);
 }

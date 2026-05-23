@@ -227,3 +227,33 @@
   - Mandatory inclusion of confirmed technical drifts in `REQUIREMENTS.md` §"Current Known Limitations".
   - Documentation of naming convention drift (English-first, slug-based) for non-compliant example assets.
   - Identification of the "Internal Tool Observability Gap" (JSON Audit Log to `stderr`) for repository-adjacent Node.js tools.
+
+## [2026-05-21] Fleet Dashboard API Path Standardization (Remediation)
+
+- **Decision:** Standardize the Fleet Dashboard API ingest path to `/api/v1/reports` across the reference implementation, docker-compose configuration, and smoke tests.
+- **Context:** Resolves the technical drift between the persona specification and the actual implementation.
+- **Impact:** Closes the `Reference implementation Path Inconsistency` and `Test Suite Reinforcement of Technical Drift` items in `REQUIREMENTS.md`.
+
+## [2026-05-21] Context Template Marker Normalization
+
+- **Decision:** Remove duplicate `GLOBAL_MANDATES` and `AGENT_INDEX` marker pairs from `templates/context/GEMINI.template.md`.
+- **Context:** Resolves redundant section injection in generated context files.
+- **Impact:** Closes the `Template Marker Duplication` item in `REQUIREMENTS.md`.
+
+## [2026-05-21] Pre-flight Script Logic Simplification
+
+- **Decision:** Refactor `scripts/verify-env.sh` to remove contradictory hard-fail logic for SecretOps tools, standardizing on the warning behavior for the `builder` mode.
+- **Context:** Supports local-first onboarding by not requiring SecretOps tools for basic repository exploration.
+- **Impact:** Closes the `Pre-flight Logic Contradiction` item in `REQUIREMENTS.md`.
+
+## [2026-05-21] Phase 0 Assessment Kit Inventory Expansion
+
+- **Decision:** Explicitly include `PRACTITIONER_NOTES.md` and `network-security-assessment.md` as canonical components of the Phase 0 Assessment Kit in `REQUIREMENTS.md`.
+- **Context:** Resolves inventory under-reporting for Phase 0 assets.
+- **Impact:** Closes the `Phase 0 Assessment Kit Inventory Under-reporting` item in `REQUIREMENTS.md`.
+
+## [2026-05-21] Audit Gate JSON Validation Enhancement
+
+- **Decision:** Enhance `scripts/audit-repo.js` to include basic JSON parsing validation for the mandatory `Audit Log` section.
+- **Context:** Ensures that agents not only have the heading but also provide structurally valid JSON for their audit records.
+- **Impact:** Improves repository governance and reduces technical drift in agent specifications.

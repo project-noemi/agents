@@ -43,7 +43,7 @@ test('gatekeeper deployment includes the signed dashboard ingest path', () => {
     const entrypoint = read('examples/gatekeeper-deployment/entrypoint.sh');
 
     assert.match(compose, /dashboard-ingest:/);
-    assert.match(compose, /DASHBOARD_API_URL=http:\/\/dashboard-ingest:8081\/ingest/);
+    assert.match(compose, /DASHBOARD_API_URL=http:\/\/dashboard-ingest:8081\/api\/v1\/reports/);
     assert.match(entrypoint, /X-Signature-256/);
     assert.match(entrypoint, /retry_with_backoff/);
 });

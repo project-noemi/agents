@@ -124,23 +124,6 @@ case "$MODE" in
         ;;
 esac
 
-# Mandate SecretOps CLIs
-echo -e "\n🔐 Checking SecretOps CLIs..."
-HAS_INFISICAL=false
-HAS_OP=false
-command -v infisical >/dev/null 2>&1 && HAS_INFISICAL=true
-command -v op >/dev/null 2>&1 && HAS_OP=true
-
-if [ "$HAS_INFISICAL" = true ]; then
-    echo -e "✅ Infisical CLI is installed."
-elif [ "$HAS_OP" = true ]; then
-    echo -e "✅ 1Password CLI (op) is installed."
-else
-    echo -e "❌ Missing SecretOps CLI. Please install either 'infisical' or 'op'."
-    echo -e "   This is required for the Fetch-on-Demand security policy."
-    ALL_GOOD=false
-fi
-
 if [ "$ALL_GOOD" = false ]; then
     echo -e "\n⚠️ Please install the missing tools for the selected path and run this script again.\n"
     exit 1
@@ -158,10 +141,20 @@ SECRETS_CLI=false
 if command -v op >/dev/null 2>&1; then
     echo -e "✅ 1Password CLI (op) is installed."
     SECRETS_CLI=true
+    if op user get --me >/dev/null 2>&1; then
+        echo -e "   ✅ Authenticated to 1Password."
+    else
+        echo -e "   ⚠️  Not authenticated to 1Password. Run 'op signin'."
+    fi
 fi
 if command -v infisical >/dev/null 2>&1; then
     echo -e "✅ Infisical CLI is installed."
     SECRETS_CLI=true
+    if infisical whoami >/dev/null 2>&1; then
+        echo -e "   ✅ Authenticated to Infisical."
+    else
+        echo -e "   ⚠️  Not authenticated to Infisical. Run 'infisical login'."
+    fi
 fi
 if [ "$SECRETS_CLI" = false ]; then
     echo -e "⚠️ No SecretOps CLI found. Install at least one before you connect business systems:"

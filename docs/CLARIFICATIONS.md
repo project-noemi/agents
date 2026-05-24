@@ -556,3 +556,17 @@ Add new questions below this line using the required format.
 **🤖 Jules Action Prompt:** *Create a shared `scripts/audit_logger.js` utility and refactor `tools/executive-assistant/server.js` and `examples/gatekeeper-deployment/dashboard-ingest.js` to use it for all operational events.*
 
 _The three 2026-05-20 questions previously listed here (Audit Script Enforcement Depth, Fleet Dashboard API Path Standardization, Branch Protection Enforcement Mandate) were resolved on 2026-05-20 — see `DECISION_LOG.md` entries dated 2026-05-20 and the corresponding amendments under `REQUIREMENTS.md` §7 (Governance) and §"Current Known Limitations"._
+
+### ❓ Question [2026-05-22] - SecretOps Pre-flight Failure Policy for Docker Mode
+**Context:** The `scripts/verify-env.sh` now treats missing SecretOps CLIs as a Warning for the default `builder` mode to support beginner onboarding. However, the `docker` mode is intended for home and runtime verification.
+**Ambiguity / Drift:** It is unclear if `docker` mode should maintain a "Hard Fail" (exit 1) policy for missing SecretOps to ensure runtime environments are correctly configured for Fetch-on-Demand security.
+**Question for Product Owner:** Should `scripts/verify-env.sh` enforce a Hard Failure for missing SecretOps CLIs when running in `docker` mode, or should it remain a Warning across all modes?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` to enforce exit 1 for missing SecretOps CLIs only when `--mode=docker` is specified.*
+
+### ❓ Question [2026-05-22] - Casdoor Identity Integration Logic
+**Context:** `REQUIREMENTS.md` and `DECISION_LOG.md` identify Casdoor as the reference identity layer for multi-tenant deployments.
+**Ambiguity / Drift:** While Casdoor is present in `fleet-deployment` compose files, there is no implementation logic in the repository (scripts, middleware, or agents) that actually performs token validation or user context extraction.
+**Question for Product Owner:** Should Jules implement a reference `casdoor-auth` skill or Node.js middleware to demonstrate how agents should validate identity in a multi-tenant fleet?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create a `skills/security/casdoor-validate.md` specification and implement basic JWT validation middleware in `examples/gatekeeper-deployment/dashboard-ingest.js`.*

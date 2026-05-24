@@ -38,10 +38,20 @@ Validate that preconditions are met before executing a state-changing action. Th
 ```
 
 
+## Data Inventory
+- **Inputs:** TBD
+- **Outputs:** TBD
+- **State:** None
+
 ## Rules & Constraints (4D Diligence)
 1. **Atomic Logic:** This skill must perform exactly one logical task.
 2. **Standard Output:** Always return data in the mandated structured format.
 3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
+### Refusal Criteria
+- **Task Refusal:** TBD
+- **Override Resistance:** TBD
+- **Escalation Path:** TBD
+
 ## Boundaries
 - **Always:** Perform read-only operations only during checks. Create backups before file modifications. Document the rollback plan.
 - **Ask First:** Proceeding when any check fails. Skipping the backup step.
@@ -49,6 +59,8 @@ Validate that preconditions are met before executing a state-changing action. Th
 
 
 ## Audit Log
+
+```json
 {
   "task": "...",
   "inputs": [],
@@ -56,14 +68,5 @@ Validate that preconditions are met before executing a state-changing action. Th
   "risks": [],
   "result": "..."
 }
-## Examples
+```
 
-**Linux config change (SysAdmin agent):**
-- Action: "Edit /etc/nginx/nginx.conf to add new server block"
-- Checks: [`nginx -t` (syntax), `df -h` (disk), `systemctl status nginx` (running)]
-- Output: `{ "status": "CONFIRM", "risk_level": "medium", "backup_path": "/etc/nginx/nginx.conf.bak" }`
-
-**PR merge (Gatekeeper agent):**
-- Action: "Squash-merge PR #42"
-- Checks: [CI green, no conflicts, branch protection rules met]
-- Output: `{ "status": "READY", "risk_level": "low", "checks_result": [...] }`

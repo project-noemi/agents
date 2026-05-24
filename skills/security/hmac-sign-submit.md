@@ -39,10 +39,20 @@ Sign an outgoing payload with HMAC-SHA256 and submit it to a receiving API that 
 ```
 
 
+## Data Inventory
+- **Inputs:** TBD
+- **Outputs:** TBD
+- **State:** None
+
 ## Rules & Constraints (4D Diligence)
 1. **Atomic Logic:** This skill must perform exactly one logical task.
 2. **Standard Output:** Always return data in the mandated structured format.
 3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
+### Refusal Criteria
+- **Task Refusal:** TBD
+- **Override Resistance:** TBD
+- **Escalation Path:** TBD
+
 ## Boundaries
 - **Always:** Use deterministic key ordering for serialization. Include both Bearer token and HMAC signature. Log every submission attempt (success or failure) with timestamp.
 - **Ask First:** Retrying after a 401 response. Changing the signing algorithm.
@@ -50,6 +60,8 @@ Sign an outgoing payload with HMAC-SHA256 and submit it to a receiving API that 
 
 
 ## Audit Log
+
+```json
 {
   "task": "...",
   "inputs": [],
@@ -57,15 +69,4 @@ Sign an outgoing payload with HMAC-SHA256 and submit it to a receiving API that 
   "risks": [],
   "result": "..."
 }
-## Examples
-
-**Fleet Dashboard submission (Gatekeeper agent):**
-```bash
-BODY='{"agent_id":"gatekeeper","cycle_timestamp":"2026-03-17T12:00:00Z",...}'
-SIGNATURE=$(echo -n "$BODY" | openssl dgst -sha256 -hmac "$HMAC_SECRET" | awk '{print $2}')
-curl -X POST "$DASHBOARD_API_URL/api/v1/reports" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $DASHBOARD_AUTH_TOKEN" \
-  -H "X-Signature-256: sha256=$SIGNATURE" \
-  -d "$BODY"
 ```

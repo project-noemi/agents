@@ -1,3 +1,5 @@
+> ℹ️ **Base branch:** target `develop`, not `main`. See [CONTRIBUTING.md#branching-model](../CONTRIBUTING.md#branching-model).
+
 ## Summary
 
 - 

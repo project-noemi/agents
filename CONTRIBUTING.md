@@ -130,6 +130,25 @@ npm run validate
 - Use runtime env access (`process.env`, `os.getenv()`), not checked-in secrets or dotenv loaders.
 - Historical Python examples may remain, but do not present them as the recommended first path for new builders.
 
+## Branching Model
+
+This repository uses a two-branch flow:
+
+- **`develop`** — integration branch. All feature, fix, and docs PRs target `develop`.
+- **`main`** — release branch. Only `develop` is promoted into `main`, gated by the `Require develop source` CI check.
+
+When opening a pull request:
+
+1. Branch from `develop` and keep your branch current with `develop` to avoid conflicts on generated files (`CLAUDE.md`, `GEMINI.md`, golden fixtures).
+2. Set the PR base branch to `develop` — not `main`. PRs to `main` from any source other than `develop` are blocked by CI.
+3. Maintainers handle periodic `develop` → `main` promotion separately.
+
+If you accidentally open a PR against `main`, retarget it via the GitHub UI (Edit → Base branch) or:
+
+```bash
+gh pr edit <num> --base develop
+```
+
 ## Pull Request Expectations
 
 Every PR should explain:

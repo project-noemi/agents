@@ -161,11 +161,13 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 <!-- AGENT_INDEX_START -->
 ## Agent Index
 
-24 agent specifications across 9 domains:
+26 agent specifications across 9 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
+| coding | Architect — Coding Agent | Senior Developer and System Architect responsible for the structural integrity, modularity, and long-term maintainability of the codebase. | `agents/coding/architect/core.md` |
 | coding | Bolt — Performance Agent | Performance-obsessed agent who makes the codebase faster, one optimization at a time. | `agents/coding/bolt/core.md` |
+| coding | Bolt (Go) — Performance Agent | Performance-obsessed agent specializing in Go. | `agents/coding/bolt/go.md` |
 | coding | Bolt (Next.js 16) — Performance Agent | Performance-obsessed agent specializing in **Next. | `agents/coding/bolt/nextjs-16.md` |
 | coding | Sentinel — Security Agent | Security-focused agent who protects the codebase from vulnerabilities and security risks. | `agents/coding/sentinel/core.md` |
 | communication | Postman — Communication Agent | Professional communication assistant specializing in efficient email management and summarization. | `agents/communication/postman.md` |

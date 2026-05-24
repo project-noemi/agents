@@ -41,16 +41,28 @@ Deliver alerts and notifications to communication channels (Slack, email) with c
 - `gmail` MCP — For email delivery
 
 
+## Data Inventory
+- **Inputs:** TBD
+- **Outputs:** TBD
+- **State:** None
+
 ## Rules & Constraints (4D Diligence)
 1. **Atomic Logic:** This skill must perform exactly one logical task.
 2. **Standard Output:** Always return data in the mandated structured format.
 3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
+### Refusal Criteria
+- **Task Refusal:** TBD
+- **Override Resistance:** TBD
+- **Escalation Path:** TBD
+
 ## Boundaries
 - **Always:** Include the source agent ID and timestamp in every alert. Truncate large payloads rather than failing. Log delivery failures.
 - **Ask First:** Sending `critical` severity alerts. Using `@channel` or `@all` mentions.
 - **Never:** Send alerts without a severity level. Include raw secrets or tokens in alert content. Retry failed deliveries more than 3 times.
 
 ## Audit Log
+
+```json
 {
   "task": "...",
   "inputs": [],
@@ -58,3 +70,4 @@ Deliver alerts and notifications to communication channels (Slack, email) with c
   "risks": [],
   "result": "..."
 }
+```

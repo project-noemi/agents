@@ -83,21 +83,6 @@ switch ($Mode) {
     }
 }
 
-# Mandate SecretOps CLIs
-Write-Host "`n🔐 Checking SecretOps CLIs..." -ForegroundColor Cyan
-$hasInfisical = if (Get-Command "infisical" -ErrorAction SilentlyContinue) { $true } else { $false }
-$hasOp = if (Get-Command "op" -ErrorAction SilentlyContinue) { $true } else { $false }
-
-if ($hasInfisical) {
-    Write-Host "✅ Infisical CLI is installed." -ForegroundColor Green
-} elseif ($hasOp) {
-    Write-Host "✅ 1Password CLI (op) is installed." -ForegroundColor Green
-} else {
-    Write-Host "❌ Missing SecretOps CLI. Please install either 'infisical' or 'op'." -ForegroundColor Red
-    Write-Host "   This is required for the Fetch-on-Demand security policy." -ForegroundColor Red
-    $allGood = $false
-}
-
 if (-not $allGood) {
     Write-Host "`n⚠️ Please install the missing tools for the selected path and run this script again." -ForegroundColor Yellow
     exit 1
@@ -115,10 +100,22 @@ $secretsCli = $false
 if (Get-Command op -ErrorAction SilentlyContinue) {
     Write-Host "✅ 1Password CLI (op) is installed." -ForegroundColor Green
     $secretsCli = $true
+    & op user get --me >$null 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "   ✅ Authenticated to 1Password." -ForegroundColor Green
+    } else {
+        Write-Host "   ⚠️  Not authenticated to 1Password. Run 'op signin'." -ForegroundColor Yellow
+    }
 }
 if (Get-Command infisical -ErrorAction SilentlyContinue) {
     Write-Host "✅ Infisical CLI is installed." -ForegroundColor Green
     $secretsCli = $true
+    & infisical whoami >$null 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "   ✅ Authenticated to Infisical." -ForegroundColor Green
+    } else {
+        Write-Host "   ⚠️  Not authenticated to Infisical. Run 'infisical login'." -ForegroundColor Yellow
+    }
 }
 if (-not $secretsCli) {
     Write-Host "⚠️ No SecretOps CLI found. Install at least one before you connect business systems:" -ForegroundColor Yellow

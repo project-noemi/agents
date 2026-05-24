@@ -9,7 +9,7 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19.2",
+    "express": "^4.22.2",
     "google-auth-library": "^9.10.0",
     "googleapis": "^134.0.0"
   },

@@ -208,7 +208,7 @@ Add new questions below this line using the required format.
 ### ❓ Question [2026-05-02] - Automated Naming Convention Audit
 **Context:** `AGENTS.md` mandates English-first, slug-based naming for all artifacts, but `scripts/audit-repo.js` does not yet enforce this. A drift was identified in `docs/n8n workflows/`.
 **Ambiguity / Drift:** Without automated enforcement, the repository will continue to accumulate naming drifts that hinder cross-platform compatibility and localization.
-**Question for Product Owner:** Should Jules implement a regex-based naming convention check in `scripts/audit-repo.js` for all files in `docs/`, `agents/`, `skills/`, and `examples/`?
+**Question for Product Owner:** Should Jules implement a regex-based naming convention check in any key directory?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Add a regex-based filename validation check to `scripts/audit-repo.js` to enforce the English-first, slug-based naming convention across all key directories.*
 
@@ -422,6 +422,27 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to implement active authentication checks with the specified commands.*
 
+### ❓ Question [2026-05-17] - Branch Protection Enforcement Mandate
+**Context:** The repository contains `scripts/setup-branch-protection.sh` to automate GitHub branch protection rules, aligning with the `develop` -> `main` workflow mandated in `REQUIREMENTS.md` Section 9.
+**Ambiguity / Drift:** While the workflow is mandated, the use of the enforcement script itself is not a requirement. This leads to a "soft enforcement" where the script exists but its execution is not verified or required for repository governance.
+**Question for Product Owner:** Should the execution of `scripts/setup-branch-protection.sh` (or an equivalent automated enforcement) be added as a mandatory requirement for "Governance and Trust Controls" in `REQUIREMENTS.md`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` Section 7 to include mandatory branch protection enforcement using the provided script and add a validation check to `audit-repo.js` to ensure protection is active via the GitHub API.*
+
+### ❓ Question [2026-05-17] - Phase 0 Assessment Kit Inventory Drift
+**Context:** `REQUIREMENTS.md` Section 1 specifies a list of templates for the Phase 0 Assessment Kit (security/AI readiness guides, consent, report-of-findings, roadmap, rubric).
+**Ambiguity / Drift:** The `docs/phase-zero-assessment/` directory contains additional critical assets: `PRACTITIONER_NOTES.md` and `network-security-assessment.md`. These are currently "extra-canonical" and not tracked by the requirement suite.
+**Question for Product Owner:** Should the Phase 0 Assessment Kit requirement in `REQUIREMENTS.md` be expanded to explicitly include `PRACTITIONER_NOTES.md` and `network-security-assessment.md`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` Section 1 to include `PRACTITIONER_NOTES.md` and `network-security-assessment.md` in the canonical Phase 0 Assessment Kit inventory.*
+
+### ❓ Question [2026-05-17] - AI Model Version Baseline for Reference Workflows
+**Context:** Reference n8n workflows (e.g., `examples/workflows/rfp-responder.json`) and smoke tests (`tests/examples-smoke.test.js`) are pinned to `models/gemini-2.5-flash`.
+**Ambiguity / Drift:** There is no "AI Model Baseline" requirement in `REQUIREMENTS.md` or `AGENTS.md` comparable to the "Node.js 24 Baseline." This makes it unclear if `gemini-2.5-flash` is the mandated reference model for all NoéMI examples or if it's just a placeholder.
+**Question for Product Owner:** Should the repository establish a canonical AI Model Baseline (e.g., Gemini 2.5 Flash) for all reference workflows and examples to ensure predictable performance and cost during validation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Define a "Reference AI Model Baseline" in `AGENTS.md` and `REQUIREMENTS.md` and update all example workflows and smoke tests to adhere to this standard.*
+
 ### ❓ Question [2026-05-15] - Test Suite Reinforcement of API Path Drift
 **Context:** The requirements and `Fleet Dashboard` persona mandate `/api/v1/reports` as the ingestion endpoint. However, `examples/gatekeeper-deployment/dashboard-ingest.js` implements `/ingest`, and `tests/examples-smoke.test.js` explicitly asserts that `/ingest` is the correct path.
 **Ambiguity / Drift:** The test suite is currently "codifying" a technical drift, making it harder to remediate the inconsistency without breaking the build.
@@ -435,3 +456,117 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the audit script be enhanced to perform referential integrity checks on skill references within agent workflows?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse agent workflows for skill references and verify their existence in the `skills/` directory.*
+
+### ❓ Question [2026-05-16] - Skill Template and Library Substantive Remediation
+**Context:** A whole-codebase audit verified that `skills/SKILL_TEMPLATE.md` and all 8 reusable skills in the `skills/` directory are missing the mandated `## Data Inventory` and `### Refusal Criteria` sections.
+**Ambiguity / Drift:** The skill library is in substantive drift from the 4D Description (D2) and Refusal Principle mandates, which are required for production-ready logic.
+**Question for Product Owner:** Should Jules be tasked with a fleet-wide "substantive remediation" of the skill library to add these missing sections and replace Audit Log placeholders with role-specific content?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of `skills/SKILL_TEMPLATE.md` and all files in `skills/` to incorporate `Data Inventory` and `Refusal Criteria` and replace Audit Log placeholders.*
+
+### ❓ Question [2026-05-16] - Referential Integrity Enforcement for Context Configuration
+**Context:** `mcp.config.json` defines the `active_mcps` and `active_skills` injected into context. Currently, `scripts/audit-repo.js` does not verify that these entries actually map to existing files.
+**Ambiguity / Drift:** Typos or missing files in the configuration lead to incomplete context generation without triggering an audit failure, creating a "silent failure" mode in the CI/CD pipeline.
+**Question for Product Owner:** Should the repository's audit gate be enhanced to perform strict "referential integrity" checks ensuring all configured MCPs and skills exist in their respective directories?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to validate that every entry in `mcp.config.json` maps to a valid file in `mcp-protocols/` or `skills/`.*
+
+### ❓ Question [2026-05-16] - Test Suite Alignment with API Mandates
+**Context:** The `Fleet Dashboard` persona mandates `/api/v1/reports`, but the implementation uses `/ingest`. `tests/examples-smoke.test.js` currently asserts that `/ingest` is the correct path.
+**Ambiguity / Drift:** The test suite is codifying and reinforcing a technical drift, making it harder to remediate the API path inconsistency.
+**Question for Product Owner:** Should the test suite be updated to expect the mandated `/api/v1/reports` path (triggering a deliberate failure until the implementation is fixed) or should the persona be updated to match the implementation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `tests/examples-smoke.test.js` to expect `/api/v1/reports` and implement the corresponding fix in `examples/gatekeeper-deployment/dashboard-ingest.js`.*
+
+### ❓ Question [2026-05-17] - Generator Script Redundancy
+**Context:** The repository contains `scripts/generate_all.js`, `scripts/generate_gemini.js`, and `scripts/generate_claude.js`. `generate_all.js` appears to perform the same logic for both Gemini and Claude by calling shared helpers.
+**Ambiguity / Drift:** Maintenance overhead is increased by having three entry points for context generation. It's unclear if `generate_gemini.js` and `generate_claude.js` should be deprecated in favor of the single `generate_all.js` orchestrator.
+**Question for Product Owner:** Should we deprecate `scripts/generate_gemini.js` and `scripts/generate_claude.js` and standardize on `scripts/generate_all.js` for all context generation tasks?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Remove `scripts/generate_gemini.js` and `scripts/generate_claude.js`, ensuring `scripts/generate_all.js` is the sole, fully-featured entry point for context generation.*
+
+### ❓ Question [2026-05-17] - Logging MCP Reference Implementation Gap
+**Context:** `mcp-protocols/logging-mcp.md` exists as a dual-backend draft, but it is not active in `mcp.config.json`, and reference services like `dashboard-ingest.js` do not yet adhere to its schema.
+**Ambiguity / Drift:** The observability "standard" is documented but not implemented in the repository's own reference services, creating a gap between architectural theory and implementation truth.
+**Question for Product Owner:** Should Jules be tasked with a "substantive implementation" of the `logging-mcp` pattern across the repository's reference services and build tools?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Activate `logging-mcp` in `mcp.config.json` and refactor `dashboard-ingest.js` and build utilities to emit logs according to the protocol's standardized JSON shape.*
+
+### ❓ Question [2026-05-17] - Pre-flight Active Authentication Checks
+**Context:** `AGENTS.md` mandates active authentication checks in pre-flight scripts, but `verify-env.sh` and `verify-env.ps1` currently only check for CLI presence.
+**Ambiguity / Drift:** We need to confirm the canonical commands for authentication verification.
+**Question for Product Owner:** Should we use `infisical whoami` and `op user get --me` as the standard authentication checks, and should their failure be treated as a "Hard Fail" (exit 1) in `builder` and `docker` modes?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to implement active authentication checks with the specified commands.*
+
+### ❓ Question [2026-05-19] - Audit Script JSON Schema Validation Mandate
+**Context:** `REQUIREMENTS.md` Section 2 mandates a specific JSON shape for Audit Logs, but `scripts/audit-repo.js` currently only verifies the presence of the "Audit Log" heading.
+**Ambiguity / Drift:** There is no technical enforcement of the mandated schema (`{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`), allowing agents to pass audits with structurally invalid or placeholder JSON.
+**Question for Product Owner:** Should Jules be tasked with implementing strict JSON schema validation within `scripts/audit-repo.js` for all agent and skill files to ensure technical compliance?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse and validate the JSON Audit Log section in all agents and skills against the mandated schema.*
+
+### ❓ Question [2026-05-19] - Internal Tool Observability Standard
+**Context:** `AGENTS.md` and `REQUIREMENTS.md` mandate that agents and reference services emit JSON Audit Logs to `stderr`.
+**Ambiguity / Drift:** Build utilities (`generate_all.js`, `audit-repo.js`) and internal tools (`executive-assistant`) currently use unstructured logs, drifting from the observability standard set for external agents.
+**Question for Product Owner:** Should internal repository tools and build utilities also be required to emit a structured JSON Audit Log to `stderr` upon completion for fleet-wide observability?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `scripts/generate_all.js`, `scripts/audit-repo.js`, and `tools/executive-assistant/server.js` to emit structured JSON Audit Logs to `stderr`.*
+
+### ❓ Question [2026-05-20] - AI Model Version Baseline Formalization
+**Context:** Multiple reference workflows (e.g., `rfp-responder.json`) and n8n lab examples are pinned to `models/gemini-2.5-flash`.
+**Ambiguity / Drift:** There is no "AI Model Baseline" requirement in `REQUIREMENTS.md` or `AGENTS.md` comparable to the "Node.js 24 Baseline." This makes it unclear if `gemini-2.5-flash` is the mandated reference model for all NoéMI examples or if it's just a placeholder that can drift.
+**Question for Product Owner:** Should the repository establish a canonical AI Model Baseline (e.g., Gemini 2.5 Flash) for all reference workflows and examples to ensure predictable performance and cost during validation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Define a "Reference AI Model Baseline" in `AGENTS.md` and `REQUIREMENTS.md` and update all example workflows and smoke tests to adhere to this standard.*
+
+### ❓ Question [2026-05-20] - Phase 0 Assessment Kit Inventory Completion
+**Context:** `REQUIREMENTS.md` Section 1 specifies a list of templates for the Phase 0 Assessment Kit. The `docs/phase-zero-assessment/` directory currently contains additional critical assets: `PRACTITIONER_NOTES.md` and `network-security-assessment.md`.
+**Ambiguity / Drift:** These assets are currently "extra-canonical" and not tracked by the requirement suite, leading to potential inventory drift or under-reporting of the kit's true capabilities.
+**Question for Product Owner:** Should the Phase 0 Assessment Kit requirement in `REQUIREMENTS.md` be expanded to explicitly include `PRACTITIONER_NOTES.md` and `network-security-assessment.md` as canonical components?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` Section 1 to include `PRACTITIONER_NOTES.md` and `network-security-assessment.md` in the canonical Phase 0 Assessment Kit inventory.*
+
+### ❓ Question [2026-05-20] - Automated Branch Protection Verification Depth
+**Context:** Branch protection is now mandatory (Decision [2026-05-20]). `scripts/setup-branch-protection.sh` exists to automate this.
+**Ambiguity / Drift:** It is unclear if the repository's audit gate (`audit-repo.js`) should perform an active API check against the GitHub repository to verify protection status, or if it should simply verify the existence of the governance script and documentation.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be enhanced to perform an active GitHub API check to verify that branch protection is enabled on the current repository?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to optionally verify branch protection status via the GitHub API when a `GITHUB_TOKEN` is present in the environment.*
+
+### ❓ Question [2026-05-21] - SecretOps Pre-flight Failure Policy
+**Context:** `AGENTS.md` and `REQUIREMENTS.md` Section 8 suggest that SecretOps pre-flight checks in `scripts/verify-env.sh` should warn/soft-fail to support local exploration. However, the current implementation of `verify-env.sh` treats the absence of both `infisical` and `op` as a hard failure (`ALL_GOOD=false` and exit 1).
+**Ambiguity / Drift:** This creates a barrier for beginners performing the "zero-to-first-agent" local task, contradicting the "beginner-safe" requirement.
+**Question for Product Owner:** Should `scripts/verify-env.sh` be refactored to treat missing SecretOps CLIs as a Warning (exit 0) rather than a Failure (exit 1) for the default `builder` mode?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `scripts/verify-env.sh` to downgrade missing SecretOps CLIs to a Warning for `builder` and `n8n` modes.*
+
+### ❓ Question [2026-05-21] - Framework Marker Injection Standardization
+**Context:** `REQUIREMENTS.md` identifies a "Framework Injection Gap" where `Value Lenses` and `Operating Profiles` are not injected into generated context.
+**Ambiguity / Drift:** The templates (`GEMINI.template.md`, `CLAUDE.template.md`) lack the corresponding markers, and the generators don't have the injection logic. We need to standardize the naming and placement of these markers.
+**Question for Product Owner:** Should we use `<!-- VALUE_LENS_INJECTIONS_START -->` and `<!-- OPERATING_PROFILE_INJECTIONS_START -->` as the canonical markers, and should they be placed before or after the Global Mandates?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Add the canonical framework markers to all context templates and update `scripts/context_helpers.js` to support their injection.*
+
+### ❓ Question [2026-05-21] - Internal Tool Audit Log Implementation
+**Context:** `AGENTS.md` now mandates structured JSON Audit Logs to `stderr` for internal tools like `executive-assistant`.
+**Ambiguity / Drift:** Implementing this requires standardizing on a shared logging utility or pattern across Node.js tools.
+**Question for Product Owner:** Should we introduce a shared `scripts/audit_logger.js` utility that all Node.js tools and services must use to ensure consistent Audit Log formatting and emission to `stderr`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create a shared `scripts/audit_logger.js` utility and refactor `tools/executive-assistant/server.js` and `examples/gatekeeper-deployment/dashboard-ingest.js` to use it for all operational events.*
+
+_The three 2026-05-20 questions previously listed here (Audit Script Enforcement Depth, Fleet Dashboard API Path Standardization, Branch Protection Enforcement Mandate) were resolved on 2026-05-20 — see `DECISION_LOG.md` entries dated 2026-05-20 and the corresponding amendments under `REQUIREMENTS.md` §7 (Governance) and §"Current Known Limitations"._
+
+### ❓ Question [2026-05-22] - SecretOps Pre-flight Failure Policy for Docker Mode
+**Context:** The `scripts/verify-env.sh` now treats missing SecretOps CLIs as a Warning for the default `builder` mode to support beginner onboarding. However, the `docker` mode is intended for home and runtime verification.
+**Ambiguity / Drift:** It is unclear if `docker` mode should maintain a "Hard Fail" (exit 1) policy for missing SecretOps to ensure runtime environments are correctly configured for Fetch-on-Demand security.
+**Question for Product Owner:** Should `scripts/verify-env.sh` enforce a Hard Failure for missing SecretOps CLIs when running in `docker` mode, or should it remain a Warning across all modes?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` to enforce exit 1 for missing SecretOps CLIs only when `--mode=docker` is specified.*
+
+### ❓ Question [2026-05-22] - Casdoor Identity Integration Logic
+**Context:** `REQUIREMENTS.md` and `DECISION_LOG.md` identify Casdoor as the reference identity layer for multi-tenant deployments.
+**Ambiguity / Drift:** While Casdoor is present in `fleet-deployment` compose files, there is no implementation logic in the repository (scripts, middleware, or agents) that actually performs token validation or user context extraction.
+**Question for Product Owner:** Should Jules implement a reference `casdoor-auth` skill or Node.js middleware to demonstrate how agents should validate identity in a multi-tenant fleet?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create a `skills/security/casdoor-validate.md` specification and implement basic JWT validation middleware in `examples/gatekeeper-deployment/dashboard-ingest.js`.*

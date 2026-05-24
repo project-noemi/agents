@@ -30,10 +30,20 @@ Categorize items into risk tiers to determine the appropriate action path. This 
 ```
 
 
+## Data Inventory
+- **Inputs:** TBD
+- **Outputs:** TBD
+- **State:** None
+
 ## Rules & Constraints (4D Diligence)
 1. **Atomic Logic:** This skill must perform exactly one logical task.
 2. **Standard Output:** Always return data in the mandated structured format.
 3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
+### Refusal Criteria
+- **Task Refusal:** TBD
+- **Override Resistance:** TBD
+- **Escalation Path:** TBD
+
 ## Boundaries
 - **Always:** Default to the conservative (middle) tier when uncertain. Include the full reasoning in the output.
 - **Ask First:** Overriding a Blocked classification to a lower tier.
@@ -41,6 +51,8 @@ Categorize items into risk tiers to determine the appropriate action path. This 
 
 
 ## Audit Log
+
+```json
 {
   "task": "...",
   "inputs": [],
@@ -48,14 +60,5 @@ Categorize items into risk tiers to determine the appropriate action path. This 
   "risks": [],
   "result": "..."
 }
-## Examples
+```
 
-**PR Triage (Gatekeeper agent):**
-- Input: PR with passing CI, 12 lines changed, docs-only, org member author
-- Criteria: Gatekeeper Rule #2 (all conditions met)
-- Output: `{ "tier": "SAFE", "reasons": ["CI green", "docs-only", "<300 LOC", "org member"], "confidence": "high" }`
-
-**Data Privacy (PIIGuard agent):**
-- Input: JSON payload containing "SSN: 999-00-1234"
-- Criteria: PIIGuard classification (Confidential/PII patterns)
-- Output: `{ "tier": "BLOCKED", "reasons": ["SSN pattern detected"], "confidence": "high" }`

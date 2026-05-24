@@ -5,3 +5,4 @@ scratchpad
 __pycache__/
 *.pyc
 test-artifacts/
+docs/superpowers/

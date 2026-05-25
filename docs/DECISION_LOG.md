@@ -219,6 +219,20 @@
 - **Context:** Resolves Q [2026-05-20] (Branch Protection Enforcement Mandate). Branch protection is baseline governance for any repository with multiple maintainers — leaving it optional creates a silent integrity gap that can be exploited by an inattentive direct push to `main`.
 - **Impact:** Closes the `Branch Protection Enforcement Gap` item from `REQUIREMENTS.md` Current Known Limitations. Section 7 of `REQUIREMENTS.md` is updated in this PR to include the new mandate.
 
+## [2026-05-25] Pre-flight Scripts: Authentication and Consistency Remediation
+
+- **Decision:** Formally close the "Pre-flight Script Shallow Validation" and "Pre-flight Logic Contradiction" known limitations from `REQUIREMENTS.md`. Both items are confirmed resolved by a whole-codebase verification of `scripts/verify-env.sh` and `scripts/verify-env.ps1`.
+- **Context:** Both scripts now include active `op user get --me` and `infisical whoami` authentication checks (warning-only), and the SecretOps path uses a single, consistent warning approach with no `ALL_GOOD=false` assignment for missing vault CLIs. The pre-existing "hard-fail + warning" contradiction no longer exists.
+- **Impact:** The two stale limitation entries have been removed from `REQUIREMENTS.md` §"Current Known Limitations". The open CLARIFICATIONS question [2026-05-25] tracks whether Docker mode should enforce a stricter hard-fail policy.
+
+## [2026-05-25] Reality Check: Audit Script and Skill Template Non-Compliance Identified
+
+- **Decision:** Document the two highest-priority unresolved gaps surfaced by this autonomous audit cycle and formalize them as pending work items.
+- **Context:** A codebase reality check against the implemented `scripts/audit-repo.js` confirmed: (1) Decision [2026-05-20] mandated Audit Log JSON *schema key* validation and `stderr` Audit Log emission from the audit script — only the skills directory audit was actually implemented; (2) `skills/SKILL_TEMPLATE.md` is missing `## Data Inventory` and `### Refusal Criteria`, and the audit gate explicitly skips this file, creating an undetected structural gap that will affect every new skill.
+- **Impact:**
+  - `REQUIREMENTS.md` §"Current Known Limitations" updated to add "Audit Log JSON Schema Key Enforcement Gap" and to accurately describe the revised state of "Skill Contract Substantive Drift."
+  - Two new CLARIFICATIONS questions opened ([2026-05-25]) for product-owner prioritization.
+
 ## [2026-05-20] Formalization of Technical Drift Tracking
 
 - **Decision:** Establish a formal requirement to track and surface newly identified technical drifts in `REQUIREMENTS.md` to ensure the "Current Implementation Truth" remains grounded in the codebase state.

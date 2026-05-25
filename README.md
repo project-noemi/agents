@@ -10,10 +10,11 @@ This repository is the **technical reference architecture and agent specificatio
 
 It provides a structured blueprint for building a **governed Virtual Workforce** using:
 
-* 20+ AI agent specifications across 8 domains (marketing, engineering, operations, security, etc.)
-* Reusable skills for classification, validation, reporting, and orchestration
-* MCP protocol definitions for safe integration with tools like Google Workspace, Slack, GitHub, and n8n
-* Governance frameworks aligned with **Phase 0 Security** and **Gartner AI TRiSM**
+* 26 AI agent specifications across 9 domains (coding, communication, education, engineering, guardian, infrastructure, marketing, operations, product)
+* 8 reusable skills covering classification, verification, reporting, security, and orchestration
+* 17 MCP protocol definitions for safe integration with Google Workspace (Drive, Docs, Sheets, Slides, Calendar, Gmail, Meet, Chat, Keep, Forms, Contacts, Admin), Slack, GitHub, n8n, web search, and unified logging (Loki/Grafana)
+* Governance frameworks aligned with **Phase 0 Security**, **Gartner AI TRiSM**, and the **4D AI Fluency Framework** (Delegation, Description, Discernment, Diligence)
+* Value lenses and operating profiles that let teams tune agents to specific business contexts without forking the specs
 
 These components are designed to move organizations from **unstructured, high-risk AI usage** to a **controlled, auditable, and scalable operating model**.
 
@@ -166,10 +167,12 @@ Without Phase 0, scaling AI introduces risk faster than value.
 It is designed to work with orchestrators such as:
 
 * n8n (primary orchestration layer in the NewPush Labs stack)
-* Gemini CLI
+* Gemini CLI (canonical baseline pinned to Gemini 2.5 Flash)
 * Claude Code
 * OpenAI Codex
 * LangChain
+
+All reference tooling and Docker images use **Node.js 24** as the technical baseline for cross-fleet compatibility.
 
 ---
 
@@ -186,6 +189,14 @@ It is designed to work with orchestrators such as:
 **Practitioners / Builders**
 → [docs/examples/zero-to-first-agent.md](docs/examples/zero-to-first-agent.md)
 (Building your first Virtual Coworker)
+
+**Onboarding by Platform**
+→ [docs/examples/cross-platform-kickstart.md](docs/examples/cross-platform-kickstart.md)
+(macOS / Linux, Windows, and ChromeOS kickstart paths)
+
+**Contributors**
+→ [CONTRIBUTING.md](CONTRIBUTING.md)
+(Contribution workflow, agent and skill standards)
 
 **Visual Orientation**
 → [docs/visuals/README.md](docs/visuals/README.md)

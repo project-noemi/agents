@@ -570,3 +570,17 @@ _The three 2026-05-20 questions previously listed here (Audit Script Enforcement
 **Question for Product Owner:** Should Jules implement a reference `casdoor-auth` skill or Node.js middleware to demonstrate how agents should validate identity in a multi-tenant fleet?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Create a `skills/security/casdoor-validate.md` specification and implement basic JWT validation middleware in `examples/gatekeeper-deployment/dashboard-ingest.js`.*
+
+### ❓ Question [2026-05-22] - Generator Script Marker Alignment
+**Context:** `REQUIREMENTS.md` identifies a "Framework Injection Gap" and the audit revealed that `scripts/generate_all.js` lacks logic to inject `Value Lenses` and `Operating Profiles`.
+**Ambiguity / Drift:** These frameworks are documented as core layers but are currently not available to agents in the generated context.
+**Question for Product Owner:** Should we prioritize adding `VALUE_LENS_INJECTIONS` and `OPERATING_PROFILE_INJECTIONS` markers to all context templates and updating the generation logic to inject these assets?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Add canonical framework markers to `templates/context/` and update `scripts/context_helpers.js` to inject `value-lenses/` and `operating-profiles/` content.*
+
+### ❓ Question [2026-05-22] - Template Marker Duplication and Placement
+**Context:** `templates/context/GEMINI.template.md` contains duplicate marker pairs for `GLOBAL_MANDATES` and `AGENT_INDEX`.
+**Ambiguity / Drift:** This causes redundant section injection in the generated `GEMINI.md`, leading to inflated token counts and potential agent confusion.
+**Question for Product Owner:** Should we standardize on a single placement for these markers (e.g., at the end of the file) and remove the duplicates across all templates?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Remove duplicate markers from `templates/context/GEMINI.template.md` and ensure a clean, single-injection structure for mandates and the agent index.*

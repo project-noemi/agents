@@ -584,3 +584,24 @@ _The three 2026-05-20 questions previously listed here (Audit Script Enforcement
 **Question for Product Owner:** Should we standardize on a single placement for these markers (e.g., at the end of the file) and remove the duplicates across all templates?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Remove duplicate markers from `templates/context/GEMINI.template.md` and ensure a clean, single-injection structure for mandates and the agent index.*
+
+### ❓ Question [2026-05-26] - Persona Filename and Title Alignment
+**Context:** `AGENTS.md` mandates slug-based naming for artifacts, and `agents/` contains files like `linux.md`, but the H1 title inside is `# SysAdmin — Infrastructure Agent`.
+**Ambiguity / Drift:** This inconsistency makes it harder for orchestrators to programmatically map filenames to persona identities and violates the principle of "truthful" naming.
+**Question for Product Owner:** Should persona filenames be strictly required to match the slugified version of their H1 title (e.g., `sysadmin.md` instead of `linux.md`), or is the filename allowed to be a more generic domain label?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a bulk rename of agent persona files to strictly match their slugified H1 titles and update all internal references.*
+
+### ❓ Question [2026-05-26] - Standardized 'No active [X]' placeholders in templates
+**Context:** `GEMINI.template.md` contains "No active skills defined. Run scripts/generate_gemini.js..." while `CLAUDE.template.md` has empty injection blocks.
+**Ambiguity / Drift:** This leads to inconsistent "empty states" in generated context files and refers to a deprecated/secondary script (`generate_gemini.js`) instead of the primary `generate_all.js`.
+**Question for Product Owner:** Should we standardize the empty-state placeholder text across all context templates and ensure it refers to the canonical `generate_all.js` script?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize the placeholder text for empty `SKILLS` and `MCP` injection blocks across all context templates and update script references to `generate_all.js`.*
+
+### ❓ Question [2026-05-26] - Audit Log Task Field Content Standardization
+**Context:** `REQUIREMENTS.md` mandates a JSON shape for Audit Logs with a `"task"` field.
+**Ambiguity / Drift:** Currently, there is no guidance on what the `"task"` should contain (e.g., a short slug, a full description, or the agent's mission). This leads to highly variable and potentially un-parseable content in the observability stack.
+**Question for Product Owner:** Should we define a specific standard for the content of the `"task"` field in the Audit Log (e.g., "Must be a 3-5 word high-level summary of the specific execution cycle")?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `AGENTS.md` and `SKILL_TEMPLATE.md` with a specific content standard for the Audit Log `"task"` field and remediate existing personas.*

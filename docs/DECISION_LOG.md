@@ -227,3 +227,14 @@
   - Mandatory inclusion of confirmed technical drifts in `REQUIREMENTS.md` §"Current Known Limitations".
   - Documentation of naming convention drift (English-first, slug-based) for non-compliant example assets.
   - Identification of the "Internal Tool Observability Gap" (JSON Audit Log to `stderr`) for repository-adjacent Node.js tools.
+
+## [2026-05-26] Reality Check: Pre-flight Resolution, Coding Agent Substantive Compliance, and New Drift Discovery
+
+- **Decision:** Record three verified codebase state changes and two newly discovered drifts identified during the autonomous documentation maintenance cycle.
+- **Context:** A full-repository reality check (Phase 2 of the Doc agent workflow) compared `REQUIREMENTS.md` Known Limitations against the actual codebase state using `scripts/audit-repo.js` and direct file inspection.
+- **Impact:**
+  - **Resolved — Pre-flight Logic Contradiction:** `scripts/verify-env.sh` no longer contains a hard-fail (`ALL_GOOD=false` / `exit 1`) block for missing SecretOps CLIs. The SecretOps check is now consistently warning-only across all modes. `REQUIREMENTS.md` updated accordingly.
+  - **Partially Resolved — Structural vs. Substantive Compliance:** The 5 coding-domain agents (Architect, Bolt core, Bolt Go, Bolt Next.js-16, Sentinel) now provide role-specific `Data Inventory` and `Refusal Criteria` content, reducing the scope of this limitation from "most" to the remaining 21 legacy personas.
+  - **New Drift — Agent Journal Directory Gap:** The 5 coding-domain agents reference a `.jules/` journal directory that does not exist in the repository and is undocumented in `AGENTS.md` and `docs/AGENT_TEMPLATE.md`. Added to `REQUIREMENTS.md` Known Limitations.
+  - **New Drift — Bolt Next.js-16 Node.js Version Drift:** `agents/coding/bolt/nextjs-16.md` specifies "Node.js (v22+)" in its External Tooling Dependencies, conflicting with the repository's mandatory v24 baseline. Added to `REQUIREMENTS.md` Known Limitations.
+  - **Fleet count confirmed:** Repository audit confirms 26 agent specifications across 9 domains (4 added since the last count reference of 22 in prior clarifications).

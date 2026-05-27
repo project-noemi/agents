@@ -227,3 +227,15 @@
   - Mandatory inclusion of confirmed technical drifts in `REQUIREMENTS.md` §"Current Known Limitations".
   - Documentation of naming convention drift (English-first, slug-based) for non-compliant example assets.
   - Identification of the "Internal Tool Observability Gap" (JSON Audit Log to `stderr`) for repository-adjacent Node.js tools.
+
+## [2026-05-26] Pre-flight Logic Normalization
+
+- **Decision:** Normalize the `scripts/verify-env.sh` pre-flight logic to remove redundant hard-failure blocks for missing SecretOps CLIs.
+- **Context:** Previous versions of the script contained contradictory blocks that both failed and warned for missing CLIs, creating a barrier for beginner onboarding.
+- **Impact:** The script now standardizes on a warning for missing vault CLIs in `builder` mode, supporting the "beginner-safe" requirement while maintaining security visibility.
+
+## [2026-05-26] Template Integrity Verification
+
+- **Decision:** Formally verify the absence of duplicate marker pairs in context templates and update the requirements to reflect the current implementation state.
+- **Context:** `REQUIREMENTS.md` previously tracked a drift regarding duplicate `GLOBAL_MANDATES` markers in `GEMINI.template.md`, which was causing redundant injection.
+- **Impact:** A holistic scan verified that `templates/context/GEMINI.template.md` and `CLAUDE.template.md` are clean of duplicate markers, resolving the drift.

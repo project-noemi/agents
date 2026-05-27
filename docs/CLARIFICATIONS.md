@@ -578,9 +578,16 @@ _The three 2026-05-20 questions previously listed here (Audit Script Enforcement
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Add canonical framework markers to `templates/context/` and update `scripts/context_helpers.js` to inject `value-lenses/` and `operating-profiles/` content.*
 
-### ❓ Question [2026-05-22] - Template Marker Duplication and Placement
-**Context:** `templates/context/GEMINI.template.md` contains duplicate marker pairs for `GLOBAL_MANDATES` and `AGENT_INDEX`.
-**Ambiguity / Drift:** This causes redundant section injection in the generated `GEMINI.md`, leading to inflated token counts and potential agent confusion.
-**Question for Product Owner:** Should we standardize on a single placement for these markers (e.g., at the end of the file) and remove the duplicates across all templates?
+### ❓ Question [2026-05-26] - Framework Marker Injection Strategy
+**Context:** `REQUIREMENTS.md` identifies a "Framework Injection Gap" where `Value Lenses` and `Operating Profiles` are documented but not injected into generated context.
+**Ambiguity / Drift:** The templates (`GEMINI.template.md`, `CLAUDE.template.md`) lack the corresponding markers, and the generators don't have the injection logic. We need to decide if these should be injected similarly to Global Mandates or as separate sections.
+**Question for Product Owner:** Should `Value Lenses` and `Operating Profiles` be injected as separate sections (e.g., `## Value Lenses`) or appended to the `## Architecture` section in the templates?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Remove duplicate markers from `templates/context/GEMINI.template.md` and ensure a clean, single-injection structure for mandates and the agent index.*
+**🤖 Jules Action Prompt:** *Add the canonical framework markers to all context templates and update `scripts/context_helpers.js` to support their injection.*
+
+### ❓ Question [2026-05-26] - Pre-flight SecretOps Policy for CI vs. Local
+**Context:** `scripts/verify-env.sh` now warns rather than fails when SecretOps CLIs are missing, which is great for local onboarding.
+**Ambiguity / Drift:** However, for CI/CD pipelines or `docker` mode, we might want a "Hard Fail" to ensure that the environment is fully secure before proceeding with automated tasks.
+**Question for Product Owner:** Should we introduce an `--enforce-secrets` flag for `verify-env.sh` that turns the SecretOps warning into a fatal error for CI and Docker verification?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to support a mandatory SecretOps enforcement flag for CI environments.*

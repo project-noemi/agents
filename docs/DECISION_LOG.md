@@ -227,3 +227,17 @@
   - Mandatory inclusion of confirmed technical drifts in `REQUIREMENTS.md` §"Current Known Limitations".
   - Documentation of naming convention drift (English-first, slug-based) for non-compliant example assets.
   - Identification of the "Internal Tool Observability Gap" (JSON Audit Log to `stderr`) for repository-adjacent Node.js tools.
+
+## [2026-05-27] Phase 2 Reality Check — Known Limitations Refresh
+
+- **Decision:** Update `REQUIREMENTS.md` Known Limitations to reflect the verified codebase state, closing two stale limitations and introducing a new one.
+- **Context:** An autonomous holistic scan of `agents/`, `skills/`, and key scripts confirmed the following:
+  1. All 26 agent personas now contain role-specific, substantive `Data Inventory` and `Refusal Criteria` content — 0 TBD placeholders in `agents/`. The "Structural vs. Substantive Compliance" limitation is resolved for agents and re-scoped to the skill library.
+  2. The `scripts/verify-env.sh` "Pre-flight Logic Contradiction" no longer exists in code. The script has one clean SecretOps warning block with non-blocking authentication checks. The stale limitation entry was updated to Resolved (2026-05-27).
+  3. `scripts/audit-repo.js` already enforces `Data Inventory` as a required section for skills, but `SKILL_TEMPLATE.md` does not include this section. A contributor using the template as a starting point will produce a skill that fails the audit gate — a new "contributor experience trap" limitation added to `REQUIREMENTS.md`.
+  4. `docs/agents/coding/README.md` does not yet reference the Architect agent added in commit `566bae8`. Documented as a new drift.
+- **Impact:**
+  - "Structural vs. Substantive Compliance" re-titled "Substantive Skill Compliance" and scoped to skills only (agents resolved).
+  - "Pre-flight Logic Contradiction" marked Resolved (2026-05-27).
+  - Two new limitations added: `SKILL_TEMPLATE.md` audit misalignment and coding agent documentation drift.
+  - Three new questions added to `docs/CLARIFICATIONS.md` for PO input.

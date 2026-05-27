@@ -584,3 +584,24 @@ _The three 2026-05-20 questions previously listed here (Audit Script Enforcement
 **Question for Product Owner:** Should we standardize on a single placement for these markers (e.g., at the end of the file) and remove the duplicates across all templates?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Remove duplicate markers from `templates/context/GEMINI.template.md` and ensure a clean, single-injection structure for mandates and the agent index.*
+
+### ❓ Question [2026-05-27] - Coding Agent Documentation Index Drift
+**Context:** `AGENTS.md` guidance states "Create matching documentation in `docs/agents/{domain}/{name}/`" for every agent persona. The Architect agent (`agents/coding/architect/core.md`) was added in commit `566bae8` but `docs/agents/coding/README.md` still only lists Bolt and Sentinel.
+**Ambiguity / Drift:** Builders and orchestrators consulting the documentation index to discover available coding agents will find an incomplete picture. The Architect agent's existence is invisible from the docs tree, undermining the repository's role as a truthful public reference architecture.
+**Question for Product Owner:** Should `docs/agents/coding/README.md` be updated to include the Architect agent, and should a `docs/agents/coding/architect/` subdirectory be created with a usage README following the pattern of `docs/agents/engineering/gatekeeper/`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Action Prompt:** *Update `docs/agents/coding/README.md` to include the Architect agent spec reference, and create `docs/agents/coding/architect/README.md` with a concise usage guide following the pattern in `docs/agents/engineering/gatekeeper/README.md`.*
+
+### ❓ Question [2026-05-27] - SKILL_TEMPLATE.md Audit Contract Misalignment
+**Context:** `scripts/audit-repo.js` now enforces `Data Inventory` as a mandatory section for all skill files in `skills/` (added to `REQUIRED_SKILL_SECTIONS`). However, `skills/SKILL_TEMPLATE.md` does NOT include a `## Data Inventory` section — it has `## Inputs`, `## Outputs`, and `## MCP Dependencies`, but the mandated data-inventory heading is absent.
+**Ambiguity / Drift:** A contributor creating a new skill by copying `SKILL_TEMPLATE.md` will produce a file that immediately fails the `audit-repo.js` gate, with no warning from the template itself. This is a silent contributor-experience trap that contradicts the template's role as the canonical, audit-safe starting point for new reusable skills.
+**Question for Product Owner:** Should `skills/SKILL_TEMPLATE.md` be updated to include a `## Data Inventory` section (positioned after `## Outputs`) so that new skills created from the template are compliant with the enforced audit contract out of the box?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Action Prompt:** *Add a `## Data Inventory` section to `skills/SKILL_TEMPLATE.md` immediately after `## Outputs`, with placeholder sub-items for Inputs, Outputs, and State, matching the pattern in existing skills like `skills/security/pii-scan.md`.*
+
+### ❓ Question [2026-05-27] - CLARIFICATIONS.md Backlog Manageability
+**Context:** `docs/CLARIFICATIONS.md` has grown to 587 lines with 40+ open questions spanning from 2026-04-02 to 2026-05-22. A reality check against the current codebase confirms that multiple questions are now overtaken by implemented code changes — for example, questions asking whether `audit-repo.js` should cover skills (it does), whether `verify-env.sh` should perform authentication checks (it does), and whether the Fleet Dashboard API path should be standardized (it is).
+**Ambiguity / Drift:** The accumulation of resolved and duplicate questions makes it operationally impossible for the Product Owner to triage the genuine open items. There is a risk that resolved issues are re-implemented (wasted effort) and genuinely open issues are buried and missed.
+**Question for Product Owner:** Should we perform a bulk archival sweep of `CLARIFICATIONS.md`, removing questions overtaken by code changes, moving their resolutions to `DECISION_LOG.md`, and consolidating duplicate questions into single canonical entries?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Action Prompt:** *Review all open questions in `docs/CLARIFICATIONS.md` against the current codebase, close all questions where the implementation is verifiably complete, archive their outcomes in `DECISION_LOG.md`, and consolidate duplicate questions to produce a clean, prioritizable backlog.*

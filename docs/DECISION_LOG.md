@@ -219,6 +219,15 @@
 - **Context:** Resolves Q [2026-05-20] (Branch Protection Enforcement Mandate). Branch protection is baseline governance for any repository with multiple maintainers — leaving it optional creates a silent integrity gap that can be exploited by an inattentive direct push to `main`.
 - **Impact:** Closes the `Branch Protection Enforcement Gap` item from `REQUIREMENTS.md` Current Known Limitations. Section 7 of `REQUIREMENTS.md` is updated in this PR to include the new mandate.
 
+## [2026-05-28] Phase 5 Reality Check — Stale Limitation Resolution and New Agent Mirror Gap
+
+- **Decision:** Close the "Pre-flight Logic Contradiction" known limitation. A holistic review of `scripts/verify-env.sh` confirms the contradictory dual-block pattern (hard-fail + warning) no longer exists. The script uses a single unified SecretOps check with warning-only behavior for absent vault CLIs. Separately, document two new technical drifts surfaced during the 2026-05-28 doc audit: a documentation mirror gap for three newly added agents and a governance maintenance concern with the hardcoded branch allowlist in `require-develop-source.yml`.
+- **Context:** `docs/REQUIREMENTS.md` still listed "Pre-flight Logic Contradiction" as an active limitation despite the script being refactored in a prior autonomous cycle. Three agents (`agents/coding/architect/core.md`, `agents/coding/bolt/go.md`, `agents/education/student-success-coach.md`) were merged without corresponding `docs/agents/` mirror directories.
+- **Impact:**
+  - `REQUIREMENTS.md` "Current Known Limitations" updated: "Pre-flight Logic Contradiction" marked Resolved (2026-05-28).
+  - Two new Known Limitations added: "New Agent Documentation Mirror Gap" and "Branch Allowlist Maintenance Overhead."
+  - Three new clarification questions appended to `docs/CLARIFICATIONS.md` covering backlog normalization, branch allowlist governance, and agent documentation mirror policy.
+
 ## [2026-05-20] Formalization of Technical Drift Tracking
 
 - **Decision:** Establish a formal requirement to track and surface newly identified technical drifts in `REQUIREMENTS.md` to ensure the "Current Implementation Truth" remains grounded in the codebase state.

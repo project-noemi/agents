@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const {
     buildAgentIndex,
+    buildFrameworkSection,
     buildGlobalMandates,
     buildMcpSection,
     buildSkillsSection,
@@ -18,6 +19,8 @@ const protocolsDir = path.join(__dirname, '../mcp-protocols');
 const skillsDir = path.join(__dirname, '../skills');
 const agentsMdPath = path.join(__dirname, '../AGENTS.md');
 const agentsDir = path.join(__dirname, '../agents');
+const valueLensesDir = path.join(__dirname, '../value-lenses');
+const operatingProfilesDir = path.join(__dirname, '../operating-profiles');
 
 const TARGETS = [
     {
@@ -46,6 +49,26 @@ function generate(target, config, agents) {
     try {
         finalContent = injectBetween(finalContent, '<!-- GLOBAL_MANDATES_START -->', '<!-- GLOBAL_MANDATES_END -->', buildGlobalMandates(agentsMdPath));
         finalContent = injectBetween(finalContent, '<!-- AGENT_INDEX_START -->', '<!-- AGENT_INDEX_END -->', buildAgentIndex(agents));
+        finalContent = injectBetween(
+            finalContent,
+            '<!-- VALUE_LENS_INJECTIONS_START -->',
+            '<!-- VALUE_LENS_INJECTIONS_END -->',
+            buildFrameworkSection(
+                valueLensesDir,
+                'Value Lenses',
+                'The following Value Lenses are part of the NoéMI framework layer. Agents should consult the lens that matches the engagement context (e.g., performance-efficiency, care-continuity) when making trade-off decisions.'
+            )
+        );
+        finalContent = injectBetween(
+            finalContent,
+            '<!-- OPERATING_PROFILE_INJECTIONS_START -->',
+            '<!-- OPERATING_PROFILE_INJECTIONS_END -->',
+            buildFrameworkSection(
+                operatingProfilesDir,
+                'Operating Profiles',
+                'The following Operating Profiles describe how agents should adapt their tone, cadence, and escalation behavior to different organizational contexts.'
+            )
+        );
         finalContent = injectBetween(finalContent, '<!-- SKILLS_INJECTIONS_START -->', '<!-- SKILLS_INJECTIONS_END -->', buildSkillsSection(config.activeSkills, skillsDir));
         finalContent = injectBetween(finalContent, '<!-- MCP_INJECTIONS_START -->', '<!-- MCP_INJECTIONS_END -->', buildMcpSection(config.activeMcps, protocolsDir));
 

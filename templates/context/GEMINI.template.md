@@ -48,6 +48,12 @@ If no specific agent specification matches the request:
 <!-- AGENT_INDEX_START -->
 <!-- AGENT_INDEX_END -->
 
+<!-- VALUE_LENS_INJECTIONS_START -->
+<!-- VALUE_LENS_INJECTIONS_END -->
+
+<!-- OPERATING_PROFILE_INJECTIONS_START -->
+<!-- OPERATING_PROFILE_INJECTIONS_END -->
+
 ## 🧩 Active Skills
 <!-- SKILLS_INJECTIONS_START -->
 <!-- No active skills defined. Run scripts/generate_gemini.js to inject skills. -->

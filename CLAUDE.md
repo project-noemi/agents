@@ -196,6 +196,12 @@ Read the relevant agent specification before performing domain-specific tasks.
 
 <!-- AGENT_INDEX_END -->
 
+<!-- VALUE_LENS_INJECTIONS_START -->
+<!-- VALUE_LENS_INJECTIONS_END -->
+
+<!-- OPERATING_PROFILE_INJECTIONS_START -->
+<!-- OPERATING_PROFILE_INJECTIONS_END -->
+
 <!-- SKILLS_INJECTIONS_START -->
 ## Active Skills
 

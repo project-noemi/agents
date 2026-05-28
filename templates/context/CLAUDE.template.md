@@ -98,6 +98,12 @@ Scope matches the domain or area (e.g., `marketing`, `guardian`, `agents`, `life
 <!-- AGENT_INDEX_START -->
 <!-- AGENT_INDEX_END -->
 
+<!-- VALUE_LENS_INJECTIONS_START -->
+<!-- VALUE_LENS_INJECTIONS_END -->
+
+<!-- OPERATING_PROFILE_INJECTIONS_START -->
+<!-- OPERATING_PROFILE_INJECTIONS_END -->
+
 <!-- SKILLS_INJECTIONS_START -->
 <!-- SKILLS_INJECTIONS_END -->
 

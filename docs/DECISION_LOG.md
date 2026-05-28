@@ -227,3 +227,15 @@
   - Mandatory inclusion of confirmed technical drifts in `REQUIREMENTS.md` §"Current Known Limitations".
   - Documentation of naming convention drift (English-first, slug-based) for non-compliant example assets.
   - Identification of the "Internal Tool Observability Gap" (JSON Audit Log to `stderr`) for repository-adjacent Node.js tools.
+
+## [2026-05-26] Pre-flight Logic Normalization
+
+- **Decision:** Standardize environment verification scripts (`scripts/verify-env.sh`, `scripts/verify-env.ps1`) to include active authentication checks (e.g., `infisical whoami` or `op user get --me`). Missing SecretOps CLIs will default to a warning in `builder` mode but a fatal error (exit 1) in `docker` mode to ensure runtime reliability.
+- **Context:** Previous logic was contradictory, treating missing SecretOps as both a failure and a warning in different blocks.
+- **Impact:** Beginners can explore the repo without SecretOps, while Docker deployments are gated for security.
+
+## [2026-05-26] Verified Template Marker Consistency
+
+- **Decision:** Audit and remediate duplication of template markers in `templates/context/GEMINI.template.md` and `templates/context/CLAUDE.template.md`. Each template must contain exactly one pair of markers for `GLOBAL_MANDATES` and `AGENT_INDEX`.
+- **Context:** Drift identified where duplicate markers caused redundant section injection in generated context files.
+- **Impact:** Cleaner generated context and reduced token consumption for agents.

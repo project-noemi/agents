@@ -584,3 +584,24 @@ _The three 2026-05-20 questions previously listed here (Audit Script Enforcement
 **Question for Product Owner:** Should we standardize on a single placement for these markers (e.g., at the end of the file) and remove the duplicates across all templates?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Remove duplicate markers from `templates/context/GEMINI.template.md` and ensure a clean, single-injection structure for mandates and the agent index.*
+
+### ❓ Question [2026-05-28] - Substantive Remediation of the Skill Library
+**Context:** While `SKILL_TEMPLATE.md` has been updated with mandatory `Data Inventory` and `Refusal Criteria` sections, all 8 active skills in the `skills/` directory currently contain "TBD" placeholders for these sections and template-only JSON in their `Audit Log`.
+**Ambiguity / Drift:** The skill library is in substantive drift from the 4D Description (D2) and Refusal Principle mandates. This makes the skills "hollow" from a safety and documentation perspective, even if they pass structural audits.
+**Question for Product Owner:** Should Jules perform a fleet-wide "substantive remediation" to replace these placeholders with role-specific, technically accurate content for all 8 reusable skills?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory to replace all TBD placeholders with role-specific Data Inventory, Refusal Criteria, and valid example Audit Logs.*
+
+### ❓ Question [2026-05-28] - Missing Onboarding and Configuration Infrastructure
+**Context:** Several agent personas (e.g., `Client Onboarding`, `Gatekeeper`, `QBR Presenter`) reference directories such as `clients/`, `.gatekeeper/`, and `templates/tiers/` for storing provisioned state and configuration.
+**Ambiguity / Drift:** These directories do not exist in the repository. This prevents the agents from being "truthful" in their workflow descriptions and hinders validation of their ability to manage state.
+**Question for Product Owner:** Should Doc be authorized to create these directory structures with `.gitignore` placeholders to support the documented agent workflows?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create the missing `clients/`, `.gatekeeper/`, and `templates/tiers/` directories with `.gitignore` placeholders to align the repository structure with agent persona specifications.*
+
+### ❓ Question [2026-05-28] - Branch Protection Audit Logic
+**Context:** `REQUIREMENTS.md` Section 7 mandates branch protection and states that `scripts/audit-repo.js` should surface missing protection as a warning/error.
+**Ambiguity / Drift:** The current implementation of `scripts/audit-repo.js` does not contain any logic to check for branch protection (either via the GitHub API or by looking for the presence of the enforcement script's evidence).
+**Question for Product Owner:** Should the audit script perform an active GitHub API check (requiring a `GITHUB_TOKEN`) or a "soft check" (e.g., verifying the presence of a `.github/branch_protection_enforced` marker file) to satisfy this mandate?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement branch protection verification in `scripts/audit-repo.js` using the approved detection method (API check or marker file).*

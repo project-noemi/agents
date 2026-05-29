@@ -277,6 +277,29 @@ test('n8n guidance avoids invented helper APIs and documents the real runtime su
     assert.match(protocol, /Do Not Assume Hidden Helper Tools/);
 });
 
+test('Docker smoke test variables are declared in .env.template (Decision [2026-05-29-0001])', () => {
+    const envTemplate = read('.env.template');
+    const requiredVars = [
+        'NOEMI_DOCKER_SMOKE_TIMEOUT_MS',
+        'NOEMI_DOCKER_SMOKE_POLL_INTERVAL_MS',
+        'NOEMI_DOCKER_SMOKE_ARTIFACT_DIR'
+    ];
+
+    for (const varName of requiredVars) {
+        const pattern = new RegExp(`^${varName}=(.+)$`, 'm');
+        const match = envTemplate.match(pattern);
+        assert.ok(match, `${varName} must be declared in .env.template`);
+        const value = match[1].trim();
+        assert.ok(value.length > 0, `${varName} must have a non-empty default value in .env.template`);
+        // These are test-runner knobs, not secrets; they must NOT use vault-reference syntax.
+        assert.doesNotMatch(
+            value,
+            /^op:\/\//,
+            `${varName} is a test-runner knob and must not be declared as a vault reference`
+        );
+    }
+});
+
 test('RFP responder workflow uses the current Google Gemini node path', () => {
     const workflow = JSON.parse(read('examples/workflows/rfp-responder.json'));
     const workflowText = read('examples/workflows/rfp-responder.json');

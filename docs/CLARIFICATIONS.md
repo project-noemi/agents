@@ -10,6 +10,7 @@ This file now tracks only active, unresolved questions that still require produc
 - Questions that were superseded by implemented repo changes were closed as overtaken by events and removed from the active backlog.
 - [2026-04-04] Resolved Node.js Resilience Helper scope (mandate satisfied by reference pattern; core scripts do not need retry for local filesystem ops) and Legacy Example Labeling (bulk update completed — LEGACY/ILLUSTRATIVE headers added to all Python and Bash examples).
 - [2026-05-28] Bulk closure: a large block of late-cycle clarifications was either resolved by Decision entries dated 2026-05-28-0001 through 2026-05-28-0006 (logging-mcp payload alignment, onboarding directory bootstrap, SecretOps reference standardization, case-insensitive heading audits, Value Lens/Operating Profile injection, and the bulk closure of clarifications overtaken by prior decisions), or recognized as restatements of already-resolved questions. See `DECISION_LOG.md` for the durable record.
+- [2026-05-29] Resolved Docker Smoke Test Variable Validation (`tests/examples-smoke.test.js` now asserts `NOEMI_DOCKER_SMOKE_*` presence in `.env.template`) and Sync Script Parameterization (`scripts/sync-upstream.sh` now reads `NOEMI_UPSTREAM_URL` / `NOEMI_ORG_NAME` with sensible defaults). See Decisions [2026-05-29-0001] and [2026-05-29-0002].
 
 ## Template for New Questions
 
@@ -205,20 +206,6 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules perform a fleet-wide "substantive remediation" to replace these placeholders with role-specific, technically accurate content for all reusable skills?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory to replace all TBD placeholders with role-specific Data Inventory, Refusal Criteria, and valid example Audit Logs.*
-
-### ❓ Question [2026-05-29] - Docker Smoke Test Variable Validation
-**Context:** Requirement §9 mandates that the default test suite must cover "static smoke checks for example stacks and Docker env inventories (including `NOEMI_DOCKER_SMOKE_*` variable validation)."
-**Ambiguity / Drift:** `tests/examples-smoke.test.js` currently validates Docker `.env.example` files and compose configurations but lacks any logic to verify the presence or format of the `NOEMI_DOCKER_SMOKE_*` variables used by the E2E suite.
-**Question for Product Owner:** Should we add a dedicated test case to `tests/examples-smoke.test.js` to validate that these variables are correctly defined in `.env.template` and follow a standard naming/value convention?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `tests/examples-smoke.test.js` to include validation for all `NOEMI_DOCKER_SMOKE_*` environment variables defined in `.env.template`.*
-
-### ❓ Question [2026-05-29] - Sync Script Parameterization
-**Context:** `scripts/sync-upstream.sh` currently contains the hardcoded placeholder `MY_ORGANIZATION="[MyOrganization]"` and fixed URLs.
-**Ambiguity / Drift:** Organizations forking the repository must perform manual find-and-replace on this script, which increases friction and leads to "identity drift" in forks.
-**Question for Product Owner:** Should the sync script be refactored to use environment variables (e.g., `NOEMI_UPSTREAM_URL`, `NOEMI_ORG_NAME`) with sensible defaults, allowing it to be used without manual modification of the source?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Refactor `scripts/sync-upstream.sh` to pull organization names and upstream URLs from environment variables instead of hardcoded placeholders.*
 
 ### ❓ Question [2026-05-29] - Branch Protection Audit Implementation
 **Context:** Decision [2026-05-20] and Requirement §7 mandate that branch protection enforcement is mandatory and that `scripts/audit-repo.js` should surface missing protection as a warning/error.

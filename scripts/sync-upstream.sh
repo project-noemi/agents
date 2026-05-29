@@ -1,18 +1,25 @@
 #!/usr/bin/env bash
 # sync-upstream.sh — Pull non-conflicting changes from project-noemi/agents
-# into MyOrganization/agents (develop branch).
+# into <YourOrg>/agents (develop branch).
 #
 # Usage:  ./scripts/sync-upstream.sh [--dry-run]
 #
+# Configuration (Decision [2026-05-29-0002] — Sync Script Parameterization):
+#   NOEMI_UPSTREAM_URL  Upstream remote URL.   Default: https://github.com/project-noemi/agents.git
+#   NOEMI_ORG_NAME      Local org display name. Default: [MyOrganization]
+#
+# Forks override these via shell profile, CI secret, or a local .env.local
+# instead of patching the script in place.
+#
 # Conflict policy: if a merge conflict occurs, the script aborts the merge
-# so you can resolve manually (favour my organization's version).
+# so you can resolve manually (favour your organization's version).
 
 set -euo pipefail
 
 UPSTREAM_REMOTE="upstream"
-UPSTREAM_URL="https://github.com/project-noemi/agents.git"
+UPSTREAM_URL="${NOEMI_UPSTREAM_URL:-https://github.com/project-noemi/agents.git}"
 LOCAL_BRANCH="develop"
-MY_ORGANIZATION="[MyOrganization]"
+MY_ORGANIZATION="${NOEMI_ORG_NAME:-[MyOrganization]}"
 
 # --- Helpers ---------------------------------------------------------------
 info()  { printf "\033[1;34m▸ %s\033[0m\n" "$*"; }

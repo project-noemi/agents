@@ -283,3 +283,15 @@
   - Q [2026-05-21] Pre-flight failure policy / Q [2026-05-22] Docker mode hard-fail policy → resolved by [2026-05-26] Pre-flight Logic Normalization.
 - **Context:** Multiple late-cycle clarifications restate or duplicate earlier resolved questions. Carrying them in the active backlog made the queue look much larger than the real outstanding work.
 - **Impact:** CLARIFICATIONS.md shrinks to genuinely open product-owner questions; the durable answers remain in this log for traceability.
+
+## [2026-05-29-0001] Docker Smoke Test Variable Validation in examples-smoke
+
+- **Decision:** `tests/examples-smoke.test.js` MUST include a dedicated case that asserts the presence of all `NOEMI_DOCKER_SMOKE_*` variables in the root `.env.template`. The current canonical set is `NOEMI_DOCKER_SMOKE_TIMEOUT_MS`, `NOEMI_DOCKER_SMOKE_POLL_INTERVAL_MS`, and `NOEMI_DOCKER_SMOKE_ARTIFACT_DIR`. The test verifies presence and that each entry uses a non-empty default value (vault references are not appropriate here because these are test-runner knobs, not secrets).
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-29] (Docker Smoke Test Variable Validation). Requirement §9 mandates this coverage; Decision [2026-04-13] consolidated the variables into `.env.template`; the smoke suite never grew the matching assertion.
+- **Impact:** Closes the "Docker Smoke Test Variable Validation Gap" and "Test Suite Gaps" items from `REQUIREMENTS.md` Current Known Limitations. Drift between the e2e test runner and the central inventory now fails the fast validation gate.
+
+## [2026-05-29-0002] Sync Script Parameterization via Environment Variables
+
+- **Decision:** `scripts/sync-upstream.sh` MUST read the upstream remote URL and the local organization name from environment variables (`NOEMI_UPSTREAM_URL` and `NOEMI_ORG_NAME`) with the current canonical defaults preserved (`https://github.com/project-noemi/agents.git` and `[MyOrganization]` respectively). The script must continue to work unmodified for the canonical upstream and emit a clear final message that reflects the configured org name.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-29] (Sync Script Parameterization). Hardcoded placeholders force every fork to patch the script, which introduces silent identity drift and merge conflicts on every upstream sync.
+- **Impact:** Closes the "Sync Script Hardcoding" and "Sync Script Parameterization Gap" items from `REQUIREMENTS.md` Current Known Limitations. Forks set the two variables once (shell profile, CI secret, or `.env.local`) and run the canonical script unmodified.

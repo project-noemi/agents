@@ -25,6 +25,8 @@ const REQUIRED_GLOBAL_SECTIONS = [
 const REQUIRED_TEMPLATE_MARKERS = [
     'GLOBAL_MANDATES',
     'AGENT_INDEX',
+    'VALUE_LENS_INJECTIONS',
+    'OPERATING_PROFILE_INJECTIONS',
     'SKILLS_INJECTIONS',
     'MCP_INJECTIONS'
 ];
@@ -247,6 +249,33 @@ function toTitleCase(value) {
         .join(' ');
 }
 
+function buildFrameworkSection(frameworkDir, headingLabel, sectionIntro) {
+    if (!fs.existsSync(frameworkDir)) {
+        return `<!-- Framework directory not found: ${path.basename(frameworkDir)} -->`;
+    }
+
+    const entries = fs.readdirSync(frameworkDir, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
+        // Exclude templates and READMEs so the injected payload only contains
+        // operational framework definitions, not scaffolding docs.
+        .filter((entry) => !entry.name.endsWith('_TEMPLATE.md'))
+        .filter((entry) => entry.name.toLowerCase() !== 'readme.md')
+        .sort((left, right) => left.name.localeCompare(right.name));
+
+    if (entries.length === 0) {
+        return `<!-- No ${headingLabel.toLowerCase()} defined in ${path.basename(frameworkDir)}/ -->`;
+    }
+
+    let output = `## ${headingLabel}\n\n${sectionIntro}\n`;
+
+    for (const entry of entries) {
+        const filePath = path.join(frameworkDir, entry.name);
+        output += `\n${fs.readFileSync(filePath, 'utf8').trim()}\n`;
+    }
+
+    return output.trim();
+}
+
 function buildMcpSection(activeMcps, protocolsDir) {
     if (activeMcps.length === 0) {
         return '<!-- No active MCPs configured in mcp.config.json -->';
@@ -277,6 +306,7 @@ module.exports = {
     REQUIRED_GLOBAL_SECTIONS,
     REQUIRED_TEMPLATE_MARKERS,
     buildAgentIndex,
+    buildFrameworkSection,
     buildGlobalMandates,
     buildMcpSection,
     buildSkillsSection,

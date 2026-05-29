@@ -55,27 +55,34 @@ function auditFile(filePath, requiredSections) {
     const headings = extractAgentHeadings(content);
     const relativePath = path.relative(repoRoot, filePath);
 
-    // Check required sections
-    const missing = requiredSections.filter(
-        (required) => !headings.some((heading) => heading === required || heading.startsWith(`${required} (`))
-    );
+    // Check required sections — case-insensitive heading match per Decision [2026-05-28-0004].
+    // The canonical casing remains as documented; the audit tolerates cosmetic capitalization drift.
+    const missing = requiredSections.filter((required) => {
+        const requiredLower = required.toLowerCase();
+        return !headings.some((heading) => {
+            const headingLower = heading.toLowerCase();
+            return headingLower === requiredLower
+                || headingLower.startsWith(`${requiredLower} (`);
+        });
+    });
     if (missing.length > 0) {
         fail(`${relativePath} is missing required sections: ${missing.join(', ')}`);
     }
 
     // Check mandatory Refusal Criteria subsection under Rules & Constraints (Decision [2026-04-13])
-    // We look for the Rules & Constraints section and ensure it contains Refusal Criteria as an H3
-    const rulesMatch = content.match(/## Rules & Constraints[\s\S]*?(\n## |$)/);
+    // We look for the Rules & Constraints section and ensure it contains Refusal Criteria as an H3.
+    // Case-insensitive per Decision [2026-05-28-0004].
+    const rulesMatch = content.match(/## Rules & Constraints[\s\S]*?(\n## |$)/i);
     if (rulesMatch) {
-        if (!rulesMatch[0].includes('### Refusal Criteria')) {
+        if (!/###\s+Refusal Criteria/i.test(rulesMatch[0])) {
             fail(`${relativePath} missing required subsection: ### Refusal Criteria under ## Rules & Constraints`);
         }
     } else {
         // If Rules & Constraints is missing, it's already flagged by the missing sections check
     }
 
-    // Check Audit Log for valid JSON
-    const auditLogMatch = content.match(/## Audit Log\s*\n+([\s\S]*?)(?=\n## |$)/);
+    // Check Audit Log for valid JSON (case-insensitive heading match per Decision [2026-05-28-0004])
+    const auditLogMatch = content.match(/## Audit Log\s*\n+([\s\S]*?)(?=\n## |$)/i);
     if (auditLogMatch) {
         const auditLogBody = auditLogMatch[1].trim();
         const jsonMatch = auditLogBody.match(/```json\n([\s\S]*?)\n```/) || auditLogBody.match(/(\{[\s\S]*\})/);

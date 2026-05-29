@@ -1,0 +1,20 @@
+# Project NoéMI - clients/ directory
+#
+# Purpose
+# -------
+# This directory holds provisioned client configurations consumed by the
+# `Client Onboarding` agent and downstream operations personas. The actual
+# client subdirectories contain runtime/tenant state (credentials, per-client
+# overrides, signed handshake artifacts) and must NEVER be committed to the
+# reference architecture.
+#
+# This `.gitignore` keeps the directory tracked (so persona specifications
+# that reference `clients/` resolve to a real path) while excluding the
+# tenant state itself.
+#
+# Decision reference: docs/DECISION_LOG.md → [2026-05-28-0002]
+
+# Ignore everything in this directory...
+*
+# ...except this file (so the directory stays tracked).
+!.gitignore

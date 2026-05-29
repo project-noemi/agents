@@ -1,0 +1,20 @@
+# Project NoéMI - .gatekeeper/ directory
+#
+# Purpose
+# -------
+# This directory holds Gatekeeper deployment state: signed HMAC handshake
+# evidence, per-fork enforcement markers (e.g., branch-protection-enforced
+# stamps), and ephemeral verification artifacts emitted by the
+# `gatekeeper-deployment` reference stack. Contents are tenant-specific and
+# must NEVER be committed to the reference architecture.
+#
+# This `.gitignore` keeps the directory tracked (so persona specifications
+# and orchestrators that reference `.gatekeeper/` resolve to a real path)
+# while excluding the runtime state itself.
+#
+# Decision reference: docs/DECISION_LOG.md → [2026-05-28-0002]
+
+# Ignore everything in this directory...
+*
+# ...except this file (so the directory stays tracked).
+!.gitignore

@@ -226,3 +226,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** How should the audit script verify branch protection? Should it use the GitHub API (requiring a token) or check for the presence/execution of `scripts/setup-branch-protection.sh`?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement the branch protection verification logic in `scripts/audit-repo.js`, ensuring it fails in CI environments if protection is not detected.*
+
+### ❓ Question [2026-05-29] - Skill Remediation Priority
+**Context:** 100% of the active reusable skills in `skills/` currently contain "TBD" placeholders for mandatory `Data Inventory` and `Refusal Criteria` sections.
+**Ambiguity / Drift:** This represents a significant substantive drift from the 4D framework. However, remediating all skills requires domain-specific knowledge for each skill's inputs and procedures.
+**Question for Product Owner:** Should Jules prioritize a bulk remediation of these placeholders with generic/safe defaults, or should remediation be deferred until a human provides the domain-specific logic for each skill?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory, replacing "TBD" placeholders with technically grounded defaults based on each skill's documented Procedure.*
+
+### ❓ Question [2026-05-29] - Internal Tool Observability Implementation
+**Context:** Multiple Node.js tools in `tools/` and reference services in `examples/` rely on unstructured `console.log` for operational events, violating the JSON Audit Log mandate.
+**Ambiguity / Drift:** While the requirement is clear, the implementation involves refactoring multiple disparate utilities.
+**Question for Product Owner:** Should we implement a shared Node.js logging utility (e.g., `scripts/audit_logger.js`) to standardize this emission across the fleet, or should each tool implement its own lightweight JSON emission logic?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create a shared `scripts/audit_logger.js` utility and refactor `executive-assistant` and `dashboard-ingest.js` to use it for mandated JSON Audit Log emission to stderr.*

@@ -283,3 +283,33 @@
   - Q [2026-05-21] Pre-flight failure policy / Q [2026-05-22] Docker mode hard-fail policy → resolved by [2026-05-26] Pre-flight Logic Normalization.
 - **Context:** Multiple late-cycle clarifications restate or duplicate earlier resolved questions. Carrying them in the active backlog made the queue look much larger than the real outstanding work.
 - **Impact:** CLARIFICATIONS.md shrinks to genuinely open product-owner questions; the durable answers remain in this log for traceability.
+
+## [2026-05-31-0001] Internal Tool Observability and Audit Logging
+
+- **Decision:** All internal repository tools (`generate_all.js`, `audit-repo.js`) and reference services (`executive-assistant`, `dashboard-ingest.js`) must emit structured JSON Audit Logs to `stderr` via the shared `scripts/audit_logger.js` utility. The Audit Log must follow the mandated shape: `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-02] (Standardized Audit Log Emission for Build Utilities), Q [2026-05-02] (Tool Baseline Alignment), Q [2026-05-19] (Internal Tool Observability Standard), and Q [2026-05-29] (Internal Tool Observability Implementation).
+- **Impact:** Closes the "Internal Tool Observability Gap" from `REQUIREMENTS.md`. Standardizes observability across the entire repository fleet.
+
+## [2026-05-31-0002] Audit Script Enforcement: Referential Integrity and Branch Protection
+
+- **Decision:** `scripts/audit-repo.js` is enhanced to verify referential integrity (checking `mcp.config.json` entries against physical files) and to audit branch protection status. The script verifies the presence of `scripts/setup-branch-protection.sh` as a proxy for enforcement, failing in CI environments if missing.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-02] (Config-to-Asset Mapping Validation) and Q [2026-05-29] (Branch Protection Audit Implementation).
+- **Impact:** Closes "Audit Script Enforcement Depth" and "Branch Protection Audit Gap" in `REQUIREMENTS.md`.
+
+## [2026-05-31-0003] Rich Agent Index Generation
+
+- **Decision:** `scripts/context_helpers.js` must extract the full first paragraph of the `## Role` section (up to 200 characters) for the Agent Index table in generated context files. Truncation to the first sentence is removed to ensure descriptive accuracy for complex personas.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-02] (Agent Index Role Truncation).
+- **Impact:** Closes "Agent Index Accuracy Drift" in `REQUIREMENTS.md`.
+
+## [2026-05-31-0004] Docker Smoke Test Variable Validation
+
+- **Decision:** `tests/examples-smoke.test.js` is updated to validate that all `NOEMI_DOCKER_SMOKE_*` environment variables are present in the `.env.template`.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-29] (Docker Smoke Test Variable Validation).
+- **Impact:** Closes "Docker Smoke Test Variable Validation Gap" in `REQUIREMENTS.md`.
+
+## [2026-05-31-0005] Sync Script Parameterization
+
+- **Decision:** `scripts/sync-upstream.sh` is refactored to use environment variables `NOEMI_UPSTREAM_ORG_NAME` and `NOEMI_UPSTREAM_URL` with sensible defaults, allowing it to be used without manual modification of the source.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-29] (Sync Script Parameterization).
+- **Impact:** Closes "Sync Script Parameterization Gap" in `REQUIREMENTS.md`.

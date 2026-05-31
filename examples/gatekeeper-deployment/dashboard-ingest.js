@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const http = require('http');
+const { logAudit } = require('../../scripts/audit_logger');
 
 const PORT = Number(process.env.PORT || '8081');
 const DASHBOARD_API_TOKEN = process.env.DASHBOARD_API_TOKEN;
@@ -140,5 +141,12 @@ const server = http.createServer(async (request, response) => {
 });
 
 server.listen(PORT, () => {
+    logAudit(
+        'Dashboard Ingest Startup',
+        [`PORT=${PORT}`],
+        ['Initialized HTTP server', 'Validated environment variables'],
+        [],
+        `Listening on port ${PORT}`
+    );
     console.log(`${new Date().toISOString()} Dashboard ingest listening on :${PORT}`);
 });

@@ -18,7 +18,7 @@ To ensure reliability and stability, agents and toolkit components must implemen
 - **Graceful Degradation**: If an MCP tool or external API fails, the agent must explain the error clearly and attempt alternative strategies if available, rather than silently failing.
 - **Exponential Backoff**: Implement exponential backoff retry logic for transient network errors or rate-limiting (429) responses. Use `scripts/resilience_helpers.js` as the canonical Node.js reference implementation.
 - **Standardized Logging**: All technical errors must be logged to `stderr` to allow the orchestrator to capture and report execution failures accurately. Agent observability should leverage the `logging-mcp` protocol for unified access to Loki/Grafana and n8n webhook backends.
-- **Internal Tool & Service Audit Logs**: All Node.js-based tools in `tools/` and reference services in `examples/` that perform automated ingestion, routing, or state mutation must emit a structured JSON Audit Log to `stderr` for every significant operational event, following the same lightweight shape as agent personas.
+- **Internal Tool & Service Audit Logs**: All Node.js-based tools in `tools/`, internal utilities in `scripts/`, and reference services in `examples/` must emit a structured JSON Audit Log to `stderr` for significant operational events. All Node.js-based components must use the shared `scripts/audit_logger.js` utility to ensure consistency with the mandated JSON shape: `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`.
 
 # 🚀 Execution Patterns
 The Infisical CLI or 1Password CLI is required in the environment. When you need to execute scripts, tests, or servers that require credentials, you must wrap the command using the following pattern:

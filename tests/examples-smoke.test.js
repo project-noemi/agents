@@ -225,6 +225,13 @@ test('localized operating profile docs separate culture from translation and gua
     assert.match(profilesReadme, /assumed identity/i);
 });
 
+test('Docker smoke test variables are defined in .env.template', () => {
+    const template = read('.env.template');
+    assert.match(template, /NOEMI_DOCKER_SMOKE_TIMEOUT_MS/);
+    assert.match(template, /NOEMI_DOCKER_SMOKE_POLL_INTERVAL_MS/);
+    assert.match(template, /NOEMI_DOCKER_SMOKE_ARTIFACT_DIR/);
+});
+
 test('value lens docs separate success logic from identity and define starter comparison lenses', () => {
     const framework = read('docs/frameworks/value-lenses.md');
     const lensesReadme = read('value-lenses/README.md');

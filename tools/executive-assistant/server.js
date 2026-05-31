@@ -5,6 +5,10 @@ import { TriageRouter } from './triage-router.js';
 import { OAuthManager } from './oauth-manager.js';
 
 import path from 'path';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { logAudit } = require('../../scripts/audit_logger.js');
+
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -158,5 +162,12 @@ app.get('/api/logs', (req, res) => {
 });
 
 app.listen(PORT, () => {
+  logAudit(
+    'Executive Assistant Startup',
+    [`PORT=${PORT}`],
+    ['Initialized StateManager', 'Initialized TriageRouter', 'Initialized OAuthManager', 'Initialized DeltaSync'],
+    [],
+    `Listening on port ${PORT}`
+  );
   console.log(`🚀 NoéMI Cloud Run Executive Assistant listening on port ${PORT}`);
 });

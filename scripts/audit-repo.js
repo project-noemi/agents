@@ -11,11 +11,14 @@ const {
     extractAgentHeadings,
     extractTopLevelSections
 } = require('./context_helpers');
+const { logAudit } = require('./audit_logger');
 
 const repoRoot = path.join(__dirname, '..');
 const agentsDir = path.join(repoRoot, 'agents');
 const skillsDir = path.join(repoRoot, 'skills');
+const protocolsDir = path.join(repoRoot, 'mcp-protocols');
 const agentsMdPath = path.join(repoRoot, 'AGENTS.md');
+const mcpConfigPath = path.join(repoRoot, 'mcp.config.json');
 
 let failed = false;
 
@@ -158,6 +161,60 @@ function checkSkills() {
     console.log(`Audited ${skillFiles.length} skills.`);
 }
 
+function checkReferentialIntegrity() {
+    console.log('Auditing referential integrity (mcp.config.json)...');
+    if (!fs.existsSync(mcpConfigPath)) {
+        fail(`mcp.config.json not found: ${mcpConfigPath}`);
+        return;
+    }
+
+    let config;
+    try {
+        config = JSON.parse(fs.readFileSync(mcpConfigPath, 'utf8'));
+    } catch (error) {
+        fail(`Failed to parse mcp.config.json: ${error.message}`);
+        return;
+    }
+
+    const activeMcps = config.active_mcps || [];
+    const activeSkills = config.active_skills || [];
+
+    for (const mcp of activeMcps) {
+        const protocolFile = path.join(protocolsDir, `${mcp}.md`);
+        if (!fs.existsSync(protocolFile)) {
+            fail(`Referenced MCP protocol file missing: mcp-protocols/${mcp}.md`);
+        }
+    }
+
+    for (const skill of activeSkills) {
+        const skillFile = path.join(skillsDir, `${skill}.md`);
+        if (!fs.existsSync(skillFile)) {
+            fail(`Referenced skill file missing: skills/${skill}.md`);
+        }
+    }
+    console.log('Referential integrity check complete.');
+}
+
+function checkBranchProtection() {
+    console.log('Auditing branch protection status...');
+    const protectionScript = path.join(repoRoot, 'scripts/setup-branch-protection.sh');
+    const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+
+    if (!fs.existsSync(protectionScript)) {
+        if (isCI) {
+            fail('Branch protection script missing (scripts/setup-branch-protection.sh). This is a fatal error in CI.');
+        } else {
+            console.warn('AUDIT WARN: Branch protection script missing (scripts/setup-branch-protection.sh).');
+        }
+        return;
+    }
+
+    // Since we cannot easily check the GitHub API for actual protection status without a token,
+    // and this repo focuses on local/reference patterns, we verify the script exists as a proxy
+    // for the "Mandatory Enforcement" requirement in REQUIREMENT.md §7.
+    console.log('✅ Branch protection setup script detected.');
+}
+
 function checkGeneratedOutputs() {
     let mandates;
     try {
@@ -187,7 +244,17 @@ function main() {
     checkTemplates();
     checkPersonas();
     checkSkills();
+    checkReferentialIntegrity();
+    checkBranchProtection();
     checkGeneratedOutputs();
+
+    logAudit(
+        'Repository Audit',
+        ['agents/', 'skills/', 'templates/', 'mcp.config.json'],
+        ['Checked persona headings', 'Checked skill headings', 'Checked template markers', 'Checked generated outputs'],
+        [],
+        failed ? 'Audit Failed' : 'Audit Passed'
+    );
 
     if (failed) {
         process.exit(1);

@@ -240,3 +240,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should we implement a shared Node.js logging utility (e.g., `scripts/audit_logger.js`) to standardize this emission across the fleet, or should each tool implement its own lightweight JSON emission logic?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Create a shared `scripts/audit_logger.js` utility and refactor `executive-assistant` and `dashboard-ingest.js` to use it for mandated JSON Audit Log emission to stderr.*
+
+### ❓ Question [2026-05-31] - Unused Resilience Helpers Integration
+**Context:** `scripts/resilience_helpers.js` provides canonical exponential backoff and retry logic for Node.js agents and tools, satisfying a core requirement.
+**Ambiguity / Drift:** A whole-codebase audit confirms that this script is currently unused by any repository tool (e.g., `audit-repo.js`, `generate_all.js`) or reference service.
+**Question for Product Owner:** Should we mandate the integration of `resilience_helpers.js` into all Node.js-based tools that perform network or API operations, or should it remain a reference-only asset?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Integrate `scripts/resilience_helpers.js` into `examples/gatekeeper-deployment/dashboard-ingest.js` and `tools/executive-assistant/server.js` for all outbound API/Network calls.*
+
+### ❓ Question [2026-05-31] - Skill Library Substantive Drift Remediation
+**Context:** Reusable skills perform critical logic, but the current skill library (e.g., `skills/reporting/structured-report.md`) and the `skills/SKILL_TEMPLATE.md` contain "TBD" placeholders in mandatory sections.
+**Ambiguity / Drift:** This represents a substantive drift from the 4D Description (D2) and Refusal Principle mandates, rendering the skills "hollow" from a safety and documentation perspective.
+**Question for Product Owner:** Should Jules perform a fleet-wide "substantive remediation" of the `skills/` directory to replace these placeholders with role-specific, technically accurate content?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory to replace all TBD placeholders with role-specific Data Inventory and Refusal Criteria.*

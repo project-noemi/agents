@@ -13,6 +13,7 @@ const {
     parseCliArgs,
     readConfig
 } = require('./context_helpers');
+const { logAudit } = require('./audit_logger');
 
 const defaultConfigPath = path.join(__dirname, '../mcp.config.json');
 const protocolsDir = path.join(__dirname, '../mcp-protocols');
@@ -104,6 +105,14 @@ function run() {
             success = false;
         }
     }
+
+    logAudit(
+        'Generate Context Files',
+        [config.config, ...TARGETS.map(t => t.template)],
+        TARGETS.map(t => `Generated ${t.output}`),
+        [],
+        success ? 'Success' : 'Failure'
+    );
 
     if (!success) {
         process.exit(1);

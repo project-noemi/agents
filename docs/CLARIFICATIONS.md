@@ -226,3 +226,10 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules create a `.gatekeeper/config.yml.example` or `templates/gatekeeper-config.yml` with a documented YAML schema covering the fields the persona describes (repo allowlist, file-pattern overrides, diff thresholds, grace-period settings)?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Action Prompt:** *Create `.gatekeeper/config.yml.example` documenting the full YAML schema for the Gatekeeper configuration surface (repo allowlist, file-pattern overrides, diff-size thresholds, conflict grace period) and add a reference to it in `agents/engineering/gatekeeper.md`.*
+
+### ❓ Question [2026-05-31] - Case-Sensitivity Mismatch Between Test Suite and Audit Script
+**Context:** Decision [2026-05-28-0004] mandated case-insensitive heading comparison and implemented it in `scripts/audit-repo.js` (lines 60–66). However, `tests/contracts.test.js` (line 48) still uses strict case-sensitive string equality (`heading === required`) for the "all personas expose the required contract headings" test.
+**Ambiguity / Drift:** A persona file with non-canonical but semantically valid capitalization (e.g., `## Rules & constraints` or `## Audit log`) will pass `npm run audit` (case-insensitive) but fail `npm test` (case-sensitive). This contradictory result is confusing for contributors and means the CI pipeline can report inconsistent outcomes depending on which command runs. The behavioral gap was introduced by updating only the audit script and not the corresponding test.
+**Question for Product Owner:** Should `tests/contracts.test.js` be updated to use case-insensitive heading comparison to match the behavior mandated by Decision [2026-05-28-0004] and already implemented in `scripts/audit-repo.js`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Action Prompt:** *Update the `all personas expose the required contract headings` test in `tests/contracts.test.js` to use `.toLowerCase()` for both the required heading and the extracted heading, mirroring the case-insensitive logic already in `scripts/audit-repo.js`.*

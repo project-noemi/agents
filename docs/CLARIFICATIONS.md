@@ -240,3 +240,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should we implement a shared Node.js logging utility (e.g., `scripts/audit_logger.js`) to standardize this emission across the fleet, or should each tool implement its own lightweight JSON emission logic?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Create a shared `scripts/audit_logger.js` utility and refactor `executive-assistant` and `dashboard-ingest.js` to use it for mandated JSON Audit Log emission to stderr.*
+
+### ❓ Question [2026-06-01] - Nested Agent Directory Convention Approval
+**Context:** `AGENTS.md` and `CLAUDE.md` document the agent layout as `agents/{domain}/{name}.md`. However, five recently added coding-domain agents use a three-level structure: `agents/coding/architect/core.md`, `agents/coding/bolt/core.md`, `agents/coding/bolt/go.md`, `agents/coding/bolt/nextjs-16.md`, and `agents/coding/sentinel/core.md`. The `discoverAgents()` function in `scripts/context_helpers.js` is recursive and handles the nesting transparently.
+**Ambiguity / Drift:** The contributor-facing documentation (`AGENTS.md` "Adding or Modifying Agents" section, `CLAUDE.md` Dynamic Persona Protocol) still describes a two-level flat structure and has not been updated to acknowledge or authorize the subdirectory pattern. A new contributor following the documented convention would create `agents/coding/my-agent.md` instead of `agents/coding/my-type/core.md`, producing structural inconsistency.
+**Question for Product Owner:** Should the two-level flat pattern (`agents/{domain}/{name}.md`) remain the canonical convention, with the coding subdirectories treated as an approved exception that must be documented? Or should the convention be formally updated to a variable-depth pattern (`agents/{domain}/[{subtype}/]{name}.md`) across all domains?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Action Prompt:** *Update `AGENTS.md` and `CLAUDE.md` to document the approved agent directory convention (flat or variable-depth), add an example for the `coding/` subdirectory pattern, and ensure the "Adding or Modifying Agents" guidance reflects the authoritative rule.*
+
+### ❓ Question [2026-06-01] - Golden Fixture Coverage for Framework Injections
+**Context:** `tests/golden-fixtures.test.js` and `scripts/update-golden-fixtures.js` cover four injection markers: `GLOBAL_MANDATES`, `AGENT_INDEX`, `SKILLS_INJECTIONS`, and `MCP_INJECTIONS`. Decision [2026-05-28-0005] added two new markers — `VALUE_LENS_INJECTIONS` and `OPERATING_PROFILE_INJECTIONS` — to `scripts/generate_all.js`, but neither the test file nor the fixture updater was extended to cover them.
+**Ambiguity / Drift:** Any change to `value-lenses/` or `operating-profiles/` content will silently alter the generated `GEMINI.md` and `CLAUDE.md` without triggering a golden fixture failure, undermining the regression safety net that Requirement §9 mandates for generated context sections.
+**Question for Product Owner:** Should Jules extend `tests/golden-fixtures.test.js` and `scripts/update-golden-fixtures.js` to include `VALUE_LENS_INJECTIONS` and `OPERATING_PROFILE_INJECTIONS` as tracked fixture sections?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Action Prompt:** *Add `VALUE_LENS_INJECTIONS` and `OPERATING_PROFILE_INJECTIONS` entries to the `sections` array in `scripts/update-golden-fixtures.js` and the `fixtures` array in `tests/golden-fixtures.test.js`, then run `npm run test:update-fixtures` to generate the baseline fixture files.*
+
+### ❓ Question [2026-06-01] - Dashboard Ingest Route Coverage in Smoke Tests
+**Context:** Decision [2026-05-20] standardized the Fleet Dashboard ingestion path on `/api/v1/reports`. The route is correctly implemented in `examples/gatekeeper-deployment/dashboard-ingest.js` (line 93). However, `tests/examples-smoke.test.js` only verifies that the Docker Compose env var `DASHBOARD_API_URL` references this path — it reads `docker-compose.yml` and `entrypoint.sh` but never asserts against `dashboard-ingest.js` directly.
+**Ambiguity / Drift:** A developer refactoring `dashboard-ingest.js` could change the route handler from `/api/v1/reports` to another path and no existing smoke test would catch the regression. The compose env var and the JS implementation would silently diverge, defeating the intent of Decision [2026-05-20].
+**Question for Product Owner:** Should `tests/examples-smoke.test.js` be extended to directly read `examples/gatekeeper-deployment/dashboard-ingest.js` and assert that the route handler explicitly uses `/api/v1/reports`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Action Prompt:** *Add a test case to `tests/examples-smoke.test.js` that reads `examples/gatekeeper-deployment/dashboard-ingest.js` and asserts `assert.match(content, /\/api\/v1\/reports/)` to directly guard the route handler against drift.*

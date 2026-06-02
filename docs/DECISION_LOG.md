@@ -283,3 +283,15 @@
   - Q [2026-05-21] Pre-flight failure policy / Q [2026-05-22] Docker mode hard-fail policy → resolved by [2026-05-26] Pre-flight Logic Normalization.
 - **Context:** Multiple late-cycle clarifications restate or duplicate earlier resolved questions. Carrying them in the active backlog made the queue look much larger than the real outstanding work.
 - **Impact:** CLARIFICATIONS.md shrinks to genuinely open product-owner questions; the durable answers remain in this log for traceability.
+
+## [2026-06-01] RFP Split Naming Convention Remediation Verified
+
+- **Decision:** Formally recognize that the assets in `examples/rfp-split/` have been remediated to follow the English-first, slug-based naming convention.
+- **Context:** Previous audits identified naming drifts in this directory (e.g., using underscores and capitalization). A reality check on 2026-06-01 confirmed that all files are now correctly named (e.g., `section-1-general-information.pdf`).
+- **Impact:** Closes the "RFP Split Naming Convention Drift" limitation in `REQUIREMENTS.md`.
+
+## [2026-06-01] Memory-Code Synchronization Drift Identified
+
+- **Decision:** Document the critical discrepancy between the repository's architectural memory and the actual codebase state regarding the May 31st remediation set.
+- **Context:** Internal memory records the completion of sync script parameterization, agent index enhancement, and shared `audit_logger.js` integration, but these changes are absent from the VM filesystem.
+- **Impact:** A high-priority clarification has been added to `CLARIFICATIONS.md` to determine if these should be re-implemented or if a sync issue exists.

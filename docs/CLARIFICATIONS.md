@@ -261,3 +261,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
+
+### ❓ Question [2026-06-03] - Reference Ingest Service Lacks Backoff
+**Context:** `REQUIREMENTS.md` §8 requires a "verifiable ingest path (`/api/v1/reports`)", and `AGENTS.md` mandates exponential backoff for transient network errors / `429`. The reference service `examples/gatekeeper-deployment/dashboard-ingest.js` writes reports to InfluxDB via a bare `fetch` (`writeInflux`, lines 60-72) and returns HTTP `502` immediately on any failure (lines 126-133), with no retry. Decision [2026-04-04] explicitly states backoff *is* appropriate for network/API calls (only deterministic local-FS reads are exempt).
+**Ambiguity / Drift:** The "Resilience Helper Integration Gap" limitation previously cited only the local-FS build utilities (`audit-repo.js`, `generate_all.js`) — both exempted by Decision [2026-04-04] — and omitted the one reference service that performs a real network write and would benefit from `scripts/resilience_helpers.js`. A transient InfluxDB blip is therefore converted into permanent report loss, contradicting the resilience mandate.
+**Question for Product Owner:** Should `dashboard-ingest.js` wrap its InfluxDB write in `withRetry()` (retrying only transient `5xx`/`429`/network errors and returning `502` only after retries are exhausted)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Import `withRetry` from `scripts/resilience_helpers.js` into `examples/gatekeeper-deployment/dashboard-ingest.js` and wrap the `writeInflux` fetch with retry on `5xx`/`429`/network errors, returning `502` only after retries are exhausted.*
+
+### ❓ Question [2026-06-03] - Resilience Helper Default Retry Scope
+**Context:** `AGENTS.md` scopes the backoff mandate to "transient network errors or rate-limiting (`429`) responses". The canonical helper `scripts/resilience_helpers.js` defaults its retry predicate to `retryIf = () => true` (line 29), which retries *every* error.
+**Ambiguity / Drift:** The reference implementation's default behavior is broader than the documented mandate: it will retry permanent failures (`4xx`, validation errors, programming bugs), wasting time, amplifying load against a failing dependency, and masking real faults. The "default retries all errors" contract contradicts the "transient-only" mandate it is meant to canonicalize.
+**Question for Product Owner:** Should the default `retryIf` be narrowed to a transient-error predicate (network errors plus HTTP `429`/`5xx`), or should the documentation explicitly require callers to always pass `retryIf` for non-transient safety?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/resilience_helpers.js` so the default `retryIf` only retries transient errors (network errors and HTTP `429`/`5xx`), update the JSDoc accordingly, and add a unit test asserting that a permanent `4xx`/validation error is not retried.*
+
+### ❓ Question [2026-06-03] - Ingest Service Resource Limits
+**Context:** `REQUIREMENTS.md` §8 requires a "verifiable ingest path". The reference server in `examples/gatekeeper-deployment/dashboard-ingest.js` accepts POSTed reports by accumulating request chunks (`request.on('data', ...)`, lines 104-111) with no maximum body size, and sets no `request.setTimeout` or server socket timeout.
+**Ambiguity / Drift:** A network-exposed reference ingest service with no body cap and no idle timeout is vulnerable to unbounded memory growth (large/streamed payloads) and slow-loris-style connection holding. The requirements document the happy path but no resource-protection edge cases, leaving forks to inherit an unbounded reference pattern.
+**Question for Product Owner:** Should the reference service enforce a maximum request body size (e.g., reject payloads over 256 KB with `413`) and a request/socket timeout (e.g., `408` after 10s), and should §8 document these limits as part of a "verifiable ingest path"?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Add a configurable max body size (default 256 KB → `413 Payload Too Large`, aborting accumulation once exceeded) and a request socket timeout (default 10s → `408 Request Timeout`) to `examples/gatekeeper-deployment/dashboard-ingest.js`, and document both limits in `REQUIREMENTS.md` §8.*

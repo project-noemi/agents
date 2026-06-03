@@ -70,11 +70,12 @@ Reusable skills in `skills/` must include the following required headings:
 The `Audit Log` requirement must include a mandatory JSON shape: `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`. The audit record must explicitly exclude secrets, credentials, and PII.
 
 #### Technical Emission
-Agents must emit their JSON Audit Log to `stderr` separately from the primary user-facing payload (Decision [2026-04-13]).
+Agents must emit their JSON Audit Log to `stderr` separately from the primary user-facing payload (Decision [2026-04-13]). When the `logging-mcp` protocol is active, the Audit Log JSON must be carried within the `metadata.audit_log` field of the event envelope (Decision [2026-05-28-0001]).
 
 ### 3. Contract and Generator Drift Must Fail Fast
 
 - [`scripts/audit-repo.js`](../scripts/audit-repo.js) is the repository audit gate for persona/skill headings and generator invariants.
+- The audit must use case-insensitive comparison for required persona and skill headings (Decision [2026-05-28-0004]).
 - The audit must fail when:
   - required persona or skill headings are missing (auditing both `agents/` and `skills/`)
   - `Audit Log` sections contain structurally invalid JSON (Mandatory JSON shape validation)
@@ -88,6 +89,7 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
 - Both generators must inject:
   - the full mandate set from `AGENTS.md`
   - the agent index discovered from `agents/`
+  - the framework layer (Value Lenses and Operating Profiles) from their respective directories (Decision [2026-05-28-0005])
   - active skills from `mcp.config.json`
   - active MCP protocol content from `mcp.config.json`
 - Both generators must support `--config=path/to/mcp.config.json`.
@@ -98,6 +100,7 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
 - Commands that require credentials must run through `infisical run` or `op run`.
 - Code must read configuration from environment variables in process memory (`process.env`, `os.getenv()`).
 - Local `.env` parsing logic is not an approved pattern in this repository.
+- `.env.template` is the canonical reference inventory for all SecretOps command wrapper examples (Decision [2026-05-28-0003]).
 - `.env.template` and example `.env.example` files are variable inventories or vault-reference manifests only. They must not contain real secrets.
 
 ### 6. 4D Framework Order Must Remain Canonical
@@ -116,7 +119,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - Project NoéMI aligns agent design and deployment with Gartner AI TRiSM.
 - Red Team validation is required for agent deployment readiness.
 - Guardian-layer patterns remain a core architectural requirement where trust, data protection, or prompt integrity matters.
-- **Branch protection enforcement is mandatory** (Decision [2026-05-20] — Branch Protection: Mandatory Enforcement). All forks of the reference architecture MUST run `scripts/setup-branch-protection.sh` (or an equivalent automated mechanism) on first setup to enforce the canonical `develop → main` flow. `scripts/audit-repo.js` SHOULD surface missing protection as a non-fatal warning in non-CI runs and as a fatal error in CI.
+- **Branch protection enforcement is mandatory** (Decision [2026-05-20] — Branch Protection: Mandatory Enforcement). All forks of the reference architecture MUST run `scripts/setup-branch-protection.sh` (or an equivalent automated mechanism) on first setup to enforce the canonical `develop → main` flow. This is a non-negotiable governance requirement. `scripts/audit-repo.js` MUST acquire a check that surfaces missing protection as a non-fatal warning in non-CI runs and as a fatal error in CI (Decision [2026-05-20]).
 
 ### 8. Reference Examples Must Tell the Truth
 
@@ -160,6 +163,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 
 - **Historical Python Drift**: Legacy Python/Bash examples include mandatory "LEGACY/ILLUSTRATIVE" headers (Decision [2026-04-04]) but remain unmigrated to the Node.js baseline.
 - **Gatekeeper Implementation Gap**: The reference implementation in `examples/gatekeeper-deployment/` does not yet execute the full mutating action set (merges/closes) described in the persona.
+- **Memory-Code Synchronization Drift** (Identified: 2026-06-01): Multiple remediations recorded as complete in memory (Sync Script parameterization, Agent Index enhancement, shared `audit_logger.js`) are absent from the filesystem.
 - **Docker e2e Skip Behavior**: The Docker e2e suite skips runtime checks if Docker is absent, rather than failing, which can mask environmental gaps in CI.
 - **Logging Protocol Implementation Gap**: `logging-mcp` is a dual-backend draft (Loki/n8n) but is not yet active in `mcp.config.json`, and reference services (e.g., `dashboard-ingest.js`) lack alignment with its schema.
 - **Missing Onboarding and Configuration Directories** (Remediated: 2026-05-28): `clients/`, `.gatekeeper/`, and `templates/tiers/` directories referenced in agent specifications (`Client Onboarding`, `Gatekeeper`, `QBR Presenter`) now exist in the repository root with `.gitignore` placeholders for the runtime-state directories and a README for tier templates (Decision [2026-05-28-0002]).

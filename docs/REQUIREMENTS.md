@@ -90,6 +90,7 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
   - the agent index discovered from `agents/`
   - active skills from `mcp.config.json`
   - active MCP protocol content from `mcp.config.json`
+  - the framework layer (Value Lenses and Operating Profiles) inline (Decision [2026-05-28-0005])
 - Both generators must support `--config=path/to/mcp.config.json`.
 
 ### 5. Fetch-on-Demand Security Is Non-Negotiable
@@ -98,7 +99,7 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
 - Commands that require credentials must run through `infisical run` or `op run`.
 - Code must read configuration from environment variables in process memory (`process.env`, `os.getenv()`).
 - Local `.env` parsing logic is not an approved pattern in this repository.
-- `.env.template` and example `.env.example` files are variable inventories or vault-reference manifests only. They must not contain real secrets.
+- `.env.template` is the canonical reference inventory for variable names and SecretOps wrapper examples (Decision [2026-05-28-0003]). `.env.example` files are permitted within `examples/` for Docker Compose compatibility but must inherit from the central inventory.
 
 ### 6. 4D Framework Order Must Remain Canonical
 
@@ -153,7 +154,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - The following MCP protocols are formally recognized as baseline requirements: `n8n`, `slack`, `gmail`, `google-*` suite, `web-search`, and `github`.
 - Docker becomes part of the documented toolchain when a builder moves into runtime homes or Docker verification.
 - Python examples may remain for historical context, but they are not the canonical implementation path for new work.
-- The `logging-mcp` is defined as a dual-backend protocol supporting both Loki/Grafana (structured log queries) and n8n webhooks (event-driven ingestion).
+- The `logging-mcp` is defined as a dual-backend protocol supporting both Loki/Grafana and n8n webhooks. When active, it must carry the mandated Audit Log JSON inside its `metadata` field (Decision [2026-05-28-0001]).
 - **AI Model Baseline**: Reference workflows, lab examples, and smoke tests are pinned to **Gemini 2.5 Flash** (`models/gemini-2.5-flash`) as the canonical baseline for predictable performance and cost.
 
 ## Current Known Limitations
@@ -173,3 +174,6 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Internal Tool Observability Gap**: Node.js tools in `tools/` (e.g., `executive-assistant`) and reference services in `examples/` (e.g., `dashboard-ingest.js`) lack structured JSON Audit Log emission to `stderr`, relying on unstructured `console.log` and missing the shared `audit_logger.js` utility mentioned in architectural mandates.
 - **Docker Smoke Test Variable Validation Gap**: `tests/examples-smoke.test.js` lacks validation for mandated `NOEMI_DOCKER_SMOKE_*` environment variables required by Requirement 9.
 - **Sync Script Parameterization Gap**: `scripts/sync-upstream.sh` relies on hardcoded `[MyOrganization]` placeholders and fixed URLs instead of environment-based parameterization, increasing friction for forks.
+- **Memory-Code Synchronization Drift**: Multiple remediations previously recorded in memory (Sync Script parameterization, Agent Index enhancement, Audit Logger integration) are verified as absent from the live codebase filesystem as of 2026-06-03.
+- **Missing Audit Logger Utility**: The `scripts/audit_logger.js` utility, mandated for standardizing JSON Audit Log emission across internal tools, is missing from the filesystem.
+- **Audit Script Heading Case-Insensitivity**: `scripts/audit-repo.js` has been updated to support case-insensitive heading matches (Decision [2026-05-28-0004]), but still lacks substantive content validation.

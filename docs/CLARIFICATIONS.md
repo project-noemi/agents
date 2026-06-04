@@ -150,40 +150,12 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of all agent personas in `agents/` and skills in `skills/` to replace placeholder Data Inventory and Refusal Criteria with role-specific content.*
 
-### ❓ Question [2026-05-13] - RFP Split Naming Convention Remediation
-**Context:** `AGENTS.md` mandates English-first, slug-based naming. `examples/rfp-split/` contains several files like `Section_1_General_Information.pdf` that violate this rule.
-**Ambiguity / Drift:** These files represent technical drift from the repository's naming standards and may cause issues in some environments.
-**Question for Product Owner:** Should Jules perform a bulk rename of the assets in `examples/rfp-split/` to align with the slug-based naming convention (e.g., `section-1-general-information.pdf`)?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Rename all files in `examples/rfp-split/` to follow the English-first, slug-based naming convention.*
-
-### ❓ Question [2026-05-15] - Test Suite Reinforcement of API Path Drift
-**Context:** Decision [2026-05-20] standardized the Fleet Dashboard ingestion path on `/api/v1/reports` and mandated that `dashboard-ingest.js` and `tests/examples-smoke.test.js` be updated in lockstep. Verification that both files have been updated in the current main branch is still outstanding.
-**Ambiguity / Drift:** The decision is durable; the implementation follow-through needs confirmation.
-**Question for Product Owner:** Should Jules perform a verification sweep and, if needed, the lockstep update of `dashboard-ingest.js` and `tests/examples-smoke.test.js` to match the decision?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Verify and (if needed) update `examples/gatekeeper-deployment/dashboard-ingest.js` and `tests/examples-smoke.test.js` to use `/api/v1/reports`.*
-
 ### ❓ Question [2026-05-15] - Skill-to-Agent Referential Integrity
 **Context:** Agent personas reference reusable skills in their `Workflow` sections using the `**Skill:** [path/to/skill]` pattern. Currently, `scripts/audit-repo.js` does not verify that these referenced skills exist or are enabled in `mcp.config.json`.
 **Ambiguity / Drift:** This allows for "broken links" in agent specifications where an agent depends on a skill that has been renamed, deleted, or is not available in the current context.
 **Question for Product Owner:** Should the audit script be enhanced to perform referential integrity checks on skill references within agent workflows?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse agent workflows for skill references and verify their existence in the `skills/` directory.*
-
-### ❓ Question [2026-05-17] - Generator Script Redundancy
-**Context:** The repository contains `scripts/generate_all.js`, `scripts/generate_gemini.js`, and `scripts/generate_claude.js`. `generate_all.js` performs the same logic for both Gemini and Claude by calling shared helpers.
-**Ambiguity / Drift:** Maintenance overhead is increased by having three entry points for context generation. It's unclear if `generate_gemini.js` and `generate_claude.js` should be deprecated in favor of the single `generate_all.js` orchestrator.
-**Question for Product Owner:** Should we deprecate `scripts/generate_gemini.js` and `scripts/generate_claude.js` and standardize on `scripts/generate_all.js` for all context generation tasks?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Remove `scripts/generate_gemini.js` and `scripts/generate_claude.js`, ensuring `scripts/generate_all.js` is the sole, fully-featured entry point for context generation.*
-
-### ❓ Question [2026-05-19] - Internal Tool Observability Standard
-**Context:** `AGENTS.md` and `REQUIREMENTS.md` mandate that agents and reference services emit JSON Audit Logs to `stderr`.
-**Ambiguity / Drift:** Build utilities (`generate_all.js`, `audit-repo.js`) and internal tools (`executive-assistant`) currently use unstructured logs, drifting from the observability standard set for external agents.
-**Question for Product Owner:** Should internal repository tools and build utilities also be required to emit a structured JSON Audit Log to `stderr` upon completion for fleet-wide observability?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Refactor `scripts/generate_all.js`, `scripts/audit-repo.js`, and `tools/executive-assistant/server.js` to emit structured JSON Audit Logs to `stderr`.*
 
 ### ❓ Question [2026-05-20] - AI Model Version Baseline Formalization Follow-through
 **Context:** Decision [2026-05-17] / Requirement §"AI Model Baseline" pinned Gemini 2.5 Flash as the canonical reference model. Multiple example workflows and smoke tests reference `models/gemini-2.5-flash`.
@@ -212,13 +184,6 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should we add a dedicated test case to `tests/examples-smoke.test.js` to validate that these variables are correctly defined in `.env.template` and follow a standard naming/value convention?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `tests/examples-smoke.test.js` to include validation for all `NOEMI_DOCKER_SMOKE_*` environment variables defined in `.env.template`.*
-
-### ❓ Question [2026-05-29] - Sync Script Parameterization
-**Context:** `scripts/sync-upstream.sh` currently contains the hardcoded placeholder `MY_ORGANIZATION="[MyOrganization]"` and fixed URLs.
-**Ambiguity / Drift:** Organizations forking the repository must perform manual find-and-replace on this script, which increases friction and leads to "identity drift" in forks.
-**Question for Product Owner:** Should the sync script be refactored to use environment variables (e.g., `NOEMI_UPSTREAM_URL`, `NOEMI_ORG_NAME`) with sensible defaults, allowing it to be used without manual modification of the source?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Refactor `scripts/sync-upstream.sh` to pull organization names and upstream URLs from environment variables instead of hardcoded placeholders.*
 
 ### ❓ Question [2026-05-29] - Branch Protection Audit Implementation
 **Context:** Decision [2026-05-20] and Requirement §7 mandate that branch protection enforcement is mandatory and that `scripts/audit-repo.js` should surface missing protection as a warning/error.
@@ -261,3 +226,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
+
+### ❓ Question [2026-06-03] - Audit Logger Utility Standardization vs. Fragmentation
+**Context:** Decision [2026-05-29] (Internal Tool Observability) identifies the need for a shared `scripts/audit_logger.js` utility, but multiple tools currently implement their own `console.log` logic.
+**Ambiguity / Drift:** Without a shared utility, internal tool logs will remain inconsistent and harder to aggregate into the Fleet Dashboard.
+**Question for Product Owner:** Should we prioritize the creation of `scripts/audit_logger.js` as the single, mandated export for internal tool logging, and should its absence be a fatal audit error for tools in `tools/` and `examples/`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create `scripts/audit_logger.js` and mandate its use across all Node.js-based tools and services for JSON Audit Log emission.*
+
+### ❓ Question [2026-06-03] - Sync Script Parameterization Defaults
+**Context:** `scripts/sync-upstream.sh` currently hardcodes `[MyOrganization]`. Refactoring it to use environment variables (Decision [2026-05-29]) requires deciding on sensible defaults.
+**Ambiguity / Drift:** If defaults are too generic, forks may inadvertently report back to the upstream organization.
+**Question for Product Owner:** What should be the default organization name and upstream URL when the environment variables are not set? Should the script fail if they are missing?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `scripts/sync-upstream.sh` to require `NOEMI_ORG_NAME` and `NOEMI_UPSTREAM_URL`, failing with a clear error if they are not provided.*
+
+### ❓ Question [2026-06-03] - Skill Referential Integrity Check Depth
+**Context:** Agent workflows reference skills using `**Skill:** [path]`. `audit-repo.js` does not currently verify these paths.
+**Ambiguity / Drift:** This leads to "hollow" specifications where agents depend on non-existent skills.
+**Question for Product Owner:** Should `audit-repo.js` be enhanced to resolve these paths relative to the `skills/` directory and verify they point to a valid `.md` file?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse agent workflows for skill references and verify the target file's existence.*

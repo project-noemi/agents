@@ -283,3 +283,12 @@
   - Q [2026-05-21] Pre-flight failure policy / Q [2026-05-22] Docker mode hard-fail policy → resolved by [2026-05-26] Pre-flight Logic Normalization.
 - **Context:** Multiple late-cycle clarifications restate or duplicate earlier resolved questions. Carrying them in the active backlog made the queue look much larger than the real outstanding work.
 - **Impact:** CLARIFICATIONS.md shrinks to genuinely open product-owner questions; the durable answers remain in this log for traceability.
+
+## [2026-06-03] Reality Check and Documentation Alignment
+
+- **Decision:** Formally record the identified Memory-Code Synchronization Drift and missing internal utilities in the repository requirements and clarify current implementation truth.
+- **Context:** A Phase 2 Reality Check on 2026-06-03 verified that several remediations previously recorded as complete (Sync Script parameterization, Agent Index first-paragraph extraction, and shared audit_logger.js integration) are absent from the filesystem.
+- **Impact:**
+  - REQUIREMENTS.md updated to include these as "Current Known Limitations".
+  - CLARIFICATIONS.md updated with high-priority questions to resolve the drift.
+  - AGENTS.md updated to clarify the logging-mcp payload requirement (Decision [2026-05-28-0001]).

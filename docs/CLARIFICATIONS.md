@@ -261,3 +261,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
+
+### ❓ Question [2026-06-05] - Casdoor Reference Implementation Scope
+**Context:** `REQUIREMENTS.md` and `DECISION_LOG.md` identify Casdoor as the reference identity layer for multi-tenant deployments. While a Casdoor service exists in `docker-compose.yml`, no agent skill or Node.js middleware currently implements JWT validation or user context extraction.
+**Ambiguity / Drift:** The architecture describes an identity-aware fleet, but the reference implementation is currently identity-blind. This creates a "theory vs. practice" drift for adopters.
+**Question for Product Owner:** Should Jules implement a minimalist JWT validation middleware in `examples/gatekeeper-deployment/dashboard-ingest.js` to demonstrate the pattern, or should identity remain an "out-of-band" orchestrator responsibility?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement basic JWT validation middleware in `dashboard-ingest.js` and provide a `security/casdoor-auth` skill to demonstrate identity-aware agent operations.*
+
+### ❓ Question [2026-06-05] - Resilience Mandate for Local Utilities
+**Context:** `REQUIREMENTS.md` mandates exponential backoff for resilience (using `scripts/resilience_helpers.js`). Currently, core utilities like `audit-repo.js` and `generate_all.js` do not use this helper because they perform deterministic local filesystem operations.
+**Ambiguity / Drift:** There is an ambiguity in whether "resilience" applies to all repository-owned logic or only to those performing network/API calls.
+**Question for Product Owner:** Should the resilience mandate be explicitly scoped to "Network and API-facing components," or should local utilities also implement retries (e.g., for filesystem contention or locking issues)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `AGENTS.md` and `REQUIREMENTS.md` to clarify the scope of the resilience mandate, and if necessary, integrate `resilience_helpers.js` into the `generate_all.js` filesystem operations.*

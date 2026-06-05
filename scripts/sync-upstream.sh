@@ -10,9 +10,9 @@
 set -euo pipefail
 
 UPSTREAM_REMOTE="upstream"
-UPSTREAM_URL="https://github.com/project-noemi/agents.git"
+UPSTREAM_URL="${NOEMI_UPSTREAM_URL:-https://github.com/project-noemi/agents.git}"
 LOCAL_BRANCH="develop"
-MY_ORGANIZATION="[MyOrganization]"
+MY_ORGANIZATION="${NOEMI_ORG_NAME:-[MyOrganization]}"
 
 # --- Helpers ---------------------------------------------------------------
 info()  { printf "\033[1;34m▸ %s\033[0m\n" "$*"; }

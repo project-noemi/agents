@@ -261,3 +261,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
+
+### ❓ Question [2026-06-06] - Executive Assistant Test Framework Divergence
+**Context:** Requirement §9 and `AGENTS.md` mandate the built-in Node test runner (`node --test`) as the primary validation framework, and the root `package.json` runs `node --test --test-concurrency=1 tests/*.test.js`. However, `tools/executive-assistant/package.json` declares `"test": "vitest run"` and depends on `vitest`, `@vitest/coverage-v8`, and `supertest` as an ESM (`"type": "module"`) package.
+**Ambiguity / Drift:** The tool diverges from the documented test-runner baseline, and its tests under `tools/executive-assistant/tests/` are never executed by the canonical `npm run validate` gate (the root glob only matches `tests/*.test.js`). The triage, OAuth, and delta-sync logic is therefore outside CI coverage despite being shipped in the repository.
+**Question for Product Owner:** Should `tools/executive-assistant/` be migrated to the built-in Node test runner and wired into the root validation gate, or is it an intentionally sandboxed tool that is formally exempt from the canonical test-framework contract (and if so, should that exemption be documented in `AGENTS.md`)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Either migrate `tools/executive-assistant/` tests from vitest to `node:test` and add them to the root `npm run validate` gate, or add an explicit "test-framework exemption" note for `tools/` sandboxes to `AGENTS.md` and `REQUIREMENTS.md` §9.*
+
+### ❓ Question [2026-06-06] - Undocumented Executive Assistant Reference Service Scope
+**Context:** `REQUIREMENTS.md` references `executive-assistant` only as an observability *limitation*. In reality, `tools/executive-assistant/server.js` implements a full Gmail Cloud Run Pub/Sub triage service: an admin REST API (`/api/queue`, `/api/resolution`, `/api/rules`, `/api/stats`, `/api/logs`), a confidence-scored human-in-the-loop review queue (`firestoreThreadDocs` with per-thread `confidence`), and a "Learning Agent" resolution loop.
+**Ambiguity / Drift:** A substantial reference service is implemented in code but absent from the requirements — there is no Requirement §8 reference-example entry and no linked agent persona in the Agent Index. This is feature-ahead-of-spec drift, the inverse of the documented gaps.
+**Question for Product Owner:** Should the executive-assistant be elevated to a documented reference example in Requirement §8 (with a linked persona/spec, like Gatekeeper), or should it be explicitly scoped out of the reference contract as an experimental tool?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Either add a Requirement §8 reference-example entry plus a linked agent persona for the Gmail Executive Assistant, or add a top-level "Experimental / out-of-contract" notice to `tools/executive-assistant/README` and `REQUIREMENTS.md`.*
+
+### ❓ Question [2026-06-06] - Committed Test Coverage Artifacts
+**Context:** `git ls-files` shows 20 generated coverage files tracked under `tools/executive-assistant/coverage/` (including `coverage-final.json`, `clover.xml`, and the HTML report). The root `.gitignore` excludes `test-artifacts/` but contains no `coverage/` rule.
+**Ambiguity / Drift:** Generated test artifacts are committed to source control, which adds diff noise and risks stale, misleading coverage reports living in the repo. This drifts from clean-repository hygiene expected of a public reference architecture.
+**Question for Product Owner:** Should `coverage/` be added to `.gitignore` and the currently tracked artifacts removed, standardizing generated-report exclusion fleet-wide?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Add a `coverage/` rule to `.gitignore` and `git rm -r --cached tools/executive-assistant/coverage/` to stop tracking generated coverage reports.*

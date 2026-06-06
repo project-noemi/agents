@@ -283,3 +283,14 @@
   - Q [2026-05-21] Pre-flight failure policy / Q [2026-05-22] Docker mode hard-fail policy → resolved by [2026-05-26] Pre-flight Logic Normalization.
 - **Context:** Multiple late-cycle clarifications restate or duplicate earlier resolved questions. Carrying them in the active backlog made the queue look much larger than the real outstanding work.
 - **Impact:** CLARIFICATIONS.md shrinks to genuinely open product-owner questions; the durable answers remain in this log for traceability.
+
+## [2026-06-06] Substantive Remediation of Skills and Audit Gates
+
+- **Decision:** Execute a fleet-wide substantive remediation of the `skills/` directory and harden the repository audit gates to enforce substantive compliance.
+- **Context:** Resolves multiple persistent drifts where structural compliance was met but substantive content was missing (TBD placeholders) and where audit scripts lacked depth (referential integrity, schema validation).
+- **Impact:**
+  - All 7 active reusable skills in `skills/` now contain technically grounded `Data Inventory` and `Refusal Criteria` content.
+  - `scripts/audit-repo.js` now enforces referential integrity for `mcp.config.json` and performs mandatory JSON schema validation for `Audit Log` sections.
+  - `scripts/audit_logger.js` implemented as the shared utility for mandated JSON Audit Log emission to `stderr`, integrated into repository build and audit utilities.
+  - Agent Index enriched by extracting the full first paragraph of the `Role` section.
+  - `scripts/sync-upstream.sh` parameterized for organization-agnostic use.

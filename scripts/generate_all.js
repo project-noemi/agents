@@ -13,6 +13,7 @@ const {
     parseCliArgs,
     readConfig
 } = require('./context_helpers');
+const { emitAuditLog } = require('./audit_logger');
 
 const defaultConfigPath = path.join(__dirname, '../mcp.config.json');
 const protocolsDir = path.join(__dirname, '../mcp-protocols');
@@ -83,27 +84,48 @@ function generate(target, config, agents) {
 
 function run() {
     const { configOverride } = parseCliArgs(process.argv.slice(2));
+    const auditActions = [];
+    const auditRisks = [];
 
     console.log('Discovering agent specifications...');
     const agents = discoverAgents(agentsDir);
-    console.log(`Indexed ${agents.length} agents.`);
+    auditActions.push(`Indexed ${agents.length} agents`);
 
     let config;
     try {
         config = readConfig(defaultConfigPath, configOverride);
     } catch (error) {
         console.error(error.message);
+        auditRisks.push(error.message);
+        emitAuditLog({
+            task: 'Context Generation',
+            inputs: [agentsDir, defaultConfigPath],
+            actions: auditActions,
+            risks: auditRisks,
+            result: 'FAILED'
+        });
         process.exit(1);
     }
 
-    console.log(`Using config: ${config.config}`);
+    auditActions.push(`Using config: ${config.config}`);
 
     let success = true;
     for (const target of TARGETS) {
-        if (!generate(target, config, agents)) {
+        if (generate(target, config, agents)) {
+            auditActions.push(`Generated ${target.name}.md`);
+        } else {
             success = false;
+            auditRisks.push(`Failed to generate ${target.name}.md`);
         }
     }
+
+    emitAuditLog({
+        task: 'Context Generation',
+        inputs: [agentsDir, config.config],
+        actions: auditActions,
+        risks: auditRisks,
+        result: success ? 'PASSED' : 'FAILED'
+    });
 
     if (!success) {
         process.exit(1);

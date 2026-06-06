@@ -77,20 +77,23 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
 - [`scripts/audit-repo.js`](../scripts/audit-repo.js) is the repository audit gate for persona/skill headings and generator invariants.
 - The audit must fail when:
   - required persona or skill headings are missing (auditing both `agents/` and `skills/`)
-  - `Audit Log` sections contain structurally invalid JSON (Mandatory JSON shape validation)
+  - `Audit Log` sections contain structurally invalid JSON or miss mandatory schema keys (Mandatory JSON shape validation)
   - `AGENTS.md` is missing required top-level mandate sections
   - generator template markers drift
   - generated context files omit required global mandate headings
+  - **Referential Integrity Fail**: Active MCPs or Skills referenced in `mcp.config.json` do not exist as physical files.
 
 ### 4. Context Generation Must Stay Aligned
 
 - Both [`scripts/generate_gemini.js`](../scripts/generate_gemini.js) and [`scripts/generate_claude.js`](../scripts/generate_claude.js) must use shared helper logic.
 - Both generators must inject:
   - the full mandate set from `AGENTS.md`
-  - the agent index discovered from `agents/`
+  - the agent index discovered from `agents/` (using full first-paragraph role extraction)
   - active skills from `mcp.config.json`
   - active MCP protocol content from `mcp.config.json`
+  - Value Lenses and Operating Profiles (from their respective directories)
 - Both generators must support `--config=path/to/mcp.config.json`.
+- Generators must emit a structured JSON Audit Log to `stderr` via `scripts/audit_logger.js`.
 
 ### 5. Fetch-on-Demand Security Is Non-Negotiable
 
@@ -164,12 +167,12 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Logging Protocol Implementation Gap**: `logging-mcp` is a dual-backend draft (Loki/n8n) but is not yet active in `mcp.config.json`, and reference services (e.g., `dashboard-ingest.js`) lack alignment with its schema.
 - **Missing Onboarding and Configuration Directories** (Remediated: 2026-05-28): `clients/`, `.gatekeeper/`, and `templates/tiers/` directories referenced in agent specifications (`Client Onboarding`, `Gatekeeper`, `QBR Presenter`) now exist in the repository root with `.gitignore` placeholders for the runtime-state directories and a README for tier templates (Decision [2026-05-28-0002]).
 - **Framework Injection Gap** (Remediated: 2026-05-28): `Value Lenses` and `Operating Profiles` are now injected by `scripts/generate_all.js` into the `VALUE_LENS_INJECTIONS` and `OPERATING_PROFILE_INJECTIONS` template markers (Decision [2026-05-28-0005]). Generated `GEMINI.md` and `CLAUDE.md` carry the framework layer inline.
-- **Structural vs. Substantive Compliance**: Most agent personas use identical placeholder text for `Data Inventory`, `Refusal Criteria`, and `Audit Log`, satisfying structural audits but failing framework requirements for role-specific precision.
-- **Skill Contract Substantive Drift**: 100% of active reusable skills in `skills/` contain "TBD" placeholders for mandatory `Data Inventory` and `Refusal Criteria` sections, failing substantive compliance with the 4D framework.
-- **Audit Script Enforcement Depth**: `scripts/audit-repo.js` fails to verify that skills or MCPs referenced in `mcp.config.json` and agent workflows exist as physical files. It also lacks schema-level validation for `Audit Log` JSON, performing only basic structural parsing.
+- **Structural vs. Substantive Compliance** (Remediated: 2026-06-06): Reusable skills in \`skills/\` have been remediated with substantive, technically grounded content for \`Data Inventory\` and \`Refusal Criteria\`. Agent personas in \`agents/\` remain largely placeholder-based.
+- **Skill Contract Substantive Drift** (Remediated: 2026-06-06): All 7 active reusable skills in \`skills/\` now contain substantive content, satisfying 4D framework mandates.
+- **Audit Script Enforcement Depth** (Remediated: 2026-06-06): \`scripts/audit-repo.js\` now performs referential integrity checks for \`mcp.config.json\` and schema-level validation for \`Audit Log\` JSON.
 - **Branch Protection Audit Gap**: `scripts/audit-repo.js` lacks the mandated logic to verify branch protection status, as required by Section 7 Governance and Trust Controls.
-- **Agent Index Accuracy Drift**: `scripts/context_helpers.js` extracts only the first sentence of the `Role` section for the Agent Index table, resulting in truncated and potentially misleading descriptions for complex personas.
+- **Agent Index Accuracy Drift** (Remediated: 2026-06-06): \`scripts/context_helpers.js\` now extracts the full first paragraph of the \`Role\` section for the Agent Index.
 - **Resilience Helper Integration Gap**: `scripts/resilience_helpers.js` exists as a canonical reference but is not utilized by repository tools (`audit-repo.js`, `generate_all.js`) or any agent personas, violating the resilience mandate for agentic systems.
-- **Internal Tool Observability Gap**: Node.js tools in `tools/` (e.g., `executive-assistant`) and reference services in `examples/` (e.g., `dashboard-ingest.js`) lack structured JSON Audit Log emission to `stderr`, relying on unstructured `console.log` and missing the shared `audit_logger.js` utility mentioned in architectural mandates.
+- **Internal Tool Observability Gap** (Remediated: 2026-06-06): Repository build and audit utilities (\`generate_all.js\`, \`audit-repo.js\`) now emit structured JSON Audit Logs to \`stderr\` via the shared \`audit_logger.js\` utility. External tools like \`executive-assistant\` remain unmigrated.
 - **Docker Smoke Test Variable Validation Gap**: `tests/examples-smoke.test.js` lacks validation for mandated `NOEMI_DOCKER_SMOKE_*` environment variables required by Requirement 9.
-- **Sync Script Parameterization Gap**: `scripts/sync-upstream.sh` relies on hardcoded `[MyOrganization]` placeholders and fixed URLs instead of environment-based parameterization, increasing friction for forks.
+- **Sync Script Parameterization Gap** (Remediated: 2026-06-06): \`scripts/sync-upstream.sh\` is now parameterized via \`NOEMI_UPSTREAM_URL\` and \`NOEMI_ORG_NAME\` environment variables.

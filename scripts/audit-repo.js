@@ -9,19 +9,26 @@ const {
     buildGlobalMandates,
     discoverAgents,
     extractAgentHeadings,
-    extractTopLevelSections
+    extractTopLevelSections,
+    readConfig
 } = require('./context_helpers');
+const { emitAuditLog } = require('./audit_logger');
 
 const repoRoot = path.join(__dirname, '..');
 const agentsDir = path.join(repoRoot, 'agents');
 const skillsDir = path.join(repoRoot, 'skills');
+const protocolsDir = path.join(repoRoot, 'mcp-protocols');
 const agentsMdPath = path.join(repoRoot, 'AGENTS.md');
+const mcpConfigPath = path.join(repoRoot, 'mcp.config.json');
 
 let failed = false;
+const auditActions = [];
+const auditRisks = [];
 
 function fail(message) {
     failed = true;
     console.error(`AUDIT FAIL: ${message}`);
+    auditRisks.push(message);
 }
 
 const templates = [
@@ -34,6 +41,7 @@ const generatedOutputs = [
 ];
 
 function checkTemplates() {
+    auditActions.push('Checking context templates for required markers');
     for (const templatePath of templates) {
         if (!fs.existsSync(templatePath)) {
             fail(`Template not found: ${templatePath}`);
@@ -56,7 +64,6 @@ function auditFile(filePath, requiredSections) {
     const relativePath = path.relative(repoRoot, filePath);
 
     // Check required sections — case-insensitive heading match per Decision [2026-05-28-0004].
-    // The canonical casing remains as documented; the audit tolerates cosmetic capitalization drift.
     const missing = requiredSections.filter((required) => {
         const requiredLower = required.toLowerCase();
         return !headings.some((heading) => {
@@ -70,18 +77,14 @@ function auditFile(filePath, requiredSections) {
     }
 
     // Check mandatory Refusal Criteria subsection under Rules & Constraints (Decision [2026-04-13])
-    // We look for the Rules & Constraints section and ensure it contains Refusal Criteria as an H3.
-    // Case-insensitive per Decision [2026-05-28-0004].
     const rulesMatch = content.match(/## Rules & Constraints[\s\S]*?(\n## |$)/i);
     if (rulesMatch) {
         if (!/###\s+Refusal Criteria/i.test(rulesMatch[0])) {
             fail(`${relativePath} missing required subsection: ### Refusal Criteria under ## Rules & Constraints`);
         }
-    } else {
-        // If Rules & Constraints is missing, it's already flagged by the missing sections check
     }
 
-    // Check Audit Log for valid JSON (case-insensitive heading match per Decision [2026-05-28-0004])
+    // Check Audit Log for valid JSON and mandatory schema
     const auditLogMatch = content.match(/## Audit Log\s*\n+([\s\S]*?)(?=\n## |$)/i);
     if (auditLogMatch) {
         const auditLogBody = auditLogMatch[1].trim();
@@ -89,7 +92,12 @@ function auditFile(filePath, requiredSections) {
         if (jsonMatch) {
             const jsonStr = jsonMatch[1];
             try {
-                JSON.parse(jsonStr);
+                const parsed = JSON.parse(jsonStr);
+                const requiredKeys = ['task', 'inputs', 'actions', 'risks', 'result'];
+                const missingKeys = requiredKeys.filter(key => !(key in parsed));
+                if (missingKeys.length > 0) {
+                    fail(`${relativePath} Audit Log JSON missing mandatory keys: ${missingKeys.join(', ')}`);
+                }
             } catch (error) {
                 fail(`${relativePath} contains invalid JSON in Audit Log: ${error.message}`);
             }
@@ -102,23 +110,19 @@ function auditFile(filePath, requiredSections) {
 }
 
 function checkPersonas() {
-    console.log('Auditing agent specifications...');
+    auditActions.push('Auditing agent specifications');
     const agents = discoverAgents(agentsDir);
     for (const agent of agents) {
         const fullPath = path.join(repoRoot, agent.path);
-        
-        // Ensure Role exists for our enhanced index
         if (!agent.role) {
-            fail(`${agent.path} is missing a '## Role' section (required for the Agent Index).`);
+            fail(`${agent.path} is missing a '## Role' section.`);
         }
-
         auditFile(fullPath, REQUIRED_AGENT_SECTIONS);
     }
-    console.log(`Audited ${agents.length} agents.`);
 }
 
 function checkSkills() {
-    console.log('Auditing reusable skills...');
+    auditActions.push('Auditing reusable skills');
     if (!fs.existsSync(skillsDir)) {
         console.warn('Skills directory not found, skipping skills audit.');
         return;
@@ -151,14 +155,41 @@ function checkSkills() {
     }
 
     const skillFiles = discoverSkills(skillsDir);
-
     for (const fullPath of skillFiles) {
         auditFile(fullPath, REQUIRED_SKILL_SECTIONS);
     }
-    console.log(`Audited ${skillFiles.length} skills.`);
+}
+
+function checkReferentialIntegrity() {
+    auditActions.push('Checking referential integrity in mcp.config.json');
+    if (!fs.existsSync(mcpConfigPath)) {
+        fail('mcp.config.json not found');
+        return;
+    }
+
+    try {
+        const { activeMcps, activeSkills } = readConfig(mcpConfigPath);
+
+        for (const mcp of activeMcps) {
+            const mcpPath = path.join(protocolsDir, `${mcp}.md`);
+            if (!fs.existsSync(mcpPath)) {
+                fail(`Active MCP '${mcp}' referenced in mcp.config.json but file missing: ${path.relative(repoRoot, mcpPath)}`);
+            }
+        }
+
+        for (const skill of activeSkills) {
+            const skillPath = path.join(skillsDir, `${skill}.md`);
+            if (!fs.existsSync(skillPath)) {
+                fail(`Active Skill '${skill}' referenced in mcp.config.json but file missing: ${path.relative(repoRoot, skillPath)}`);
+            }
+        }
+    } catch (error) {
+        fail(`Error reading mcp.config.json: ${error.message}`);
+    }
 }
 
 function checkGeneratedOutputs() {
+    auditActions.push('Checking generated outputs for mandate alignment');
     let mandates;
     try {
         mandates = buildGlobalMandates(agentsMdPath);
@@ -170,10 +201,7 @@ function checkGeneratedOutputs() {
     const mandateHeadings = [...mandates.matchAll(/^##\s+(.+)$/gm)].map((match) => match[1]);
 
     for (const outputPath of generatedOutputs) {
-        if (!fs.existsSync(outputPath)) {
-            continue;
-        }
-
+        if (!fs.existsSync(outputPath)) continue;
         const content = fs.readFileSync(outputPath, 'utf8');
         for (const heading of mandateHeadings) {
             if (!content.includes(`## ${heading}`)) {
@@ -187,13 +215,20 @@ function main() {
     checkTemplates();
     checkPersonas();
     checkSkills();
+    checkReferentialIntegrity();
     checkGeneratedOutputs();
+
+    emitAuditLog({
+        task: 'Repository Audit',
+        inputs: [agentsDir, skillsDir, mcpConfigPath, agentsMdPath],
+        actions: auditActions,
+        risks: auditRisks,
+        result: failed ? 'FAILED' : 'PASSED'
+    });
 
     if (failed) {
         process.exit(1);
     }
-
-    console.log('Repository audit passed.');
 }
 
 main();

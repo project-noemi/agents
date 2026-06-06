@@ -261,3 +261,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
+
+### ❓ Question [2026-06-06] - Red Team Gauntlet Test Vector Absence
+**Context:** The `Client Onboarding` agent (`agents/operations/client-onboarding.md`) mandates running a validation suite using 5 specific test cases from `examples/red-team-gauntlet/`.
+**Ambiguity / Drift:** The `examples/red-team-gauntlet/` directory only contains a `README.md` and lacks the actual test vectors (Prompts/PII patterns) required to execute the mandated validation workflow.
+**Question for Product Owner:** Should the `red-team-gauntlet` example be populated with a starter set of YAML/JSON test vectors to support the `Client Onboarding` validation requirement?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create `examples/red-team-gauntlet/test-vectors.yaml` with the 5 starter cases (Prompt Injection and PII) required by the Onboarding workflow.*
+
+### ❓ Question [2026-06-06] - Casdoor Reference Implementation Scope (JWT validation/middleware)
+**Context:** `REQUIREMENTS.md` and `DECISION_LOG.md` identify Casdoor as the reference identity layer for multi-tenant deployments.
+**Ambiguity / Drift:** While Casdoor is present in `fleet-deployment` compose files, there is no implementation logic in the repository (scripts, middleware, or agents) that actually performs token validation or user context extraction.
+**Question for Product Owner:** Should Jules implement a reference `casdoor-auth` skill or Node.js middleware to demonstrate how agents should validate identity in a multi-tenant fleet?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create a `skills/security/casdoor-validate.md` specification and implement basic JWT validation middleware in `examples/gatekeeper-deployment/dashboard-ingest.js`.*
+
+### ❓ Question [2026-06-06] - Resilience Helper Usage Mandate for Local Filesystem Operations
+**Context:** `AGENTS.md` and `REQUIREMENTS.md` mandate the use of `scripts/resilience_helpers.js` for exponential backoff retry logic.
+**Ambiguity / Drift:** Current repository build utilities (`audit-repo.js`, `generate_all.js`) perform deterministic local filesystem operations that do not typically benefit from retry logic. However, the mandate is expressed broadly.
+**Question for Product Owner:** Should the resilience mandate be clarified to explicitly exclude deterministic local filesystem operations, or should repository utilities be refactored to use the helper even for local reads/writes for consistency?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `scripts/audit-repo.js` and `scripts/generate_all.js` to use `scripts/resilience_helpers.js` for all file read/write operations, or update `AGENTS.md` to narrow the mandate's scope.*

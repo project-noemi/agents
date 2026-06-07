@@ -261,3 +261,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
+
+### ❓ Question [2026-06-07] - Audit Log Schema Enforcement Policy
+**Context:** REQUIREMENTS.md mandates a specific JSON shape for Audit Logs, but `scripts/audit-repo.js` only performs basic structural parsing and does not reject logs missing mandatory fields (`task`, `inputs`, `actions`, `risks`, `result`).
+**Ambiguity / Drift:** This "schema blindness" allows substantively incomplete audit logs to pass CI, undermining fleet-wide observability and ROI calculation.
+**Question for Product Owner:** Should Jules implement mandatory JSON schema validation in `scripts/audit-repo.js` and fail the audit if any of the five mandated fields are missing?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` and ensure the audit fails in CI if fields are missing.*
+
+### ❓ Question [2026-06-07] - Skill Library Substantive Remediation Strategy
+**Context:** 100% of the active reusable skills in `skills/` currently use "TBD" placeholders for mandatory `Data Inventory` and `Refusal Criteria` sections, violating the 4D framework.
+**Ambiguity / Drift:** The skill library is structurally compliant but substantively hollow, providing no real safety-gating or data definition for agents that consume them.
+**Question for Product Owner:** Should Jules prioritize a bulk remediation to replace these "TBD" placeholders with technically grounded defaults based on each skill's documented Procedure, or should we defer until domain-specific logic is provided?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory, replacing all "TBD" placeholders with technically grounded defaults based on each skill's Procedure.*

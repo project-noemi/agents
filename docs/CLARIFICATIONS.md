@@ -261,3 +261,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
+
+### ❓ Question [2026-06-07] - Canonical Backoff Parameters Across Reference Helpers
+**Context:** Requirement §8 mandates "at least one reusable reference pattern for exponential backoff and retry (Node.js implementation: `scripts/resilience_helpers.js`)." The repository actually ships two retry helpers, and the requirements document no canonical backoff parameters.
+**Ambiguity / Drift:** The two helpers disagree on their contract. `scripts/resilience_helpers.js` uses `maxRetries=5`, `baseDelayMs=1000`, `maxDelayMs=30000` (30s cap), and `jitterFactor=0.2`. `scripts/retry-with-backoff.sh` uses `RETRY_MAX_ATTEMPTS=5`, `RETRY_INITIAL_DELAY_SECONDS=1`, `RETRY_MAX_DELAY_SECONDS=16` (16s cap), and applies **no jitter**. The shell helper is not referenced anywhere in Requirement §8. Callers therefore cannot tell which delay ceiling and jitter behavior is authoritative, and Decision [2026-04-02] only declared the shell helper "insufficient" without reconciling parameters.
+**Question for Product Owner:** Should canonical backoff parameters (max attempts, base delay, max delay cap, jitter policy) be defined in `REQUIREMENTS.md` §8, and should the shell and Node helpers be reconciled to that single contract?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Define canonical backoff parameters in `REQUIREMENTS.md` §8 and align `scripts/retry-with-backoff.sh` and `scripts/resilience_helpers.js` (max-delay cap and jitter policy) to the same documented contract.*
+
+### ❓ Question [2026-06-07] - Executive Assistant Triage Classification Contract
+**Context:** `tools/executive-assistant/triage-router.js` implements `route(message)`, which returns one of `IGNORE`, `VIP`, or `STANDARD` based on `ignorePatterns`, `vipSenders`, and `vipDomains`. The unit tests in `tools/executive-assistant/tests/triage-router.test.js` lock the evaluation precedence as `IGNORE` → `VIP` → `STANDARD` (ignore is checked first, standard is the default).
+**Ambiguity / Drift:** `REQUIREMENTS.md` references `executive-assistant` only as an observability gap (unstructured logging). The tool's actual classification output categories and their precedence are implemented and test-covered but absent from the requirement truth, so a core piece of business logic is undocumented.
+**Question for Product Owner:** Should the Executive Assistant triage classification contract (the three output categories and their precedence) be documented as a requirement, and is `IGNORE` → `VIP` → `STANDARD` the intended precedence order?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Document the Executive Assistant triage classification contract (categories `IGNORE`/`VIP`/`STANDARD` and their precedence) in `REQUIREMENTS.md` and cross-reference it from the `tools/executive-assistant/` documentation.*
+
+### ❓ Question [2026-06-07] - Test Framework Drift and CI Coverage Gap (Vitest)
+**Context:** Requirement §9 and "Runtime and Tooling Requirements" state that "The built-in Node test runner is the primary validation framework for repository contracts and smoke tests," and the root `npm test` script runs `node --test --test-concurrency=1 tests/*.test.js`.
+**Ambiguity / Drift:** `tools/executive-assistant/package.json` declares `"test": "vitest run"`, and its test files (e.g., `tests/triage-router.test.js`) import from `vitest`. These tests live under `tools/executive-assistant/tests/` and are therefore never matched by the root `tests/*.test.js` glob, so they are not executed by `npm run validate` or the documented CI gate. A parallel, undocumented test framework validates real tool logic outside the canonical validation contract.
+**Question for Product Owner:** Should Vitest be acknowledged as an approved per-tool test framework (and the Executive Assistant suite wired into the CI validation flow), or should those tests be migrated to the built-in Node test runner to honor the single-framework requirement?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Either wire `tools/executive-assistant` test execution into the root validation/CI flow (and document Vitest as an approved per-tool framework in `REQUIREMENTS.md` §9) or migrate the Executive Assistant tests to `node --test`.*

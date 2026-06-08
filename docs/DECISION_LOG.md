@@ -1,5 +1,14 @@
 # Decision Log
 
+## [2026-06-08] Reality-Check Cycle — Newly Confirmed Technical Drifts
+
+- **Decision:** Per the standing "Formalization of Technical Drift Tracking" mandate (Decision [2026-05-20]), record three newly confirmed code-vs-docs drifts in `REQUIREMENTS.md` §"Current Known Limitations" and open scoped clarifications for product-owner resolution.
+- **Context:** A whole-codebase reality check (no human answers were pending in `CLARIFICATIONS.md`, so Phase 1 made no requirement edits) surfaced three discrepancies not previously tracked: (1) `tools/executive-assistant/` validates on `vitest`/ESM rather than the mandated built-in Node test runner and is excluded from the root `npm run validate` gate; (2) the `NOEMI_DOCKER_SMOKE_*` defaults in `.env.template` disagree with the hardcoded fallbacks in `tests/e2e/docker-smoke.test.js`; (3) `scripts/audit-repo.js` never implemented the self-emitted JSON Audit Log to `stderr` required by Decision [2026-05-20] clause (3).
+- **Impact:**
+  - `REQUIREMENTS.md` §"Current Known Limitations" gains three confirmed-drift entries dated 2026-06-08.
+  - `CLARIFICATIONS.md` gains three scoped questions ([2026-06-08]) with ready-to-delegate action prompts; each remains a question rather than a unilateral fix because the resolution involves a policy choice (sanction vs. migrate, which value is authoritative, implement vs. descope).
+  - No `AGENTS.md` change was warranted this cycle, as no human-approved architectural rule emerged.
+
 ## [2026-04-02] Docker Image and Compose Version Update
 
 - **Decision:** Bump `pgvector` and `Casdoor` image tags to their current versions, correct repository names, and remove the obsolete `version` attribute from `docker-compose.yml` files.

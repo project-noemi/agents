@@ -248,16 +248,23 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Re-implement the 2026-05-31 remediation set (Sync Script parameterization, Agent Index first-paragraph extraction, and shared `audit_logger.js` integration) to bring the codebase into alignment with recorded decisions.*
 
-### ❓ Question [2026-06-01] - Substantive vs. Structural Audit Policy
-**Context:** `audit-repo.js` verifies that headings like `Data Inventory` and `Refusal Criteria` exist, but it ignores their content. Current scan shows 100% of these sections in `skills/` contain "TBD" placeholders.
-**Ambiguity / Drift:** The repository is structurally compliant but substantively hollow, violating the 4D Description (D2) and Refusal Principle mandates for role-specific precision.
-**Question for Product Owner:** Should the audit gate be enhanced to reject files containing "TBD" or similar placeholders in mandatory sections, or should substantive remediation be deferred to domain experts?
+### ❓ Question [2026-06-07] - Audit Log Schema Enforcement Policy
+**Context:** `REQUIREMENTS.md` mandates a specific JSON shape for Audit Logs (`task`, `inputs`, `actions`, `risks`, `result`), but `scripts/audit-repo.js` currently only verifies that the block is valid JSON.
+**Ambiguity / Drift:** The repository is in structural compliance but substantive drift regarding observability. Incomplete logs hinder automated ROI calculation and fleet auditing.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be updated to perform mandatory schema validation immediately, failing the build if any required keys are missing from an Audit Log section?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to flag "TBD" placeholders in mandatory persona and skill sections as a fatal audit failure.*
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to enforce mandatory JSON schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) in all Audit Log sections.*
 
-### ❓ Question [2026-06-01] - Audit Log Schema Enforcement
-**Context:** `REQUIREMENTS.md` mandates a specific JSON shape for Audit Logs, but `audit-repo.js` only verifies that the block is valid JSON.
-**Ambiguity / Drift:** Incomplete audit logs can pass the gate but fail to provide the required fields for fleet observability and ROI calculation.
-**Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
+### ❓ Question [2026-06-07] - Skill Library Substantive Remediation Strategy
+**Context:** 100% of the active reusable skills in `skills/` currently contain "TBD" placeholders for mandatory `Data Inventory` and `Refusal Criteria` sections.
+**Ambiguity / Drift:** The skill library is substantively hollow, failing the 4D Description (D2) and Refusal Principle mandates. `scripts/audit-repo.js` does not currently flag these placeholders.
+**Question for Product Owner:** Should Jules perform a bulk update to replace these "TBD" placeholders with technically grounded defaults based on each skill's Procedure, and should the audit script be updated to reject "TBD" placeholders in mandatory sections?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
+**🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory and update `scripts/audit-repo.js` to flag "TBD" placeholders as fatal audit failures.*
+
+### ❓ Question [2026-06-07] - Branch Protection Verification Method
+**Context:** Decision [2026-05-20] and `REQUIREMENTS.md` §7 mandate that branch protection enforcement is mandatory and that `scripts/audit-repo.js` should surface missing protection as an error.
+**Ambiguity / Drift:** Verification of "active" protection typically requires a GitHub API token, which may not be available in all local or CI environments.
+**Question for Product Owner:** How should the audit script verify branch protection? Should it attempt to use the GitHub API (with an optional token) or check for the local execution history/artifacts of `scripts/setup-branch-protection.sh`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement the branch protection verification logic in `scripts/audit-repo.js`, choosing the approved method (API vs. local check) to ensure compliance without blocking offline builders.*

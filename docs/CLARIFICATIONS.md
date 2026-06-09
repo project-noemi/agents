@@ -261,3 +261,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
+
+### ❓ Question [2026-06-07] - Memory-Code Synchronization Drift
+**Context:** The repository's "Memory" records several remediations as completed on 2026-06-06 (parameterized sync script, enhanced agent index, shared `audit_logger.js`), but these changes are absent from the VM's filesystem and appear to have been reverted or were never merged.
+**Ambiguity / Drift:** There is a discrepancy between the recorded architectural history (Memory) and the implemented codebase truth. This creates a high risk of assuming compliance where technical debt remains.
+**Question for Product Owner:** Should Jules proceed with a fresh implementation of these remediations to align the codebase with the reported state?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Re-implement the remediation set (Sync Script parameterization, Agent Index first-paragraph extraction, and shared `audit_logger.js` integration) to bring the codebase into alignment with recorded decisions.*
+
+### ❓ Question [2026-06-07] - Red Team Gauntlet Test Vector Serialization
+**Context:** The `Client Onboarding` agent (`agents/operations/client-onboarding.md`) mandates running validation using test cases from `examples/red-team-gauntlet/`. Currently, these vectors exist only as markdown documentation in a README.
+**Ambiguity / Drift:** The lack of machine-readable test vectors (e.g., `vectors.yaml` or `vectors.json`) prevents the automated execution of the mandated validation workflow.
+**Question for Product Owner:** Should Jules serialize the existing test cases from the Red Team Gauntlet README into a structured JSON or YAML file to support automated validation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Serialize the `PromptShield` and `PIIGuard` test cases from `examples/red-team-gauntlet/README.md` into `examples/red-team-gauntlet/vectors.json`.*
+
+### ❓ Question [2026-06-07] - Client Tier Template Implementation Gap
+**Context:** The `Client Onboarding` agent relies on tier templates in `templates/tiers/` to provision new tenants.
+**Ambiguity / Drift:** While the directory exists, it is empty (containing only a README). This blocks the "Provision" and "Intake" steps of the onboarding workflow.
+**Question for Product Owner:** Should Jules draft the starter tier templates (Basic, Standard, Premium) in `templates/tiers/` based on the NoéMI reference architecture?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create starter `basic.md`, `standard.md`, and `premium.md` templates in `templates/tiers/` specifying the agents, skills, and MCPs included in each tier.*

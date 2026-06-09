@@ -4,7 +4,7 @@ This file now tracks only active, unresolved questions that still require produc
 
 ## Current Status
 
-- There are no open product clarifications blocking the repository at this time.
+- No clarification is a hard blocker for the repository, but an active backlog of non-blocking product-owner questions remains open below (awaiting answers). The most recent batch was added on 2026-06-09.
 - [2026-04-03] Resolved ROI Google Sheets Template URL (URL confirmed in `tools/roi/README.md`) and `logging-mcp` configuration scope (remains reference-only, not added to `mcp.config.json`).
 - Durable answers from the March-April 2026 clarification backlog were normalized into [DECISION_LOG.md](DECISION_LOG.md), especially the entries dated `2026-04-02`.
 - Questions that were superseded by implemented repo changes were closed as overtaken by events and removed from the active backlog.
@@ -261,3 +261,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
+
+### ❓ Question [2026-06-09] - Fleet Dashboard Reference Implementation Location
+**Context:** The Fleet Dashboard persona (`agents/operations/fleet-dashboard.md`) points its reference implementation at `examples/gatekeeper-deployment/docker-compose.yml`, and the ingest service `dashboard-ingest.js` physically lives under `examples/gatekeeper-deployment/`. However, Decision [2026-05-20] (Fleet Dashboard Ingestion Path) records the canonical file as `examples/fleet-dashboard/dashboard-ingest.js` — a directory that does not exist in the repository.
+**Ambiguity / Drift:** The durable audit trail (`DECISION_LOG.md`) points at a path that cannot be resolved, while the Fleet Dashboard's reference implementation is colocated inside the Gatekeeper example. A future agent acting on that decision would fail to locate the file. The `/api/v1/reports` path itself is correctly implemented and tested; only the location/naming is inconsistent.
+**Question for Product Owner:** Should the Fleet Dashboard reference implementation be relocated into its own `examples/fleet-dashboard/` directory (and the persona + decision updated to match), or should the decision record and any stale references be corrected to reflect permanent colocation under `examples/gatekeeper-deployment/`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Either (a) move `dashboard-ingest.js` and its compose service into a new `examples/fleet-dashboard/` directory and update the Fleet Dashboard persona, tests, and Decision [2026-05-20], or (b) correct Decision [2026-05-20] and all references to point at `examples/gatekeeper-deployment/dashboard-ingest.js`.*
+
+### ❓ Question [2026-06-09] - Coding Domain Documentation Mirror
+**Context:** The CLAUDE.md "Adding or Modifying Agents" mandate requires "matching documentation in `docs/agents/{domain}/{name}/`". The `coding` domain has grown to five specifications (`architect/core.md`, `bolt/core.md`, `bolt/go.md`, `bolt/nextjs-16.md`, `sentinel/core.md`), but `docs/agents/coding/` contains only a `README.md` plus empty `.gitkeep` placeholders for `bolt/` and `sentinel/`, with no directory at all for `architect/`.
+**Ambiguity / Drift:** Decision [2026-04-02] relaxed the mirror to "directory and guide level, not a 1:1 file mirror," but the coding domain currently provides neither per-agent guides nor any `architect` presence. This leaves the most code-facing domain under-documented and inconsistent with its peers.
+**Question for Product Owner:** Should per-agent guides be authored under `docs/agents/coding/` for all five specs, or should the existing `docs/agents/coding/README.md` be expanded to cover every coding agent (and the empty `.gitkeep` placeholders removed) to satisfy the directory/guide-level mirror?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Bring `docs/agents/coding/` into compliance with the documentation-mirror mandate by either authoring per-agent guides for architect/bolt/sentinel or expanding `docs/agents/coding/README.md` to cover all five specs and removing the empty placeholders.*
+
+### ❓ Question [2026-06-09] - Agent Variant/Specialization Convention
+**Context:** The fleet now contains a "core + framework specialization" pattern: `agents/coding/bolt/` ships `core.md`, `go.md`, and `nextjs-16.md`, each surfaced as a distinct row in the generated Agent Index (e.g., "Bolt (Go) — Performance Agent"). No rule in `AGENTS.md`, `docs/REQUIREMENTS.md`, or `docs/AGENT_TEMPLATE.md` describes this variant pattern.
+**Ambiguity / Drift:** The repository has adopted a new structural convention without a governing contract. It is unspecified whether variant specs must duplicate every required section, whether they may inherit/override content from their `core.md`, how they should be named, and whether the audit gate or Agent Index should treat them as full standalone personas or as derivations of a core spec.
+**Question for Product Owner:** Should a formal "Agent Variant" convention be added to `AGENTS.md` and `docs/AGENT_TEMPLATE.md` (defining naming, required-section duplication, and core-vs-variant inheritance), and should `scripts/audit-repo.js` treat variants identically to standalone personas?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Define an "Agent Variant" convention in `AGENTS.md` and `docs/AGENT_TEMPLATE.md` (naming, required sections, core-vs-variant inheritance) and update `scripts/audit-repo.js`/Agent Index generation to enforce it.*

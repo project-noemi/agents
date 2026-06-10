@@ -18,7 +18,7 @@ To ensure reliability and stability, agents and toolkit components must implemen
 - **Graceful Degradation**: If an MCP tool or external API fails, the agent must explain the error clearly and attempt alternative strategies if available, rather than silently failing.
 - **Exponential Backoff**: Implement exponential backoff retry logic for transient network errors or rate-limiting (429) responses. Use `scripts/resilience_helpers.js` as the canonical Node.js reference implementation.
 - **Standardized Logging**: All technical errors must be logged to `stderr` to allow the orchestrator to capture and report execution failures accurately. Agent observability should leverage the `logging-mcp` protocol for unified access to Loki/Grafana and n8n webhook backends.
-- **Internal Tool & Service Audit Logs**: All Node.js-based tools in `tools/` and reference services in `examples/` that perform automated ingestion, routing, or state mutation must emit a structured JSON Audit Log to `stderr` for every significant operational event, following the same lightweight shape as agent personas.
+- **Internal Tool & Service Audit Logs**: All Node.js-based tools in `tools/` and reference services in `examples/` that perform automated ingestion, routing, or state mutation must emit a structured JSON Audit Log to `stderr` for every significant operational event, using the shared `scripts/audit_logger.js` utility.
 
 # 🚀 Execution Patterns
 The Infisical CLI or 1Password CLI is required in the environment. When you need to execute scripts, tests, or servers that require credentials, you must wrap the command using the following pattern:
@@ -43,7 +43,7 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 
 - Infisical: If execution fails, ensure you are logged in via `infisical login`.
 - 1Password: If execution fails, ensure you are logged in via `op signin`.
-- **Pre-flight Checks**: Environment verification scripts (`scripts/verify-env.sh`, `scripts/verify-env.ps1`) should perform active authentication checks (e.g., `infisical whoami` or `op get user`) when in `builder` or `docker` modes to ensure SecretOps tokens are valid.
+- **Pre-flight Checks**: Environment verification scripts (`scripts/verify-env.sh`, `scripts/verify-env.ps1`) should perform active authentication checks (e.g., `infisical whoami` or `op get user`). Missing or invalid authentication is a **fatal error (exit 1)** in `docker` mode.
 
 # 📝 Coding Standards
 - **Node.js Baseline**: All repository logic, utilities, and reference Docker images must use Node.js version 24 as the technical baseline to ensure cross-fleet compatibility. This includes all tools in the `tools/` directory and deployment examples in `examples/`.

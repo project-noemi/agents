@@ -80,13 +80,6 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `AGENTS.md` and `docs/AGENT_TEMPLATE.md` to include `Journal` as a mandatory section, then perform a bulk update to add it to all 22 agent personas.*
 
-### ❓ Question [2026-05-02] - Agent Index Role Truncation
-**Context:** `scripts/context_helpers.js` currently extracts only the first sentence of the `## Role` section for inclusion in the Agent Index.
-**Ambiguity / Drift:** For complex agents with multi-sentence role definitions, this leads to truncated and potentially misleading descriptions in the generated context files (`GEMINI.md`, `CLAUDE.md`).
-**Question for Product Owner:** Should the Agent Index logic be updated to extract the full first paragraph of the Role section, or should we introduce a specific `### Summary` subsection for this purpose?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `scripts/context_helpers.js` to extract the full first paragraph of the `## Role` section for the Agent Index to ensure descriptive accuracy.*
-
 ### ❓ Question [2026-05-02] - Config-to-Asset Mapping Validation
 **Context:** `mcp.config.json` defines the `active_mcps` and `active_skills` for context generation.
 **Ambiguity / Drift:** `scripts/audit-repo.js` does not verify that these entries actually correspond to existing files in `mcp-protocols/` and `skills/`. This allows typos or missing files to go undetected by the structural audit, leading to incomplete generated context.
@@ -121,20 +114,6 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the audit script be enhanced to perform basic substantive checks (e.g., regex for the three mandatory clauses) within the Refusal Criteria section?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to verify that `Refusal Criteria` contains the three mandated safety clauses.*
-
-### ❓ Question [2026-05-02] - Tool Baseline Alignment (Executive Assistant)
-**Context:** The `Executive Assistant` tool (`tools/executive-assistant/`) is implemented in Node.js but lacks structured JSON Audit Logs to `stderr`.
-**Ambiguity / Drift:** Internal tools that act as agentic interfaces are currently drifting from the baseline observability requirement set for "external" agents.
-**Question for Product Owner:** Should all Node.js-based tools in the `tools/` directory be required to adhere to the JSON Audit Log to `stderr` observability standard?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `tools/executive-assistant/` to implement structured JSON Audit Log emission to `stderr` for all triage and configuration events.*
-
-### ❓ Question [2026-05-02] - Skill Contract Enforcement Depth
-**Context:** Reusable skills perform critical logic, but the current skill library contains placeholder content in the mandatory `Data Inventory` and `Refusal Criteria` sections.
-**Ambiguity / Drift:** There is a mismatch between the theoretical "Reusable Skill Contract" in `REQUIREMENTS.md` and the actual state of the skill library.
-**Question for Product Owner:** Should Jules perform a fleet-wide remediation of the `skills/` directory to bring all skills into substantive compliance with the latest contract requirements?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a bulk update of all files in `skills/` to include the mandatory `Data Inventory` and `Refusal Criteria` H3 subsection with role-specific content.*
 
 ### ❓ Question [2026-05-02] - Identity Provider Implementation Gap
 **Context:** `DECISION_LOG.md` and `REQUIREMENTS.md` mention Casdoor as the reference identity layer for multi-tenant fleet deployments.
@@ -178,13 +157,6 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Remove `scripts/generate_gemini.js` and `scripts/generate_claude.js`, ensuring `scripts/generate_all.js` is the sole, fully-featured entry point for context generation.*
 
-### ❓ Question [2026-05-19] - Internal Tool Observability Standard
-**Context:** `AGENTS.md` and `REQUIREMENTS.md` mandate that agents and reference services emit JSON Audit Logs to `stderr`.
-**Ambiguity / Drift:** Build utilities (`generate_all.js`, `audit-repo.js`) and internal tools (`executive-assistant`) currently use unstructured logs, drifting from the observability standard set for external agents.
-**Question for Product Owner:** Should internal repository tools and build utilities also be required to emit a structured JSON Audit Log to `stderr` upon completion for fleet-wide observability?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Refactor `scripts/generate_all.js`, `scripts/audit-repo.js`, and `tools/executive-assistant/server.js` to emit structured JSON Audit Logs to `stderr`.*
-
 ### ❓ Question [2026-05-20] - AI Model Version Baseline Formalization Follow-through
 **Context:** Decision [2026-05-17] / Requirement §"AI Model Baseline" pinned Gemini 2.5 Flash as the canonical reference model. Multiple example workflows and smoke tests reference `models/gemini-2.5-flash`.
 **Ambiguity / Drift:** Decision exists; an automated audit check that flags drift from the baseline does not.
@@ -199,26 +171,12 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Create a `skills/security/casdoor-validate.md` specification and implement basic JWT validation middleware in `examples/gatekeeper-deployment/dashboard-ingest.js`.*
 
-### ❓ Question [2026-05-28] - Substantive Remediation of the Skill Library
-**Context:** While `SKILL_TEMPLATE.md` has been updated with mandatory `Data Inventory` and `Refusal Criteria` sections, the active skills in the `skills/` directory currently contain "TBD" placeholders for these sections and template-only JSON in their `Audit Log`.
-**Ambiguity / Drift:** The skill library is in substantive drift from the 4D Description (D2) and Refusal Principle mandates. This makes the skills "hollow" from a safety and documentation perspective, even if they pass structural audits.
-**Question for Product Owner:** Should Jules perform a fleet-wide "substantive remediation" to replace these placeholders with role-specific, technically accurate content for all reusable skills?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory to replace all TBD placeholders with role-specific Data Inventory, Refusal Criteria, and valid example Audit Logs.*
-
 ### ❓ Question [2026-05-29] - Docker Smoke Test Variable Validation
 **Context:** Requirement §9 mandates that the default test suite must cover "static smoke checks for example stacks and Docker env inventories (including `NOEMI_DOCKER_SMOKE_*` variable validation)."
 **Ambiguity / Drift:** `tests/examples-smoke.test.js` currently validates Docker `.env.example` files and compose configurations but lacks any logic to verify the presence or format of the `NOEMI_DOCKER_SMOKE_*` variables used by the E2E suite.
 **Question for Product Owner:** Should we add a dedicated test case to `tests/examples-smoke.test.js` to validate that these variables are correctly defined in `.env.template` and follow a standard naming/value convention?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `tests/examples-smoke.test.js` to include validation for all `NOEMI_DOCKER_SMOKE_*` environment variables defined in `.env.template`.*
-
-### ❓ Question [2026-05-29] - Sync Script Parameterization
-**Context:** `scripts/sync-upstream.sh` currently contains the hardcoded placeholder `MY_ORGANIZATION="[MyOrganization]"` and fixed URLs.
-**Ambiguity / Drift:** Organizations forking the repository must perform manual find-and-replace on this script, which increases friction and leads to "identity drift" in forks.
-**Question for Product Owner:** Should the sync script be refactored to use environment variables (e.g., `NOEMI_UPSTREAM_URL`, `NOEMI_ORG_NAME`) with sensible defaults, allowing it to be used without manual modification of the source?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Refactor `scripts/sync-upstream.sh` to pull organization names and upstream URLs from environment variables instead of hardcoded placeholders.*
 
 ### ❓ Question [2026-05-29] - Branch Protection Audit Implementation
 **Context:** Decision [2026-05-20] and Requirement §7 mandate that branch protection enforcement is mandatory and that `scripts/audit-repo.js` should surface missing protection as a warning/error.
@@ -234,30 +192,16 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory, replacing "TBD" placeholders with technically grounded defaults based on each skill's documented Procedure.*
 
-### ❓ Question [2026-05-29] - Internal Tool Observability Implementation
-**Context:** Multiple Node.js tools in `tools/` and reference services in `examples/` rely on unstructured `console.log` for operational events, violating the JSON Audit Log mandate.
-**Ambiguity / Drift:** While the requirement is clear, the implementation involves refactoring multiple disparate utilities.
-**Question for Product Owner:** Should we implement a shared Node.js logging utility (e.g., `scripts/audit_logger.js`) to standardize this emission across the fleet, or should each tool implement its own lightweight JSON emission logic?
+### ❓ Question [2026-06-10] - Red Team Gauntlet Test Vector Serialization
+**Context:** The `Client Onboarding` agent mandates running a validation suite using 5 specific test cases from `examples/red-team-gauntlet/`.
+**Ambiguity / Drift:** The `examples/red-team-gauntlet/` directory only contains a `README.md` and lacks machine-readable test vectors (YAML/JSON) for automated validation.
+**Question for Product Owner:** Should Jules be tasked with creating a starter set of machine-readable test vectors (Prompt Injection, PII leakage) in `examples/red-team-gauntlet/` to support automated validation?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Create a shared `scripts/audit_logger.js` utility and refactor `executive-assistant` and `dashboard-ingest.js` to use it for mandated JSON Audit Log emission to stderr.*
+**🤖 Jules Action Prompt:** *Create `examples/red-team-gauntlet/test-vectors.yaml` with the 5 starter cases (Prompt Injection and PII) required by the Onboarding workflow.*
 
-### ❓ Question [2026-06-01] - Memory-Code Synchronization Drift
-**Context:** The repository's "Memory" records several remediations as completed on 2026-05-31 (parameterized sync script, enhanced agent index, shared `audit_logger.js`), but these changes are absent from the VM's filesystem.
-**Ambiguity / Drift:** There is a significant discrepancy between the recorded architectural history (Memory) and the implemented codebase truth. This creates a high risk of assuming compliance where technical debt remains.
-**Question for Product Owner:** Should Jules proceed with a fresh implementation of these 2026-05-31 remediations to align the codebase with the reported state, or is there an external branch/sync issue that explains the absence of these files?
+### ❓ Question [2026-06-10] - Client Tier Template Implementation
+**Context:** The `Client Onboarding` agent references specific service tier templates (basic.md, standard.md) in `templates/tiers/`.
+**Ambiguity / Drift:** While the directory exists, it is currently empty (containing only a README), preventing the agent from actually using these templates.
+**Question for Product Owner:** Should Jules implement the reference service tier templates (basic.md, standard.md, enterprise.md) in `templates/tiers/` based on the project's standard tier definitions?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Re-implement the 2026-05-31 remediation set (Sync Script parameterization, Agent Index first-paragraph extraction, and shared `audit_logger.js` integration) to bring the codebase into alignment with recorded decisions.*
-
-### ❓ Question [2026-06-01] - Substantive vs. Structural Audit Policy
-**Context:** `audit-repo.js` verifies that headings like `Data Inventory` and `Refusal Criteria` exist, but it ignores their content. Current scan shows 100% of these sections in `skills/` contain "TBD" placeholders.
-**Ambiguity / Drift:** The repository is structurally compliant but substantively hollow, violating the 4D Description (D2) and Refusal Principle mandates for role-specific precision.
-**Question for Product Owner:** Should the audit gate be enhanced to reject files containing "TBD" or similar placeholders in mandatory sections, or should substantive remediation be deferred to domain experts?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to flag "TBD" placeholders in mandatory persona and skill sections as a fatal audit failure.*
-
-### ❓ Question [2026-06-01] - Audit Log Schema Enforcement
-**Context:** `REQUIREMENTS.md` mandates a specific JSON shape for Audit Logs, but `audit-repo.js` only verifies that the block is valid JSON.
-**Ambiguity / Drift:** Incomplete audit logs can pass the gate but fail to provide the required fields for fleet observability and ROI calculation.
-**Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
+**🤖 Jules Action Prompt:** *Implement the reference service tier templates (basic.md, standard.md, enterprise.md) in `templates/tiers/` to support the Client Onboarding workflow.*

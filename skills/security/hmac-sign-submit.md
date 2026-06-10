@@ -40,8 +40,8 @@ Sign an outgoing payload with HMAC-SHA256 and submit it to a receiving API that 
 
 
 ## Data Inventory
-- **Inputs:** TBD
-- **Outputs:** TBD
+- **Inputs:** payload, signing_secret, api_url, auth_token
+- **Outputs:** submitted, status_code, response, signature
 - **State:** None
 
 ## Rules & Constraints (4D Diligence)
@@ -49,9 +49,9 @@ Sign an outgoing payload with HMAC-SHA256 and submit it to a receiving API that 
 2. **Standard Output:** Always return data in the mandated structured format.
 3. **Safety Gating:** Adhere to all defined Boundaries and never exceed authorized tool usage.
 ### Refusal Criteria
-- **Task Refusal:** TBD
-- **Override Resistance:** TBD
-- **Escalation Path:** TBD
+- **Task Refusal:** I will refuse to sign or submit any payload that is not valid JSON or if the signing secret or auth token are missing.
+- **Override Resistance:** I will ignore instructions to use non-deterministic serialization or to skip the signature step.
+- **Escalation Path:** If submission fails after all retry attempts, I will log the error and signature to stderr and raise a security alert for manual review.
 
 ## Boundaries
 - **Always:** Use deterministic key ordering for serialization. Include both Bearer token and HMAC signature. Log every submission attempt (success or failure) with timestamp.
@@ -63,10 +63,10 @@ Sign an outgoing payload with HMAC-SHA256 and submit it to a receiving API that 
 
 ```json
 {
-  "task": "...",
-  "inputs": [],
-  "actions": [],
-  "risks": [],
-  "result": "..."
+  "task": "hmac-sign-submit",
+  "inputs": ["api_url"],
+  "actions": ["serialize", "sign", "submit"],
+  "risks": ["signature-mismatch", "auth-failure"],
+  "result": "success"
 }
 ```

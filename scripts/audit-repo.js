@@ -11,6 +11,7 @@ const {
     extractAgentHeadings,
     extractTopLevelSections
 } = require('./context_helpers');
+const { logAudit } = require('./audit_logger');
 
 const repoRoot = path.join(__dirname, '..');
 const agentsDir = path.join(repoRoot, 'agents');
@@ -69,6 +70,11 @@ function auditFile(filePath, requiredSections) {
         fail(`${relativePath} is missing required sections: ${missing.join(', ')}`);
     }
 
+    // Check for "TBD" placeholders in mandatory sections (Decision [2026-06-10-0001])
+    if (content.includes('TBD')) {
+        fail(`${relativePath} contains 'TBD' placeholders in mandatory sections.`);
+    }
+
     // Check mandatory Refusal Criteria subsection under Rules & Constraints (Decision [2026-04-13])
     // We look for the Rules & Constraints section and ensure it contains Refusal Criteria as an H3.
     // Case-insensitive per Decision [2026-05-28-0004].
@@ -89,7 +95,12 @@ function auditFile(filePath, requiredSections) {
         if (jsonMatch) {
             const jsonStr = jsonMatch[1];
             try {
-                JSON.parse(jsonStr);
+                const auditData = JSON.parse(jsonStr);
+                const requiredKeys = ['task', 'inputs', 'actions', 'risks', 'result'];
+                const missingKeys = requiredKeys.filter(key => !(key in auditData));
+                if (missingKeys.length > 0) {
+                    fail(`${relativePath} Audit Log JSON is missing mandatory keys: ${missingKeys.join(', ')}`);
+                }
             } catch (error) {
                 fail(`${relativePath} contains invalid JSON in Audit Log: ${error.message}`);
             }
@@ -184,16 +195,62 @@ function checkGeneratedOutputs() {
 }
 
 function main() {
-    checkTemplates();
-    checkPersonas();
-    checkSkills();
-    checkGeneratedOutputs();
+    const auditSummary = {
+        templates_checked: templates.length,
+        agents_audited: 0,
+        skills_audited: 0,
+        outputs_checked: generatedOutputs.length
+    };
 
-    if (failed) {
+    try {
+        checkTemplates();
+
+        const agents = discoverAgents(agentsDir);
+        auditSummary.agents_audited = agents.length;
+        checkPersonas();
+
+        // checkSkills() already does its own discovery, but let's count them
+        function countSkills(dir) {
+            let count = 0;
+            const list = fs.readdirSync(dir);
+            list.forEach(file => {
+                const fullPath = path.join(dir, file);
+                const stat = fs.statSync(fullPath);
+                if (stat && stat.isDirectory()) {
+                    count += countSkills(fullPath);
+                } else if (file.endsWith('.md') && file !== 'SKILL_TEMPLATE.md') {
+                    count++;
+                }
+            });
+            return count;
+        }
+        if (fs.existsSync(skillsDir)) {
+            auditSummary.skills_audited = countSkills(skillsDir);
+        }
+        checkSkills();
+
+        checkGeneratedOutputs();
+
+        if (failed) {
+            logAudit("repository-audit", {
+                actions: ["checkTemplates", "checkPersonas", "checkSkills", "checkGeneratedOutputs"],
+                result: "failure",
+                risks: ["Contract drift detected"]
+            });
+            process.exit(1);
+        }
+
+        logAudit("repository-audit", {
+            actions: ["checkTemplates", "checkPersonas", "checkSkills", "checkGeneratedOutputs"],
+            result: "success",
+            inputs: [auditSummary]
+        });
+        console.log('Repository audit passed.');
+    } catch (error) {
+        fail(`Audit crashed: ${error.message}`);
+        logAudit("repository-audit", { result: "error", risks: [error.message] });
         process.exit(1);
     }
-
-    console.log('Repository audit passed.');
 }
 
 main();

@@ -2,6 +2,8 @@
 
 const crypto = require('crypto');
 const http = require('http');
+const path = require('path');
+const { logAudit } = require('../../scripts/audit_logger');
 
 const PORT = Number(process.env.PORT || '8081');
 const DASHBOARD_API_TOKEN = process.env.DASHBOARD_API_TOKEN;
@@ -126,9 +128,19 @@ const server = http.createServer(async (request, response) => {
         try {
             const lineProtocol = buildInfluxLine(report);
             await writeInflux(lineProtocol);
+            logAudit("report-ingestion", {
+                inputs: [{ agent_id: report.agent_id, org: report.org }],
+                actions: ["writeInflux"],
+                result: "success"
+            });
             sendJson(response, 202, { status: 'accepted' });
         } catch (error) {
             logError(error.message);
+            logAudit("report-ingestion", {
+                inputs: [{ agent_id: report.agent_id, org: report.org }],
+                result: "failure",
+                risks: [error.message]
+            });
             sendJson(response, 502, { error: 'Failed to persist report' });
         }
     });

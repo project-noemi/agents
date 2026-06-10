@@ -258,6 +258,19 @@
 - **Context:** Resolves CLARIFICATIONS.md Q [2026-04-05] (SecretOps Syntax Drift: `.env.template` vs `.env.example`). `.env.template` is already the single source of truth for the root variable inventory (see Decision [2026-04-13] Environment Variable Inventory Consolidation and [2026-04-25] Environment Variable Inventory Alignment); examples follow Docker Compose's `.env.example` convention but inherit from the same vault references.
 - **Impact:** Documentation prose is consistent; builders never wonder which file to point `op run --env-file` at; Docker examples remain idiomatic.
 
+## [2026-06-10-0001] Architectural Remediation and Governance Enforcement
+
+- **Decision:** Formalize the remediation of several long-standing technical drifts regarding internal tool observability, audit script depth, and agent index accuracy.
+- **Context:** Multiple repository mandates (JSON Audit Logs, Role extraction depth, Skill substantive compliance) remained unimplemented despite being recorded as architectural requirements.
+- **Impact:**
+  - Created `scripts/audit_logger.js` as the canonical utility for structured JSON Audit Log emission.
+  - Refactored `scripts/context_helpers.js` to extract full Role paragraphs for the Agent Index.
+  - Parameterized `scripts/sync-upstream.sh` for frictionless forking.
+  - Enhanced `scripts/audit-repo.js` with JSON schema validation for Audit Logs and "TBD" placeholder detection.
+  - Integrated `logAudit` into `executive-assistant` and `dashboard-ingest.js` to close the internal tool observability gap.
+  - Standardized environment verification fatal error policy for `docker` mode.
+  - Remediated substantive drift across the entire `skills/` library.
+
 ## [2026-05-28-0004] Case-Insensitive Heading Audits
 
 - **Decision:** `scripts/audit-repo.js` and `scripts/context_helpers.js` perform case-insensitive comparison when checking required persona and skill headings. The canonical casing remains as documented (e.g., "Refusal Criteria"); the audit tolerates capitalization variants so that substantively compliant files do not fail on cosmetic drift.

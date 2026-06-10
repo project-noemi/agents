@@ -144,7 +144,11 @@ if command -v op >/dev/null 2>&1; then
     if op user get --me >/dev/null 2>&1; then
         echo -e "   ✅ Authenticated to 1Password."
     else
-        echo -e "   ⚠️  Not authenticated to 1Password. Run 'op signin'."
+        echo -e "   ❌ Not authenticated to 1Password. Run 'op signin'."
+        if [ "$MODE" = "docker" ]; then
+            echo -e "\n❌ FATAL: SecretOps authentication is mandatory in docker mode.\n"
+            exit 1
+        fi
     fi
 fi
 if command -v infisical >/dev/null 2>&1; then
@@ -153,14 +157,22 @@ if command -v infisical >/dev/null 2>&1; then
     if infisical whoami >/dev/null 2>&1; then
         echo -e "   ✅ Authenticated to Infisical."
     else
-        echo -e "   ⚠️  Not authenticated to Infisical. Run 'infisical login'."
+        echo -e "   ❌ Not authenticated to Infisical. Run 'infisical login'."
+        if [ "$MODE" = "docker" ]; then
+            echo -e "\n❌ FATAL: SecretOps authentication is mandatory in docker mode.\n"
+            exit 1
+        fi
     fi
 fi
 if [ "$SECRETS_CLI" = false ]; then
-    echo -e "⚠️ No SecretOps CLI found. Install at least one before you connect business systems:"
+    echo -e "❌ No SecretOps CLI found. Install at least one before you connect business systems:"
     echo -e "   - 1Password CLI: https://developer.1password.com/docs/cli/get-started/"
     echo -e "   - Infisical CLI: https://infisical.com/docs/cli/overview"
     echo -e "   Local repo-only prompts can still work without secrets, but Gmail, GitHub, n8n, and Workspace flows should use Fetch-on-Demand wrappers."
+    if [ "$MODE" = "docker" ]; then
+        echo -e "\n❌ FATAL: SecretOps CLI is mandatory in docker mode.\n"
+        exit 1
+    fi
 fi
 
 echo -e "\n🔑 Checking common API key env vars in the current shell..."

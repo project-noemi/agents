@@ -174,12 +174,9 @@ function discoverAgents(baseDir, prefix = '') {
         
         let role = '';
         if (roleMatch) {
-            role = roleMatch[1].trim().split('\n')[0];
-            // Take only the first sentence if it exists
-            const sentenceMatch = role.match(/^[^.!?]+[.!?]/);
-            if (sentenceMatch) {
-                role = sentenceMatch[0];
-            }
+            // Extract the first non-empty paragraph
+            const paragraphs = roleMatch[1].trim().split(/\n\s*\n/);
+            role = paragraphs[0].replace(/\s+/g, ' ').trim();
         }
 
         agents.push({

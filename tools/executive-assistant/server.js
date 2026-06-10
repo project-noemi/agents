@@ -6,6 +6,9 @@ import { OAuthManager } from './oauth-manager.js';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { logAudit } = require('../../scripts/audit_logger');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,6 +50,11 @@ app.post('/', async (req, res) => {
     const result = await deltaSync.syncMailbox(emailAddress);
     
     console.log(`[Triage Router] Execution Complete:`, result);
+    logAudit("gmail-delta-sync", {
+      inputs: [{ emailAddress, historyId }],
+      actions: ["syncMailbox"],
+      result: "success"
+    });
 
     // Respond 200 OK to Pub/Sub to acknowledge receipt immediately
     res.status(200).json(result);

@@ -283,3 +283,11 @@
   - Q [2026-05-21] Pre-flight failure policy / Q [2026-05-22] Docker mode hard-fail policy → resolved by [2026-05-26] Pre-flight Logic Normalization.
 - **Context:** Multiple late-cycle clarifications restate or duplicate earlier resolved questions. Carrying them in the active backlog made the queue look much larger than the real outstanding work.
 - **Impact:** CLARIFICATIONS.md shrinks to genuinely open product-owner questions; the durable answers remain in this log for traceability.
+
+## [2026-06-10] Mandate-Document Synchronization (Doc Reality Check)
+
+- **Decision:** Two canonical documents were synchronized to their already-decided state — no new architectural rules were introduced:
+  - `AGENTS.md` "Persona Standards" now lists `Data Inventory` among the required persona sections, aligning it with Decision [2026-04-13] (Data Inventory Persona Mandate), `REQUIREMENTS.md` §2, and the enforced contract in `scripts/context_helpers.js` (`REQUIRED_AGENT_SECTIONS`) and `tests/contracts.test.js`.
+  - `REQUIREMENTS.md` §4 (Context Generation) now lists the Value Lenses (`value-lenses/`) and Operating Profiles (`operating-profiles/`) injections among what both generators must inject, aligning §4 with Decision [2026-05-28-0005] and `scripts/generate_all.js`.
+- **Context:** A whole-codebase reality check found that the `AGENTS.md` persona-section enumeration still carried the superseded 2026-04-02 contract (mirrored in this log's [2026-04-02] Clarification Backlog Normalization entry) and was never updated when `Data Inventory` became mandatory on 2026-04-13. Because `AGENTS.md` is injected verbatim into `GEMINI.md`/`CLAUDE.md`, the generated context was instructing future agents with a contract the audit and tests would then reject. Separately, §4's "must inject" list omitted the framework layers even though the same file's Known Limitations note already recorded their injection as remediated.
+- **Impact:** Generated context (`GEMINI.md`, `CLAUDE.md`) and golden fixtures regenerated; the persona contract is now stated identically across `AGENTS.md`, `REQUIREMENTS.md`, the audit, and the test suite. No persona or skill files required changes (the audit already enforced `Data Inventory`, so all 26 personas already comply).

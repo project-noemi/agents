@@ -88,6 +88,8 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
 - Both generators must inject:
   - the full mandate set from `AGENTS.md`
   - the agent index discovered from `agents/`
+  - the Value Lenses framework layer from `value-lenses/` (Decision [2026-05-28-0005])
+  - the Operating Profiles framework layer from `operating-profiles/` (Decision [2026-05-28-0005])
   - active skills from `mcp.config.json`
   - active MCP protocol content from `mcp.config.json`
 - Both generators must support `--config=path/to/mcp.config.json`.

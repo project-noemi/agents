@@ -261,3 +261,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
+
+### ❓ Question [2026-06-10] - Red Team Gauntlet Machine-Readable Test Vectors
+**Context:** The `Red Team Gauntlet` test vectors for PromptShield and PIIGuard are currently documented in `examples/red-team-gauntlet/README.md` but are not yet serialized into machine-readable JSON/YAML files.
+**Ambiguity / Drift:** Without machine-readable vectors, automated verification of Guardian agents is difficult to standardize across CI environments.
+**Question for Product Owner:** Should Jules be tasked with creating `test-vectors.json` in `examples/red-team-gauntlet/` based on the documented examples to enable automated CI gating?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create `examples/red-team-gauntlet/test-vectors.json` with machine-readable Prompt Injection and PII test patterns for automated agent verification.*
+
+### ❓ Question [2026-06-10] - Missing Client Tier Templates
+**Context:** The `Client Onboarding` agent (`agents/operations/client-onboarding.md`) references service tier templates (e.g., `basic.md`, `standard.md`) in the `templates/tiers/` directory.
+**Ambiguity / Drift:** While the `templates/tiers/` directory exists, it currently only contains a `README.md` and lacks the actual tier templates required for the onboarding workflow.
+**Question for Product Owner:** Should Jules implement a set of starter tier templates (`basic.md`, `standard.md`, `premium.md`) to align the repository infrastructure with the onboarding persona?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create starter service tier templates in `templates/tiers/` (basic.md, standard.md, premium.md) to support the automated Client Onboarding workflow.*

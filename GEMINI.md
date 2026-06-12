@@ -88,7 +88,7 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 
 - Infisical: If execution fails, ensure you are logged in via `infisical login`.
 - 1Password: If execution fails, ensure you are logged in via `op signin`.
-- **Pre-flight Checks**: Environment verification scripts (`scripts/verify-env.sh`, `scripts/verify-env.ps1`) should perform active authentication checks (e.g., `infisical whoami` or `op get user`) when in `builder` or `docker` modes to ensure SecretOps tokens are valid.
+- **Pre-flight Checks**: Environment verification scripts (`scripts/verify-env.sh`, `scripts/verify-env.ps1`) must perform active authentication checks (e.g., `infisical whoami` or `op get user`). Missing or invalid SecretOps authentication in `docker` mode MUST be a fatal error (exit 1), while remaining a warning in `builder` mode to support local exploration.
 
 ## 📝 Coding Standards
 - **Node.js Baseline**: All repository logic, utilities, and reference Docker images must use Node.js version 24 as the technical baseline to ensure cross-fleet compatibility. This includes all tools in the `tools/` directory and deployment examples in `examples/`.

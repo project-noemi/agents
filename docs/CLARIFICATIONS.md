@@ -261,3 +261,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
+
+### ❓ Question [2026-06-10] - Red Team Gauntlet Machine-Readable Test Vectors
+**Context:** `examples/red-team-gauntlet/README.md` documents test cases for `PromptShield` and `PIIGuard` in prose, but there are no machine-readable files (JSON/YAML) to support automated validation.
+**Ambiguity / Drift:** The `Client Onboarding` agent mandates running a validation suite using these cases, but they cannot be easily consumed by an automated test runner or the agent itself.
+**Question for Product Owner:** Should Jules be tasked with serializing the prose test cases into a machine-readable format (e.g., `test-vectors.json`) within the `red-team-gauntlet` directory?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Serialize the Red Team Gauntlet prose test cases into `examples/red-team-gauntlet/test-vectors.json` to support automated validation.*
+
+### ❓ Question [2026-06-10] - Empty Tier Templates Implementation Gap
+**Context:** The `Client Onboarding` agent specification references service tier templates (e.g., `basic.md`, `standard.md`) located in `templates/tiers/`.
+**Ambiguity / Drift:** The `templates/tiers/` directory currently contains only a `README.md` and lacks the actual template files, preventing the Onboarding agent from fulfilling its mission.
+**Question for Product Owner:** Should Jules implement a starter set of service tier templates in `templates/tiers/` based on the documented `basic`, `standard`, and `premium` tiers?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement the starter service tier templates (`basic.md`, `standard.md`, `premium.md`) in `templates/tiers/` to enable the Client Onboarding workflow.*
+
+### ❓ Question [2026-06-10] - Mandated audit_logger.js Absence and Ownership
+**Context:** Architectural mandates in `AGENTS.md` and `REQUIREMENTS.md` reference a shared `scripts/audit_logger.js` utility for structured JSON logging.
+**Ambiguity / Drift:** The file is missing from the repository, causing internal tools and reference services to drift from the observability standard.
+**Question for Product Owner:** Is `audit_logger.js` pending delivery from an external team, or should Jules autonomously implement this shared utility and refactor the reference services to use it?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement the shared `scripts/audit_logger.js` utility and refactor `executive-assistant` and `dashboard-ingest.js` to use it for mandated JSON Audit Log emission.*

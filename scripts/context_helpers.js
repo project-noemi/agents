@@ -14,6 +14,17 @@ const REQUIRED_AGENT_SECTIONS = [
     'Audit Log'
 ];
 
+const REQUIRED_SKILL_SECTIONS = [
+    'Purpose',
+    'Inputs',
+    'Procedure',
+    'Outputs',
+    'Data Inventory',
+    'Rules & Constraints (4D Diligence)',
+    'Boundaries',
+    'Audit Log'
+];
+
 const REQUIRED_GLOBAL_SECTIONS = [
     '🔐 Secrets & Configuration',
     '🛡 Error Handling and Resilience',
@@ -301,9 +312,38 @@ function extractAgentHeadings(content) {
     return [...content.matchAll(/^#{2,3}\s+(.+)$/gm)].map((match) => match[1].trim());
 }
 
+function discoverSkills(baseDir) {
+    const skills = [];
+
+    if (!fs.existsSync(baseDir)) {
+        return skills;
+    }
+
+    function walk(dir) {
+        const entries = fs.readdirSync(dir, { withFileTypes: true })
+            .sort((left, right) => left.name.localeCompare(right.name));
+
+        for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                walk(fullPath);
+                continue;
+            }
+            if (!entry.name.endsWith('.md') || entry.name === 'SKILL_TEMPLATE.md') {
+                continue;
+            }
+            skills.push({ path: fullPath });
+        }
+    }
+
+    walk(baseDir);
+    return skills;
+}
+
 module.exports = {
     REQUIRED_AGENT_SECTIONS,
     REQUIRED_GLOBAL_SECTIONS,
+    REQUIRED_SKILL_SECTIONS,
     REQUIRED_TEMPLATE_MARKERS,
     buildAgentIndex,
     buildFrameworkSection,
@@ -311,6 +351,7 @@ module.exports = {
     buildMcpSection,
     buildSkillsSection,
     discoverAgents,
+    discoverSkills,
     extractAgentHeadings,
     extractBetweenMarkers,
     extractTopLevelSections,

@@ -16,5 +16,7 @@
 
 # Ignore everything in this directory...
 *
-# ...except this file (so the directory stays tracked).
+# ...except this file and the example config (so the directory stays tracked
+# and the schema example travels with the reference architecture).
 !.gitignore
+!config.yml.example

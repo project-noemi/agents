@@ -282,3 +282,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Is `audit_logger.js` pending delivery from an external team, or should Jules autonomously implement this shared utility and refactor the reference services to use it?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement the shared `scripts/audit_logger.js` utility and refactor `executive-assistant` and `dashboard-ingest.js` to use it for mandated JSON Audit Log emission.*
+
+### ❓ Question [2026-06-11] - verify-env.sh Mode Discrepancy
+**Context:** `AGENTS.md` mandates that "Missing or invalid SecretOps authentication in docker mode MUST be a fatal error (exit 1)".
+**Ambiguity / Drift:** The current implementation of `scripts/verify-env.sh` only issues a warning for missing authentication in all modes, including `docker`.
+**Question for Product Owner:** Should I update `scripts/verify-env.sh` to enforce the `exit 1` mandate for the `docker` mode, or is the current warning-only behavior intentional for the reference architecture?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` to enforce a fatal error (exit 1) for missing SecretOps authentication when running in `docker` mode.*
+
+### ❓ Question [2026-06-11] - sync-upstream.sh Hardcoded Identity
+**Context:** `AGENTS.md` mandates that "Utilities intended for cross-organization use (e.g., sync-upstream.sh) must use environment variables or CLI flags instead of hardcoded placeholders."
+**Ambiguity / Drift:** `scripts/sync-upstream.sh` still contains the hardcoded placeholder `MY_ORGANIZATION="[MyOrganization]"`.
+**Question for Product Owner:** Should I refactor the sync script to pull the organization name from an environment variable (e.g., `NOEMI_ORG_NAME`) with a sensible default?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `scripts/sync-upstream.sh` to use environment variables for organization-specific values instead of hardcoded placeholders.*
+
+### ❓ Question [2026-06-11] - tests/examples-smoke.test.js Environmental Blindness
+**Context:** Requirement §9 mandates that the default test suite must cover "static smoke checks for example stacks and Docker env inventories (including `NOEMI_DOCKER_SMOKE_*` variable validation)."
+**Ambiguity / Drift:** `tests/examples-smoke.test.js` currently validates various examples but contains no logic to verify the presence or format of the `NOEMI_DOCKER_SMOKE_*` variables.
+**Question for Product Owner:** Should I add a dedicated test case to `tests/examples-smoke.test.js` to validate that these variables are correctly defined in `.env.template`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `tests/examples-smoke.test.js` to include validation for all `NOEMI_DOCKER_SMOKE_*` environment variables defined in `.env.template`.*

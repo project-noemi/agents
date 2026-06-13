@@ -283,3 +283,13 @@
   - Q [2026-05-21] Pre-flight failure policy / Q [2026-05-22] Docker mode hard-fail policy → resolved by [2026-05-26] Pre-flight Logic Normalization.
 - **Context:** Multiple late-cycle clarifications restate or duplicate earlier resolved questions. Carrying them in the active backlog made the queue look much larger than the real outstanding work.
 - **Impact:** CLARIFICATIONS.md shrinks to genuinely open product-owner questions; the durable answers remain in this log for traceability.
+
+## [2026-06-13] Reality Check: Known Limitations Consolidation and Verification
+
+- **Decision:** Consolidate duplicated entries in `REQUIREMENTS.md` §"Current Known Limitations", re-verify each retained entry against the live codebase, and align the resilience-helper entry with the already-logged Decision [2026-04-04].
+- **Context:** A whole-codebase reality check (audit gate green at 38/38 tests) found the limitations list had accumulated duplicates ("Agent Index Accuracy Drift" vs. "Agent Index Descriptive Truncation"; "Audit Script Enforcement Depth" vs. "Audit Script JSON Schema Blindness") and one entry that contradicted the decision log: "Resilience Helper Integration Gap" described the reference-only scope as "violating the resilience mandate", although Decision [2026-04-04] explicitly accepted reference-only scope for deterministic local-filesystem tools.
+- **Impact:**
+  - Verified `scripts/audit-repo.js` now audits both `agents/` and `skills/` for required headings (closing the structural half of the audit coverage gap); schema-key validation, TBD detection, and referential integrity remain open.
+  - Verified `scripts/verify-env.sh` still soft-warns on missing SecretOps authentication in `docker` mode, so Decision [2026-05-26] remains unimplemented in code.
+  - Verified `scripts/sync-upstream.sh` still hardcodes `[MyOrganization]` and `scripts/context_helpers.js` still truncates `Role` to the first sentence.
+  - Documented three newly identified drifts: the undocumented `examples/gmu-validation/` example, the empty `operating-profiles/` asset layer behind a working injection pipeline, and `Owner: TBD` metadata across all active Value Lenses. Corresponding clarification questions were filed on 2026-06-13.

@@ -282,3 +282,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Is `audit_logger.js` pending delivery from an external team, or should Jules autonomously implement this shared utility and refactor the reference services to use it?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement the shared `scripts/audit_logger.js` utility and refactor `executive-assistant` and `dashboard-ingest.js` to use it for mandated JSON Audit Log emission.*
+
+### ❓ Question [2026-06-13] - Undocumented GMU Validation Example
+**Context:** The requirements state "Reference Examples Must Tell the Truth" (§8) and mandate structured JSON Audit Logs for tools performing automated verification. The GMU badge program is documented in `docs/PROJECT_REFERENCE.md`, but its supporting example `examples/gmu-validation/verification-bot.js` — a Boot Camp certification audit simulator — is not referenced by any documentation, has no directory README, is excluded from `tests/examples-smoke.test.js`, and emits unstructured `console.log` output.
+**Ambiguity / Drift:** An orphaned example undermines the repository's role as a truthful reference architecture: builders cannot tell whether the bot is the canonical badge-verification pattern for the documented GMU program, a one-off demo, or dead code. It also silently drifts from the JSON Audit Log observability mandate.
+**Question for Product Owner:** Is the GMU validation bot the supported reference implementation for the documented badge-verification workflow (warranting a README, requirements coverage, and smoke-test inclusion), or engagement-specific code that should be relocated or removed?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Document `examples/gmu-validation/` with a README, register it in `REQUIREMENTS.md` and `tests/examples-smoke.test.js`, and refactor `verification-bot.js` to emit the mandated JSON Audit Log to stderr — or remove the directory if it is out of scope.*
+
+### ❓ Question [2026-06-13] - Operating Profiles Layer Is Injected but Empty
+**Context:** Decision [2026-05-28-0005] mandates that `scripts/generate_all.js` inject `operating-profiles/` content into generated context, and the framework documentation tells agents to consult "the profile that matches the engagement context." However, `operating-profiles/` contains only `PROFILE_TEMPLATE.md` and `README.md` — zero actual profiles — so generated `GEMINI.md`/`CLAUDE.md` carry the placeholder `<!-- No operating profiles defined in operating-profiles/ -->`.
+**Ambiguity / Drift:** The framework layer promises behavioral adaptation (tone, cadence, escalation per organizational context) that no agent can actually perform, because the asset class is empty. This mirrors the resolved Value Lens injection gap but on the asset side rather than the pipeline side.
+**Question for Product Owner:** Should a starter set of Operating Profiles (e.g., `msp-managed-services`, `internal-engineering`) be authored from `PROFILE_TEMPLATE.md`, or should framework documentation drop references to Operating Profiles until real profiles exist?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Author a starter set of Operating Profiles in `operating-profiles/` based on `PROFILE_TEMPLATE.md` so the injection pipeline delivers a non-empty framework layer, and regenerate the context files.*
+
+### ❓ Question [2026-06-13] - Value Lens Ownership Metadata Unassigned
+**Context:** All three active Value Lenses (`value-lenses/balanced-enterprise.md`, `care-continuity.md`, `performance-efficiency.md`) ship with `**Owner:** TBD` in their Lens Metadata while being injected verbatim into generated agent context. The lens framework expects an accountable human owner for validation (each lens carries a "Last Validated On" date that someone must stand behind).
+**Ambiguity / Drift:** Lenses guide agent trade-off decisions (e.g., speed vs. Care Capital), but with no owner there is no escalation target when two lenses conflict and no one accountable for keeping `Last Validated On` truthful — a governance gap under the AI TRiSM alignment mandate (§7).
+**Question for Product Owner:** Who should be assigned as Owner for each of the three starter Value Lenses, and should `scripts/audit-repo.js` flag `Owner: TBD` in framework-layer metadata the same way placeholder content is flagged elsewhere?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Populate the `Owner` field in all three Value Lens metadata blocks with the designated owners and add an audit check that flags `Owner: TBD` in `value-lenses/` and `operating-profiles/` files.*

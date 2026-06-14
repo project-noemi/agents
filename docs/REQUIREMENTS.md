@@ -21,13 +21,13 @@ It is not a runtime or execution engine. External orchestrators such as Gemini C
 
 - The repository must present **Phase 0 security** as the prerequisite for serious AI adoption.
 - Client and buyer navigation must reach [`PHASE_ZERO_SECURITY_BASELINE.md`](PHASE_ZERO_SECURITY_BASELINE.md) directly from the top-level experience.
-- The public documentation must include a reusable **Phase 0 Assessment Kit** with:
-  - separate security and AI readiness assessment guides
+- The public documentation must include a reusable **Phase 0 Assessment Kit** (located in `docs/phase-zero-assessment/`) with:
+  - separate security (`security-assessment.md`) and AI readiness (`ai-readiness-assessment.md`) assessment guides
   - `network-security-assessment.md` and `PRACTITIONER_NOTES.md`
-  - consent template
-  - report-of-findings template
-  - 30/60/90-day roadmap template
-  - readiness rubric covering security readiness, AI readiness, and the overall recommendation
+  - `consent-template.md`
+  - `report-template.md` (report-of-findings)
+  - `roadmap-template.md` (30/60/90-day roadmap)
+  - `readiness-rubric.md` covering security readiness, AI readiness, and the overall recommendation
 
 ### 2. Persona and Skill Contracts are Mandatory
 
@@ -84,13 +84,15 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
 
 ### 4. Context Generation Must Stay Aligned
 
-- Both [`scripts/generate_gemini.js`](../scripts/generate_gemini.js) and [`scripts/generate_claude.js`](../scripts/generate_claude.js) must use shared helper logic.
-- Both generators must inject:
+- [`scripts/generate_all.js`](../scripts/generate_all.js) is the canonical context generator orchestrator.
+- The generator must inject:
   - the full mandate set from `AGENTS.md`
   - the agent index discovered from `agents/`
   - active skills from `mcp.config.json`
   - active MCP protocol content from `mcp.config.json`
-- Both generators must support `--config=path/to/mcp.config.json`.
+  - value lenses from `value-lenses/`
+  - operating profiles from `operating-profiles/`
+- The generator must support `--config=path/to/mcp.config.json`.
 
 ### 5. Fetch-on-Demand Security Is Non-Negotiable
 

@@ -303,3 +303,10 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should I add a dedicated test case to `tests/examples-smoke.test.js` to validate that these variables are correctly defined in `.env.template`?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `tests/examples-smoke.test.js` to include validation for all `NOEMI_DOCKER_SMOKE_*` environment variables defined in `.env.template`.*
+
+### ❓ Question [2026-06-11] - audit_logger.js Mandated Absence
+**Context:** `AGENTS.md` mandates that "Node.js-based tools and reference services must use the shared scripts/audit_logger.js utility to emit structured JSON Audit Logs to stderr."
+**Ambiguity / Drift:** `scripts/audit_logger.js` is missing from the repository, preventing internal tools and reference services from complying with the observability mandate.
+**Question for Product Owner:** Should I implement the missing `scripts/audit_logger.js` utility and refactor the reference tools to use it, or is this file expected from an external source?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement the shared `scripts/audit_logger.js` utility and refactor `executive-assistant` and `dashboard-ingest.js` to use it for mandated JSON Audit Log emission.*

@@ -4,6 +4,8 @@ This directory contains examples for testing the robustness of Project NoéMI "G
 
 These tests simulate the **Discernment** phase of the Boot Camp (Week 4), where Accelerators and Practitioners actively try to break their AI agents using adversarial prompts and poisoned data payloads.
 
+The machine-readable contract artifact for this gauntlet is `test-vectors.yaml`, which enumerates the same five starter cases described below in a stable, automatable schema. Orchestrators and the `Client Onboarding` agent (see `agents/operations/client-onboarding.md`) consume `test-vectors.yaml`; this README is the human-readable companion.
+
 ## 1. Prompt Injection Testing (`PromptShield`)
 
 These test cases simulate a malicious user attempting to hijack the main AI agent. You should pass these strings to the `PromptShield` agent. If it is functioning correctly, it will return `{ "status": "BLOCKED" }`.

@@ -310,3 +310,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should I implement the missing `scripts/audit_logger.js` utility and refactor the reference tools to use it, or is this file expected from an external source?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement the shared `scripts/audit_logger.js` utility and refactor `executive-assistant` and `dashboard-ingest.js` to use it for mandated JSON Audit Log emission.*
+
+### ❓ Question [2026-06-15] - Red Team Gauntlet Serialization Strategy
+**Context:** The requirements state "Red Team validation is required for agent deployment readiness," but the codebase in `examples/red-team-gauntlet/README.md` implements only prose documentation without machine-readable vectors.
+**Ambiguity / Drift:** The `Client Onboarding` workflow depends on these vectors for validation, but currently, they must be manually extracted, increasing the risk of inconsistent enforcement.
+**Question for Product Owner:** Should we serialize these vectors into a single `test-vectors.json` file, or should we create separate files for each protection category (e.g., `prompt-injection.json`, `pii-patterns.json`)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Serialize the Red Team Gauntlet test cases into machine-readable JSON files within `examples/red-team-gauntlet/` to support automated validation.*
+
+### ❓ Question [2026-06-15] - Service Tier Template Specifications
+**Context:** The requirements state the Client Onboarding agent references service tier templates in `templates/tiers/`, but the codebase in that directory implements only a placeholder README.
+**Ambiguity / Drift:** Without these templates, the onboarding workflow cannot be demonstrated or executed, leaving the "Explorer" path blocked.
+**Question for Product Owner:** Can you provide the specific service definitions (features, limits, pricing) for the Basic, Standard, and Premium tiers so I can implement the missing templates?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement the `basic.md`, `standard.md`, and `premium.md` templates in `templates/tiers/` using the provided service definitions.*
+
+### ❓ Question [2026-06-15] - Audit Script Placeholder Rejection Policy
+**Context:** The requirements state `audit-repo.js` must fail when required headings are missing, but the codebase in `scripts/audit-repo.js` implements a presence-only check that ignores "TBD" or hollow placeholders.
+**Ambiguity / Drift:** This satisfies the structural audit but leaves the system substantively safety-deficient by allowing agents to pass gates without real 4D-aligned content.
+**Question for Product Owner:** Should I update `audit-repo.js` to treat "TBD" or empty placeholders in mandatory persona and skill sections as a fatal error (exit 1) in CI?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to reject files containing "TBD" placeholders in mandatory sections as a fatal audit failure.*

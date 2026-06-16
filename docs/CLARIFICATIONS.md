@@ -331,3 +331,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should I update `audit-repo.js` to treat "TBD" or empty placeholders in mandatory persona and skill sections as a fatal error (exit 1) in CI?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to reject files containing "TBD" placeholders in mandatory sections as a fatal audit failure.*
+
+### ❓ Question [2026-06-15] - Operating Profile Baseline Absence
+**Context:** The requirements state "The generator must inject... operating profiles from `operating-profiles/`", but the current repository only contains the `PROFILE_TEMPLATE.md` and `README.md`, resulting in empty injection blocks in `GEMINI.md` and `CLAUDE.md`.
+**Ambiguity / Drift:** Without starter operating profiles (e.g., `enterprise-standard`, `high-velocity-startup`, `strict-compliance`), agents lack the culturally grounded execution instructions mandated by the framework.
+**Question for Product Owner:** Should Jules implement a set of baseline Operating Profiles to match the Value Lenses, or is this intended to be entirely user-defined?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement starter Operating Profiles (e.g., `standard-operating-profile.md`) in `operating-profiles/` to provide a baseline for agentic tone and escalation behavior.*
+
+### ❓ Question [2026-06-15] - Internal Tool Audit Log Event Mapping
+**Context:** `AGENTS.md` mandates that internal tools like `executive-assistant` emit structured JSON Audit Logs to `stderr`. The current `executive-assistant` implements an internal `execLogs` array with custom fields (`event`, `details`, `actions`).
+**Ambiguity / Drift:** There is no mapping between the internal tool events and the mandatory `Audit Log` schema (`task`, `inputs`, `actions`, `risks`, `result`). This makes it unclear how to refactor these tools for compliant emission.
+**Question for Product Owner:** Should we map internal events like `SYNC_COMPLETE` or `TRIAGE_VIP` directly to the `task` field of the Audit Log, or should we define a more granular mapping for tool-specific operations?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Define a standardized mapping for internal tool events to the Audit Log schema and refactor the `executive-assistant` and `dashboard-ingest` services to use it.*

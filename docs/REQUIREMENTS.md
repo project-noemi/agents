@@ -70,7 +70,7 @@ Reusable skills in `skills/` must include the following required headings:
 The `Audit Log` requirement must include a mandatory JSON shape: `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`. The audit record must explicitly exclude secrets, credentials, and PII.
 
 #### Technical Emission
-Agents must emit their JSON Audit Log to `stderr` separately from the primary user-facing payload (Decision [2026-04-13]).
+Agents must emit their JSON Audit Log to `stderr` separately from the primary user-facing payload (Decision [2026-04-13]). Each emitted line MUST be prefixed with the literal token `AUDIT_LOG: ` followed by the canonical JSON, so orchestrators can capture audit records unambiguously even when `stderr` also carries crash diagnostics (Decision [2026-06-16-0009]). The shared `scripts/audit_logger.js` utility (Decision [2026-06-16-0010]) is the canonical Node.js emitter and MUST be used by Node.js-based tools and reference services.
 
 ### 3. Contract and Generator Drift Must Fail Fast
 
@@ -161,23 +161,73 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 ## Current Known Limitations
 
 - **Historical Python Drift**: Legacy Python/Bash examples include mandatory "LEGACY/ILLUSTRATIVE" headers (Decision [2026-04-04]) but remain unmigrated to the Node.js baseline.
-- **Gatekeeper Implementation Gap**: The reference implementation in `examples/gatekeeper-deployment/` does not yet execute the full mutating action set (merges/closes) described in the persona.
+- **Gatekeeper Implementation Gap** (Scope clarified: 2026-06-16): The reference implementation in `examples/gatekeeper-deployment/` does not yet execute the full mutating action set (merges/closes) described in the persona. Per Decision [2026-06-16-0004], the resolution is a documented `dry-run` mode rather than full production logic. Sub-tasks:
+  - Add `GATEKEEPER_DRY_RUN=true` default to `examples/gatekeeper-deployment/entrypoint.sh` that logs intended merge/close actions without executing them.
+  - Extend `dashboard-ingest.js` with a per-agent HMAC registry (JSON file) and a stub asynchronous verification worker matching the Fleet Dashboard persona.
+  - Document the dry-run posture in `examples/gatekeeper-deployment/README.md`.
 - **Docker e2e Skip Behavior**: The Docker e2e suite skips runtime checks if Docker is absent, rather than failing, which can mask environmental gaps in CI.
 - **Logging Protocol Implementation Gap**: `logging-mcp` is a dual-backend draft (Loki/n8n) but is not yet active in `mcp.config.json`, and reference services (e.g., `dashboard-ingest.js`) lack alignment with its schema.
 - **Missing Onboarding and Configuration Directories** (Remediated: 2026-05-28): `clients/`, `.gatekeeper/`, and `templates/tiers/` directories referenced in agent specifications (`Client Onboarding`, `Gatekeeper`, `QBR Presenter`) now exist in the repository root with `.gitignore` placeholders for the runtime-state directories and a README for tier templates (Decision [2026-05-28-0002]).
 - **Framework Injection Gap** (Remediated: 2026-05-28): `Value Lenses` and `Operating Profiles` are now injected by `scripts/generate_all.js` into the `VALUE_LENS_INJECTIONS` and `OPERATING_PROFILE_INJECTIONS` template markers (Decision [2026-05-28-0005]). Generated `GEMINI.md` and `CLAUDE.md` carry the framework layer inline.
 - **Operating Profile Substantive Gap**: While the injection mechanism for Operating Profiles is active, the `operating-profiles/` directory contains only templates and no baseline profiles, resulting in empty injection blocks in generated context files.
-- **Structural vs. Substantive Compliance**: Most agent personas use identical placeholder text for `Data Inventory`, `Refusal Criteria`, and `Audit Log`, satisfying structural audits but failing framework requirements for role-specific precision.
-- **Skill Contract Substantive Drift**: 100% of active reusable skills in `skills/` contain "TBD" placeholders for mandatory `Data Inventory` and `Refusal Criteria` sections, failing substantive compliance with the 4D framework.
-- **Audit Script Enforcement Depth**: `scripts/audit-repo.js` fails to verify that skills or MCPs referenced in `mcp.config.json` and agent workflows exist as physical files. It also lacks schema-level validation for `Audit Log` JSON, performing only basic structural parsing.
-- **Branch Protection Audit Gap**: `scripts/audit-repo.js` lacks the mandated logic to verify branch protection status, as required by Section 7 Governance and Trust Controls.
-- **Internal Tool Observability Gap**: Node.js tools in `tools/` (e.g., `executive-assistant`) and reference services in `examples/` (e.g., `dashboard-ingest.js`) lack structured JSON Audit Log emission to `stderr`, relying on unstructured `console.log` and missing the shared `audit_logger.js` utility mentioned in architectural mandates.
-- **Sync Script Parameterization Gap**: `scripts/sync-upstream.sh` relies on hardcoded `[MyOrganization]` placeholders and fixed URLs instead of environment-based parameterization, violating the English-first, slug-based naming and parameterization mandates.
-- **Memory-Code Synchronization Drift**: A significant discrepancy exists between the repository's recorded architectural history (Memory) and the implemented codebase truth. Several remediations reported as completed (e.g., shared `audit_logger.js`, parameterized sync script, enhanced agent index extraction) are missing or incomplete in the live filesystem.
-- **Audit Script JSON Schema Blindness**: `scripts/audit-repo.js` verifies that the `Audit Log` section contains valid JSON, but it does not perform schema validation for mandated fields (`task`, `inputs`, `actions`, `risks`, `result`) or detect "TBD" placeholders.
-- **SecretOps Authentication Verification Depth**: `scripts/verify-env.sh` and `scripts/verify-env.ps1` currently issue only warnings for missing SecretOps authentication in `docker` mode, failing to meet the mandate for a fatal error (exit 1) to ensure runtime security.
-- **Agent Index Descriptive Truncation**: `scripts/context_helpers.js` extracts only the first sentence of the `Role` section, resulting in truncated descriptions in the Agent Index for complex personas.
-- **Red Team Gauntlet Machine-Readable Serialization Gap**: Test vectors for PromptShield and PIIGuard are documented in prose within `examples/red-team-gauntlet/README.md` but are not yet serialized into machine-readable JSON/YAML files for automated testing.
-- **Service Tier Template Implementation Gap**: The `templates/tiers/` directory exists but lacks the actual service tier templates (e.g., basic.md, standard.md) referenced by the Client Onboarding agent.
-- **Smoke Test Variable Validation Gap**: `tests/examples-smoke.test.js` lacks validation logic for `NOEMI_DOCKER_SMOKE_*` environment variables mandated by Requirement 9.
-- **Resilience Helper Integration Gap**: `scripts/resilience_helpers.js` exists as a canonical reference but is not utilized by repository tools (`audit-repo.js`, `generate_all.js`) or any agent personas, violating the resilience mandate for agentic systems.
+- **Substantive Remediation (Personas + Skills)** (Authorized: 2026-06-16): Per Decision [2026-06-16-0005], Jules is authorized to perform autonomous fleet-wide substantive remediation of `Data Inventory` and `Refusal Criteria` placeholders using role-specific, technically grounded defaults derived from each file's existing sections. Sub-tasks:
+  - Generate role-specific content for all 22 agent personas in `agents/`; ship as one PR.
+  - Generate role-specific content for all reusable skills in `skills/`; ship as one PR.
+  - Once both PRs land, remove the legacy "Structural vs. Substantive Compliance" and "Skill Contract Substantive Drift" lines from this section.
+  - Enable the "TBD" rejection check in `scripts/audit-repo.js` only after these PRs land (see Audit Script Coverage Sweep below).
+- **Audit Script Coverage Sweep** (Authorized: 2026-06-16): Per Decision [2026-06-16-0006], `scripts/audit-repo.js` will acquire the following checks as one coordinated change (analogous to [2026-05-20] Audit Script Coverage Expansion). Landing this collapses the legacy "Audit Script Enforcement Depth", "Audit Script JSON Schema Blindness", and "Branch Protection Audit Gap" entries into a single resolution. Sub-tasks:
+  - Node baseline scan for `Dockerfile`/`docker-compose.yml` flagging `node:<24`.
+  - Referential integrity for `mcp.config.json` (`active_mcps` → `mcp-protocols/`, `active_skills` → `skills/`).
+  - Regex-based filename slug-naming check across `docs/`, `agents/`, `skills/`, `examples/`, `tools/`.
+  - Skill-reference integrity scan parsing `**Skill:** [path]` patterns in agent workflows.
+  - Refusal Criteria substantive check for the three mandated clauses (refused types, override resistance, escalation path).
+  - AI Model baseline grep across `examples/` and `tests/` flagging non-`models/gemini-2.5-flash` pins.
+  - "TBD" placeholder rejection in mandatory persona/skill sections as a fatal error (sequenced after substantive remediation above).
+  - Audit Log JSON schema validation for the five mandated keys (`task`, `inputs`, `actions`, `risks`, `result`).
+  - Branch-protection check via GitHub API when `GITHUB_TOKEN` is present; fatal in CI, warning otherwise.
+- **Internal Tool Observability Gap** (Scope clarified: 2026-06-16): Node.js tools in `tools/` (e.g., `executive-assistant`) and reference services in `examples/` (e.g., `dashboard-ingest.js`) lack structured JSON Audit Log emission to `stderr`. Per Decisions [2026-06-16-0009] and [2026-06-16-0010], the resolution is a shared `scripts/audit_logger.js` utility emitting with the `AUDIT_LOG:` line prefix. Sub-tasks:
+  - Implement `scripts/audit_logger.js` exporting a single function that emits the canonical shape with the `AUDIT_LOG: ` prefix to `stderr`.
+  - Refactor `tools/executive-assistant/server.js` to use the helper for every significant event (sync, triage, configuration mutation).
+  - Refactor `examples/gatekeeper-deployment/dashboard-ingest.js` to use the helper.
+  - Refactor `scripts/generate_all.js` and `scripts/audit-repo.js` to emit an `AUDIT_LOG:` line summarizing files read/modified and any risks at completion.
+  - Update `AGENTS.md` and Section 2 of this document to mandate the `AUDIT_LOG: ` prefix.
+- **Sync Script Parameterization Gap** (Authorized: 2026-06-16): Per Decision [2026-06-16-0012], `scripts/sync-upstream.sh` is refactored to pull from `NOEMI_ORG_NAME`, `NOEMI_UPSTREAM_URL`, and `NOEMI_UPSTREAM_BRANCH` with sensible defaults; CLI flags override. Sub-tasks:
+  - Refactor `scripts/sync-upstream.sh` to consume env vars and `--org`/`--upstream`/`--branch` flags.
+  - Remove the hardcoded `[MyOrganization]` placeholder and any fixed URLs.
+  - Document the variables in `docs/UPSTREAM_SYNC.md` and add them to `.env.template`.
+- **Memory-Code Synchronization Drift**: A significant discrepancy exists between the repository's recorded architectural history (Memory) and the implemented codebase truth. Several remediations reported as completed (e.g., shared `audit_logger.js`, parameterized sync script, enhanced agent index extraction) are missing or incomplete in the live filesystem. The fresh implementation work is now tracked under the explicit sub-task chains in this section (Internal Tool Observability Gap, Sync Script Parameterization Gap, Agent Index Descriptive Truncation).
+- **SecretOps Authentication Verification Depth** (Authorized: 2026-06-16): `scripts/verify-env.sh` and `scripts/verify-env.ps1` currently issue only warnings for missing SecretOps authentication in `docker` mode. Per Decision [2026-06-16-0011], they must exit 1 in `docker` mode. Sub-tasks:
+  - Patch `scripts/verify-env.sh` to exit 1 when invoked in `docker` mode without authenticated SecretOps.
+  - Patch `scripts/verify-env.ps1` to mirror the behavior.
+  - Add a smoke-test fixture covering the mode-conditional exit code.
+- **Agent Index Descriptive Truncation** (Authorized: 2026-06-16): Per Decision [2026-06-16-0008], `scripts/context_helpers.js` extracts the full first paragraph of the `Role` section for the Agent Index, not the first sentence. Sub-tasks:
+  - Update the extraction regex/logic in `scripts/context_helpers.js`.
+  - Regenerate golden fixtures with `scripts/update-golden-fixtures.js`.
+- **Red Team Gauntlet Machine-Readable Serialization Gap** (Authorized: 2026-06-16): Per Decision [2026-06-16-0003], test vectors are serialized as a single `examples/red-team-gauntlet/test-vectors.json` with `prompt_injection` and `pii_patterns` top-level keys. Sub-tasks:
+  - Populate `test-vectors.json` with the five mandated cases.
+  - Add a smoke test that loads the file and asserts schema shape (`id`, `category`, `payload`, `expected_outcome`, `notes`).
+  - Link the JSON from `examples/red-team-gauntlet/README.md`.
+- **Service Tier Template Implementation Gap**: The `templates/tiers/` directory exists but lacks the actual service tier templates (e.g., `basic.md`, `standard.md`) referenced by the Client Onboarding agent. Blocked on external input — the specific commercial tier definitions (features/limits/pricing) are tracked as an active clarification in `CLARIFICATIONS.md` (Q [2026-06-15] Service Tier Template Specifications).
+- **Smoke Test Variable Validation Gap** (Authorized: 2026-06-16): Per Decision [2026-06-16-0013]. Sub-tasks:
+  - Add a dedicated test case in `tests/examples-smoke.test.js` that loads `.env.template`, enumerates `NOEMI_DOCKER_SMOKE_*` variables, and asserts each is documented and referenced.
+  - Add a short README inside `tests/` documenting the expected variable inventory.
+- **Resilience Helper Integration Gap**: `scripts/resilience_helpers.js` exists as a canonical reference but is not utilized by repository tools (`audit-repo.js`, `generate_all.js`). Per Decision [2026-04-04] (Resilience Helpers: Core Script Integration Scope), this is intentional — the helper is a reference pattern for agents and external-facing tools; deterministic local-FS operations in `audit-repo.js` and `generate_all.js` do not benefit from retry. This entry is retained for visibility but should not be treated as a remediation backlog item.
+- **Fleet Dashboard Retention Two-Bucket Reference** (Authorized: 2026-06-16): Per Decision [2026-06-16-0002], the reference stack adopts a two-bucket InfluxDB layout. Sub-tasks:
+  - Add an `agent_summaries` bucket (1-year retention) to `examples/gatekeeper-deployment/docker-compose.yml` alongside the existing `agent_reports` bucket (90 days).
+  - Ship a Flux downsampling task fixture that populates `agent_summaries` from `agent_reports`.
+  - Document the refresh cadence in `examples/gatekeeper-deployment/README.md`.
+- **ROI Auditor Baseline Reference File** (Authorized: 2026-06-16): Per Decision [2026-06-16-0001]. Sub-tasks:
+  - Add `tools/roi/baseline-config.json` as the machine-readable snapshot of the published Google Sheets template.
+  - Update the `ROI Auditor` persona's `Data Inventory` to cite the JSON file.
+  - Document the manual export-to-JSON refresh step in `tools/roi/README.md`.
+- **Casdoor Reference Skill** (Authorized: 2026-06-16): Per Decision [2026-06-16-0015]. Sub-task:
+  - Author `skills/security/casdoor-validate.md` following the Reusable Skill Contract; document the JWT validation pattern as an orchestrator/ingress responsibility (no service-side implementation).
+- **RFP Split Asset Renaming** (Authorized: 2026-06-16): Per Decision [2026-06-16-0016]. Sub-tasks:
+  - Bulk-rename files in `examples/rfp-split/` to slug case.
+  - Update any cross-references in code or documentation.
+- **Persona Journal Section Documentation** (Authorized: 2026-06-16): Per Decision [2026-06-16-0007], the `## Journal` section is documented as optional. Sub-task:
+  - Add a one-paragraph note to `docs/AGENT_TEMPLATE.md` describing `## Journal` as a recommended (not required) extension for agents with reflective learning loops.
+- **Generator Script Documentation** (Authorized: 2026-06-16): Per Decision [2026-06-16-0014], `generate_all.js`, `generate_gemini.js`, and `generate_claude.js` are all retained. Sub-task:
+  - Document in the appropriate README that `generate_all.js` is the canonical orchestrator and the per-client scripts are thin wrappers for direct invocation.
+- **Fleet Dashboard API Path Verification** (Authorized: 2026-06-16): Per Decision [2026-06-16-0017]. Sub-task:
+  - Grep `examples/gatekeeper-deployment/dashboard-ingest.js` and `tests/examples-smoke.test.js` for `/api/v1/reports`; if either is missing, file a focused fix PR.

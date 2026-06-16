@@ -270,6 +270,108 @@
 - **Context:** Resolves CLARIFICATIONS.md Q [2026-04-04] (Framework Integration in Context Generators), Q [2026-05-02] (Framework Markers in Context Templates), Q [2026-05-21] (Framework Marker Injection Standardization), and Q [2026-05-22] (Generator Script Marker Alignment). The markers were added but the generator never filled them.
 - **Impact:** Closes the "Framework Injection Gap" from `REQUIREMENTS.md` Current Known Limitations; agents consuming generated context now receive the Value Lenses and Operating Profiles inline.
 
+## [2026-06-16-0001] ROI Auditor Baseline Data Access Pattern
+
+- **Decision:** The `ROI Auditor` persona accesses the baseline ("Human Baseline Time") and labor-rate dictionaries through a local read-only reference file (`tools/roi/baseline-config.json`), not via a privileged `google-sheets-read` capability. The published Google Sheets template (Decision [2026-04-03]) remains the human-editable source; the JSON snapshot is the machine-readable contract that agents consume. Refresh cadence is manual export-to-JSON, captured as a documented step in `tools/roi/README.md`.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-04-03] (ROI Auditor Baseline Data Access). Avoids granting agents broad Sheets read scope, keeps the contract reproducible across environments where the `google-sheets` MCP is not available, and aligns with the existing Fetch-on-Demand posture (no online dependency for cold-path reasoning).
+- **Impact:** `tools/roi/` gains a `baseline-config.json` reference fixture; the ROI Auditor persona's `Data Inventory` cites that file; the persona does not declare a new MCP capability. Sheets remains the human editing surface.
+
+## [2026-06-16-0002] Fleet Dashboard Retention Policy: Two-Bucket Reference
+
+- **Decision:** The Fleet Dashboard reference stack adopts a two-bucket InfluxDB layout matching the persona spec: `agent_reports` (90-day retention, detailed events) and `agent_summaries` (1-year retention, downsampled aggregates). `examples/gatekeeper-deployment/docker-compose.yml` provisions both buckets; a documented downsampling task (Flux script in the example directory) populates `agent_summaries`. The persona is not weakened to single-bucket.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-04-05] (Fleet Dashboard Retention Policy Drift). The persona's tiered retention is the source of truth; the reference implementation must follow the persona, not the other way around (consistent with [2026-05-20] Fleet Dashboard Ingestion Path).
+- **Impact:** Closes the retention drift item. Sub-tasks tracked in REQUIREMENTS.md: (a) add `agent_summaries` bucket to compose; (b) ship a Flux downsampling task fixture; (c) document the refresh cadence in `examples/gatekeeper-deployment/README.md`.
+
+## [2026-06-16-0003] Red Team Gauntlet Machine-Readable Vectors
+
+- **Decision:** The Red Team Gauntlet test vectors are serialized as `examples/red-team-gauntlet/test-vectors.json` — a single file with two top-level keys (`prompt_injection`, `pii_patterns`), not separate files per category. Each entry carries `id`, `category`, `payload`, `expected_outcome`, and `notes`. The prose README remains as human-readable documentation that links to the JSON as the machine-readable source.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-04-05] (Red Team Gauntlet Test Vector Absence), Q [2026-06-10] (Machine-Readable Test Vectors), and Q [2026-06-15] (Red Team Gauntlet Serialization Strategy). Single-file serialization keeps the dataset easy to diff, easy to consume from `tests/`, and avoids the cross-file invariant problem of split JSON.
+- **Impact:** Unblocks the Client Onboarding validation workflow. Sub-tasks tracked in REQUIREMENTS.md: (a) populate `test-vectors.json` with the five mandated cases (prompt injection + PII); (b) add a smoke test that loads the file and asserts schema shape; (c) link the JSON from `examples/red-team-gauntlet/README.md`.
+
+## [2026-06-16-0004] Fleet Dashboard Multi-tenancy + Gatekeeper Mutating Actions Scope
+
+- **Decision:** Persona specifications remain the source of truth (multi-tenant registry + asynchronous verification for Fleet Dashboard; mutating PR/issue actions for Gatekeeper). The reference implementations in `examples/gatekeeper-deployment/` extend toward those specs through a documented `dry-run` mode rather than full production logic: (a) `dashboard-ingest.js` gains a per-agent HMAC registry shape (JSON file, single-process verification) and a stub async verification worker; (b) `entrypoint.sh` gains a `GATEKEEPER_DRY_RUN=true` default that logs intended merge/close actions without executing them.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-04-05] (Fleet Dashboard Multi-tenancy Implementation Gap) and Q [2026-04-23] (Gatekeeper Reference Implementation Mutating Actions). Full production logic is out of scope for a reference architecture; `dry-run` mode demonstrates the contract without requiring an inattentive operator to grant production permissions.
+- **Impact:** Closes both clarifications. Sub-tasks tracked in REQUIREMENTS.md under the Gatekeeper Implementation Gap line.
+
+## [2026-06-16-0005] Substantive Remediation: Autonomous with Generic-Safe Defaults
+
+- **Decision:** Jules is authorized to perform fleet-wide substantive remediation of `Data Inventory` and `Refusal Criteria` placeholders across `agents/` and `skills/` using **role-specific, technically grounded defaults** derived from each file's existing `Role`, `Mission`, `Inputs`, and `Procedure` sections. Domain experts may refine the content later; the audit gate is allowed to enforce the absence of "TBD" only once the bulk remediation lands (see [2026-06-16-0010]).
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-04-05] (Substantive Persona Content Drift), Q [2026-05-02] (Skill Contract Enforcement Depth), Q [2026-05-10] (Substantive Persona Remediation Strategy), Q [2026-05-28] (Substantive Remediation of the Skill Library), and Q [2026-05-29] (Skill Remediation Priority). Carrying these as five separate questions obscured that they are a single workstream gated on PO approval.
+- **Impact:** Closes five clarifications. Sub-tasks: (a) generate role-specific content from each persona/skill's existing sections; (b) PR per directory (`agents/` then `skills/`) to keep diffs reviewable; (c) update REQUIREMENTS.md to remove the "Structural vs. Substantive Compliance" and "Skill Contract Substantive Drift" limitation lines once landed.
+
+## [2026-06-16-0006] Audit Script Enforcement Sweep
+
+- **Decision:** `scripts/audit-repo.js` will acquire the following checks as a single coordinated change (analogous to [2026-05-20] Audit Script Coverage Expansion): (a) Node baseline scan for `Dockerfile`/`docker-compose.yml` flagging `node:<24`; (b) referential integrity for `mcp.config.json` (`active_mcps` → `mcp-protocols/`, `active_skills` → `skills/`); (c) regex-based filename slug-naming check across `docs/`, `agents/`, `skills/`, `examples/`, `tools/`; (d) skill-reference integrity scan parsing `**Skill:** [path]` patterns in agent workflows; (e) Refusal Criteria substantive check for the three mandated clauses (refused types, override resistance, escalation path); (f) AI Model baseline grep across `examples/` and `tests/` flagging non-`models/gemini-2.5-flash` pins; (g) "TBD" placeholder rejection in mandatory persona/skill sections as a fatal error; (h) Audit Log JSON schema validation for the five mandated keys (`task`, `inputs`, `actions`, `risks`, `result`); (i) branch-protection check using the GitHub API when `GITHUB_TOKEN` is present, falling back to detecting `scripts/setup-branch-protection.sh` execution markers — fatal in CI, warning otherwise.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-01] (Node.js 24 Baseline Enforcement in Docker), Q [2026-05-02] (Config-to-Asset Mapping Validation), Q [2026-05-02] (Automated Naming Convention Audit), Q [2026-05-02] (Refusal Criteria Substantive Enforcement), Q [2026-05-15] (Skill-to-Agent Referential Integrity), Q [2026-05-20] (AI Model Version Baseline Formalization Follow-through), Q [2026-05-29] (Branch Protection Audit Implementation), Q [2026-06-01] (Substantive vs. Structural Audit Policy), Q [2026-06-01] (Audit Log Schema Enforcement), and Q [2026-06-15] (Audit Script Placeholder Rejection Policy). All are coverage expansions to the same gate; per [2026-05-20] precedent, they ship as one coherent unit because partial coverage gives a false sense of governance.
+- **Impact:** Closes ten clarifications. Sub-tasks tracked in REQUIREMENTS.md under a single "Audit Script Coverage Sweep" entry; landing this collapses the "Audit Script Enforcement Depth", "Audit Script JSON Schema Blindness", and "Branch Protection Audit Gap" Known Limitations into a single resolution.
+
+## [2026-06-16-0007] Persona Journal Section: Optional, Documented
+
+- **Decision:** The `## Journal` section remains **optional**, not mandatory. Personas that already include it keep it; new personas may add it; `AGENT_TEMPLATE.md` documents it as a recommended extension for agents with reflective learning loops. The audit gate does not enforce its presence.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-01] (Persona Journal Section Standardization). Promoting `Journal` to mandatory would force 22 substantive rewrites across personas where reflection is not part of the role (e.g., deterministic gatekeeper reporting). Optional preserves the value where it fits without inventing safety theater.
+- **Impact:** Closes the clarification. Sub-task: add a one-paragraph note to `docs/AGENT_TEMPLATE.md` documenting `## Journal` as a recommended extension.
+
+## [2026-06-16-0008] Agent Index Extraction: Full First Paragraph
+
+- **Decision:** `scripts/context_helpers.js` extracts the **full first paragraph** of the `## Role` section for the Agent Index, not the first sentence and not a new `### Summary` subsection. A paragraph is a natural narrative unit; introducing a new mandatory subsection would force 22 persona edits for marginal benefit.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-02] (Agent Index Role Truncation). Closes the "Agent Index Descriptive Truncation" Known Limitation once landed.
+- **Impact:** Sub-task: update `scripts/context_helpers.js` extraction logic; regenerate golden fixtures with `scripts/update-golden-fixtures.js`.
+
+## [2026-06-16-0009] Audit Log Channel: stderr with `AUDIT_LOG:` Prefix
+
+- **Decision:** Audit Log emission stays on `stderr` (Decision [2026-04-13]) but every line is prefixed with the literal token `AUDIT_LOG: ` followed by the canonical JSON. This preserves the orchestrator contract while making capture unambiguous in environments where `stderr` mixes audit records with crash diagnostics. The prefix is documented in `AGENTS.md` and `REQUIREMENTS.md` Section 2.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-02] (Audit Log Descriptor Standardization). Dedicated FD 3 was considered and rejected: it works in Linux shells but breaks under Windows orchestrators, Docker logs drivers, and most n8n/LangChain transports. A line prefix is portable and trivially `grep`-able.
+- **Impact:** Sub-tasks: (a) update `AGENTS.md` Audit Log section to mandate the prefix; (b) update `REQUIREMENTS.md` Section 2 Technical Emission paragraph; (c) refactor the shared `audit_logger.js` helper (see [2026-06-16-0010]) to emit with the prefix.
+
+## [2026-06-16-0010] Internal Tool Observability: Shared `audit_logger.js`
+
+- **Decision:** Implement a shared `scripts/audit_logger.js` utility as the canonical Node.js JSON Audit Log emitter, and refactor `tools/executive-assistant/`, `examples/gatekeeper-deployment/dashboard-ingest.js`, `scripts/generate_all.js`, and `scripts/audit-repo.js` to use it. The helper enforces the canonical shape (`task`, `inputs`, `actions`, `risks`, `result`), applies the `AUDIT_LOG:` prefix from [2026-06-16-0009], and is the only sanctioned audit emitter for Node.js tools in this repository. Internal tool events map to the schema as: `task` ← the tool's high-level operation name (e.g., `executive-assistant.triage`), `inputs` ← the request shape minus secrets, `actions` ← the ordered list of side effects (e.g., `["label.applied", "mail.archived"]`), `risks` ← any deferred or skipped actions with reason codes, `result` ← `"success"` or `"failure"` with optional reason.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-02] (Standardized Audit Log Emission for Build Utilities), Q [2026-05-02] (Tool Baseline Alignment Executive Assistant), Q [2026-05-19] (Internal Tool Observability Standard), Q [2026-05-29] (Internal Tool Observability Implementation), Q [2026-06-01] (Memory-Code Synchronization Drift — `audit_logger.js` re-implementation), Q [2026-06-10] (Mandated audit_logger.js Absence and Ownership), Q [2026-06-11] (audit_logger.js Mandated Absence), and Q [2026-06-15] (Internal Tool Audit Log Event Mapping). All seven are facets of the same missing utility plus its consumer-refactor; treating them separately created the appearance of unresolved disagreement when the answer is simply "ship the helper and the refactors together."
+- **Impact:** Closes seven clarifications and the "Internal Tool Observability Gap" Known Limitation. Sub-tasks tracked in REQUIREMENTS.md.
+
+## [2026-06-16-0011] verify-env.sh Docker-Mode Fatal Enforcement
+
+- **Decision:** `scripts/verify-env.sh` (and the PowerShell equivalent `verify-env.ps1`) MUST exit with code 1 when SecretOps authentication is missing or invalid and the script is invoked with `docker` mode. The current warning-only behavior in `docker` mode is a bug relative to the mandate in `AGENTS.md` line 46 and Decision [2026-05-26] Pre-flight Logic Normalization — `builder` mode keeps the warning, `docker` mode hard-fails.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-11] (verify-env.sh Mode Discrepancy). The mandate already exists; this decision authorizes the remediation patch.
+- **Impact:** Closes the "SecretOps Authentication Verification Depth" Known Limitation. Sub-task: update both verify-env scripts and add a test fixture covering the mode-conditional exit code.
+
+## [2026-06-16-0012] sync-upstream.sh Environment-Variable Parameterization
+
+- **Decision:** `scripts/sync-upstream.sh` is refactored to pull organization-specific values from environment variables with sensible defaults: `NOEMI_ORG_NAME` (default: the directory name of the script's parent repo), `NOEMI_UPSTREAM_URL` (default: the public Project NoéMI upstream URL), and `NOEMI_UPSTREAM_BRANCH` (default: `main`). The hardcoded `[MyOrganization]` placeholder and fixed URLs are removed. CLI flags (`--org`, `--upstream`, `--branch`) override environment variables.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-29] (Sync Script Parameterization) and Q [2026-06-11] (sync-upstream.sh Hardcoded Identity). The mandate already exists in `AGENTS.md` line 62 (Script Parameterization).
+- **Impact:** Closes the "Sync Script Parameterization Gap" Known Limitation. Sub-task: implement the env-var parameterization, document the variables in `docs/UPSTREAM_SYNC.md`, and update `.env.template` with the new variables.
+
+## [2026-06-16-0013] NOEMI_DOCKER_SMOKE_* Validation in Smoke Test
+
+- **Decision:** `tests/examples-smoke.test.js` gains a dedicated test case that loads `.env.template`, enumerates all variables matching `NOEMI_DOCKER_SMOKE_*`, asserts each is documented (present in the file with a non-empty default or placeholder comment), and asserts each is referenced by at least one file under `examples/` or `tests/`. This closes Requirement §9's mandate that the default test suite cover `NOEMI_DOCKER_SMOKE_*` variable validation.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-29] (Docker Smoke Test Variable Validation) and Q [2026-06-11] (tests/examples-smoke.test.js Environmental Blindness).
+- **Impact:** Closes the "Smoke Test Variable Validation Gap" Known Limitation. Sub-task: add the test case; document the expected variable inventory in a short README inside `tests/`.
+
+## [2026-06-16-0014] Generator Script Consolidation: Retain Three Entry Points
+
+- **Decision:** Retain `scripts/generate_all.js`, `scripts/generate_gemini.js`, and `scripts/generate_claude.js`. The two single-target generators delegate to `scripts/context_helpers.js` and re-export the same logic `generate_all.js` calls; they are thin wrappers, not duplicated logic. Removing them would break documented quick-start commands and external orchestrator integrations that invoke a specific generator by name. The maintenance overhead is negligible because the actual logic lives in `context_helpers.js`.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-17] (Generator Script Redundancy). The premise that the wrappers are redundant is partially true (they share logic) but their existence is a public interface contract.
+- **Impact:** No code changes. Sub-task: document in `scripts/README.md` (or the appropriate README) that `generate_all.js` is the canonical orchestrator and the per-client scripts are thin wrappers for direct invocation.
+
+## [2026-06-16-0015] Casdoor Identity: Reference Skill Specification Only
+
+- **Decision:** Implement a `skills/security/casdoor-validate.md` skill specification (persona-contract-compliant) describing the JWT-validation pattern for multi-tenant deployments. Do NOT implement JWT validation middleware in `dashboard-ingest.js` or any other reference service. The repository remains a definitions library (Decision [2026-03-03]); identity verification is an orchestrator/ingress concern (Decision [2026-04-02] Clarification Backlog Normalization line: "Identity verification is treated as an orchestrator or ingress responsibility rather than an agent-side Casdoor token contract"). The new skill documents the pattern so orchestrators know what to implement; reference services keep their current HMAC-based posture.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-02] (Identity Provider Implementation Gap) and Q [2026-05-22] (Casdoor Identity Integration Logic). The prior Clarification Backlog Normalization already settled this at the architectural level; this decision adds the missing skill file so the reference is discoverable.
+- **Impact:** Sub-task: author `skills/security/casdoor-validate.md` following the Reusable Skill Contract.
+
+## [2026-06-16-0016] RFP Split Asset Renaming
+
+- **Decision:** Bulk-rename files in `examples/rfp-split/` to follow the English-first, slug-based naming convention (e.g., `Section_1_General_Information.pdf` → `section-1-general-information.pdf`). Any cross-references in code or documentation are updated in the same PR.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-13] (RFP Split Naming Convention Remediation). The mandate already exists; the audit script slug-naming check from [2026-06-16-0006] would flag these files once it lands, so renaming pre-empts noisy first-run failures.
+- **Impact:** Sub-task: rename files and update references; verify with the slug-naming check after [2026-06-16-0006] ships.
+
+## [2026-06-16-0017] Fleet Dashboard API Path Verification Sweep
+
+- **Decision:** Treat Q [2026-05-15] as a closed verification request. Decision [2026-05-20] already standardized the path on `/api/v1/reports`; the verification sweep is captured as a one-shot sub-task in REQUIREMENTS.md rather than a standing clarification.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-15] (Test Suite Reinforcement of API Path Drift). Carrying a "did we actually do it" question in the active backlog when the durable answer is already logged inflates the queue.
+- **Impact:** Sub-task: grep `examples/gatekeeper-deployment/dashboard-ingest.js` and `tests/examples-smoke.test.js` for `/api/v1/reports`; if either is missing, file a focused fix PR.
+
 ## [2026-05-28-0006] Resolved Clarifications Overtaken by Prior Decisions
 
 - **Decision:** The following CLARIFICATIONS.md questions are closed as already-resolved by prior entries in this log and are removed from the active backlog without further action:

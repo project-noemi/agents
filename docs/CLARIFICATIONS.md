@@ -345,3 +345,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should we map internal events like `SYNC_COMPLETE` or `TRIAGE_VIP` directly to the `task` field of the Audit Log, or should we define a more granular mapping for tool-specific operations?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Define a standardized mapping for internal tool events to the Audit Log schema and refactor the `executive-assistant` and `dashboard-ingest` services to use it.*
+
+### ❓ Question 2026-06-17 - MCP Protocol Specification Contract Audit Gap
+**Context:** The requirements state "Persona and Skill Contracts are Mandatory" and Section 3 mandates "Contract and Generator Drift Must Fail Fast," but the codebase in `scripts/audit-repo.js` entirely skips the `mcp-protocols/` directory.
+**Ambiguity / Drift:** MCP protocols define the technical "Rules of Engagement" for external tools, yet they currently lack the automated structural enforcement (Purpose, Inputs, Procedure, Outputs, etc.) applied to agents and skills, creating a governance blind spot for tool-heavy agents.
+**Question for Product Owner:** Should MCP protocols in `mcp-protocols/` be brought under the same mandatory structural contract and audited by `scripts/audit-repo.js` for heading completeness?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `AGENTS.md` and `scripts/audit-repo.js` to define and enforce a mandatory structural contract for all MCP protocol specifications in `mcp-protocols/`.*
+
+### ❓ Question 2026-06-17 - Value Lens and Operating Profile Structural Audit
+**Context:** The requirements mandate the injection of Value Lenses and Operating Profiles into context generators, but the codebase in `scripts/audit-repo.js` lacks any logic to verify the structural integrity of these framework assets.
+**Ambiguity / Drift:** While there are templates for these assets, there is no automated gate to ensure that a newly added lens or profile adheres to the expected format (e.g., specific headings or neutral operational naming), increasing the risk of "hollow" or biased framework layers.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be expanded to enforce structural contracts (via `*_TEMPLATE.md` alignment) for `value-lenses/` and `operating-profiles/`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement structural audit checks for `value-lenses/` and `operating-profiles/` within `scripts/audit-repo.js` to ensure all framework assets align with their respective templates.*
+
+### ❓ Question 2026-06-17 - Automated Internal Documentation Link Integrity
+**Context:** Many agent personas reference reusable skills using the `**Skill:** [path/to/skill]` pattern, and REQUIREMENTS.md Section 1 references multiple assessment kit files.
+**Ambiguity / Drift:** There is no automated verification that these internal file paths are valid. As files are renamed or moved (e.g., the recent `n8n workflows` to `n8n-workflows` rename), these references become broken links, leading to "Execution Drift" where an agent cannot find its required logic.
+**Question for Product Owner:** Should Jules implement a referential integrity check in `scripts/audit-repo.js` that validates all internal markdown links and skill paths across the repository?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Add a referential integrity audit to `scripts/audit-repo.js` that verifies all internal markdown links (`[text](path/to/file.md)`) and skill references (`**Skill:** [path/to/skill]`) point to existing files.*

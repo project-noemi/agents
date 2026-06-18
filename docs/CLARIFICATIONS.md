@@ -366,3 +366,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules implement a referential integrity check in `scripts/audit-repo.js` that validates all internal markdown links and skill paths across the repository?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Add a referential integrity audit to `scripts/audit-repo.js` that verifies all internal markdown links (`[text](path/to/file.md)`) and skill references (`**Skill:** [path/to/skill]`) point to existing files.*
+
+### ❓ Question [2026-06-17] - Substantive Content Baseline for Agents
+**Context:** The requirements state "Persona and Skill Contracts are Mandatory", but a whole-codebase audit revealed that 100% of agent personas use identical boilerplate text for the `Refusal Criteria` and `Data Inventory` sections.
+**Ambiguity / Drift:** While structurally compliant, the repository is in substantive drift from the 4D Description (D2) and Refusal Principle mandates. Agents lack role-specific data and safety-gating logic, creating a false sense of production readiness.
+**Question for Product Owner:** Should we authorize Jules to perform a bulk update to replace these boilerplate placeholders with role-specific substantive content across all 22+ agent personas?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a fleet-wide substantive remediation of all agent personas in `agents/`, replacing boilerplate `Data Inventory` and `Refusal Criteria` with role-specific, technically accurate content.*
+
+### ❓ Question [2026-06-17] - Internal Tool Audit Log Mapping
+**Context:** `AGENTS.md` mandates that internal tools like `executive-assistant` emit structured JSON Audit Logs to `stderr`.
+**Ambiguity / Drift:** Current internal tools use unstructured `console.log` for operational events. There is no mapping between these events (e.g., `Pub/Sub notification received`, `Triage execution complete`) and the mandatory `Audit Log` schema (`task`, `inputs`, `actions`, `risks`, `result`).
+**Question for Product Owner:** Should Jules implement a standard event-to-schema mapping for internal tools, or should we define a more granular audit schema specifically for build/infrastructure tools?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Define a standardized mapping for internal tool events to the Audit Log schema and refactor the `executive-assistant` and `dashboard-ingest` services to use it.*

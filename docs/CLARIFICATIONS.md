@@ -10,6 +10,7 @@ This file now tracks only active, unresolved questions that still require produc
 - Questions that were superseded by implemented repo changes were closed as overtaken by events and removed from the active backlog.
 - [2026-04-04] Resolved Node.js Resilience Helper scope (mandate satisfied by reference pattern; core scripts do not need retry for local filesystem ops) and Legacy Example Labeling (bulk update completed — LEGACY/ILLUSTRATIVE headers added to all Python and Bash examples).
 - [2026-05-28] Bulk closure: a large block of late-cycle clarifications was either resolved by Decision entries dated 2026-05-28-0001 through 2026-05-28-0006 (logging-mcp payload alignment, onboarding directory bootstrap, SecretOps reference standardization, case-insensitive heading audits, Value Lens/Operating Profile injection, and the bulk closure of clarifications overtaken by prior decisions), or recognized as restatements of already-resolved questions. See `DECISION_LOG.md` for the durable record.
+- [2026-06-18] Resolved the 2026-06-17 audit-cycle clarifications: referential integrity audit for `scripts/audit-repo.js` (Decision [2026-06-18-0001], best-practice YES — closes Q [2026-05-02] Config-to-Asset Mapping Validation, Q [2026-05-15] Skill-to-Agent Referential Integrity, and Q 2026-06-17 Automated Internal Documentation Link Integrity) and internal tool audit-log event-to-schema mapping (Decision [2026-06-18-0002], best-practice YES — closes Q [2026-06-15] Internal Tool Audit Log Event Mapping and Q [2026-06-17] Internal Tool Audit Log Mapping). The fleet-wide substantive content rewrite (Q [2026-04-26], Q [2026-05-10], Q [2026-06-17] Substantive Content Baseline for Agents) is formally deferred pending product-owner authorization (Decision [2026-06-18-0003]); the substantive drift remains tracked as a Current Known Limitation in `REQUIREMENTS.md`.
 
 ## Template for New Questions
 
@@ -59,13 +60,6 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Extend the Gatekeeper deployment example and `entrypoint.sh` to include a placeholder or dry-run mode for the mutating actions defined in the Gatekeeper persona.*
 
-### ❓ Question [2026-04-26] - Substantive Persona Content Drift
-**Context:** A whole-codebase audit revealed that 100% of agent personas (22/22) currently use identical placeholder text for the `Data Inventory` and `Refusal Criteria` sections.
-**Ambiguity / Drift:** While the repository passes structural audits (headings are present), it has drifted into substantive non-compliance with the 4D framework (D2 Description) and the Refusal Principle. Agents lack the role-specific data definitions and safety-gating logic required for production readiness.
-**Question for Product Owner:** Should Jules be tasked with a bulk update to replace these placeholders with role-specific substantive content, or should this be handled incrementally during domain-specific work?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a whole-fleet update of all agent personas in `agents/` to replace placeholder `Data Inventory` and `Refusal Criteria` sections with role-specific, technically accurate content.*
-
 ### ❓ Question [2026-05-01] - Node.js 24 Baseline Enforcement in Docker
 **Context:** The repository mandates Node.js 24 as the baseline for all logic and utilities (`AGENTS.md`, `package.json`).
 **Ambiguity / Drift:** Some reference Docker configurations may still be pinned to older Node images, drifting from the mandated baseline. Decision [2026-05-10] partially remediated this (gatekeeper-deployment and executive-assistant), but a fleet-wide sweep has not been completed.
@@ -86,13 +80,6 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the Agent Index logic be updated to extract the full first paragraph of the Role section, or should we introduce a specific `### Summary` subsection for this purpose?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/context_helpers.js` to extract the full first paragraph of the `## Role` section for the Agent Index to ensure descriptive accuracy.*
-
-### ❓ Question [2026-05-02] - Config-to-Asset Mapping Validation
-**Context:** `mcp.config.json` defines the `active_mcps` and `active_skills` for context generation.
-**Ambiguity / Drift:** `scripts/audit-repo.js` does not verify that these entries actually correspond to existing files in `mcp-protocols/` and `skills/`. This allows typos or missing files to go undetected by the structural audit, leading to incomplete generated context.
-**Question for Product Owner:** Should `scripts/audit-repo.js` be enhanced to perform a "referential integrity" check against `mcp.config.json`?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to validate that every entry in the `active_mcps` and `active_skills` lists within `mcp.config.json` maps to a valid file in the repository.*
 
 ### ❓ Question [2026-05-02] - Automated Naming Convention Audit
 **Context:** `AGENTS.md` mandates English-first, slug-based naming for all artifacts. The structural rename of `docs/n8n workflows/` was completed in Decision [2026-05-10], but no automated guard exists.
@@ -143,13 +130,6 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Draft a `casdoor-mcp` protocol and implement basic JWT validation middleware for the Fleet Dashboard reference services.*
 
-### ❓ Question [2026-05-10] - Substantive Persona Remediation Strategy
-**Context:** All agent personas and reusable skills currently use identical placeholder text for the `Data Inventory` and `Refusal Criteria` sections.
-**Ambiguity / Drift:** While structurally compliant (the headings exist), the repository is in substantive drift from the 4D Description (D2) and Refusal Principle mandates.
-**Question for Product Owner:** Should Jules be authorized to perform a fleet-wide "substantive remediation" to replace these placeholders with role-specific, technically accurate content?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of all agent personas in `agents/` and skills in `skills/` to replace placeholder Data Inventory and Refusal Criteria with role-specific content.*
-
 ### ❓ Question [2026-05-13] - RFP Split Naming Convention Remediation
 **Context:** `AGENTS.md` mandates English-first, slug-based naming. `examples/rfp-split/` contains several files like `Section_1_General_Information.pdf` that violate this rule.
 **Ambiguity / Drift:** These files represent technical drift from the repository's naming standards and may cause issues in some environments.
@@ -163,13 +143,6 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules perform a verification sweep and, if needed, the lockstep update of `dashboard-ingest.js` and `tests/examples-smoke.test.js` to match the decision?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Verify and (if needed) update `examples/gatekeeper-deployment/dashboard-ingest.js` and `tests/examples-smoke.test.js` to use `/api/v1/reports`.*
-
-### ❓ Question [2026-05-15] - Skill-to-Agent Referential Integrity
-**Context:** Agent personas reference reusable skills in their `Workflow` sections using the `**Skill:** [path/to/skill]` pattern. Currently, `scripts/audit-repo.js` does not verify that these referenced skills exist or are enabled in `mcp.config.json`.
-**Ambiguity / Drift:** This allows for "broken links" in agent specifications where an agent depends on a skill that has been renamed, deleted, or is not available in the current context.
-**Question for Product Owner:** Should the audit script be enhanced to perform referential integrity checks on skill references within agent workflows?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Enhance `scripts/audit-repo.js` to parse agent workflows for skill references and verify their existence in the `skills/` directory.*
 
 ### ❓ Question [2026-05-17] - Generator Script Redundancy
 **Context:** The repository contains `scripts/generate_all.js`, `scripts/generate_gemini.js`, and `scripts/generate_claude.js`. `generate_all.js` performs the same logic for both Gemini and Claude by calling shared helpers.
@@ -339,13 +312,6 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement starter Operating Profiles (e.g., `standard-operating-profile.md`) in `operating-profiles/` to provide a baseline for agentic tone and escalation behavior.*
 
-### ❓ Question [2026-06-15] - Internal Tool Audit Log Event Mapping
-**Context:** `AGENTS.md` mandates that internal tools like `executive-assistant` emit structured JSON Audit Logs to `stderr`. The current `executive-assistant` implements an internal `execLogs` array with custom fields (`event`, `details`, `actions`).
-**Ambiguity / Drift:** There is no mapping between the internal tool events and the mandatory `Audit Log` schema (`task`, `inputs`, `actions`, `risks`, `result`). This makes it unclear how to refactor these tools for compliant emission.
-**Question for Product Owner:** Should we map internal events like `SYNC_COMPLETE` or `TRIAGE_VIP` directly to the `task` field of the Audit Log, or should we define a more granular mapping for tool-specific operations?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Define a standardized mapping for internal tool events to the Audit Log schema and refactor the `executive-assistant` and `dashboard-ingest` services to use it.*
-
 ### ❓ Question 2026-06-17 - MCP Protocol Specification Contract Audit Gap
 **Context:** The requirements state "Persona and Skill Contracts are Mandatory" and Section 3 mandates "Contract and Generator Drift Must Fail Fast," but the codebase in `scripts/audit-repo.js` entirely skips the `mcp-protocols/` directory.
 **Ambiguity / Drift:** MCP protocols define the technical "Rules of Engagement" for external tools, yet they currently lack the automated structural enforcement (Purpose, Inputs, Procedure, Outputs, etc.) applied to agents and skills, creating a governance blind spot for tool-heavy agents.
@@ -360,23 +326,3 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement structural audit checks for `value-lenses/` and `operating-profiles/` within `scripts/audit-repo.js` to ensure all framework assets align with their respective templates.*
 
-### ❓ Question 2026-06-17 - Automated Internal Documentation Link Integrity
-**Context:** Many agent personas reference reusable skills using the `**Skill:** [path/to/skill]` pattern, and REQUIREMENTS.md Section 1 references multiple assessment kit files.
-**Ambiguity / Drift:** There is no automated verification that these internal file paths are valid. As files are renamed or moved (e.g., the recent `n8n workflows` to `n8n-workflows` rename), these references become broken links, leading to "Execution Drift" where an agent cannot find its required logic.
-**Question for Product Owner:** Should Jules implement a referential integrity check in `scripts/audit-repo.js` that validates all internal markdown links and skill paths across the repository?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Add a referential integrity audit to `scripts/audit-repo.js` that verifies all internal markdown links (`[text](path/to/file.md)`) and skill references (`**Skill:** [path/to/skill]`) point to existing files.*
-
-### ❓ Question [2026-06-17] - Substantive Content Baseline for Agents
-**Context:** The requirements state "Persona and Skill Contracts are Mandatory", but a whole-codebase audit revealed that 100% of agent personas use identical boilerplate text for the `Refusal Criteria` and `Data Inventory` sections.
-**Ambiguity / Drift:** While structurally compliant, the repository is in substantive drift from the 4D Description (D2) and Refusal Principle mandates. Agents lack role-specific data and safety-gating logic, creating a false sense of production readiness.
-**Question for Product Owner:** Should we authorize Jules to perform a bulk update to replace these boilerplate placeholders with role-specific substantive content across all 22+ agent personas?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a fleet-wide substantive remediation of all agent personas in `agents/`, replacing boilerplate `Data Inventory` and `Refusal Criteria` with role-specific, technically accurate content.*
-
-### ❓ Question [2026-06-17] - Internal Tool Audit Log Mapping
-**Context:** `AGENTS.md` mandates that internal tools like `executive-assistant` emit structured JSON Audit Logs to `stderr`.
-**Ambiguity / Drift:** Current internal tools use unstructured `console.log` for operational events. There is no mapping between these events (e.g., `Pub/Sub notification received`, `Triage execution complete`) and the mandatory `Audit Log` schema (`task`, `inputs`, `actions`, `risks`, `result`).
-**Question for Product Owner:** Should Jules implement a standard event-to-schema mapping for internal tools, or should we define a more granular audit schema specifically for build/infrastructure tools?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Define a standardized mapping for internal tool events to the Audit Log schema and refactor the `executive-assistant` and `dashboard-ingest` services to use it.*

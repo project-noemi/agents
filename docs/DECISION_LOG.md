@@ -283,3 +283,116 @@
   - Q [2026-05-21] Pre-flight failure policy / Q [2026-05-22] Docker mode hard-fail policy → resolved by [2026-05-26] Pre-flight Logic Normalization.
 - **Context:** Multiple late-cycle clarifications restate or duplicate earlier resolved questions. Carrying them in the active backlog made the queue look much larger than the real outstanding work.
 - **Impact:** CLARIFICATIONS.md shrinks to genuinely open product-owner questions; the durable answers remain in this log for traceability.
+
+## [2026-06-19-0001] Shared audit_logger.js Utility — Ship It
+
+- **Decision:** The mandated shared utility `scripts/audit_logger.js` is implemented in this PR. It exposes `emit(record, options)`, `createLogger(source)`, `normalize(record)`, and `validate(record)`. Records are emitted as one NDJSON line to `stderr` per event. The canonical schema is the same lightweight shape already mandated for agents (`task`, `inputs`, `actions`, `risks`, `result`); an optional `source` tag and ISO `timestamp` are added by the emitter. Internal tools (`tools/executive-assistant`) and reference services (`examples/gatekeeper-deployment/dashboard-ingest.js`) SHOULD adopt it incrementally; the utility itself is the prerequisite that has been missing.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-02] Standardized Audit Log Emission for Build Utilities, Q [2026-05-02] Audit Log Descriptor Standardization, Q [2026-05-02] Tool Baseline Alignment (Executive Assistant), Q [2026-05-19] Internal Tool Observability Standard, Q [2026-05-29] Internal Tool Observability Implementation, Q [2026-06-01] Memory-Code Synchronization Drift (audit_logger.js portion), Q [2026-06-10] Mandated audit_logger.js Absence and Ownership, Q [2026-06-11] audit_logger.js Mandated Absence, Q [2026-06-15] Internal Tool Audit Log Event Mapping, and Q [2026-06-17] Internal Tool Audit Log Mapping. The file was repeatedly referenced as if it existed; its absence has been the single largest source of observability drift in the repository. Industry practice (e.g. `pino`, `winston`) standardizes one logger per service; best practice for a reference architecture is the smallest dependency-free shim that enforces a schema; the recommendation, accordingly, is a single-purpose stderr NDJSON emitter with no third-party dependencies.
+- **Impact:** Closes the "Internal Tool Observability Gap" prerequisite. Downstream adoption work (refactoring `executive-assistant` and `dashboard-ingest` to call the shared module) is now an implementation chore rather than a missing dependency, and is tracked as an open requirement until completed. Event-to-schema mapping is the caller's responsibility: tools map their domain events (`SYNC_COMPLETE`, `TRIAGE_VIP`, etc.) into the `task` field, with structured detail in `inputs`/`actions`/`risks`/`result`.
+
+## [2026-06-19-0002] sync-upstream.sh — Environment-Driven Parameterization
+
+- **Decision:** `scripts/sync-upstream.sh` reads `NOEMI_UPSTREAM_REMOTE`, `NOEMI_UPSTREAM_URL`, `NOEMI_LOCAL_BRANCH`, and `NOEMI_ORG_NAME` from the environment with sensible defaults that preserve the original behavior. The hardcoded `MY_ORGANIZATION="[MyOrganization]"` placeholder is replaced; forks may set `NOEMI_ORG_NAME` in their shell or wrapper script instead of patching the source file.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-29] Sync Script Parameterization, Q [2026-06-11] sync-upstream.sh Hardcoded Identity, and the sync-script portion of Q [2026-06-01] Memory-Code Synchronization Drift. Industry practice is to expose org-specific values through env vars or CLI flags (see `gh`, `git-extras`); best practice for cross-org reference scripts is to provide defaults so a clean clone still runs; the recommendation is therefore env-var overrides with the upstream defaults retained.
+- **Impact:** Closes the "Sync Script Parameterization Gap" item under Current Known Limitations. Forks can run the script unmodified.
+
+## [2026-06-19-0003] tests/examples-smoke.test.js — NOEMI_DOCKER_SMOKE_* Inventory Gate
+
+- **Decision:** `tests/examples-smoke.test.js` gains a dedicated test that (1) scans `tests/e2e/docker-smoke.test.js` for every `NOEMI_DOCKER_SMOKE_*` reference, (2) asserts each referenced variable is declared in `.env.template`, and (3) asserts each declaration carries a non-empty default value. The assertion is symmetric with the requirement in §9 (Docker env inventory coverage).
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-29] Docker Smoke Test Variable Validation and Q [2026-06-11] tests/examples-smoke.test.js Environmental Blindness. Industry practice is to gate runtime env contracts at the test boundary (e.g. `dotenv-safe`); best practice is bidirectional verification — every consumer must be inventoried, and every inventoried variable must have a usable default; the recommendation is the bidirectional check implemented here.
+- **Impact:** Closes the "Smoke Test Variable Validation Gap" item under Current Known Limitations. Future additions to the e2e suite that introduce a new `NOEMI_DOCKER_SMOKE_*` variable without a matching inventory entry will fail `npm test` immediately.
+
+## [2026-06-19-0004] Resilience Helpers Integration — Reaffirmed Reference-Only Scope
+
+- **Decision:** `scripts/resilience_helpers.js` remains a reusable reference pattern. It is NOT force-integrated into `scripts/audit-repo.js` or `scripts/generate_all.js`. The "Resilience Helper Integration Gap" entry under Current Known Limitations is closed as overtaken by events: it duplicates the [2026-04-04] decision that already settled this scope.
+- **Context:** Resolves the resilience-helper portion of CLARIFICATIONS.md Q [2026-06-01] Memory-Code Synchronization Drift. The 2026-04-04 decision explicitly carved retry logic out of deterministic local-FS tools; the open limitation entry was tracking a phantom requirement.
+- **Impact:** Removes the limitation from `REQUIREMENTS.md` Current Known Limitations to keep the truth list honest.
+
+## [2026-06-19-0005] Bulk Closure of Clarifications Subsumed by 2026-05-20 Audit Coverage Decision
+
+- **Decision:** The following CLARIFICATIONS.md questions are closed as already-resolved by [2026-05-20] Audit Script Coverage Expansion (Skills + JSON Schema) and are removed from the active backlog without further action. The decision already mandates that `audit-repo.js` validate JSON Audit Log schema and apply the persona-contract checks to `skills/`; the implementation work to actually wire those checks is tracked as an open requirement in `REQUIREMENTS.md`, not as an open clarification.
+  - Q [2026-05-02] Config-to-Asset Mapping Validation → subsumed (referential integrity is part of the same coverage expansion).
+  - Q [2026-05-02] Refusal Criteria Substantive Enforcement → subsumed.
+  - Q [2026-05-02] Skill Contract Enforcement Depth → subsumed.
+  - Q [2026-05-15] Skill-to-Agent Referential Integrity → subsumed.
+  - Q [2026-06-01] Audit Log Schema Enforcement → subsumed.
+  - Q [2026-06-01] Substantive vs. Structural Audit Policy → subsumed by combination of [2026-05-20] and the substantive-content questions still open below.
+  - Q [2026-06-15] Audit Script Placeholder Rejection Policy → subsumed.
+  - Q [2026-06-17] Automated Internal Documentation Link Integrity → subsumed (link-integrity is the same referential-integrity work item).
+- **Context:** Multiple clarifications restate the [2026-05-20] decision in different language. Carrying them as open questions misrepresents the queue.
+- **Impact:** CLARIFICATIONS.md shrinks; the work itself remains visible as "Audit Script Enforcement Depth" under Current Known Limitations in `REQUIREMENTS.md`.
+
+## [2026-06-19-0006] MCP Protocol Contract and Framework Asset Audits — Approved Scope
+
+- **Decision:** MCP protocol specifications in `mcp-protocols/` SHALL be brought under a mandatory structural contract: `Purpose`, `Inputs`, `Procedure`, `Outputs`, `Rules & Constraints`, `Boundaries`, `Audit Log`. Likewise, `value-lenses/` and `operating-profiles/` SHALL be audited for alignment with their respective `*_TEMPLATE.md` files (mandatory headings only). `scripts/audit-repo.js` SHALL acquire the corresponding checks. This is a scope decision; the implementation is tracked under "Audit Script Enforcement Depth" in `REQUIREMENTS.md` Current Known Limitations alongside the existing skills/JSON-schema coverage gap.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-17] MCP Protocol Specification Contract Audit Gap and Q [2026-06-17] Value Lens and Operating Profile Structural Audit. Industry practice for tool-governance layers is to apply the same structural contract used for agents; best practice is single-source enforcement via the shared audit gate; the recommendation is therefore extension of `audit-repo.js` rather than a new script.
+- **Impact:** Closes the "MCP Protocol Structural Audit Gap" and "Framework Asset Structural Audit Gap" entries as scope-resolved; they remain open as implementation tasks under the consolidated audit-coverage limitation.
+
+## [2026-06-19-0007] verify-env.sh — Docker Mode Hard-Fail (Reaffirmed)
+
+- **Decision:** `scripts/verify-env.sh` and `scripts/verify-env.ps1` MUST `exit 1` when the selected mode is `docker` AND no SecretOps CLI (`op` or `infisical`) is detected, OR a CLI is detected but the active-authentication probe (`op user get --me` / `infisical whoami`) fails. The `builder` mode retains warning-only behavior. This reaffirms and concretizes the [2026-05-26] Pre-flight Logic Normalization decision, which was already binding; the implementation in the current `verify-env.sh` only warns. The implementation work is tracked under "SecretOps Authentication Verification Depth" in `REQUIREMENTS.md` Current Known Limitations.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-11] verify-env.sh Mode Discrepancy. The earlier decision settled the policy; the current script does not match it. No further clarification is required; only an implementation pass.
+- **Impact:** Closes the clarification. The limitation entry stays open as a concrete implementation task.
+
+## [2026-06-19-0008] Red Team Gauntlet Serialization — Single test-vectors.json
+
+- **Decision:** The Red Team Gauntlet test cases SHALL be serialized into a single machine-readable file `examples/red-team-gauntlet/test-vectors.json`, with a top-level shape of `{ "prompt_injection": [...], "pii_patterns": [...] }`. Each entry carries `id`, `name`, `category`, `payload` (string for prompt injection, object for PII), and `expected` (`BLOCKED` or `REDACTED`). The prose `README.md` remains the human-readable companion. A single file is preferred over per-category files for atomic loading by the Client Onboarding agent's validation suite.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-04-05] Red Team Gauntlet Test Vector Absence, Q [2026-06-10] Red Team Gauntlet Machine-Readable Test Vectors, and Q [2026-06-15] Red Team Gauntlet Serialization Strategy. Industry practice for adversarial test suites (e.g. OWASP LLM Top-10 reference vectors, Garak) is JSON/YAML with a small number of top-level categories; best practice is a single file when category count is low (<10) to keep the validation runner trivial; the recommendation is therefore a single JSON file. The implementation is tracked as an open requirement; this decision only fixes the format.
+- **Impact:** Closes the three clarifications. The "Red Team Gauntlet Machine-Readable Serialization Gap" limitation in `REQUIREMENTS.md` stays open as an implementation task with a defined target shape.
+
+## [2026-06-19-0009] Service Tier Templates — Deferred to PO
+
+- **Decision:** Implementation of `templates/tiers/basic.md`, `standard.md`, `premium.md` requires concrete service definitions (features, included MCPs/skills, limits, pricing tier) that are a Product Owner / commercial decision, not a technical default. The clarifications asking for these templates remain LEFT for human input until the PO provides the definitions. The directory and tracked README already exist (Decision [2026-05-28-0002]) so persona references do not break.
+- **Context:** Concerns CLARIFICATIONS.md Q [2026-06-10] Empty Tier Templates Implementation Gap and Q [2026-06-15] Service Tier Template Specifications. Neither is technically answerable; both ask for commercial product definitions. Leaving them open is correct per the automation contract.
+- **Impact:** No change to CLARIFICATIONS.md or REQUIREMENTS.md for these items; logged here so the next automation pass does not re-litigate them.
+
+## [2026-06-19-0010] Substantive Persona/Skill Remediation — Deferred to PO/Domain Experts
+
+- **Decision:** Bulk substantive remediation of placeholder `Data Inventory`, `Refusal Criteria`, and `Audit Log` content across all 22+ agent personas and all reusable skills requires role-specific domain knowledge that cannot be supplied autonomously without risking incorrect safety-gating logic. The relevant clarifications remain LEFT for human input until the PO authorizes a remediation campaign with domain-expert review. Structural compliance remains enforced by `audit-repo.js`; substantive checks are tracked separately and are gated on this authorization.
+- **Context:** Concerns CLARIFICATIONS.md Q [2026-04-05] Substantive Persona Content Drift, Q [2026-05-10] Substantive Persona Remediation Strategy, Q [2026-05-28] Substantive Remediation of the Skill Library, Q [2026-05-29] Skill Remediation Priority, and Q [2026-06-17] Substantive Content Baseline for Agents. All five ask the same question (authorize a bulk autonomous rewrite of safety-critical content) and the answer should not be made by automation.
+- **Impact:** No change to CLARIFICATIONS.md or REQUIREMENTS.md for these items; logged here as a durable record that the question is recognized but intentionally not auto-resolved. Future automation passes should not reopen this.
+
+## [2026-06-19-0011] Operating Profile Baseline — Implementation Approved (Bounded)
+
+- **Decision:** A small baseline set of Operating Profiles SHALL be authored: `standard-operating-profile.md` (neutral default), `high-trust-regulated.md` (financial/healthcare-style cautious posture), and `fast-iteration-startup.md` (startup-style direct posture). These are baseline reference profiles, not exhaustive cultural catalogs. They are tracked as an open implementation task in `REQUIREMENTS.md` and not implemented in this PR (scope was bounded to the three highest-impact items already shipped).
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-15] Operating Profile Baseline Absence. Industry practice for templated frameworks is to ship neutral starter profiles so the injection mechanism is exercised; best practice is 2-4 starters covering distinct postures; the recommendation is the three named here.
+- **Impact:** Closes the clarification. The "Operating Profile Substantive Gap" entry under Current Known Limitations is updated to reference the approved starter set as the target.
+
+## [2026-06-19-0012] Node.js 24 Baseline Audit, AI Model Baseline Audit, Naming Convention Audit, Generator Script Deduplication — Approved Scope
+
+- **Decision:** The following audit-script enhancements are approved in scope and rolled into the consolidated audit-coverage limitation in `REQUIREMENTS.md`:
+  - Add a check that scans `Dockerfile` and `docker-compose.yml` for `node:<24` images and reports as a warning (CLARIFICATIONS Q [2026-05-01]).
+  - Add a check that scans `examples/` and `tests/` for non-baseline AI model pins (`gemini-2.5-flash` is the canonical baseline; warn on others) (CLARIFICATIONS Q [2026-05-20]).
+  - Add a regex-based filename audit for English-first, slug-based naming across `docs/`, `agents/`, `skills/`, `examples/`, `tools/` (CLARIFICATIONS Q [2026-05-02]).
+  - Add a branch-protection probe that surfaces missing protection as warning (non-CI) or error (CI=true) (CLARIFICATIONS Q [2026-05-29]).
+  - Deprecate `scripts/generate_gemini.js` and `scripts/generate_claude.js` in favor of `scripts/generate_all.js` (CLARIFICATIONS Q [2026-05-17]); they remain temporarily as thin shims that delegate to the orchestrator.
+  - Update `scripts/context_helpers.js` to extract the full first paragraph (not the first sentence) of `## Role` for the Agent Index (CLARIFICATIONS Q [2026-05-02]).
+  - Persona Journal section remains OPTIONAL; not promoted to a mandatory contract heading because the structural payload is already heavy and Journal is genuinely role-specific. (CLARIFICATIONS Q [2026-05-01]).
+- **Context:** Each of these clarifications is technically answerable from the existing mandates in `AGENTS.md` and `REQUIREMENTS.md` and does not require PO judgment. Industry practice for governance gates is layered automated checks; best practice is to consolidate them in one audit script rather than scatter; the recommendation is therefore extension of `audit-repo.js`. Journal is the only outlier: making it mandatory would invalidate every existing persona without proportional benefit.
+- **Impact:** Closes the listed clarifications. Implementation work is tracked under the "Audit Script Enforcement Depth" consolidated entry plus the existing "Agent Index Descriptive Truncation" entry in `REQUIREMENTS.md`.
+
+## [2026-06-19-0013] Fleet Dashboard / Gatekeeper Mutating Actions / Casdoor Integration — Deferred to Product Owner
+
+- **Decision:** Three clarifications ask whether to expand the reference implementations to match more ambitious persona specifications (Fleet Dashboard multi-tenancy + verification worker, Gatekeeper mutating actions, Casdoor integration logic). All three are scope questions about how much of the persona to materialize in the reference repo vs. leave to consumers. They remain LEFT for PO input.
+- **Context:** Concerns CLARIFICATIONS.md Q [2026-04-05] Fleet Dashboard Multi-tenancy Implementation Gap, Q [2026-04-23] Gatekeeper Reference Implementation Mutating Actions, Q [2026-05-02] Identity Provider Implementation Gap, and Q [2026-05-22] Casdoor Identity Integration Logic. Implementing them would materially expand the runtime surface of the reference repo, which conflicts with the [2026-03-03] "definitions library" decision unless the PO explicitly authorizes the expansion.
+- **Impact:** No change to CLARIFICATIONS.md or REQUIREMENTS.md; logged for traceability.
+
+## [2026-06-19-0014] Fleet Dashboard Retention Policy and API Path Verification — Approved Scope
+
+- **Decision:** Two narrow clarifications resolve to implementation tasks, not PO questions:
+  - Q [2026-04-05] Fleet Dashboard Retention Policy Drift: the reference compose SHALL provision a second InfluxDB bucket (`agent_summaries`) with 365-day retention and a downsampling task, OR the persona text SHALL be downgraded to a single 90-day window. Pick the latter when implementing in the reference repo (less moving parts; persona is the documentation, the runtime is the consumer's responsibility); promote to dual-bucket only when an actual downstream demand exists. Logged as a documentation-edit task in `REQUIREMENTS.md`.
+  - Q [2026-05-15] Test Suite Reinforcement of API Path Drift: a single verification sweep is needed; if `dashboard-ingest.js` and `tests/examples-smoke.test.js` already use `/api/v1/reports` (the smoke test in this PR confirms they do), the clarification is closed. Verified in this PR via the existing assertion at `tests/examples-smoke.test.js:46`.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-04-05] Fleet Dashboard Retention Policy Drift and Q [2026-05-15] Test Suite Reinforcement of API Path Drift.
+- **Impact:** Q [2026-05-15] closes outright (verification complete). Q [2026-04-05] retention closes with a recorded preference for the simpler "downgrade persona" approach; the actual edit is a future small PR.
+
+## [2026-06-19-0015] ROI Auditor Baseline Data Access — Local JSON Reference File
+
+- **Decision:** The `ROI Auditor` persona SHALL read its baseline-time and labor-rate dictionaries from a local `tools/roi/baseline-config.json` file checked into the repository, rather than from a live Google Sheets range. The Sheets template remains the human-editable source; `baseline-config.json` is the machine-readable snapshot updated when the template changes. This avoids adding a `google-sheets-read` capability to the `ROI Auditor` capability list, which would expand its blast radius beyond append-only ROI logging.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-04-03] ROI Auditor Baseline Data Access. Industry practice for auditor-style agents is to read read-only data from a committed snapshot to keep the audit trail reproducible; best practice is to separate the human-editable canonical source (Sheets) from the machine-consumed snapshot (JSON); the recommendation is therefore a JSON snapshot in the repo. Implementation tracked as a small open task; the persona update plus a one-shot export script are sufficient.
+- **Impact:** Closes the clarification. New open requirement entry added to `REQUIREMENTS.md`.
+
+## [2026-06-19-0016] Bulk Closure — Memory-Code Sync Drift Components
+
+- **Decision:** Q [2026-06-01] Memory-Code Synchronization Drift is resolved component-wise across this PR and prior decisions: (a) `audit_logger.js` shipped in this PR (Decision [2026-06-19-0001]); (b) `sync-upstream.sh` parameterized in this PR (Decision [2026-06-19-0002]); (c) Agent Index first-paragraph extraction scope-approved (Decision [2026-06-19-0012], implementation pending). With these three components resolved, the umbrella question is closed.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-01] Memory-Code Synchronization Drift.
+- **Impact:** Closes the clarification. Remaining work is tracked as concrete limitation entries in `REQUIREMENTS.md`, not as a sprawling umbrella question.

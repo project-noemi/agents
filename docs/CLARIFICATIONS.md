@@ -258,7 +258,7 @@ Add new questions below this line using the required format.
 ### ❓ Question [2026-06-01] - Audit Log Schema Enforcement
 **Context:** `REQUIREMENTS.md` mandates a specific JSON shape for Audit Logs, but `audit-repo.js` only verifies that the block is valid JSON.
 **Ambiguity / Drift:** Incomplete audit logs can pass the gate but fail to provide the required fields for fleet observability and ROI calculation.
-**Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result` keys) for all Audit Log blocks?
+**Question for Product Owner:** Should `audit-repo.js` be updated to perform mandatory schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result`) for all Audit Log blocks?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure fleet-wide observability compliance.*
 
@@ -360,9 +360,9 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement structural audit checks for `value-lenses/` and `operating-profiles/` within `scripts/audit-repo.js` to ensure all framework assets align with their respective templates.*
 
-### ❓ Question 2026-06-17 - Automated Internal Documentation Link Integrity
-**Context:** Many agent personas reference reusable skills using the `**Skill:** [path/to/skill]` pattern, and REQUIREMENTS.md Section 1 references multiple assessment kit files.
-**Ambiguity / Drift:** There is no automated verification that these internal file paths are valid. As files are renamed or moved (e.g., the recent `n8n workflows` to `n8n-workflows` rename), these references become broken links, leading to "Execution Drift" where an agent cannot find its required logic.
+### ❓ Question [2026-06-17] - Automated Internal Documentation Link Integrity
+**Context:** The requirements state "Persona and Skill Contracts are Mandatory" and Section 3 mandates "Contract and Generator Drift Must Fail Fast," but the codebase in `scripts/audit-repo.js` entirely skips the `mcp-protocols/` directory and lacks any verification for internal file paths.
+**Ambiguity / Drift:** Many agent personas reference reusable skills using the `**Skill:** [path/to/skill]` pattern, and `REQUIREMENTS.md` Section 1 references multiple assessment kit files. There is no automated verification that these internal file paths are valid. As files are renamed or moved, these references become broken links, leading to "Execution Drift" where an agent cannot find its required logic.
 **Question for Product Owner:** Should Jules implement a referential integrity check in `scripts/audit-repo.js` that validates all internal markdown links and skill paths across the repository?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Add a referential integrity audit to `scripts/audit-repo.js` that verifies all internal markdown links (`[text](path/to/file.md)`) and skill references (`**Skill:** [path/to/skill]`) point to existing files.*

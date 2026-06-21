@@ -1,0 +1,5 @@
+# Guardian Layer — Python dependencies (ILLUSTRATIVE path; Node.js is canonical).
+# The judge model uses the Google GenAI SDK. The API key is injected at runtime
+# from a vault (Fetch-on-Demand) — never hardcode it. The module also runs
+# offline with its built-in heuristic judge and no dependencies installed.
+google-genai

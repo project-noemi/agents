@@ -12,14 +12,31 @@ These templates follow the Gartner mandate for *embedded* pedagogy: instead of h
 
 ## How to use
 
-1. Import the `.json` file into your **NewPush Labs** n8n instance (Import from File, or paste onto the canvas).
-2. Read each coloured microburst sticky **before** configuring the node beside it.
-3. Replace every `REPLACE_WITH_YOUR_…` placeholder with your own **test/sandbox** credential — never a production secret (see [NewPush Labs](../../docs/tool-usages/newpush-labs.md)).
-4. Send a sample request and watch the routing decision flow.
+1. **Deploy n8n on your NewPush Labs instance.** n8n is not baked into the base appliance — spin it up via the Labs Portainer templates or a Dockge stack, alongside the pre-installed Casdoor (SSO), Traefik (ingress), and Grafana/Loki (observability).
+2. **Import the template.** In n8n, *Import from File* (or paste the JSON onto the canvas). If your Labs n8n is older than the node versions below, n8n will offer to migrate them on import.
+3. **Read each coloured microburst sticky** *before* you configure the node beside it.
+4. **Attach your own Gemini credential** — replace the `REPLACE_WITH_YOUR_…` placeholder with a **test/sandbox** key, never a production secret (see [NewPush Labs](../../docs/tool-usages/newpush-labs.md)).
+5. **Send a test request.** Once active, the webhook is exposed through Traefik, e.g.
+   `POST https://<your-n8n-host>/webhook/customer-inquiry-router` with body
+   `{ "message": "My invoice looks wrong" }`. Watch the routing decision flow left → right.
+
+## How this maps to the NewPush Labs stack
+
+The lab is designed to exercise capabilities the Labs appliance already provides:
+
+| Labs component | Role in this lab |
+|----------------|------------------|
+| **Traefik** (ingress) | Exposes the n8n webhook at a Labs domain (behind Casdoor SSO). |
+| **Casdoor** (SSO) | Gates access to the n8n editor and ingress. |
+| **Promtail → Loki → Grafana** (observability) | Captures n8n stdout/stderr. Each mock output emits an `audit_log` object (NoéMI's canonical `{ task, inputs, actions, risks, result }` shape) so routing decisions are queryable in Grafana — making the **Diligence** lesson real, not theoretical. |
+| **Portainer / Dockge** (deployment) | How n8n itself is provisioned into the instance. |
+| **MAFL** (dashboard) | Where the running n8n service surfaces for the cohort. |
 
 ## Conventions
 
 - **AI model baseline:** `models/gemini-2.5-flash` via `@n8n/n8n-nodes-langchain.googleGemini`.
+- **Node versions:** built for current n8n core nodes — `webhook@2.1`, `switch@3.2`, `set@3.4`, plus `googleGemini@1.1`. n8n's import migration handles older instances.
 - **No hardcoded secrets:** credentials are referenced by placeholder ID only (Fetch-on-Demand). Real secrets stay in the vault.
+- **Audit logging:** mutating/routing branches emit a structured `audit_log` to the item payload (and, in production, to stderr → Loki), excluding secrets and PII.
 - **Naming:** English-first, slug-based filenames.
 - **Promotion path:** `LABS (prototype) → peer review → PROD cluster` — promote only after logic is validated and a human approver signs off.

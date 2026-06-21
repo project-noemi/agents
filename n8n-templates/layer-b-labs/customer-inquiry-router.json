@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## 🧪 Layer B Lab — Customer Inquiry Router\n### A \"Vibe Coding\" microburst for Practitioners (the Crew)\n\nYou are about to build a **Virtual Coworker** that reads an incoming customer message and routes it to the right team — all described in plain English.\n\n**How to run this lab**\n1. Import this canvas into your NewPush Labs n8n instance.\n2. Read each coloured **microburst** sticky *before* you configure the node beside it.\n3. Attach your own Gemini credential (replace the `REPLACE_WITH_YOUR_…` placeholder).\n4. `POST` a test body like `{ \"message\": \"My invoice looks wrong\" }` to the webhook and watch the routing decision flow left → right.\n\n**The 4D AI Fluency Framework** (adapting Dakan & Feller) is embedded node-by-node:\n- **Delegation** → the Webhook (*what* to hand off)\n- **Description** → the LLM (*how* to ask)\n- **The Agentic Shift** → the Switch (from answer → action)\n- **Discernment & Diligence** → the outputs (judging & owning the result)\n\n> ⚠️ Labs = prototyping only. Use mock / test credentials. Promote to a production cluster only after peer review.",
+        "content": "## 🧪 Layer B Lab — Customer Inquiry Router\n### A \"Vibe Coding\" microburst for Practitioners (the Crew)\n\nYou are about to build a **Virtual Coworker** that reads an incoming customer message and routes it to the right team — all described in plain English.\n\n**How to run this lab**\n1. Import this canvas into your NewPush Labs n8n instance.\n2. Read each coloured **microburst** sticky *before* you configure the node beside it.\n3. Attach your own Gemini credential (replace the `REPLACE_WITH_YOUR_…` placeholder).\n4. `POST` a test body like `{ \"message\": \"My invoice looks wrong\" }` to the webhook and watch the routing decision flow left → right.\n\n**The 4D AI Fluency Framework** (adapting Dakan & Feller) is embedded node-by-node:\n- **Delegation** → the Webhook (*what* to hand off)\n- **Description** → the LLM (*how* to ask)\n- **The Agentic Shift** → the Switch (from answer → action)\n- **Discernment & Diligence** → the outputs (judging & owning the result)\n\n**Runs on the NewPush Labs stack:** the webhook is reachable through Traefik ingress (behind Casdoor SSO), and n8n's stdout/stderr stream to Loki → Grafana — so you can watch each routing decision and its `audit_log` land in real time.\n\n> ⚠️ Labs = prototyping only. Use mock / test credentials. Promote to a production cluster only after peer review.",
         "height": 220,
         "width": 1120,
         "color": 7
@@ -55,7 +55,7 @@
     },
     {
       "parameters": {
-        "content": "## Mock Output · Billing Queue\n**Why a mock?** In Labs we *stub* the real integration (e.g. Zendesk, a billing queue) so we can prove the routing logic before wiring anything live.\n\n**Diligence (4D #4):** every routed action should leave an audit trail — what came in, how it was classified, where it went. Replace this stub with a real node only once the log looks right.",
+        "content": "## Mock Output · Billing Queue\n**Why a mock?** In Labs we *stub* the real integration (e.g. Zendesk, a billing queue) so we can prove the routing logic before wiring anything live.\n\n**Diligence (4D #4):** this node writes an `audit_log` field in NoéMI's canonical shape (`task, inputs, actions, risks, result`). On NewPush Labs that record streams via Promtail → **Loki** and is queryable in **Grafana** — so every routed action leaves a trace. Replace this stub with a real node only once the log looks right.",
         "height": 220,
         "width": 320,
         "color": 4
@@ -94,7 +94,7 @@
     },
     {
       "parameters": {
-        "content": "## Mock Output · Human Escalation (Fallback)\n### Discernment in action\n\n**Discernment** (4D #3) is judging the quality and limits of the AI's output. This fallback branch *is* discernment made structural:\n\n- When the model is unsure it returns **\"other\"** → the work lands here, with a human, instead of being forced into the wrong queue.\n- This honours **The Refusal Principle**: a good coworker escalates rather than guesses on low-confidence or out-of-scope inputs.\n\n**Diligence:** log every escalation. A rising fallback rate is your early-warning signal that the Description (prompt) needs tightening.",
+        "content": "## Mock Output · Human Escalation (Fallback)\n### Discernment in action\n\n**Discernment** (4D #3) is judging the quality and limits of the AI's output. This fallback branch *is* discernment made structural:\n\n- When the model is unsure it returns **\"other\"** → the work lands here, with a human, instead of being forced into the wrong queue.\n- This honours **The Refusal Principle**: a good coworker escalates rather than guesses on low-confidence or out-of-scope inputs.\n\n**Diligence:** every branch writes an `audit_log` that streams to **Loki/Grafana** on Labs. A rising fallback rate is your early-warning signal that the Description (prompt) needs tightening.",
         "height": 280,
         "width": 340,
         "color": 4
@@ -255,6 +255,12 @@
               "name": "mock_action",
               "value": "Create a ticket in the Billing queue (stub — wire to your real system on promotion).",
               "type": "string"
+            },
+            {
+              "id": "4f04a021-7e0a-4d8a-9c19-2a6fdca51848",
+              "name": "audit_log",
+              "value": "={{ { task: 'route-customer-inquiry', inputs: [$('Customer Inquiry Webhook').item.json.body.message], actions: ['routed_to=Billing Team'], risks: [], result: 'queued_to_billing' } }}",
+              "type": "object"
             }
           ]
         },
@@ -282,6 +288,12 @@
               "name": "mock_action",
               "value": "Open a support ticket and page on-call if severity is high (stub).",
               "type": "string"
+            },
+            {
+              "id": "b3bdc9f9-5be4-4b73-977e-fefdf5b29df3",
+              "name": "audit_log",
+              "value": "={{ { task: 'route-customer-inquiry', inputs: [$('Customer Inquiry Webhook').item.json.body.message], actions: ['routed_to=Technical Support'], risks: [], result: 'queued_to_support' } }}",
+              "type": "object"
             }
           ]
         },
@@ -309,6 +321,12 @@
               "name": "mock_action",
               "value": "Create a lead in the CRM and notify an account executive (stub).",
               "type": "string"
+            },
+            {
+              "id": "bfb709e8-ec29-4818-bf6a-5a50f0f8ac50",
+              "name": "audit_log",
+              "value": "={{ { task: 'route-customer-inquiry', inputs: [$('Customer Inquiry Webhook').item.json.body.message], actions: ['routed_to=Sales'], risks: [], result: 'queued_to_sales' } }}",
+              "type": "object"
             }
           ]
         },
@@ -336,6 +354,12 @@
               "name": "mock_action",
               "value": "Low confidence or out-of-scope — hand off to a human and log the escalation (stub).",
               "type": "string"
+            },
+            {
+              "id": "3974c92e-e73c-409a-ba11-ab45f7a474d6",
+              "name": "audit_log",
+              "value": "={{ { task: 'route-customer-inquiry', inputs: [$('Customer Inquiry Webhook').item.json.body.message], actions: ['routed_to=Human Escalation'], risks: ['low_confidence_or_out_of_scope'], result: 'escalated_to_human' } }}",
+              "type": "object"
             }
           ]
         },

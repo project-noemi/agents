@@ -1,0 +1,446 @@
+{
+  "name": "Layer B Lab — Customer Inquiry Router (Vibe Coding Microburst)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🧪 Layer B Lab — Customer Inquiry Router\n### A \"Vibe Coding\" microburst for Practitioners (the Crew)\n\nYou are about to build a **Virtual Coworker** that reads an incoming customer message and routes it to the right team — all described in plain English.\n\n**How to run this lab**\n1. Import this canvas into your NewPush Labs n8n instance.\n2. Read each coloured **microburst** sticky *before* you configure the node beside it.\n3. Attach your own Gemini credential (replace the `REPLACE_WITH_YOUR_…` placeholder).\n4. `POST` a test body like `{ \"message\": \"My invoice looks wrong\" }` to the webhook and watch the routing decision flow left → right.\n\n**The 4D AI Fluency Framework** (adapting Dakan & Feller) is embedded node-by-node:\n- **Delegation** → the Webhook (*what* to hand off)\n- **Description** → the LLM (*how* to ask)\n- **The Agentic Shift** → the Switch (from answer → action)\n- **Discernment & Diligence** → the outputs (judging & owning the result)\n\n**Runs on the NewPush Labs stack:** the webhook is reachable through Traefik ingress (behind Casdoor SSO), and n8n's stdout/stderr stream to Loki → Grafana — so you can watch each routing decision and its `audit_log` land in real time.\n\n> ⚠️ Labs = prototyping only. Use mock / test credentials. Promote to a production cluster only after peer review.",
+        "height": 220,
+        "width": 1120,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, -480],
+      "id": "4a68de17-9a0b-4ba1-a4e5-4cc835f8ce45",
+      "name": "Lab Overview"
+    },
+    {
+      "parameters": {
+        "content": "## 1 · DELEGATION\n### \"Is this a task worth handing to an AI?\"\n\n**Delegation** (4D #1) is the discipline of deciding *what* to hand off and *how much* autonomy to grant.\n\n**Task vs. Goal awareness**\n- **Task** = one bounded step (\"classify this message\").\n- **Goal** = the outcome you own (\"every customer reaches the right team, fast\").\n\nDelegate the *task* to the coworker; keep ownership of the *goal*.\n\n**When to reach for AI here**\n- ✅ High-volume, repetitive, language-heavy judgement (triage, routing, summarising).\n- ❌ Irreversible, high-stakes, or legally-binding actions — keep a human in the loop.\n\n**This node = the Delegation boundary.** The Webhook is the exact moment a human (the *Explorer*) hands a task to the Virtual Coworker. Everything downstream is delegated work.",
+        "height": 380,
+        "width": 340,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, -240],
+      "id": "68e01713-8039-463b-ae4c-a21c95eeac2c",
+      "name": "Microburst — Delegation"
+    },
+    {
+      "parameters": {
+        "content": "## 2 · DESCRIPTION\n### \"Say what you want — clearly.\"\n\n**Description** (4D #2) is the craft of telling the model precisely what you need. This is **Vibe Coding**: you program the coworker in plain English, not syntax.\n\n**The Communication Hierarchy — climb it!**\n1. **Vague** — \"sort my messages.\" → unpredictable.\n2. **Specific** — \"label this billing, support, or sales.\" → better.\n3. **Structured** — \"return JSON: { category, summary, confidence }.\" → machine-routable.\n4. **Contextual** — \"You are NewPush's front-desk coworker. Tone: warm, concise. If unsure, choose 'other'.\" → reliable & on-brand.\n\nThe system prompt in this node sits at level **3–4**: it gives the model a *role*, *rules*, and a *strict output format* — which is exactly what lets the next node act on it.\n\n> Tip: a Description is only as good as it is testable. Pin a sample input and inspect the JSON.",
+        "height": 380,
+        "width": 360,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [360, -240],
+      "id": "69137ef9-534a-4649-a41f-1d456a06cc66",
+      "name": "Microburst — Description"
+    },
+    {
+      "parameters": {
+        "content": "## 3 · THE AGENTIC SHIFT\n### From \"chat answer\" → autonomous action\n\nA chatbot *answers*. An **agent** *acts*. The Switch is where that shift happens.\n\n**Stateless chat query**\n> \"Which team handles this?\" → a sentence appears on screen → nothing changes.\n\n**Stateful, agentic routing decision**\n> The model's classification becomes a **branch in a live workflow** that moves the work to a real destination — with no human pressing \"send\".\n\nThis node reads the structured field the LLM produced (`category`) and *commits* to a path. The coworker now owns a consequence, not just a reply. That is the leap from *talking about* work to *doing* work.\n\n> The price of agency is rigor: every branch below must be trustworthy, because no one double-checks each one.",
+        "height": 380,
+        "width": 340,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [760, -240],
+      "id": "765137a4-b4bd-46e7-870a-66435adc8923",
+      "name": "Microburst — Agentic Shift"
+    },
+    {
+      "parameters": {
+        "content": "## Mock Output · Billing Queue\n**Why a mock?** In Labs we *stub* the real integration (e.g. Zendesk, a billing queue) so we can prove the routing logic before wiring anything live.\n\n**Diligence (4D #4):** this node writes an `audit_log` field in NoéMI's canonical shape (`task, inputs, actions, risks, result`). On NewPush Labs that record streams via Promtail → **Loki** and is queryable in **Grafana** — so every routed action leaves a trace. Replace this stub with a real node only once the log looks right.",
+        "height": 220,
+        "width": 320,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1480, -120],
+      "id": "f54cc400-bf8f-44f1-a80a-d5a731baa2c6",
+      "name": "Microburst — Billing"
+    },
+    {
+      "parameters": {
+        "content": "## Mock Output · Technical Support\nThis stub stands in for your ticketing / on-call integration.\n\n**Resilience:** real downstream tools fail. When you promote this lab, wrap the live node with retry + exponential backoff and a graceful fallback, so a transient API error never silently drops a customer.",
+        "height": 210,
+        "width": 320,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1480, 140],
+      "id": "26a65cde-9a42-493f-8edd-e1a1e6532c88",
+      "name": "Microburst — Technical Support"
+    },
+    {
+      "parameters": {
+        "content": "## Mock Output · Sales Pipeline\nA placeholder for your CRM hand-off.\n\n**Promotion path:** `LABS (prototype) → peer review → PROD cluster`. Swap mock nodes for real integrations and placeholder credentials for vault-managed secrets *only* after a human approver signs off.",
+        "height": 210,
+        "width": 320,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1480, 380],
+      "id": "649368f1-c1e8-406d-9cd8-71d19f093ebc",
+      "name": "Microburst — Sales"
+    },
+    {
+      "parameters": {
+        "content": "## Mock Output · Human Escalation (Fallback)\n### Discernment in action\n\n**Discernment** (4D #3) is judging the quality and limits of the AI's output. This fallback branch *is* discernment made structural:\n\n- When the model is unsure it returns **\"other\"** → the work lands here, with a human, instead of being forced into the wrong queue.\n- This honours **The Refusal Principle**: a good coworker escalates rather than guesses on low-confidence or out-of-scope inputs.\n\n**Diligence:** every branch writes an `audit_log` that streams to **Loki/Grafana** on Labs. A rising fallback rate is your early-warning signal that the Description (prompt) needs tightening.",
+        "height": 280,
+        "width": 340,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [1480, 620],
+      "id": "b6bde9e7-0f2e-46e1-a8b9-a18dc3cc6b99",
+      "name": "Microburst — Human Escalation"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "customer-inquiry-router",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 200],
+      "id": "0137fbd5-4c0d-43ed-a624-6e68ed877e4f",
+      "name": "Customer Inquiry Webhook",
+      "webhookId": "f9ef2bdd-8ecb-496b-8a5c-7472ddf4de7b"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are the front-desk Virtual Coworker for NewPush. Read the customer's message and decide which single team should handle it.\n\nCUSTOMER MESSAGE:\n{{ $json.body.message }}\n\nCATEGORIES (choose exactly one):\n- \"billing\" — invoices, payments, refunds, pricing, subscription changes.\n- \"technical_support\" — bugs, errors, outages, \"it's not working\", how-to questions.\n- \"sales\" — new business, upgrades, demos, quotes, partnership enquiries.\n- \"other\" — anything unclear, mixed, sensitive, or outside the above. When in doubt, choose \"other\" so a human can decide.\n\nTone: warm, concise, professional.\n\nReturn ONLY valid JSON — no markdown, no code fences — in this exact shape:\n{\n  \"category\": \"billing | technical_support | sales | other\",\n  \"summary\": \"one sentence describing the request\",\n  \"confidence\": 0.0,\n  \"suggested_reply\": \"a short, friendly holding reply to the customer\"\n}"
+            }
+          ]
+        },
+        "simplify": true,
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [360, 200],
+      "id": "ad823021-8200-4062-9ae0-f6cbf2c0327c",
+      "name": "Triage Coworker (Gemini 2.5 Flash)",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "31a1ef99-44c9-4592-80e9-16d171e94d2b",
+                    "leftValue": "={{ JSON.parse($json.content.parts[0].text).category }}",
+                    "rightValue": "billing",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renderType": "regular",
+              "outputKey": "Billing"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "684309ac-a628-45ad-b772-35264275dc7e",
+                    "leftValue": "={{ JSON.parse($json.content.parts[0].text).category }}",
+                    "rightValue": "technical_support",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renderType": "regular",
+              "outputKey": "Technical Support"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0772ed8e-045e-492c-9ad3-b900cebd4b43",
+                    "leftValue": "={{ JSON.parse($json.content.parts[0].text).category }}",
+                    "rightValue": "sales",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renderType": "regular",
+              "outputKey": "Sales"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [760, 200],
+      "id": "a625c8bd-fcea-4cc2-a36b-67173ca879ac",
+      "name": "Inquiry Router"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "961100cd-f545-428d-978f-03023caa4620",
+              "name": "routed_to",
+              "value": "Billing Team",
+              "type": "string"
+            },
+            {
+              "id": "53176685-0ce9-4856-83b9-9b2205278118",
+              "name": "mock_action",
+              "value": "Create a ticket in the Billing queue (stub — wire to your real system on promotion).",
+              "type": "string"
+            },
+            {
+              "id": "4f04a021-7e0a-4d8a-9c19-2a6fdca51848",
+              "name": "audit_log",
+              "value": "={{ { task: 'route-customer-inquiry', inputs: [$('Customer Inquiry Webhook').item.json.body.message], actions: ['routed_to=Billing Team'], risks: [], result: 'queued_to_billing' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1140, -60],
+      "id": "4f136af0-f684-4eed-9fb9-d459cb78c9da",
+      "name": "Mock: Billing Queue"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7953c3b6-ba3b-475c-ac1c-ce20e817baec",
+              "name": "routed_to",
+              "value": "Technical Support Team",
+              "type": "string"
+            },
+            {
+              "id": "375d6f5e-96e3-427a-bb22-ec6eb2339c77",
+              "name": "mock_action",
+              "value": "Open a support ticket and page on-call if severity is high (stub).",
+              "type": "string"
+            },
+            {
+              "id": "b3bdc9f9-5be4-4b73-977e-fefdf5b29df3",
+              "name": "audit_log",
+              "value": "={{ { task: 'route-customer-inquiry', inputs: [$('Customer Inquiry Webhook').item.json.body.message], actions: ['routed_to=Technical Support'], risks: [], result: 'queued_to_support' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1140, 120],
+      "id": "5bff8f92-406e-412e-894a-8fea842102f8",
+      "name": "Mock: Technical Support Queue"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e16ecd33-35ab-4c9b-bc25-07e6a71f041a",
+              "name": "routed_to",
+              "value": "Sales Team",
+              "type": "string"
+            },
+            {
+              "id": "beae34c5-a3a9-4489-811b-61f922e42779",
+              "name": "mock_action",
+              "value": "Create a lead in the CRM and notify an account executive (stub).",
+              "type": "string"
+            },
+            {
+              "id": "bfb709e8-ec29-4818-bf6a-5a50f0f8ac50",
+              "name": "audit_log",
+              "value": "={{ { task: 'route-customer-inquiry', inputs: [$('Customer Inquiry Webhook').item.json.body.message], actions: ['routed_to=Sales'], risks: [], result: 'queued_to_sales' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1140, 300],
+      "id": "e7e8a5b9-621b-4f6a-a83c-f697802df607",
+      "name": "Mock: Sales Pipeline"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "87bc9b9c-6adf-4117-a6e3-224af6360c31",
+              "name": "routed_to",
+              "value": "Human Escalation",
+              "type": "string"
+            },
+            {
+              "id": "01f0a84e-123b-4050-a603-7b88570624eb",
+              "name": "mock_action",
+              "value": "Low confidence or out-of-scope — hand off to a human and log the escalation (stub).",
+              "type": "string"
+            },
+            {
+              "id": "3974c92e-e73c-409a-ba11-ab45f7a474d6",
+              "name": "audit_log",
+              "value": "={{ { task: 'route-customer-inquiry', inputs: [$('Customer Inquiry Webhook').item.json.body.message], actions: ['routed_to=Human Escalation'], risks: ['low_confidence_or_out_of_scope'], result: 'escalated_to_human' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1140, 480],
+      "id": "aa8178e8-c382-4efd-8c1c-7a990e067b65",
+      "name": "Mock: Human Escalation"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Customer Inquiry Webhook": {
+      "main": [
+        [
+          {
+            "node": "Triage Coworker (Gemini 2.5 Flash)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triage Coworker (Gemini 2.5 Flash)": {
+      "main": [
+        [
+          {
+            "node": "Inquiry Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inquiry Router": {
+      "main": [
+        [
+          {
+            "node": "Mock: Billing Queue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mock: Technical Support Queue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mock: Sales Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mock: Human Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f77f2df7-eae7-4207-8341-d717654e079c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "REPLACE_WITH_YOUR_INSTANCE_ID"
+  },
+  "id": "PCn5NTaHC6U",
+  "tags": []
+}

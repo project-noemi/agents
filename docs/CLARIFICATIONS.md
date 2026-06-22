@@ -380,3 +380,23 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules implement a standard event-to-schema mapping for internal tools, or should we define a more granular audit schema specifically for build/infrastructure tools?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Define a standardized mapping for internal tool events to the Audit Log schema and refactor the `executive-assistant` and `dashboard-ingest` services to use it.*
+### ❓ Question [2026-06-18] - SecretOps Reference Validation Inconsistency
+**Context:** The requirements state "One of infisical or op is a required SecretOps dependency", but the test suite in `tests/examples-smoke.test.js` implements a hard assertion for 1Password-only patterns: `assert.match(content, /op:\/\//, ...);`.
+**Ambiguity / Drift:** The test suite enforces a 1Password-only pattern for vault references in `.env.example` files, contradicting the multi-provider mandate in `AGENTS.md` and `REQUIREMENTS.md`. This results in false negatives for builders adopting Infisical.
+**Question for Product Owner:** Should the smoke test be updated to accept a generic vault-reference pattern (e.g., matching both `op://` and `infisical://`)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `tests/examples-smoke.test.js` to support both `op://` and `infisical://` vault reference patterns in environment inventories.*
+
+### ❓ Question [2026-06-18] - "Remediated" Limitation Cleanup Policy
+**Context:** `REQUIREMENTS.md` lists several items in "Current Known Limitations" as "(Remediated: 2026-05-28)".
+**Ambiguity / Drift:** Keeping verified remediations in the "Known Limitations" section clutters the document and obscures active technical debt. There is no documented policy for the lifecycle of a limitation once remediated.
+**Question for Product Owner:** Should remediated items be moved to a dedicated "Verified Remediations" history section or removed entirely once their resolution is confirmed by an audit?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `REQUIREMENTS.md` to move all "(Remediated)" items from "Current Known Limitations" into a structured "Audit History" or "Verified Remediations" section.*
+
+### ❓ Question [2026-06-18] - Resilience Helper Adoption in Reference Tools
+**Context:** `AGENTS.md` mandates `scripts/resilience_helpers.js` as the canonical reference, but the codebase in `tools/executive-assistant/server.js` and `examples/gatekeeper-deployment/dashboard-ingest.js` implements network operations without utilizing this helper.
+**Ambiguity / Drift:** While excluded from local-FS utilities by Decision [2026-04-04], the absence of the resilience helper in network-facing reference tools creates a "pattern adoption gap" where the repository fails to follow its own architectural mandates for agentic resilience.
+**Question for Product Owner:** Should we mandate the integration of `resilience_helpers.js` into all repository-adjacent tools and examples that perform network/API calls to demonstrate the mandated pattern?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `executive-assistant` and `dashboard-ingest.js` to utilize the `scripts/resilience_helpers.js` exponential backoff pattern for all external API calls.*

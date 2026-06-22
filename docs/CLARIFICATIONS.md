@@ -346,6 +346,20 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Define a standardized mapping for internal tool events to the Audit Log schema and refactor the `executive-assistant` and `dashboard-ingest` services to use it.*
 
+### ❓ Question [2026-06-18] - E2E Smoke Test Docker Mandatory Check
+**Context:** The requirements in `REQUIREMENTS.md` Section 9 state "The Docker e2e suite must skip cleanly when Docker is unavailable", but the codebase in `tests/e2e/docker-smoke.test.js` implements this as a silent skip.
+**Ambiguity / Drift:** In CI/CD pipelines, a silent skip can lead to a "false green" where critical runtime checks are never actually executed because the runner lacks Docker or has a configuration error. This masks environmental gaps that would be fatal in production.
+**Question for Product Owner:** Should the E2E suite be updated to require an explicit flag (e.g., `FORCE_DOCKER_SMOKE=true`) that, when set, causes the test to FAIL if Docker is missing, while preserving the "clean skip" behavior for local development?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `tests/e2e/docker-smoke.test.js` to implement an optional mandatory mode that fails if Docker is missing when `FORCE_DOCKER_SMOKE` is true.*
+
+### ❓ Question [2026-06-18] - Audit Script JSON Schema Validation Mandate
+**Context:** The requirements state "Audit Log sections contain structurally invalid JSON (Mandatory JSON shape validation)," but the codebase in `scripts/audit-repo.js` only implements `JSON.parse()` and does not verify mandated fields.
+**Ambiguity / Drift:** Personas can pass the audit with empty objects `{}` or unrelated JSON, violating the observability contract required for fleet ROI and risk calculation. Without schema validation, the "Diligence" (D4) layer of the framework remains unenforced.
+**Question for Product Owner:** Should Jules implement a strict JSON schema check in `audit-repo.js` that verifies the presence and non-empty status of `task`, `inputs`, `actions`, `risks`, and `result`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement mandatory JSON schema validation for Audit Log sections in `scripts/audit-repo.js` to ensure they contain all five mandated fields.*
+
 ### ❓ Question 2026-06-17 - MCP Protocol Specification Contract Audit Gap
 **Context:** The requirements state "Persona and Skill Contracts are Mandatory" and Section 3 mandates "Contract and Generator Drift Must Fail Fast," but the codebase in `scripts/audit-repo.js` entirely skips the `mcp-protocols/` directory.
 **Ambiguity / Drift:** MCP protocols define the technical "Rules of Engagement" for external tools, yet they currently lack the automated structural enforcement (Purpose, Inputs, Procedure, Outputs, etc.) applied to agents and skills, creating a governance blind spot for tool-heavy agents.

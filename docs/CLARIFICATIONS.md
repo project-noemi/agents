@@ -102,9 +102,30 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement the `basic.md`, `standard.md`, and `premium.md` templates in `templates/tiers/` using the provided service definitions.*
 
+### ❓ Question [2026-06-17] - Automated Internal Documentation Link Integrity
+**Context:** The requirements state "Persona and Skill Contracts are Mandatory" and Section 3 mandates "Contract and Generator Drift Must Fail Fast," but the codebase in `scripts/audit-repo.js` entirely skips the `mcp-protocols/` directory and lacks any verification for internal file paths.
+**Ambiguity / Drift:** Many agent personas reference reusable skills using the `**Skill:** [path/to/skill]` pattern, and `REQUIREMENTS.md` Section 1 references multiple assessment kit files. There is no automated verification that these internal file paths are valid. As files are renamed or moved, these references become broken links, leading to "Execution Drift" where an agent cannot find its required logic.
+**Question for Product Owner:** Should Jules implement a referential integrity check in `scripts/audit-repo.js` that validates all internal markdown links and skill paths across the repository?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Add a referential integrity audit to `scripts/audit-repo.js` that verifies all internal markdown links (`[text](path/to/file.md)`) and skill references (`**Skill:** [path/to/skill]`) point to existing files.*
+
+### ❓ Question [2026-06-18] - E2E Smoke Test Docker Mandatory Check
+**Context:** The requirements in `REQUIREMENTS.md` Section 9 state "The Docker e2e suite must skip cleanly when Docker is unavailable", but the codebase in `tests/e2e/docker-smoke.test.js` implements this as a silent skip.
+**Ambiguity / Drift:** In CI/CD pipelines, a silent skip can lead to a "false green" where critical runtime checks are never actually executed because the runner lacks Docker or has a configuration error. This masks environmental gaps that would be fatal in production.
+**Question for Product Owner:** Should the E2E suite be updated to require an explicit flag (e.g., `FORCE_DOCKER_SMOKE=true`) that, when set, causes the test to FAIL if Docker is missing, while preserving the "clean skip" behavior for local development?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `tests/e2e/docker-smoke.test.js` to implement an optional mandatory mode that fails if Docker is missing when `FORCE_DOCKER_SMOKE` is true.*
+
 ### ❓ Question [2026-06-17] - Substantive Content Baseline for Agents
 **Context:** The requirements state "Persona and Skill Contracts are Mandatory", but a whole-codebase audit revealed that 100% of agent personas use identical boilerplate text for the `Refusal Criteria` and `Data Inventory` sections.
 **Ambiguity / Drift:** While structurally compliant, the repository is in substantive drift from the 4D Description (D2) and Refusal Principle mandates. Agents lack role-specific data and safety-gating logic, creating a false sense of production readiness.
 **Question for Product Owner:** Should we authorize Jules to perform a bulk update to replace these boilerplate placeholders with role-specific substantive content across all 22+ agent personas?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Perform a fleet-wide substantive remediation of all agent personas in `agents/`, replacing boilerplate `Data Inventory` and `Refusal Criteria` with role-specific, technically accurate content.*
+
+### ❓ Question [2026-06-18] - Substantive Remediation of Skill "TBD" Placeholders
+**Context:** The requirements state "Persona and Skill Contracts are Mandatory", but the codebase in `skills/` currently contains "TBD" placeholders for 100% of the active reusable skills in mandatory sections like `Data Inventory` and `Refusal Criteria`.
+**Ambiguity / Drift:** The skill library passes structural audits but is substantively safety-deficient, failing the 4D framework's "Description" (D2) mandate. This creates a risk where agents depend on "hollow" skills for critical logic.
+**Question for Product Owner:** Should Jules perform a bulk substantive remediation to replace these "TBD" placeholders with technically grounded defaults based on each skill's documented `Procedure`, or should this wait for manual domain-specific input?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory, replacing "TBD" placeholders with technically grounded defaults based on each skill's documented Procedure.*

@@ -394,3 +394,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules implement a standard event-to-schema mapping for internal tools, or should we define a more granular audit schema specifically for build/infrastructure tools?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Define a standardized mapping for internal tool events to the Audit Log schema and refactor the `executive-assistant` and `dashboard-ingest` services to use it.*
+
+### ❓ Question [2026-06-18] - audit_logger.js Canonical Schema and Behavior
+**Context:** The requirements state "Node.js-based tools and reference services must use the shared `scripts/audit_logger.js` utility to emit structured JSON Audit Logs to `stderr`", but the codebase in `scripts/` lacks this file entirely.
+**Ambiguity / Drift:** Internal tools like `executive-assistant` and reference services like `dashboard-ingest.js` are drifting from the observability mandate. Without a canonical utility, there is no standardized way to map internal operational events to the mandatory `Audit Log` schema.
+**Question for Product Owner:** Should I autonomously implement `scripts/audit_logger.js` with a mapping function for internal events, or is there a specific external implementation I should wait for?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement the shared `scripts/audit_logger.js` utility and refactor `executive-assistant` and `dashboard-ingest.js` to use it for mandated JSON Audit Log emission.*
+
+### ❓ Question [2026-06-18] - Substantive Remediation of Skill "TBD" Placeholders
+**Context:** The requirements state "Persona and Skill Contracts are Mandatory", but the codebase in `skills/` currently contains "TBD" placeholders for 100% of the active reusable skills in mandatory sections like `Data Inventory` and `Refusal Criteria`.
+**Ambiguity / Drift:** The skill library passes structural audits but is substantively safety-deficient, failing the 4D framework's "Description" (D2) mandate. This creates a risk where agents depend on "hollow" skills for critical logic.
+**Question for Product Owner:** Should Jules perform a bulk substantive remediation to replace these "TBD" placeholders with technically grounded defaults based on each skill's documented `Procedure`, or should this wait for manual domain-specific input?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory, replacing "TBD" placeholders with technically grounded defaults based on each skill's documented Procedure.*
+
+### ❓ Question [2026-06-18] - verify-env.sh Fatal Error Enforcement in Docker Mode
+**Context:** The requirements state "Missing or invalid SecretOps authentication in docker mode MUST be a fatal error (exit 1)", but the codebase in `scripts/verify-env.sh` and `scripts/verify-env.ps1` only implements non-fatal warnings for all modes.
+**Ambiguity / Drift:** This allows Docker deployments to proceed without verified SecretOps access, violating the "Fetch-on-Demand" security mandate for production-like environments.
+**Question for Product Owner:** Should I update the pre-flight scripts to enforce the `exit 1` fatal error mandate when `--mode=docker` is specified, even if it might block initial local exploration for some users?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) for missing SecretOps authentication when running in `docker` mode.*

@@ -415,3 +415,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should I update the pre-flight scripts to enforce the `exit 1` fatal error mandate when `--mode=docker` is specified, even if it might block initial local exploration for some users?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) for missing SecretOps authentication when running in `docker` mode.*
+
+### ❓ Question [2026-06-19] - AI Model Baseline Enforcement in Examples
+**Context:** The requirements state "Reference workflows, lab examples, and smoke tests are pinned to Gemini 2.5 Flash (models/gemini-2.5-flash) as the canonical baseline", but the codebase in `examples/docker/agent.py` implements `model='gemini-2.0-flash'`.
+**Ambiguity / Drift:** This drift creates inconsistency across the reference architecture and may lead to unpredictable performance or cost differences compared to the mandated baseline.
+**Question for Product Owner:** Should I update all example scripts to use the `gemini-2.5-flash` baseline, or is the `2.0-flash` version permitted for certain lightweight examples?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update all references to AI models in the `examples/` directory to align with the `models/gemini-2.5-flash` baseline.*
+
+### ❓ Question [2026-06-19] - Resilience Helper Integration for Internal Tools
+**Context:** The requirements state "The repository must contain at least one reusable reference pattern for exponential backoff and retry (Node.js implementation: `scripts/resilience_helpers.js`)", but the codebase in `tools/executive-assistant/` does not utilize this module for its API calls.
+**Ambiguity / Drift:** Internal tools that act as agentic interfaces are currently bypassing the resilience mandate, making them susceptible to transient network failures or rate-limiting.
+**Question for Product Owner:** Should I refactor the `executive-assistant` and other internal tools to use the shared `resilience_helpers.js` for all external network/API operations?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `tools/executive-assistant/` and other internal Node.js tools to use the shared `scripts/resilience_helpers.js` utility for exponential backoff and retry logic.*

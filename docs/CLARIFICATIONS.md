@@ -134,7 +134,7 @@ Add new questions below this line using the required format.
 **Ambiguity / Drift:** There is a mismatch between the theoretical "Reusable Skill Contract" in `REQUIREMENTS.md` and the actual state of the skill library.
 **Question for Product Owner:** Should Jules perform a fleet-wide remediation of the `skills/` directory to bring all skills into substantive compliance with the latest contract requirements?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a bulk update of all files in `skills/` to include the mandatory `Data Inventory` and `Refusal Criteria` H3 subsection with role-specific content.*
+**🤖 Jules Action Prompt:** *Perform a fleet-wide remediation of the `skills/` directory to bring all skills into substantive compliance with the latest contract requirements.*
 
 ### ❓ Question [2026-05-02] - Identity Provider Implementation Gap
 **Context:** `DECISION_LOG.md` and `REQUIREMENTS.md` mention Casdoor as the reference identity layer for multi-tenant fleet deployments.
@@ -415,3 +415,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should I update the pre-flight scripts to enforce the `exit 1` fatal error mandate when `--mode=docker` is specified, even if it might block initial local exploration for some users?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) for missing SecretOps authentication when running in `docker` mode.*
+
+### ❓ Question [2026-06-19] - SecretOps Provider Bias in Smoke Tests
+**Context:** The `AGENTS.md` mandates that secrets can be stored in Infisical OR 1Password, but the test suite in `tests/examples-smoke.test.js` explicitly asserts the presence of the `op://` pattern.
+**Ambiguity / Drift:** This creates a "false failure" for users who have adopted Infisical as their primary SecretOps provider, violating the multi-provider architectural mandate.
+**Question for Product Owner:** Should the smoke test be updated to accept either `op://` or `infisical://` (or generic vault reference patterns) to truly support the multi-provider mandate?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `tests/examples-smoke.test.js` to support both `op://` and `infisical://` vault reference patterns in its assertion logic.*
+
+### ❓ Question [2026-06-19] - Resilience Helper Persona Integration
+**Context:** `REQUIREMENTS.md` identifies a "Resilience Helper Integration Gap" where `scripts/resilience_helpers.js` is not utilized by any agent personas, despite a mandate for resilience in agentic systems.
+**Ambiguity / Drift:** Network-bound agents like `Gatekeeper` and `Client Onboarding` remain susceptible to transient failures because their specifications do not explicitly mandate retry-with-backoff logic for tool interactions.
+**Question for Product Owner:** Should we authorize Jules to perform a bulk update to all network-bound agent personas to include `withRetry` logic in their `Workflow` and `External Tooling Dependencies` sections?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Integrate the `withRetry` resilience pattern into the `Workflow` and `External Tooling Dependencies` of all network-bound agent personas in `agents/`.*
+
+### ❓ Question [2026-06-19] - Legacy Example Model Drift
+**Context:** The `AGENTS.md` mandates **Gemini 2.5 Flash** as the canonical baseline, but `examples/docker/agent.py` is pinned to `gemini-2.0-flash`.
+**Ambiguity / Drift:** This creates inconsistent behavior and cost profiles across the reference architecture, potentially confusing users who follow the legacy examples.
+**Question for Product Owner:** Should all legacy Python/Bash examples be updated to point to the `gemini-2.5-flash` baseline, or should they be allowed to remain on older models for illustrative purposes?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `examples/docker/agent.py` and any other legacy examples to use the canonical `models/gemini-2.5-flash` baseline.*

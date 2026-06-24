@@ -190,9 +190,11 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 → [docs/examples/zero-to-first-agent.md](docs/examples/zero-to-first-agent.md)
 (Building your first Virtual Coworker)
 
-**Onboarding by Platform**
-→ [docs/examples/cross-platform-kickstart.md](docs/examples/cross-platform-kickstart.md)
-(macOS / Linux, Windows, and ChromeOS kickstart paths)
+**Onboarding by Platform** — go straight to the guide for your machine and get one safe, read-only AI win in ~15 minutes:
+→ [macOS / Linux](docs/examples/macos-linux-kickstart.md)
+&nbsp;·&nbsp; [Windows](docs/examples/windows-kickstart.md)
+&nbsp;·&nbsp; [ChromeOS](docs/examples/chromeos-kickstart.md)
+(Not sure, or want the concepts first? Use the [platform chooser](docs/examples/cross-platform-kickstart.md) or [zero-to-first-agent.md](docs/examples/zero-to-first-agent.md).)
 
 **Contributors**
 → [CONTRIBUTING.md](CONTRIBUTING.md)
@@ -201,6 +203,10 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 **Visual Orientation**
 → [docs/visuals/README.md](docs/visuals/README.md)
 (System maps and flows)
+
+---
+
+> **Working in this repo?** `CLAUDE.md` and `GEMINI.md` are **generated** context files — built from `templates/context/` plus the active agents, skills, and MCP protocols. After changing any of those sources, run `node scripts/generate_all.js` to refresh them. Don't hand-edit `CLAUDE.md` or `GEMINI.md`: regeneration overwrites manual changes, and CI checks them against golden fixtures.
 
 ---
 

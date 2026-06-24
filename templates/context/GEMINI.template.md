@@ -1,3 +1,9 @@
+<!-- GENERATED FILE — DO NOT EDIT.
+     This file is built by `node scripts/generate_all.js` from templates/context/GEMINI.template.md
+     plus the active agents/, skills/, mcp-protocols/, value-lenses/, operating-profiles/, AGENTS.md, and mcp.config.json.
+     • To change the static prose, edit templates/context/GEMINI.template.md.
+     • To change the injected sections, edit the upstream source, then re-run `node scripts/generate_all.js`.
+     Manual edits to GEMINI.md are overwritten on the next run and will fail the CI golden-fixture / determinism checks. -->
 # Project NoéMI Context
 
 You are operating within **Project NoéMI**, the public reference architecture and agent specification library used to define governable AI personas, workflows, and MCP integrations.

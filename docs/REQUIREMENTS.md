@@ -197,6 +197,8 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Internal Tool Observability Gap**: Node.js tools in `tools/` (e.g., `executive-assistant`) and reference services in `examples/` (e.g., `dashboard-ingest.js`) lack structured JSON Audit Log emission to `stderr`, missing the shared `audit_logger.js` utility.
 - **Sync Script Parameterization Gap**: `scripts/sync-upstream.sh` relies on hardcoded `[MyOrganization]` placeholders and fixed URLs instead of environment-based parameterization.
 - **Historical Python Drift**: Legacy Python/Bash examples include mandatory "LEGACY/ILLUSTRATIVE" headers but remain unmigrated to the Node.js baseline.
+- **AI Model Baseline Drift**: `examples/docker/agent.py` pins `gemini-2.0-flash` instead of the canonical `gemini-2.5-flash` baseline mandated in `AGENTS.md`.
+- **SecretOps Provider Bias in Smoke Tests**: `tests/examples-smoke.test.js` enforces the `op://` pattern for vault references, creating false failures for users of Infisical or other providers.
 - **Resilience Helper Integration Gap**: `scripts/resilience_helpers.js` exists as a reference but is not utilized by repository tools or agent personas.
 
 ### 2. Structural & Architectural Drift

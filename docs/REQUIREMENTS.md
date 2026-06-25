@@ -165,15 +165,9 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 ## Current Known Limitations
 
 ### 1. Environmental & Deployment Drift
-- **SecretOps Authentication Depth**: `scripts/verify-env.sh` and `scripts/verify-env.ps1` currently issue only warnings for missing SecretOps authentication in `docker` mode, violating the mandate for a fatal error (exit 1).
-- **Docker e2e Skip Behavior**: `tests/e2e/docker-smoke.test.js` skips runtime checks if Docker is absent, rather than failing, which can mask environmental gaps in CI/CD when `FORCE_DOCKER_SMOKE` is not set.
-- **SecretOps Provider Bias in Smoke Tests**: `tests/examples-smoke.test.js` enforces an `op://` (1Password) pattern for vault references, causing false failures for users of Infisical or other providers.
-- **Sync Script Parameterization Gap**: `scripts/sync-upstream.sh` relies on hardcoded `[MyOrganization]` placeholders instead of environment-based parameterization (`NOEMI_ORG_NAME`).
-- **Internal Tool Observability Gap**: Node.js tools (e.g., `executive-assistant`) and reference services (e.g., `dashboard-ingest.js`) rely on unstructured `console.log` and lack alignment with the mandated JSON Audit Log schema.
-- **Missing shared `audit_logger.js`**: The utility mandated in `AGENTS.md` for structured logging is absent from the `scripts/` directory.
-- **AI Model Baseline Drift**: Legacy examples like `examples/docker/agent.py` are pinned to `gemini-2.0-flash` instead of the canonical `gemini-2.5-flash`.
-- **Resilience Helper Integration Gap**: `scripts/resilience_helpers.js` exists but is not utilized by network-bound tools or agent personas.
-- **Smoke Test Variable Validation Gap**: `tests/examples-smoke.test.js` lacks validation logic for `NOEMI_DOCKER_SMOKE_*` environment variables.
+- **SecretOps Authentication Depth**: `scripts/verify-env.sh` and `scripts/verify-env.ps1` currently issue only warnings for missing SecretOps authentication in `docker` mode, violating the mandate for a fatal error (exit 1). _Authorized for remediation under Decision [2026-05-26]; pending implementation._
+- **Internal Tool Observability Gap**: Node.js tools (e.g., `executive-assistant`) and reference services (e.g., `dashboard-ingest.js`) rely on unstructured `console.log` and lack alignment with the mandated JSON Audit Log schema. _Shared utility (`scripts/audit_logger.js`) now in place per Decision [2026-06-25-0002]; consumer refactors pending._
+- **Resilience Helper Integration Gap**: `scripts/resilience_helpers.js` exists but is not utilized by network-bound tools or agent personas. _ESM-compatible dual export pattern authorized under Decision [2026-06-25-0010]; integration into network-bound consumers pending._
 
 ### 2. Structural & Architectural Drift
 - **Audit Script Enforcement Depth**: `scripts/audit-repo.js` lacks structural audits for `mcp-protocols/`, `value-lenses/`, and `operating-profiles/`. It also fails to verify branch protection status.
@@ -197,3 +191,9 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Framework Injection Gap** (Remediated: 2026-05-28): `Value Lenses` and `Operating Profiles` are now injected by `scripts/generate_all.js`.
 - **Artifact Naming Convention Alignment** (Remediated: 2026-05-10): `docs/n8n workflows/` renamed to `docs/n8n-workflows/`.
 - **Node.js 24 Baseline Alignment** (Remediated: 2026-05-10): `executive-assistant` and `gatekeeper-deployment` updated to Node 24 images.
+- **SecretOps Provider Bias in Smoke Tests** (Remediated: 2026-06-25): `tests/examples-smoke.test.js` now accepts either `op://` or `infisical://` vault-reference patterns (Decision [2026-06-25-0001]).
+- **Shared `audit_logger.js` Absence** (Remediated: 2026-06-25): `scripts/audit_logger.js` now provides the canonical Audit Log emitter with the 5-field schema and internal-event mapping helper (Decision [2026-06-25-0002]).
+- **AI Model Baseline Drift in Legacy Examples** (Remediated: 2026-06-25): `examples/docker/agent.py` now pins `gemini-2.5-flash` per Decision [2026-06-25-0003].
+- **Sync Script Parameterization Gap** (Remediated: 2026-06-25): `scripts/sync-upstream.sh` reads `NOEMI_UPSTREAM_REMOTE`, `NOEMI_UPSTREAM_URL`, `NOEMI_LOCAL_BRANCH`, and `NOEMI_ORG_NAME` from the environment (Decision [2026-06-25-0004]).
+- **Docker e2e Silent Skip** (Remediated: 2026-06-25): `tests/e2e/docker-smoke.test.js` honors `FORCE_DOCKER_SMOKE=true` to fail (rather than silently skip) when Docker is unavailable (Decision [2026-06-25-0005]).
+- **Smoke Test Variable Validation Gap** (Remediated: 2026-06-25): `tests/examples-smoke.test.js` now validates the inventory and naming convention of `NOEMI_DOCKER_SMOKE_*` variables in `.env.template` (Decision [2026-06-25-0006]).

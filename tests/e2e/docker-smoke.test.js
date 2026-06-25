@@ -135,6 +135,18 @@ function stack(name, relativeDir, env, expectedServices) {
 }
 
 const dockerAvailable = dockerIsAvailable();
+const forceDockerSmoke = /^(true|1|yes)$/i.test(process.env.FORCE_DOCKER_SMOKE || '');
+
+// Decision [2026-06-25-0005] — FORCE_DOCKER_SMOKE Mandatory Mode.
+// When FORCE_DOCKER_SMOKE=true and Docker is missing, fail the suite instead of silently
+// skipping so CI/CD cannot return "false green" when Docker is mandatory.
+if (forceDockerSmoke && !dockerAvailable) {
+    throw new Error(
+        'FORCE_DOCKER_SMOKE=true but Docker CLI or Docker Compose is not available. ' +
+        'Either install Docker on this runner or unset FORCE_DOCKER_SMOKE.'
+    );
+}
+
 const dockerTestOptions = dockerAvailable
     ? { timeout: dockerTimeoutMs + 30000 }
     : { skip: 'Docker CLI or Docker Compose is not available in this environment.' };

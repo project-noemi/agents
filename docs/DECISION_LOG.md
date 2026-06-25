@@ -270,6 +270,105 @@
 - **Context:** Resolves CLARIFICATIONS.md Q [2026-04-04] (Framework Integration in Context Generators), Q [2026-05-02] (Framework Markers in Context Templates), Q [2026-05-21] (Framework Marker Injection Standardization), and Q [2026-05-22] (Generator Script Marker Alignment). The markers were added but the generator never filled them.
 - **Impact:** Closes the "Framework Injection Gap" from `REQUIREMENTS.md` Current Known Limitations; agents consuming generated context now receive the Value Lenses and Operating Profiles inline.
 
+## [2026-06-25-0001] Multi-Provider SecretOps Smoke Test Support
+
+- **Decision:** `tests/examples-smoke.test.js` must accept either the `op://` (1Password) or `infisical://` (Infisical) vault-reference pattern when asserting that `.env.example` files contain vault references rather than placeholder secrets. The multi-provider mandate already documented in REQUIREMENTS.md Section 5 (Fetch-on-Demand Security) and AGENTS.md SecretOps section requires the test suite to honor both providers.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-19] (SecretOps Provider Bias in Smoke Tests). The `op://` hard-assertion produces false test failures for organizations standardized on Infisical.
+- **Reference:** Implementation lands in this PR.
+
+## [2026-06-25-0002] Shared audit_logger.js Implementation
+
+- **Decision:** Jules is authorized to autonomously implement `scripts/audit_logger.js` as the canonical shared utility for emitting structured JSON Audit Logs to `stderr`. The utility implements the canonical 5-field schema (`task`, `inputs`, `actions`, `risks`, `result`) and exposes a thin event-to-schema mapping helper for internal operational events (e.g., `SYNC_COMPLETE`, `TRIAGE_VIP`, `CONFIG_UPDATE` map to the `task` field; the event's structured payload populates `actions` and `result`). Internal tools (`executive-assistant`, `dashboard-ingest.js`) must adopt the utility incrementally; this PR introduces the utility itself.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-10] (Mandated audit_logger.js Absence and Ownership), Q [2026-06-11] (audit_logger.js Mandated Absence), Q [2026-06-15] (Internal Tool Audit Log Event Mapping), Q [2026-06-17] (Internal Tool Audit Log Mapping), Q [2026-06-18] (audit_logger.js Canonical Schema and Behavior), and Q [2026-06-19] (audit_logger.js Schema and Event Mapping). No external implementation is pending.
+- **Reference:** Implementation lands in this PR. The same 5-field schema applies to both agent personas and infrastructure-level events to keep observability uniform across the fleet (no separate infrastructure schema).
+
+## [2026-06-25-0003] AI Model Baseline Update for Legacy Examples
+
+- **Decision:** Legacy Python/Bash examples (currently `examples/docker/agent.py`) must be updated to the canonical `models/gemini-2.5-flash` baseline. The LEGACY/ILLUSTRATIVE label remains; pinning a deprecated model on examples that are kept for historical purposes contradicts the AI Model Baseline mandate. Future Python examples may use any then-current baseline so long as it matches `REQUIREMENTS.md`.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-19] (Legacy Example Model Drift).
+- **Reference:** Implementation lands in this PR.
+
+## [2026-06-25-0004] Sync Script Parameterization
+
+- **Decision:** `scripts/sync-upstream.sh` must read organization-specific values from environment variables: `NOEMI_UPSTREAM_REMOTE` (default `upstream`), `NOEMI_UPSTREAM_URL` (default `https://github.com/project-noemi/agents.git`), `NOEMI_LOCAL_BRANCH` (default `develop`), and `NOEMI_ORG_NAME` (default `[MyOrganization]` for the success-message label only). The hardcoded `MY_ORGANIZATION="[MyOrganization]"` placeholder is removed.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-29] (Sync Script Parameterization) and Q [2026-06-11] (sync-upstream.sh Hardcoded Identity).
+- **Reference:** Implementation lands in this PR.
+
+## [2026-06-25-0005] FORCE_DOCKER_SMOKE Mandatory Mode
+
+- **Decision:** `tests/e2e/docker-smoke.test.js` must honor a `FORCE_DOCKER_SMOKE` environment variable. When `FORCE_DOCKER_SMOKE=true` is set and Docker is unavailable, the test suite must fail (rather than silently skipping). When the variable is unset, the existing "clean skip" behavior remains in place to preserve local-development friendliness.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-18] (E2E Smoke Test Docker Mandatory Check). Aligns with REQUIREMENTS.md Section 9 ("The Docker e2e suite must skip cleanly when Docker is unavailable") while preventing CI/CD "false green" outcomes when Docker is mandatory.
+- **Reference:** Implementation lands in this PR.
+
+## [2026-06-25-0006] NOEMI_DOCKER_SMOKE_* Variable Validation
+
+- **Decision:** `tests/examples-smoke.test.js` must include a dedicated test case that validates the presence and naming-convention compliance of all `NOEMI_DOCKER_SMOKE_*` environment variables defined in `.env.template`. The naming convention is `NOEMI_DOCKER_SMOKE_<UPPER_SNAKE_CASE>`. The test reports the inventory and fails if expected variables (`TIMEOUT_MS`, `POLL_INTERVAL_MS`, `ARTIFACT_DIR`) are missing.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-29] (Docker Smoke Test Variable Validation) and Q [2026-06-11] (tests/examples-smoke.test.js Environmental Blindness).
+- **Reference:** Implementation lands in this PR.
+
+## [2026-06-25-0007] Audit Script Expansion — TBD Detection, JSON Schema, MCP/Lens Audit, Naming, Resilience, Model Baseline
+
+- **Decision:** `scripts/audit-repo.js` will be expanded to enforce the following gates (these collapse Q-level questions into a single coherent unit of work):
+  - **TBD-placeholder detection** in mandatory persona and skill sections (`Data Inventory`, `Refusal Criteria`) — fatal error when found in CI runs, warning otherwise.
+  - **JSON schema validation** for the `Audit Log` block, verifying presence and non-empty values for `task`, `inputs`, `actions`, `risks`, `result`.
+  - **MCP-protocol structural audit** over `mcp-protocols/*.md` for the same canonical contract (Purpose, Inputs, Procedure, Outputs, Rules & Constraints, Audit Log).
+  - **Value-lens and operating-profile structural audit** against their respective `*_TEMPLATE.md` files.
+  - **Referential integrity check** for internal markdown links and `**Skill:**` references in agent workflows.
+  - **Config-to-asset mapping** validation against `mcp.config.json` (every `active_mcps` and `active_skills` entry must resolve to a file).
+  - **Naming-convention audit** (regex-based, English-first slug naming) over `docs/`, `agents/`, `skills/`, `examples/`, `tools/`.
+  - **AI-model-baseline check** that scans `examples/` and `tests/` for non-baseline Gemini model pins (`gemini-(?!2\.5-flash)`).
+  - **Node.js 24 baseline check** over `Dockerfile` and `docker-compose.yml` to flag `node:<24` pins.
+  - **Branch-protection audit** via the presence/last-run timestamp of `scripts/setup-branch-protection.sh`; non-fatal warning outside CI, fatal in CI.
+  - **Refusal Criteria substantive check** (regex for the three mandatory clauses: refused-types, override-resistance, escalation).
+  - **Audit Log emission** via the new shared `scripts/audit_logger.js` utility, per the observability mandate.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-01] (Node 24 baseline), Q [2026-05-02] (multiple — config-to-asset mapping, naming convention, build-utility audit log, Refusal substantive enforcement, Audit Log descriptor standardization → see Decision [2026-06-25-0012]), Q [2026-05-15] (Skill-to-Agent Referential Integrity), Q [2026-05-19] (Internal Tool Observability Standard for build utilities), Q [2026-05-20] (AI Model Baseline Formalization Follow-through), Q [2026-05-29] (Branch Protection Audit Implementation), Q [2026-06-01] (Substantive vs Structural Audit Policy, Audit Log Schema Enforcement), Q [2026-06-15] (Audit Script Placeholder Rejection Policy), Q [2026-06-17] (MCP Protocol Specification Contract Audit Gap, Value Lens and Operating Profile Structural Audit, Automated Internal Documentation Link Integrity), and Q [2026-06-18] (Audit Script JSON Schema Validation Mandate).
+- **Reference:** Authorization only — the audit-repo.js refactor is deliberately deferred to a follow-up PR to keep this change set focused. Tracking is in REQUIREMENTS.md under "Audit Script Enforcement Depth".
+
+## [2026-06-25-0008] Generator Script Consolidation
+
+- **Decision:** Deprecate `scripts/generate_gemini.js` and `scripts/generate_claude.js`; `scripts/generate_all.js` becomes the sole entry point for context generation. The two legacy scripts will be removed after a one-PR transition window during which they become thin shims that delegate to `generate_all.js`.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-17] (Generator Script Redundancy).
+- **Reference:** Authorization only — script removal is deferred to a follow-up PR (one shim transition, then deletion).
+
+## [2026-06-25-0009] Persona Journal Section Remains Optional
+
+- **Decision:** The `## Journal` section is NOT promoted to a mandatory persona-contract heading. Agents that benefit from across-fleet learning may include it, but it is not enforced by `scripts/audit-repo.js` and is not added to `docs/AGENT_TEMPLATE.md` as a required heading.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-01] (Persona Journal Section Standardization). The canonical persona contract from [2026-04-02] Clarification Backlog Normalization is sufficient; adding another mandatory section would inflate the contract without commensurate observability benefit.
+- **Reference:** Decision-only; no code changes.
+
+## [2026-06-25-0010] Resilience Helper Module System (Dual CJS+ESM Export)
+
+- **Decision:** `scripts/resilience_helpers.js` retains its current CommonJS implementation and adds an ESM-compatible default export so that ESM-native tools (e.g., `tools/executive-assistant/`) can `import { withRetry } from '../../scripts/resilience_helpers.js'` without a wrapper. Implementation pattern: keep `module.exports.withRetry = ...` and add `module.exports.default = module.exports` so default-import semantics work under Node's CJS-to-ESM interop. A future migration to a dual-package `package.json` `exports` map can ship later if needed.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-19] (Resilience Helper Module System Mismatch).
+- **Reference:** Authorization only — implementation deferred to the same PR that integrates `withRetry` into a first network-bound consumer.
+
+## [2026-06-25-0011] Persona and Skill Substantive Remediation Strategy
+
+- **Decision:** Jules is authorized to perform a bulk substantive remediation of agent personas (`agents/`) and reusable skills (`skills/`), replacing `TBD` placeholders and identical-boilerplate text in `Data Inventory` and `Refusal Criteria` sections with role-specific, technically grounded defaults derived from each artifact's documented `Role`/`Mission`/`Procedure`. The remediation must:
+  - Treat the substantive content as a draft anchored in the canonical contract — not a final domain-expert version. Each remediated section ends with the marker `<!-- substantive-draft: needs domain-expert review -->` so a human can later refine without losing the structural compliance gain.
+  - Use the same three-clause Refusal Criteria pattern (refused task types, override-resistance, escalation path) mandated by Decision [2026-04-13].
+  - Land as multiple focused PRs (one per agent/skill category) to avoid a single sprawling change; not all 22+ artifacts in one PR.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-04-26] (Substantive Persona Content Drift), Q [2026-05-02] (Refusal Criteria Substantive Enforcement, Skill Contract Enforcement Depth, Tool Baseline Alignment), Q [2026-05-10] (Substantive Persona Remediation Strategy), Q [2026-05-28] (Substantive Remediation of the Skill Library), Q [2026-05-29] (Skill Remediation Priority), Q [2026-06-17] (Substantive Content Baseline for Agents), and Q [2026-06-18] (Substantive Remediation of Skill "TBD" Placeholders).
+- **Reference:** Authorization only — actual content remediation is deferred to follow-up PRs because the work spans 22+ files and must be reviewable.
+
+## [2026-06-25-0012] Audit Log Descriptor Stays on stderr (No FD3, No Prefix)
+
+- **Decision:** The canonical technical sink for Audit Logs remains `stderr` per Decision [2026-04-13]. We do NOT introduce a dedicated file descriptor (e.g., FD 3) and we do NOT mandate a `AUDIT_LOG:` prefix. Orchestrators that need to disambiguate technical crashes from structured audit logs should rely on the JSON shape itself: a valid Audit Log is parseable JSON containing all five canonical fields; anything else on `stderr` is treated as crash/diagnostic output.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-05-02] (Audit Log Descriptor Standardization). The shape-based disambiguation keeps orchestrator integrations simple without introducing platform-specific FD conventions that may break on Windows or in serverless runtimes.
+- **Reference:** Decision-only; no code changes.
+
+## [2026-06-25-0013] Red Team Gauntlet Serialization Format
+
+- **Decision:** Red Team Gauntlet test vectors will be serialized as a single YAML file at `examples/red-team-gauntlet/test-vectors.yaml`, grouped into top-level keys per protection category (`prompt_injection`, `pii_patterns`, `output_safety`, etc.). YAML is preferred over JSON for ease of human editing (multi-line patterns, comments). The `Client Onboarding` validation workflow consumes this file directly.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-04-05] (Red Team Gauntlet Test Vector Absence), Q [2026-06-10] (Red Team Gauntlet Machine-Readable Test Vectors), and Q [2026-06-15] (Red Team Gauntlet Serialization Strategy).
+- **Reference:** Authorization only — file creation is deferred to a follow-up PR.
+
+## [2026-06-25-0014] Memory-Code Synchronization Drift Resolution
+
+- **Decision:** Where "Memory" records remediations that are absent from the filesystem (sync script parameterization, agent index extraction depth, shared `audit_logger.js`), Jules reimplements them from scratch using the current canonical decisions as the source of truth. Memory entries are advisory; filesystem truth wins. This PR closes the `audit_logger.js` and sync-upstream parameterization sub-cases.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-01] (Memory-Code Synchronization Drift).
+- **Reference:** Partial implementation in this PR (`audit_logger.js` + sync-upstream parameterization). Agent-index extraction depth is deferred to the audit-repo.js follow-up.
+
 ## [2026-05-28-0006] Resolved Clarifications Overtaken by Prior Decisions
 
 - **Decision:** The following CLARIFICATIONS.md questions are closed as already-resolved by prior entries in this log and are removed from the active backlog without further action:

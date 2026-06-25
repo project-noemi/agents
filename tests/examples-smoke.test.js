@@ -20,7 +20,32 @@ test('docker env inventories use vault references instead of placeholder secrets
     for (const envFile of envFiles) {
         const content = read(envFile);
         assert.doesNotMatch(content, /changeme/i, `${envFile} still contains insecure placeholder values`);
-        assert.match(content, /op:\/\//, `${envFile} should contain vault-reference examples`);
+        // Multi-provider SecretOps: accept either op:// (1Password) or infisical:// (Infisical).
+        // Decision [2026-06-25-0001] — Multi-Provider SecretOps Smoke Test Support.
+        assert.match(
+            content,
+            /(op:\/\/|infisical:\/\/)/,
+            `${envFile} should contain vault-reference examples (op:// or infisical://)`
+        );
+    }
+});
+
+test('NOEMI_DOCKER_SMOKE_* environment variables are inventoried in .env.template', () => {
+    // Decision [2026-06-25-0006] — NOEMI_DOCKER_SMOKE_* Variable Validation.
+    // Required by REQUIREMENTS.md Section 9 (validation contract).
+    const envTemplate = read('.env.template');
+    const required = ['NOEMI_DOCKER_SMOKE_TIMEOUT_MS', 'NOEMI_DOCKER_SMOKE_POLL_INTERVAL_MS', 'NOEMI_DOCKER_SMOKE_ARTIFACT_DIR'];
+    for (const variable of required) {
+        assert.match(envTemplate, new RegExp(`^${variable}=`, 'm'), `.env.template should define ${variable}`);
+    }
+    // All NOEMI_DOCKER_SMOKE_* keys must follow upper-snake-case naming so orchestrators can
+    // discover them reliably; reject keys that contain lowercase letters or unsupported separators.
+    const allKeys = envTemplate
+        .split('\n')
+        .map((line) => line.split('=')[0].trim())
+        .filter((key) => key.startsWith('NOEMI_DOCKER_SMOKE_'));
+    for (const key of allKeys) {
+        assert.match(key, /^NOEMI_DOCKER_SMOKE_[A-Z][A-Z0-9_]*$/, `${key} should follow NOEMI_DOCKER_SMOKE_<UPPER_SNAKE_CASE>`);
     }
 });
 

@@ -148,7 +148,7 @@ Add new questions below this line using the required format.
 **Ambiguity / Drift:** While structurally compliant (the headings exist), the repository is in substantive drift from the 4D Description (D2) and Refusal Principle mandates.
 **Question for Product Owner:** Should Jules be authorized to perform a fleet-wide "substantive remediation" to replace these placeholders with role-specific, technically accurate content?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of all agent personas in `agents/` and skills in `skills/` to replace placeholder Data Inventory and Refusal Criteria with role-specific content.*
+**🤖 Jules Action Prompt:** *Perform a whole-fleet update of all agent personas in `agents/` to replace placeholder `Data Inventory` and `Refusal Criteria` sections with role-specific, technically accurate content.*
 
 ### ❓ Question [2026-05-13] - RFP Split Naming Convention Remediation
 **Context:** `AGENTS.md` mandates English-first, slug-based naming. `examples/rfp-split/` contains several files like `Section_1_General_Information.pdf` that violate this rule.
@@ -405,7 +405,7 @@ Add new questions below this line using the required format.
 ### ❓ Question [2026-06-18] - Substantive Remediation of Skill "TBD" Placeholders
 **Context:** The requirements state "Persona and Skill Contracts are Mandatory", but the codebase in `skills/` currently contains "TBD" placeholders for 100% of the active reusable skills in mandatory sections like `Data Inventory` and `Refusal Criteria`.
 **Ambiguity / Drift:** The skill library passes structural audits but is substantively safety-deficient, failing the 4D framework's "Description" (D2) mandate. This creates a risk where agents depend on "hollow" skills for critical logic.
-**Question for Product Owner:** Should Jules perform a bulk substantive remediation to replace these "TBD" placeholders with technically grounded defaults based on each skill's documented `Procedure`, or should this wait for manual domain-specific input?
+**Question for Product Owner:** Should Jules perform a bulk substantive remediation to replace these "TBD" placeholders with technically grounded defaults based on each skill's documented Procedure, or should this wait for manual domain-specific input?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory, replacing "TBD" placeholders with technically grounded defaults based on each skill's documented Procedure.*
 
@@ -436,3 +436,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should all legacy Python/Bash examples be updated to point to the `gemini-2.5-flash` baseline, or should they be allowed to remain on older models for illustrative purposes?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `examples/docker/agent.py` and any other legacy examples to use the canonical `models/gemini-2.5-flash` baseline.*
+
+### ❓ Question [2026-06-19] - Resilience Helper Module System Mismatch
+**Context:** The requirements state "The repository must contain at least one reusable reference pattern for exponential backoff and retry (Node.js implementation: `scripts/resilience_helpers.js`)", but the codebase in `tools/executive-assistant/package.json` implements `"type": "module"` (ESM), while `scripts/resilience_helpers.js` uses CommonJS `module.exports`.
+**Ambiguity / Drift:** ESM-based tools and services cannot directly `import` CommonJS files without additional configuration or wrapper logic. This creates technical friction for the mandated integration of resilience patterns into the "Executive Assistant" and other ESM-native services.
+**Question for Product Owner:** Should we migrate all shared utilities in `scripts/` to ESM to match the modern tool baseline, or should we provide dual-system (CJS/ESM) support for core resilience helpers?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Migrate `scripts/resilience_helpers.js` and other shared utilities to ESM or implement a dual-module export pattern to support both CLI utilities and ESM-native services.*
+
+### ❓ Question [2026-06-19] - audit_logger.js Schema and Event Mapping
+**Context:** `AGENTS.md` mandates that internal tools and services use a shared `scripts/audit_logger.js` to emit structured JSON Audit Logs to `stderr`, but the file is missing from the repository.
+**Ambiguity / Drift:** Without a canonical utility or a clearly defined schema for "internal operational events" (e.g., `SYNC_COMPLETE`, `CONFIG_UPDATE`), there is a risk of disparate logging implementations across the fleet. This undermines the goal of unified observability and automated ROI/Risk calculation.
+**Question for Product Owner:** Should the `audit_logger.js` implement the exact same 5-field schema as agent personas (`task`, `inputs`, `actions`, `risks`, `result`), or should we extend it for infrastructure-level events?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement the `scripts/audit_logger.js` utility with a standardized internal event schema and refactor `executive-assistant` and `dashboard-ingest` to use it.*

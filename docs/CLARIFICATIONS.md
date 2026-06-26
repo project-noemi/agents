@@ -450,3 +450,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the `audit_logger.js` implement the exact same 5-field schema as agent personas (`task`, `inputs`, `actions`, `risks`, `result`), or should we extend it for infrastructure-level events?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement the `scripts/audit_logger.js` utility with a standardized internal event schema and refactor `executive-assistant` and `dashboard-ingest` to use it.*
+
+### ❓ Question [2026-06-20] - Executive Assistant "Learning Agent" Resolution Path
+**Context:** The `Executive Assistant` reference implementation in `tools/executive-assistant/server.js` includes an `/api/resolution` endpoint that claims to be processed by a "Learning Agent" and updates internal execution logs with "Historical messages passed".
+**Ambiguity / Drift:** This "Learning Agent" and the human-in-the-loop resolution pattern are not defined in `REQUIREMENTS.md` or any agent persona. This suggests a feature drift where the implementation introduces a feedback loop that isn't governed by the requirements.
+**Question for Product Owner:** Is the "Learning Agent" resolution path a core architectural requirement for NoéMI reference services, and if so, should it be formalized in `REQUIREMENTS.md` and supported by a dedicated agent persona?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Document the "Learning Agent" resolution pattern in `REQUIREMENTS.md` and create a dedicated persona specification in `agents/operations/learning-agent.md` that governs how agents should learn from human resolutions.*
+
+### ❓ Question [2026-06-20] - Rules & Constraints Heading Inconsistency
+**Context:** `AGENTS.md` and `audit-repo.js` require "Rules & Constraints" for agent personas but "Rules & Constraints (4D Diligence)" for reusable skills.
+**Ambiguity / Drift:** This inconsistency in the mandatory heading name complicates the audit logic and creates confusion for builders. Given that both are intended to incorporate the 4D framework (specifically Diligence), there is no clear reason for the different naming conventions.
+**Question for Product Owner:** Should we standardize on a single heading name (e.g., `Rules & Constraints (4D Diligence)`) for both agent personas and skills to ensure consistency across the repository?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize the "Rules & Constraints" heading name across all personas, skills, and audit scripts to use the `(4D Diligence)` suffix.*
+
+### ❓ Question [2026-06-20] - Phase 0 Assessment Kit Audit Coverage
+**Context:** Requirement §1 mandates a specific inventory of 8+ files for the Phase 0 Assessment Kit, but `scripts/audit-repo.js` currently provides no verification for this critical business asset.
+**Ambiguity / Drift:** As the "front door" for buyers, the Assessment Kit's completeness is paramount. Without automated auditing, files can be accidentally moved or renamed, breaking the buyer's first-contact experience and violating Requirement §1.
+**Question for Product Owner:** Should the Phase 0 Assessment Kit inventory be added to the mandatory repository audit performed by `scripts/audit-repo.js`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Extend `scripts/audit-repo.js` to verify the presence of all 8 mandated files in the `docs/phase-zero-assessment/` directory.*

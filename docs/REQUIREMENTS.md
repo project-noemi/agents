@@ -174,14 +174,17 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **AI Model Baseline Drift**: Legacy examples like `examples/docker/agent.py` are pinned to `gemini-2.0-flash` instead of the canonical `gemini-2.5-flash`.
 - **Resilience Helper Integration Gap**: `scripts/resilience_helpers.js` exists but is not utilized by network-bound tools or agent personas.
 - **Smoke Test Variable Validation Gap**: `tests/examples-smoke.test.js` lacks validation logic for `NOEMI_DOCKER_SMOKE_*` environment variables.
+- **Resilience Helper Module System Mismatch**: ESM-based tools (e.g., `executive-assistant`) cannot easily import the CommonJS `resilience_helpers.js`.
 
 ### 2. Structural & Architectural Drift
-- **Audit Script Enforcement Depth**: `scripts/audit-repo.js` lacks structural audits for `mcp-protocols/`, `value-lenses/`, and `operating-profiles/`. It also fails to verify branch protection status.
-- **Agent Index Descriptive Truncation**: `scripts/context_helpers.js` extracts only the first sentence of the `Role` section, resulting in truncated descriptions in the Agent Index.
+- **Audit Script Enforcement Depth**: `scripts/audit-repo.js` lacks structural audits for `mcp-protocols/`, `value-lenses/`, and `operating-profiles/`. It also fails to verify branch protection status or Phase 0 Assessment Kit integrity.
+- **Agent Index Descriptive Truncation**: `scripts/context_helpers.js` extracts only the first sentence of the `Role` section, resulting in truncated descriptions in the Agent Index, violating the "paragraph extraction" mandate in `AGENTS.md`.
 - **Red Team Gauntlet Serialization Gap**: Test vectors in `examples/red-team-gauntlet/README.md` are documented in prose and lack machine-readable serialization (JSON/YAML) for automated testing.
 - **Service Tier Template Implementation Gap**: `templates/tiers/` exists but lacks the actual service tier templates (e.g., `basic.md`, `standard.md`) referenced by the Client Onboarding agent.
 - **Operating Profile Substantive Gap**: `operating-profiles/` contains only templates and no baseline profiles, resulting in empty injection blocks in generated context.
 - **Logging Protocol Implementation Gap**: `logging-mcp` is a dual-backend draft but is not yet active in `mcp.config.json`, and reference services lack alignment.
+- **Mandatory Heading Inconsistency**: The mandated heading for Diligence is "Rules & Constraints" in agents but "Rules & Constraints (4D Diligence)" in skills, creating audit logic friction.
+- **Undocumented "Learning Agent" Pattern**: `executive-assistant` implements a resolution feedback loop (Learning Agent) that is missing from requirements and lacks a persona specification.
 
 ### 3. Substantive & Safety Drift
 - **Substantive Content Boilerplate**: 100% of agent personas and reusable skills use identical boilerplate or "TBD" placeholders for `Refusal Criteria` and `Data Inventory`, failing the D2 (Description) and Refusal Principle mandates.

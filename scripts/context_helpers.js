@@ -185,18 +185,18 @@ function discoverAgents(baseDir, prefix = '') {
         
         let role = '';
         if (roleMatch) {
-            role = roleMatch[1].trim().split('\n')[0];
-            // Take only the first sentence if it exists
-            const sentenceMatch = role.match(/^[^.!?]+[.!?]/);
-            if (sentenceMatch) {
-                role = sentenceMatch[0];
-            }
+            // Decision [2026-06-12-0012]: extract the full first paragraph of
+            // the `## Role` section (not just the first sentence) so the Agent
+            // Index conveys complete intent for complex personas.
+            const roleSection = roleMatch[1].trim();
+            const firstParagraph = roleSection.split(/\n\s*\n/)[0] || '';
+            role = firstParagraph.replace(/\s+/g, ' ').trim();
         }
 
         agents.push({
             path: `agents/${relativePath}`,
             title,
-            role: role.slice(0, 200),
+            role,
             domain: prefix.split(path.sep)[0] || 'root'
         });
     }

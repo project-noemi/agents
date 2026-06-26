@@ -2,6 +2,13 @@
 
 const crypto = require('crypto');
 const http = require('http');
+const path = require('path');
+
+// Decision [2026-06-12-0010] + [2026-06-19-0001]: reference services emit a
+// structured JSON Audit Log line to stderr per request via the shared utility.
+// Loaded by relative path to avoid a packaging dependency in this example.
+const auditLogger = require(path.join(__dirname, '..', '..', 'scripts', 'audit_logger.js'));
+const audit = auditLogger.createLogger('dashboard-ingest');
 
 const PORT = Number(process.env.PORT || '8081');
 const DASHBOARD_API_TOKEN = process.env.DASHBOARD_API_TOKEN;
@@ -96,6 +103,13 @@ const server = http.createServer(async (request, response) => {
     }
 
     if (request.headers.authorization !== `Bearer ${DASHBOARD_API_TOKEN}`) {
+        audit.emit({
+            task: 'dashboard.ingest.report',
+            inputs: [`method=${request.method}`, `path=${request.url}`],
+            actions: ['rejected-auth'],
+            risks: ['missing_or_invalid_bearer'],
+            result: 'rejected'
+        });
         sendJson(response, 401, { error: 'Unauthorized' });
         return;
     }
@@ -111,6 +125,13 @@ const server = http.createServer(async (request, response) => {
         const rawBody = Buffer.concat(chunks).toString('utf8');
 
         if (!signatureMatches(rawBody, signature)) {
+            audit.emit({
+                task: 'dashboard.ingest.report',
+                inputs: [`bytes=${rawBody.length}`],
+                actions: ['verified-bearer', 'rejected-signature'],
+                risks: ['hmac_mismatch'],
+                result: 'rejected'
+            });
             sendJson(response, 401, { error: 'Invalid signature' });
             return;
         }
@@ -119,6 +140,13 @@ const server = http.createServer(async (request, response) => {
         try {
             report = JSON.parse(rawBody);
         } catch (error) {
+            audit.emit({
+                task: 'dashboard.ingest.report',
+                inputs: [`bytes=${rawBody.length}`],
+                actions: ['verified-bearer', 'verified-signature', 'rejected-json'],
+                risks: ['malformed_payload'],
+                result: 'rejected'
+            });
             sendJson(response, 400, { error: `Invalid JSON payload: ${error.message}` });
             return;
         }
@@ -126,9 +154,23 @@ const server = http.createServer(async (request, response) => {
         try {
             const lineProtocol = buildInfluxLine(report);
             await writeInflux(lineProtocol);
+            audit.emit({
+                task: 'dashboard.ingest.report',
+                inputs: [`agent_id=${report.agent_id || 'unknown'}`, `org=${report.org || 'unknown'}`],
+                actions: ['verified-bearer', 'verified-signature', 'wrote-influx'],
+                risks: [],
+                result: 'ok'
+            });
             sendJson(response, 202, { status: 'accepted' });
         } catch (error) {
             logError(error.message);
+            audit.emit({
+                task: 'dashboard.ingest.report',
+                inputs: [`agent_id=${report && report.agent_id || 'unknown'}`],
+                actions: ['verified-bearer', 'verified-signature', 'influx-write-failed'],
+                risks: ['downstream_persist_failure'],
+                result: 'error'
+            });
             sendJson(response, 502, { error: 'Failed to persist report' });
         }
     });

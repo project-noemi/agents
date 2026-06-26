@@ -183,11 +183,43 @@ function checkGeneratedOutputs() {
     }
 }
 
+// Decision [2026-06-26-0003]: Phase 0 Assessment Kit is the buyer's "front
+// door" (REQUIREMENTS.md §1). Verify the mandated file inventory exists so a
+// rename or accidental deletion fails the audit instead of silently breaking
+// onboarding.
+function checkPhaseZeroAssessmentKit() {
+    const phaseZeroDir = path.join(repoRoot, 'docs', 'phase-zero-assessment');
+    const requiredFiles = [
+        'README.md',
+        'security-assessment.md',
+        'ai-readiness-assessment.md',
+        'network-security-assessment.md',
+        'PRACTITIONER_NOTES.md',
+        'consent-template.md',
+        'report-template.md',
+        'roadmap-template.md',
+        'readiness-rubric.md'
+    ];
+
+    if (!fs.existsSync(phaseZeroDir)) {
+        fail(`Phase 0 Assessment Kit directory missing: ${phaseZeroDir}`);
+        return;
+    }
+
+    for (const file of requiredFiles) {
+        const filePath = path.join(phaseZeroDir, file);
+        if (!fs.existsSync(filePath)) {
+            fail(`Phase 0 Assessment Kit is missing required file: docs/phase-zero-assessment/${file}`);
+        }
+    }
+}
+
 function main() {
     checkTemplates();
     checkPersonas();
     checkSkills();
     checkGeneratedOutputs();
+    checkPhaseZeroAssessmentKit();
 
     if (failed) {
         process.exit(1);

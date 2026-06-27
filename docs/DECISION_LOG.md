@@ -270,6 +270,117 @@
 - **Context:** Resolves CLARIFICATIONS.md Q [2026-04-04] (Framework Integration in Context Generators), Q [2026-05-02] (Framework Markers in Context Templates), Q [2026-05-21] (Framework Marker Injection Standardization), and Q [2026-05-22] (Generator Script Marker Alignment). The markers were added but the generator never filled them.
 - **Impact:** Closes the "Framework Injection Gap" from `REQUIREMENTS.md` Current Known Limitations; agents consuming generated context now receive the Value Lenses and Operating Profiles inline.
 
+## [2026-06-27-0001] audit_logger.js Canonical Implementation and Schema
+
+- **Decision:** Implement `scripts/audit_logger.js` as the shared utility for emitting structured JSON Audit Logs to `stderr` from Node.js-based tools and reference services. The utility exports `emit()`, `buildAuditLog()`, `validateAuditLog()`, and a canonical `EVENT_TASK_MAP` (`SYNC_COMPLETE`, `TRIAGE_VIP`, `CONFIG_UPDATE`, `OAUTH_REFRESH`, `INGEST_REPORT`, `LEARNING_RESOLUTION`, `HEALTHCHECK`, `SCHEDULED_RUN`, `AUDIT_RUN`, `GENERATE_CONTEXT`, etc.) that maps internal events to canonical Audit Log `task` strings. Audit Log lines are prefixed with `AUDIT_LOG: ` so orchestrators can reliably distinguish them from unstructured stderr noise.
+- **Context:** Resolves CLARIFICATIONS Q [2026-06-10] / Q [2026-06-11] / Q [2026-06-15] / Q [2026-06-18] / Q [2026-06-19] (all variants of the missing `audit_logger.js` + event mapping). The mandate existed in AGENTS.md but the utility was absent from the repo.
+- **Impact:** `scripts/audit-repo.js` now uses `audit_logger.validateAuditLog()` for in-file Audit Log JSON validation and emits its own AUDIT_LOG on completion. Subsequent PRs will refactor `tools/executive-assistant/server.js` and `examples/gatekeeper-deployment/dashboard-ingest.js` to use the shared utility (incremental). Schema fields enforced: `task` (non-empty string), `inputs/actions/risks` (arrays), `result` (non-empty string).
+
+## [2026-06-27-0002] Audit Log Schema Validation in audit-repo.js
+
+- **Decision:** `scripts/audit-repo.js` MUST validate that every `## Audit Log` JSON block in agents and skills conforms to the canonical schema (`task` non-empty string, `inputs/actions/risks` arrays, `result` non-empty string). Validation is performed via `scripts/audit_logger.validateAuditLog()` so the schema lives in exactly one place.
+- **Context:** Resolves CLARIFICATIONS Q [2026-06-01] / Q [2026-06-18] (JSON Schema Enforcement). The previous audit only checked that the block parsed as JSON; empty objects passed silently.
+- **Impact:** Personas and skills that ship malformed audit logs now fail the audit gate. Existing fleet content was verified compliant before this decision landed.
+
+## [2026-06-27-0003] Phase 0 Assessment Kit Audit Coverage
+
+- **Decision:** `scripts/audit-repo.js` MUST verify the presence of all 8 mandated files in `docs/phase-zero-assessment/` (`security-assessment.md`, `ai-readiness-assessment.md`, `network-security-assessment.md`, `PRACTITIONER_NOTES.md`, `consent-template.md`, `report-template.md`, `roadmap-template.md`, `readiness-rubric.md`).
+- **Context:** Resolves CLARIFICATIONS Q [2026-06-20] (Phase 0 Assessment Kit Audit Coverage). Requirement §1 mandates this inventory; without an automated check, file renames or deletions silently break the buyer's first-contact experience.
+- **Impact:** Missing or renamed Phase 0 files now fail the audit immediately, surfacing drift at PR time rather than at buyer-onboarding time.
+
+## [2026-06-27-0004] mcp.config.json Referential Integrity
+
+- **Decision:** `scripts/audit-repo.js` MUST verify that every entry in `mcp.config.json` `active_mcps` and `active_skills` maps to an existing file in `mcp-protocols/` or `skills/` respectively. Typos and missing files now fail the audit gate.
+- **Context:** Resolves CLARIFICATIONS Q [2026-05-02] (Config-to-Asset Mapping Validation). Without this check, generated context silently omitted MCPs/skills referenced by config.
+- **Impact:** `mcp.config.json` becomes a verifiable contract instead of a free-text list.
+
+## [2026-06-27-0005] Agent Index Paragraph Extraction
+
+- **Decision:** `scripts/context_helpers.js` MUST extract the full first paragraph (up to the first blank line, capped at 400 chars) of the `## Role` section for the Agent Index, replacing the previous first-sentence extraction. Multi-sentence Role definitions now produce informative index entries.
+- **Context:** Resolves CLARIFICATIONS Q [2026-05-02] (Agent Index Role Truncation) and the Memory-Code Synchronization gap from Q [2026-06-01]. Single-sentence extraction produced index lines like "You are a Multimodal Operations Specialist." which give downstream models no signal.
+- **Impact:** GEMINI.md/CLAUDE.md Agent Index entries are richer. Golden fixtures (`tests/fixtures/generated/agent-index.md`) were regenerated in lockstep.
+
+## [2026-06-27-0006] sync-upstream.sh Parameterization
+
+- **Decision:** `scripts/sync-upstream.sh` MUST source its organization name, upstream URL, upstream remote name, and local branch from environment variables (`NOEMI_ORG_NAME`, `NOEMI_UPSTREAM_URL`, `NOEMI_UPSTREAM_REMOTE`, `NOEMI_LOCAL_BRANCH`) with sensible defaults, removing the hardcoded `[MyOrganization]` placeholder.
+- **Context:** Resolves CLARIFICATIONS Q [2026-05-29] / Q [2026-06-11] (Sync Script Parameterization / sync-upstream.sh Hardcoded Identity). Hardcoded placeholders forced every fork to patch the script.
+- **Impact:** Forks can run `NOEMI_ORG_NAME=foo bash scripts/sync-upstream.sh` without editing source. AGENTS.md "Script Parameterization" mandate is now satisfied.
+
+## [2026-06-27-0007] verify-env Fatal SecretOps in Docker Mode
+
+- **Decision:** `scripts/verify-env.sh` and `scripts/verify-env.ps1` MUST exit 1 when running in `--mode=docker` if no SecretOps CLI is installed OR if the installed CLI(s) fail their active authentication check (`op user get --me` / `infisical whoami`). Other modes (builder/gemini/claude/codex/n8n) retain warning-only behavior to keep local exploration friction-free.
+- **Context:** Resolves CLARIFICATIONS Q [2026-06-11] / Q [2026-06-18] (verify-env.sh Mode Discrepancy) and aligns the implementation with the AGENTS.md mandate that already specified this behavior.
+- **Impact:** Docker-mode pre-flight now genuinely gates on Fetch-on-Demand readiness. Closes the "SecretOps Authentication Enforcement Gap" from REQUIREMENTS.md Current Known Limitations.
+
+## [2026-06-27-0008] Smoke Test SecretOps Provider Neutrality
+
+- **Decision:** `tests/examples-smoke.test.js` MUST accept either `op://` (1Password) or `infisical://` / `INFISICAL_*` (Infisical) vault-reference patterns in example `.env.example` files. Either form satisfies the multi-provider mandate from AGENTS.md.
+- **Context:** Resolves CLARIFICATIONS Q [2026-06-19] (SecretOps Provider Bias in Smoke Tests). Hardcoding only `op://` produced false failures for Infisical-first organizations.
+- **Impact:** Forks standardizing on Infisical no longer fail the smoke test for a cosmetic SecretOps choice.
+
+## [2026-06-27-0009] Docker Smoke FORCE_DOCKER_SMOKE Mandatory Mode
+
+- **Decision:** `tests/e2e/docker-smoke.test.js` MUST treat `FORCE_DOCKER_SMOKE=true` as opt-in mandatory mode: when set, a missing Docker CLI/Compose throws immediately rather than silently skipping. When unset, the existing clean-skip behavior is preserved.
+- **Context:** Resolves CLARIFICATIONS Q [2026-06-18] (E2E Smoke Test Docker Mandatory Check). CI pipelines that misconfigure Docker previously produced false greens.
+- **Impact:** CI workflows can opt into hard-fail behavior with one env var; local dev experience is unchanged. Closes the "CI/CD False Green Risk in E2E" limitation.
+
+## [2026-06-27-0010] NOEMI_DOCKER_SMOKE_* Variable Inventory Validation
+
+- **Decision:** `tests/examples-smoke.test.js` MUST verify that `.env.template` documents the three `NOEMI_DOCKER_SMOKE_*` variables consumed by `tests/e2e/docker-smoke.test.js` (`_TIMEOUT_MS`, `_POLL_INTERVAL_MS`, `_ARTIFACT_DIR`). Drift between the test runner and the documented inventory is surfaced at smoke-test time.
+- **Context:** Resolves CLARIFICATIONS Q [2026-05-29] / Q [2026-06-11] (Docker Smoke Test Variable Validation / Environmental Blindness).
+- **Impact:** `.env.template` cannot quietly drop documentation of e2e-suite variables without a smoke-test failure.
+
+## [2026-06-27-0011] Red Team Gauntlet Machine-Readable Test Vectors
+
+- **Decision:** `examples/red-team-gauntlet/test-vectors.json` MUST exist as a machine-readable serialization of the prose test cases in `README.md`. The schema includes per-vector `id`, `name`, `category`, `severity`, `input`, `expected_status`, and `expected_reason` fields. Categories follow the persona split: `prompt-injection` for PromptShield (PS-*) and `pii-redaction` / `secret-exfiltration` for PIIGuard (PG-*). The prose README remains the human-readable reference.
+- **Context:** Resolves CLARIFICATIONS Q [2026-04-05] / Q [2026-06-10] / Q [2026-06-15] (Red Team Gauntlet Test Vector Absence / Machine-Readable Test Vectors / Serialization Strategy).
+- **Impact:** The Client Onboarding agent's validation workflow now has a single JSON file to load. Automated guardrail regressions can iterate the vectors directly.
+
+## [2026-06-27-0012] Starter Operating Profile
+
+- **Decision:** Materialize `operating-profiles/standard-operating-profile.md` as the baseline operating profile that the context generator injects when no locale- or sector-specific profile applies. The profile encodes the framework's default execution norms (Audit Log to stderr, dry-run for mutating actions, Refusal Criteria escalation form, etc.).
+- **Context:** Resolves CLARIFICATIONS Q [2026-06-15] (Operating Profile Baseline Absence). The `<!-- OPERATING_PROFILE_INJECTIONS_START -->` marker was wired up by Decision [2026-05-28-0005] but no actual profile existed, so generated context carried an empty injection block.
+- **Impact:** Generated `GEMINI.md`/`CLAUDE.md` now carry an actual operating profile inline. Locale/sector profiles can inherit from it.
+
+## [2026-06-27-0013] Audit Substantive Placeholder Warning (Phased Rollout)
+
+- **Decision:** `scripts/audit-repo.js` MUST surface `TBD` and `placeholder` strings inside the mandatory `Data Inventory` (H2) and `Refusal Criteria` (H3) sections as warnings on stderr. Promotion to a fatal error is deferred to a future decision once the fleet has been substantively remediated. The phased approach surfaces the substantive drift without immediately breaking CI while the remediation work is in flight.
+- **Context:** Resolves CLARIFICATIONS Q [2026-04-05] / Q [2026-05-10] / Q [2026-05-28] / Q [2026-06-01] / Q [2026-06-15] / Q [2026-06-17] / Q [2026-06-18] / Q [2026-06-21] (variants of Substantive Persona Content Drift and Audit Script Placeholder Rejection Policy). A bulk substantive remediation requires per-agent domain knowledge that exceeds an automated PR's scope, but the warning gives reviewers a checklist.
+- **Impact:** The "Substantive Content Baseline" limitation in REQUIREMENTS.md is downgraded from "structurally compliant but invisibly hollow" to "structurally compliant with visible warnings on every audit run."
+
+## [2026-06-27-0014] Generator Script Consolidation Deferred
+
+- **Decision:** `scripts/generate_all.js`, `scripts/generate_gemini.js`, and `scripts/generate_claude.js` REMAIN as three entry points for now. `generate_all.js` is the canonical orchestrator (per Decision [2026-04-02] Balanced Reference + Implementation Alignment), and the two single-target scripts are kept for backwards compatibility with downstream CI configurations that invoke them directly. Consolidation to a single entry point is deferred pending an audit of external consumers.
+- **Context:** Resolves CLARIFICATIONS Q [2026-05-17] (Generator Script Redundancy). Removing the single-target scripts without a deprecation window risks breaking external orchestrators.
+- **Impact:** No change to runtime behavior. The redundancy is documented as intentional during the deprecation window.
+
+## [2026-06-27-0015] Bulk Closure of Items Overtaken or Restated
+
+- **Decision:** The following CLARIFICATIONS questions are closed as already-resolved or overtaken by prior decisions and removed from the active backlog without further action:
+  - Q [2026-05-02] (Standardized Audit Log Emission for Build Utilities) — resolved by [2026-06-27-0001] / [2026-06-27-0002]; `audit-repo.js` now emits its own AUDIT_LOG.
+  - Q [2026-05-02] (Audit Log Descriptor Standardization) — resolved by [2026-06-27-0001]; `AUDIT_LOG: ` prefix selected as the unambiguous marker.
+  - Q [2026-05-02] (Refusal Criteria Substantive Enforcement) — folded into [2026-06-27-0013]'s phased rollout; substantive content enforcement starts as warnings.
+  - Q [2026-05-02] (Skill-to-Agent Referential Integrity) / Q [2026-06-17] (Automated Internal Documentation Link Integrity) — deferred; outside this PR's scope; tracked as REQUIREMENTS.md limitation.
+  - Q [2026-05-02] (Tool Baseline Alignment — Executive Assistant) / Q [2026-05-19] / Q [2026-05-29] / Q [2026-06-15] / Q [2026-06-17] (Internal Tool Observability and Event Mapping variants) — `audit_logger.js` with `EVENT_TASK_MAP` is now available per [2026-06-27-0001]; the actual refactor of `tools/executive-assistant/server.js` and `dashboard-ingest.js` is the next PR's scope.
+  - Q [2026-05-02] (Identity Provider Implementation Gap) / Q [2026-05-22] (Casdoor Identity Integration Logic) — remains deferred; Decision [2026-03-03] established Casdoor as the reference identity layer but kept identity verification as an orchestrator/ingress responsibility. No agent-side change needed; documented as a future implementation track.
+  - Q [2026-05-10] / Q [2026-05-28] / Q [2026-06-17] / Q [2026-06-18] (variants of Substantive Persona Remediation Strategy) — folded into [2026-06-27-0013]'s phased approach.
+  - Q [2026-05-13] (RFP Split Naming Convention Remediation) — defer; cosmetic asset rename in `examples/rfp-split/` is low-priority and risks breaking external references; revisit when example is updated.
+  - Q [2026-05-15] (Test Suite Reinforcement of API Path Drift) — verified clean; `dashboard-ingest.js` and `tests/examples-smoke.test.js` both reference `/api/v1/reports` per Decision [2026-05-20].
+  - Q [2026-05-20] (AI Model Version Baseline Formalization Follow-through) / Q [2026-06-19] (Legacy Example Model Drift) — defer; legacy examples are labeled LEGACY/ILLUSTRATIVE per Decision [2026-04-04]; model pin update is incremental work tracked in REQUIREMENTS.md.
+  - Q [2026-04-05] (Fleet Dashboard Retention Policy Drift) / Q [2026-04-05] (Fleet Dashboard Multi-tenancy) / Q [2026-04-23] (Gatekeeper Mutating Actions) — defer; these are reference-implementation expansion items that exceed a documentation-resolution PR's scope. Tracked as REQUIREMENTS.md drift items for future work.
+  - Q [2026-04-03] (ROI Auditor Baseline Data Access) — defer; resolution depends on whether the ROI Calculator template's structure stabilizes; tracked as open product question.
+  - Q [2026-05-01] (Node.js 24 Baseline Enforcement in Docker) / Q [2026-05-02] (Automated Naming Convention Audit) — defer; fleet-wide structural sweeps better handled by a dedicated PR with focused review.
+  - Q [2026-05-29] (Branch Protection Audit Implementation) — defer; the audit script knows the mandate exists (Decision [2026-05-20]) but verifying GitHub branch protection requires API access with a token. Deferred until the audit harness supports authenticated checks.
+  - Q [2026-05-29] (Skill Remediation Priority) / Q [2026-06-18] (Substantive Remediation of Skill TBD Placeholders) — folded into [2026-06-27-0013]'s phased approach.
+  - Q [2026-06-10] (Empty Tier Templates Implementation Gap) / Q [2026-06-15] (Service Tier Template Specifications) — defer; tier templates require specific product-line definitions that exceed the automated PR's scope; tracked as a product-input dependency.
+  - Q [2026-06-19] (Resilience Helper Persona Integration) — defer; fleet-wide persona update for `withRetry` patterns better handled by domain-by-domain review.
+  - Q [2026-06-19] (Resilience Helper Module System Mismatch) — defer; ESM/CJS dual-export migration is its own coordinated change; not blocking the current Doc+Impl PR.
+  - Q [2026-06-20] (Rules & Constraints Heading Inconsistency) — defer; the heading variance ("Rules & Constraints" vs "Rules & Constraints (4D Diligence)") is intentional for now since the audit is case-insensitive and tolerant of the suffix; future unification is a coordinated PR.
+  - Q [2026-06-20] / Q [2026-06-21] (Executive Assistant Learning Agent Formalization) — defer; formalizing the Learning Agent persona requires product-owner input on whether HITL feedback is a core requirement. Tracked as an open product question.
+  - Q [2026-06-17] / Q [2026-06-21] (Framework Asset Structural Audit / value-lenses operating-profiles) — defer; framework templates exist and serve as structural reference; an automated audit of inheritance is a future enhancement.
+- **Context:** Multiple late-cycle clarifications restate or duplicate earlier resolved questions or call for scope larger than a single Doc+Impl PR. Carrying them in the active backlog inflates the queue.
+- **Impact:** CLARIFICATIONS.md shrinks to genuinely open or deferred-with-rationale items. Durable answers and deferrals remain here for traceability.
+
 ## [2026-05-28-0006] Resolved Clarifications Overtaken by Prior Decisions
 
 - **Decision:** The following CLARIFICATIONS.md questions are closed as already-resolved by prior entries in this log and are removed from the active backlog without further action:

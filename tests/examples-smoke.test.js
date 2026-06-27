@@ -9,7 +9,31 @@ function read(relativePath) {
     return fs.readFileSync(path.join(repoRoot, relativePath), 'utf8');
 }
 
+test('NOEMI_DOCKER_SMOKE_* variables are documented in .env.template', () => {
+    // Requirement §9 mandates that .env.template carry the NOEMI_DOCKER_SMOKE_*
+    // variables used by the e2e suite. Decision [2026-06-27-XXXX] Docker Smoke
+    // Variable Inventory Validation surfaces drift before runtime.
+    const envTemplate = read('.env.template');
+    const required = [
+        'NOEMI_DOCKER_SMOKE_TIMEOUT_MS',
+        'NOEMI_DOCKER_SMOKE_POLL_INTERVAL_MS',
+        'NOEMI_DOCKER_SMOKE_ARTIFACT_DIR'
+    ];
+    for (const name of required) {
+        assert.match(
+            envTemplate,
+            new RegExp(`(^|\\n)\\s*#?\\s*${name}\\b`),
+            `.env.template must document ${name} (referenced by tests/e2e/docker-smoke.test.js)`
+        );
+    }
+});
+
 test('docker env inventories use vault references instead of placeholder secrets', () => {
+    // Decision [2026-06-27-XXXX] SecretOps Provider Neutrality: accept either
+    // 1Password (`op://`) or Infisical (`infisical://`, `INFISICAL_*`) vault
+    // references. Either form satisfies the multi-provider mandate from
+    // AGENTS.md. Hard-coding only `op://` would fail forks that standardize
+    // on Infisical.
     const envFiles = [
         'examples/docker/.env.example',
         'examples/fleet-deployment/.env.example',
@@ -17,10 +41,11 @@ test('docker env inventories use vault references instead of placeholder secrets
         'examples/video-automation-pod/.env.example'
     ];
 
+    const vaultRefPattern = /(op:\/\/|infisical:\/\/|INFISICAL_)/;
     for (const envFile of envFiles) {
         const content = read(envFile);
         assert.doesNotMatch(content, /changeme/i, `${envFile} still contains insecure placeholder values`);
-        assert.match(content, /op:\/\//, `${envFile} should contain vault-reference examples`);
+        assert.match(content, vaultRefPattern, `${envFile} should contain vault-reference examples (op:// or infisical:// or INFISICAL_*)`);
     }
 });
 

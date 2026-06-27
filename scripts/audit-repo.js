@@ -11,16 +11,21 @@ const {
     extractAgentHeadings,
     extractTopLevelSections
 } = require('./context_helpers');
+const auditLogger = require('./audit_logger');
 
 const repoRoot = path.join(__dirname, '..');
 const agentsDir = path.join(repoRoot, 'agents');
 const skillsDir = path.join(repoRoot, 'skills');
 const agentsMdPath = path.join(repoRoot, 'AGENTS.md');
+const phaseZeroDir = path.join(repoRoot, 'docs/phase-zero-assessment');
 
 let failed = false;
+const auditActions = [];
+const auditRisks = [];
 
 function fail(message) {
     failed = true;
+    auditRisks.push(message);
     console.error(`AUDIT FAIL: ${message}`);
 }
 
@@ -81,7 +86,9 @@ function auditFile(filePath, requiredSections) {
         // If Rules & Constraints is missing, it's already flagged by the missing sections check
     }
 
-    // Check Audit Log for valid JSON (case-insensitive heading match per Decision [2026-05-28-0004])
+    // Check Audit Log for valid JSON AND mandated fields
+    // (case-insensitive heading match per Decision [2026-05-28-0004])
+    // Schema validation per Decision [2026-06-27-XXXX] Audit Log Schema Enforcement.
     const auditLogMatch = content.match(/## Audit Log\s*\n+([\s\S]*?)(?=\n## |$)/i);
     if (auditLogMatch) {
         const auditLogBody = auditLogMatch[1].trim();
@@ -89,7 +96,11 @@ function auditFile(filePath, requiredSections) {
         if (jsonMatch) {
             const jsonStr = jsonMatch[1];
             try {
-                JSON.parse(jsonStr);
+                const parsed = JSON.parse(jsonStr);
+                const schemaErrors = auditLogger.validateAuditLog(parsed);
+                if (schemaErrors.length > 0) {
+                    fail(`${relativePath} Audit Log JSON fails schema validation: ${schemaErrors.join('; ')}`);
+                }
             } catch (error) {
                 fail(`${relativePath} contains invalid JSON in Audit Log: ${error.message}`);
             }
@@ -98,6 +109,30 @@ function auditFile(filePath, requiredSections) {
         }
     } else {
         fail(`${relativePath} is missing a '## Audit Log' section.`);
+    }
+
+    // Substantive compliance check (Decision [2026-06-27-XXXX] Audit Substantive
+    // Placeholder Warning): surface "TBD" / "PLACEHOLDER" strings inside the
+    // mandatory Data Inventory and Refusal Criteria sections as warnings on
+    // stderr. We deliberately do not fail the audit yet — Requirement §3 calls
+    // for a phased rollout: warnings first to surface the substantive drift,
+    // fatal once the fleet has been remediated. Tightening the gate is a
+    // future decision once placeholder count reaches zero.
+    const placeholderSections = [
+        { heading: 'Data Inventory', level: 2 },
+        { heading: 'Refusal Criteria', level: 3 }
+    ];
+    for (const { heading, level } of placeholderSections) {
+        const hashes = '#'.repeat(level);
+        const pattern = new RegExp(`^${hashes}\\s+${heading}[^\\n]*\\n([\\s\\S]*?)(?=^${hashes}\\s|^#{1,${level}}\\s|\\Z)`, 'im');
+        const match = content.match(pattern);
+        if (match) {
+            const body = match[1].trim();
+            if (/^TBD\b/i.test(body) || (/\bplaceholder\b/i.test(body) && body.length < 200)) {
+                console.warn(`AUDIT WARN: ${relativePath} ${heading} section contains placeholder content ("TBD"/"placeholder"); substantive remediation pending.`);
+                auditRisks.push(`placeholder content in ${relativePath} ${heading}`);
+            }
+        }
     }
 }
 
@@ -183,11 +218,96 @@ function checkGeneratedOutputs() {
     }
 }
 
+function checkPhaseZeroKit() {
+    // Decision [2026-06-27-XXXX] Phase 0 Assessment Kit Audit Coverage.
+    // Requirement §1 mandates a specific inventory of files in the Phase 0
+    // Assessment Kit. Missing or renamed files break the buyer's first-contact
+    // experience, so we surface them at audit time.
+    if (!fs.existsSync(phaseZeroDir)) {
+        fail(`Phase 0 Assessment Kit directory not found: docs/phase-zero-assessment/`);
+        return;
+    }
+    const required = [
+        'security-assessment.md',
+        'ai-readiness-assessment.md',
+        'network-security-assessment.md',
+        'PRACTITIONER_NOTES.md',
+        'consent-template.md',
+        'report-template.md',
+        'roadmap-template.md',
+        'readiness-rubric.md'
+    ];
+    for (const file of required) {
+        const fullPath = path.join(phaseZeroDir, file);
+        if (!fs.existsSync(fullPath)) {
+            fail(`Phase 0 Assessment Kit missing required file: docs/phase-zero-assessment/${file}`);
+        }
+    }
+    auditActions.push(`phase-zero-kit-checked:${required.length}`);
+}
+
+function checkConfigReferentialIntegrity() {
+    // Decision [2026-06-27-XXXX] mcp.config.json Referential Integrity.
+    // Verify that every entry in active_mcps and active_skills maps to an
+    // existing file. Missing files would silently break context generation.
+    const configPath = path.join(repoRoot, 'mcp.config.json');
+    if (!fs.existsSync(configPath)) return;
+    let config;
+    try {
+        config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch (error) {
+        fail(`mcp.config.json is not valid JSON: ${error.message}`);
+        return;
+    }
+    const activeMcps = Array.isArray(config.active_mcps) ? config.active_mcps : [];
+    const activeSkills = Array.isArray(config.active_skills) ? config.active_skills : [];
+    for (const mcp of activeMcps) {
+        const candidate = path.join(repoRoot, 'mcp-protocols', `${mcp}.md`);
+        if (!fs.existsSync(candidate)) {
+            fail(`mcp.config.json active_mcps references missing file: mcp-protocols/${mcp}.md`);
+        }
+    }
+    for (const skill of activeSkills) {
+        const candidate = path.join(repoRoot, 'skills', `${skill}.md`);
+        if (!fs.existsSync(candidate)) {
+            fail(`mcp.config.json active_skills references missing file: skills/${skill}.md`);
+        }
+    }
+    auditActions.push(`mcp-config-referential-checked:${activeMcps.length + activeSkills.length}`);
+}
+
+function emitAuditLog() {
+    // Decision [2026-04-13] / [2026-06-27-XXXX]: build utilities must emit a
+    // structured JSON Audit Log to stderr on completion so orchestrators can
+    // capture audit outcomes alongside fleet observability streams.
+    try {
+        auditLogger.emit({
+            event: 'AUDIT_RUN',
+            task: 'Run repository audit (audit-repo.js)',
+            inputs: ['agents/', 'skills/', 'AGENTS.md', 'templates/context/', 'mcp.config.json', 'docs/phase-zero-assessment/'],
+            actions: auditActions,
+            risks: auditRisks,
+            result: failed ? 'failure' : 'success'
+        });
+    } catch (error) {
+        // Audit log emission must not break the primary control flow.
+        console.error(`AUDIT_LOG_WARN: failed to emit audit log: ${error.message}`);
+    }
+}
+
 function main() {
     checkTemplates();
+    auditActions.push('templates-checked');
     checkPersonas();
+    auditActions.push('personas-checked');
     checkSkills();
+    auditActions.push('skills-checked');
     checkGeneratedOutputs();
+    auditActions.push('generated-outputs-checked');
+    checkPhaseZeroKit();
+    checkConfigReferentialIntegrity();
+
+    emitAuditLog();
 
     if (failed) {
         process.exit(1);

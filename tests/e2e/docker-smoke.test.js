@@ -135,6 +135,17 @@ function stack(name, relativeDir, env, expectedServices) {
 }
 
 const dockerAvailable = dockerIsAvailable();
+// Decision [2026-06-27-XXXX] Docker Smoke Mandatory Mode: when
+// FORCE_DOCKER_SMOKE=true is set, missing Docker is a hard failure rather than
+// a silent skip. This prevents CI "false greens" while preserving the
+// developer-friendly skip behavior on workstations that lack Docker.
+const forceDockerSmoke = String(process.env.FORCE_DOCKER_SMOKE || '').toLowerCase() === 'true';
+if (!dockerAvailable && forceDockerSmoke) {
+    throw new Error(
+        'FORCE_DOCKER_SMOKE=true but Docker CLI or Docker Compose is not available. ' +
+        'Install Docker or unset FORCE_DOCKER_SMOKE.'
+    );
+}
 const dockerTestOptions = dockerAvailable
     ? { timeout: dockerTimeoutMs + 30000 }
     : { skip: 'Docker CLI or Docker Compose is not available in this environment.' };

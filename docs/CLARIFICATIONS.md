@@ -471,3 +471,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the Phase 0 Assessment Kit inventory be added to the mandatory repository audit performed by `scripts/audit-repo.js`?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Extend `scripts/audit-repo.js` to verify the presence of all 8 mandated files in the `docs/phase-zero-assessment/` directory.*
+
+### ❓ Question [2026-06-21] - Executive Assistant "Learning Agent" Formalization
+**Context:** The `executive-assistant` tool in `tools/executive-assistant/server.js` implements a `/api/resolution` endpoint and "Learning Agent" logic for mapping human feedback to internal logs, which is missing from `REQUIREMENTS.md`.
+**Ambiguity / Drift:** This implementation introduces a Human-in-the-Loop (HITL) feedback loop that is not governed by a persona or requirement. It creates an undocumented feature drift where agents are "learning" without a defined specification for how that learning is applied or audited.
+**Question for Product Owner:** Should the "Learning Agent" resolution path be formalized as a core NoéMI requirement? If so, should we create a dedicated `Learning Agent` persona in `agents/operations/` to govern this behavior?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Document the "Learning Agent" HITL resolution pattern in `REQUIREMENTS.md` and create a matching persona specification in `agents/operations/learning-agent.md`.*
+
+### ❓ Question [2026-06-21] - Audit Script Placeholder and Content Rejection
+**Context:** `audit-repo.js` currently passes files containing "TBD" placeholders in mandatory sections (100% of skills currently contain them), violating the "Substantive Compliance" mandate in `AGENTS.md`.
+**Ambiguity / Drift:** The repository is structurally compliant but substantively hollow, masking a significant lack of production-ready safety and data definitions.
+**Question for Product Owner:** Should the audit gate be updated to reject any persona or skill containing "TBD" or similar placeholders in mandatory sections as a fatal error (exit 1) in CI?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to flag "TBD" and "placeholder" strings in mandatory persona and skill sections as a fatal audit failure.*
+
+### ❓ Question [2026-06-21] - Framework Asset Structural Audit
+**Context:** Framework assets like `value-lenses/` and `operating-profiles/` are injected by `generate_all.js` but are not audited for structural integrity by `audit-repo.js`.
+**Ambiguity / Drift:** Without an automated audit, these assets can drift from their respective templates (e.g., `LENS_TEMPLATE.md`), leading to inconsistent context injection and potentially breaking the "Comparison Mode" logic used by downstream agents.
+**Question for Product Owner:** Should framework assets in `value-lenses/` and `operating-profiles/` be brought under the mandatory structural contract and audited for heading completeness by `scripts/audit-repo.js`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement structural audit checks for `value-lenses/` and `operating-profiles/` in `scripts/audit-repo.js`, enforcing alignment with their respective templates.*

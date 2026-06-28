@@ -492,3 +492,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should framework assets in `value-lenses/` and `operating-profiles/` be brought under the mandatory structural contract and audited for heading completeness by `scripts/audit-repo.js`?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Implement structural audit checks for `value-lenses/` and `operating-profiles/` in `scripts/audit-repo.js`, enforcing alignment with their respective templates.*
+
+### ❓ Question [2026-06-21] - Executive Assistant Admin API Formalization
+**Context:** The requirements state that agents and reference services must adhere to strict observability and security standards, but the codebase in `tools/executive-assistant/server.js` implements several undocumented admin endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`).
+**Ambiguity / Drift:** These endpoints provide direct access to internal agent state and configuration without any documented authentication or authorization requirement in `REQUIREMENTS.md`. This creates a "shadow" management surface that isn't governed by the project's security baseline.
+**Question for Product Owner:** Should these admin endpoints be formalized in the requirements as a standard "Agent Control Plane" and secured via the reference identity layer (Casdoor), or should they be removed from the public reference implementation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Formalize the Agent Control Plane API requirements in `REQUIREMENTS.md` and implement JWT-based authorization for all `/api/` endpoints in the `executive-assistant` tool.*
+
+### ❓ Question [2026-06-21] - Resilience Helper ESM Migration
+**Context:** `AGENTS.md` mandates Node.js 24 and the use of `scripts/resilience_helpers.js`, but the codebase in `tools/executive-assistant/package.json` specifies `"type": "module"` (ESM), while the helper uses CommonJS.
+**Ambiguity / Drift:** This creates technical friction that prevents the direct reuse of mandated resilience patterns in modern, ESM-native tools across the fleet. It forces developers to write boilerplate wrappers or redundant logic, violating the "reusable reference pattern" requirement.
+**Question for Product Owner:** Should we migrate the repository's shared utilities to ESM to align with the modern tool baseline, or should we adopt a dual-export strategy (CJS/ESM) for core helpers?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Migrate `scripts/resilience_helpers.js` to ESM or implement a dual-module export pattern to ensure compatibility with both CLI utilities and modern Node.js services.*

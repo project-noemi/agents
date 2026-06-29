@@ -183,11 +183,194 @@ function checkGeneratedOutputs() {
     }
 }
 
+// --- Supplementary audits per Decision [2026-06-19-0012] -------------------
+// These checks emit warnings only (do not fail the audit) so they can land
+// without forcing a coordinated cleanup. Promote individual checks to `fail()`
+// once their respective drifts are remediated across the fleet.
+
+function warn(message) {
+    console.warn(`AUDIT WARN: ${message}`);
+}
+
+function walkFiles(dir, predicate) {
+    const matches = [];
+    if (!fs.existsSync(dir)) {
+        return matches;
+    }
+    const stack = [dir];
+    while (stack.length > 0) {
+        const current = stack.pop();
+        const entries = fs.readdirSync(current, { withFileTypes: true });
+        for (const entry of entries) {
+            if (entry.name === 'node_modules' || entry.name === '.git') {
+                continue;
+            }
+            const full = path.join(current, entry.name);
+            if (entry.isDirectory()) {
+                stack.push(full);
+            } else if (predicate(entry.name, full)) {
+                matches.push(full);
+            }
+        }
+    }
+    return matches;
+}
+
+function checkNodeBaseline() {
+    // Decision [2026-06-19-0012]: scan Dockerfile and docker-compose.yml for
+    // node:<24 image pins. Mandate is Node 24+ across the fleet.
+    const dockerFiles = walkFiles(repoRoot, (name) =>
+        name === 'Dockerfile' || name === 'docker-compose.yml');
+    const oldNodePattern = /\bnode:(\d+)/g;
+    for (const filePath of dockerFiles) {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const relPath = path.relative(repoRoot, filePath);
+        const matches = content.matchAll(oldNodePattern);
+        for (const match of matches) {
+            const version = Number(match[1]);
+            if (Number.isFinite(version) && version < 24) {
+                warn(`${relPath} pins Node ${version} (< baseline 24): ${match[0]}`);
+            }
+        }
+    }
+}
+
+function checkAiModelBaseline() {
+    // Decision [2026-06-19-0012]: scan examples/ and tests/ for non-baseline
+    // Gemini model pins. Canonical baseline is models/gemini-2.5-flash.
+    const targets = [
+        path.join(repoRoot, 'examples'),
+        path.join(repoRoot, 'tests')
+    ];
+    const driftPattern = /gemini-(\d+\.\d+)-flash/g;
+    for (const target of targets) {
+        const files = walkFiles(target, (name) =>
+            /\.(py|js|json|ya?ml|md|sh)$/i.test(name));
+        for (const filePath of files) {
+            const content = fs.readFileSync(filePath, 'utf8');
+            const relPath = path.relative(repoRoot, filePath);
+            const matches = content.matchAll(driftPattern);
+            for (const match of matches) {
+                if (match[1] !== '2.5') {
+                    warn(`${relPath} pins Gemini ${match[0]} (canonical baseline: gemini-2.5-flash)`);
+                }
+            }
+        }
+    }
+}
+
+function checkNamingConvention() {
+    // Decision [2026-06-19-0012]: enforce English-first, slug-based naming
+    // across content directories. Filename rule: lowercase letters, digits,
+    // hyphens, underscores, dots only. Uppercase, spaces, and non-ASCII fail.
+    // Standard upper-case scaffolding files (e.g. README.md) are allowed.
+    const SCOPED_DIRS = ['docs', 'agents', 'skills', 'examples', 'tools'];
+    const ALLOWED_UPPER = new Set([
+        'README.md',
+        'LICENSE',
+        'AGENTS.md',
+        'CLAUDE.md',
+        'GEMINI.md',
+        'CONTRIBUTING.md',
+        'CLARIFICATIONS.md',
+        'DECISION_LOG.md',
+        'METHODOLOGY.md',
+        'GOVERNANCE.md',
+        'REQUIREMENTS.md',
+        'PROJECT_REFERENCE.md',
+        'PHASE_ZERO_SECURITY_BASELINE.md',
+        'UPSTREAM_SYNC.md',
+        'PRACTITIONER_NOTES.md',
+        'SOVEREIGN_LLM_GUIDELINES.md',
+        'DEV_AGENT_PROMPT.md',
+        'AGENT_TEMPLATE.md',
+        'SKILL_TEMPLATE.md',
+        'LENS_TEMPLATE.md',
+        'PROFILE_TEMPLATE.md'
+    ]);
+    const slugPattern = /^[a-z0-9][a-z0-9._-]*$/;
+    for (const dir of SCOPED_DIRS) {
+        const fullDir = path.join(repoRoot, dir);
+        const files = walkFiles(fullDir, () => true);
+        for (const filePath of files) {
+            const basename = path.basename(filePath);
+            if (ALLOWED_UPPER.has(basename)) {
+                continue;
+            }
+            // Template files allowed: e.g. SOMETHING_TEMPLATE.md
+            if (/^[A-Z][A-Z0-9_]*\.md$/.test(basename)) {
+                continue;
+            }
+            // Dotfiles (.env, .gitignore, .gitkeep, .env.example, etc.) follow
+            // their own tooling-driven conventions.
+            if (basename.startsWith('.')) {
+                continue;
+            }
+            // Dockerfile / Dockerfile.<suffix> are the upstream convention.
+            if (/^Dockerfile(\..+)?$/.test(basename)) {
+                continue;
+            }
+            // React/Vite component convention is PascalCase for .jsx/.tsx/.js
+            // component modules under ui/src/components or similar paths.
+            if (/^[A-Z][A-Za-z0-9]*\.(jsx?|tsx?)$/.test(basename)) {
+                continue;
+            }
+            // Generated coverage/build artifacts under tools/*/coverage are
+            // out-of-tree by convention and should not be governed by content
+            // naming rules. Skip if any path segment is "coverage".
+            const relSegments = path.relative(repoRoot, filePath).split(path.sep);
+            if (relSegments.includes('coverage') || relSegments.includes('dist') || relSegments.includes('node_modules')) {
+                continue;
+            }
+            if (!slugPattern.test(basename)) {
+                warn(`${path.relative(repoRoot, filePath)} violates slug-based naming convention`);
+            }
+        }
+    }
+}
+
+function checkMcpConfigMapping() {
+    // Decision [2026-06-19-0012] / [2026-06-12-0007]: verify entries in
+    // mcp.config.json point at real files in mcp-protocols/ and skills/.
+    const configPath = path.join(repoRoot, 'mcp.config.json');
+    if (!fs.existsSync(configPath)) {
+        return;
+    }
+    let config;
+    try {
+        config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch (error) {
+        warn(`mcp.config.json is not valid JSON: ${error.message}`);
+        return;
+    }
+    const activeMcps = Array.isArray(config.active_mcps) ? config.active_mcps : [];
+    const activeSkills = Array.isArray(config.active_skills) ? config.active_skills : [];
+    for (const mcp of activeMcps) {
+        const candidate = path.join(repoRoot, 'mcp-protocols', `${mcp}.md`);
+        if (!fs.existsSync(candidate)) {
+            warn(`mcp.config.json active_mcps entry has no matching file: mcp-protocols/${mcp}.md`);
+        }
+    }
+    for (const skill of activeSkills) {
+        const candidate = path.join(repoRoot, 'skills', `${skill}.md`);
+        if (!fs.existsSync(candidate)) {
+            warn(`mcp.config.json active_skills entry has no matching file: skills/${skill}.md`);
+        }
+    }
+}
+
 function main() {
     checkTemplates();
     checkPersonas();
     checkSkills();
     checkGeneratedOutputs();
+
+    // Supplementary (warning-only) audits per Decision [2026-06-19-0012].
+    console.log('Running supplementary audits (warning-only)...');
+    checkNodeBaseline();
+    checkAiModelBaseline();
+    checkNamingConvention();
+    checkMcpConfigMapping();
 
     if (failed) {
         process.exit(1);

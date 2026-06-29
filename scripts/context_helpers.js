@@ -185,18 +185,23 @@ function discoverAgents(baseDir, prefix = '') {
         
         let role = '';
         if (roleMatch) {
-            role = roleMatch[1].trim().split('\n')[0];
-            // Take only the first sentence if it exists
-            const sentenceMatch = role.match(/^[^.!?]+[.!?]/);
-            if (sentenceMatch) {
-                role = sentenceMatch[0];
-            }
+            // Extract the full first paragraph (not just the first sentence) per
+            // Decision [2026-06-12-0012] / [2026-06-19-0012]: Agent Index Richness.
+            // A paragraph is delimited by a blank line. We collapse internal
+            // newlines into single spaces so the value renders cleanly in the
+            // table cell, and we cap the length to keep the index compact.
+            const roleBody = roleMatch[1].trim();
+            const paragraphBreak = roleBody.search(/\n\s*\n/);
+            const firstParagraph = paragraphBreak === -1
+                ? roleBody
+                : roleBody.slice(0, paragraphBreak);
+            role = firstParagraph.replace(/\s+/g, ' ').trim();
         }
 
         agents.push({
             path: `agents/${relativePath}`,
             title,
-            role: role.slice(0, 200),
+            role: role.slice(0, 400),
             domain: prefix.split(path.sep)[0] || 'root'
         });
     }

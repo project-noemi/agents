@@ -167,23 +167,23 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 ### 1. Environmental & Deployment Drift
 - **SecretOps Authentication Enforcement Gap**: `scripts/verify-env.sh` and `scripts/verify-env.ps1` currently issue only warnings for missing or invalid SecretOps authentication (e.g., failing `infisical whoami`) even in `docker` mode, violating the mandate for a fatal error (exit 1) in production-like environments.
 - **CI/CD "False Green" Risk in E2E**: `tests/e2e/docker-smoke.test.js` silently skips runtime checks if Docker is absent. This masks environmental gaps in CI/CD when `FORCE_DOCKER_SMOKE=true` is not set.
-- **SecretOps Provider Bias**: `tests/examples-smoke.test.js` contains hardcoded assertions for the `op://` (1Password) pattern, causing false failures for users of Infisical or other providers.
-- **Sync Script Identity Drift**: `scripts/sync-upstream.sh` relies on a hardcoded `[MyOrganization]` placeholder. Organizations forking the repo must manually edit the script, increasing maintenance friction.
+- **SecretOps Provider Bias**: `tests/examples-smoke.test.js` contains hardcoded assertions for the `op://` (1Password) pattern (`assert.match(content, /op:\/\//)`), causing false failures for users of Infisical or other providers.
+- **Sync Script Identity Drift**: `scripts/sync-upstream.sh` relies on a hardcoded `MY_ORGANIZATION="[MyOrganization]"` placeholder. Organizations forking the repo must manually edit the script, increasing maintenance friction.
 - **Internal Tool Observability Gap**: Node.js tools like `executive-assistant` and reference services like `dashboard-ingest.js` rely on unstructured `console.log` and lack the mandated JSON Audit Log emission to `stderr`.
 - **Missing shared `audit_logger.js`**: The utility mandated in `AGENTS.md` to standardize JSON Audit Log emission is absent from the `scripts/` directory.
 - **AI Model Baseline Drift**: Legacy Python/Bash examples (e.g., `examples/docker/agent.py`) are pinned to `gemini-2.0-flash` rather than the canonical `gemini-2.5-flash` baseline.
 - **Resilience Helper Integration Gap**: `scripts/resilience_helpers.js` exists but is not utilized by any agent personas or network-bound tools, despite the mandate for resilience.
-- **Resilience Helper Module Mismatch**: `tools/executive-assistant/` uses ESM, preventing direct import of the CommonJS `scripts/resilience_helpers.js`.
+- **Resilience Helper Module Mismatch**: `tools/executive-assistant/` uses ESM (`"type": "module"`), preventing direct import of the CommonJS `scripts/resilience_helpers.js`.
 
 ### 2. Structural & Architectural Drift
 - **Audit Script Coverage Blind Spot**: `scripts/audit-repo.js` entirely skips the `mcp-protocols/`, `value-lenses/`, and `operating-profiles/` directories, leaving critical framework assets ungoverned.
 - **Phase 0 Audit Gap**: `scripts/audit-repo.js` lacks logic to verify the presence of the 8+ mandated assessment files in `docs/phase-zero-assessment/`, violating Requirement §1.
-- **Agent Index Descriptive Truncation**: `scripts/context_helpers.js` extracts only the first sentence of the `Role` section, violating the "paragraph extraction" mandate for Agent Index richness in `AGENTS.md`.
+- **Agent Index Descriptive Truncation**: `scripts/context_helpers.js` extracts only the first sentence of the `Role` section (`role.split('\n')[0]` followed by sentence regex), violating the "paragraph extraction" mandate for Agent Index richness in `AGENTS.md`.
 - **Red Team Gauntlet Serialization Gap**: Test vectors required by the `Client Onboarding` agent are documented in prose in `examples/red-team-gauntlet/README.md` and lack machine-readable serialization (JSON/YAML).
 - **Infrastructure Asset Implementation Gap**: `templates/tiers/` and `operating-profiles/` contain only READMEs and templates, resulting in hollow or empty injection blocks in generated context.
 - **Heading Inconsistency**: The mandatory Diligence heading is "Rules & Constraints" in agents but "Rules & Constraints (4D Diligence)" in skills, complicating automated audit logic.
-- **Undocumented "Learning Agent" Pattern**: `tools/executive-assistant/server.js` implements a `/api/resolution` feedback loop and "Learning Agent" logic that is undocumented and lacks a persona specification.
-- **Undocumented Admin Control Surface**: `tools/executive-assistant/server.js` implements several admin-facing API endpoints (`/api/queue`, `/api/stats`, `/api/logs`) that provide unauthenticated access to internal state, creating a governance drift from the security baseline.
+- **Undocumented "Learning Agent" Pattern**: `tools/executive-assistant/server.js` implements a `/api/resolution` feedback loop and "Learning Agent" logic (`event: 'LEARNING_AGENT_UPDATE'`) that is undocumented and lacks a persona specification.
+- **Undocumented Admin Control Surface**: `tools/executive-assistant/server.js` implements several admin-facing API endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`) that provide unauthenticated access to internal state, creating a governance drift from the security baseline.
 
 ### 3. Substantive & Safety Drift
 - **Substantive Content Baseline (The "TBD" Problem)**: 100% of reusable skills and most agent personas use "TBD" placeholders or boilerplate for `Data Inventory` and `Refusal Criteria`, bypassing the D2 (Description) and Refusal Principle mandates.

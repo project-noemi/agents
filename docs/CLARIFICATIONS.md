@@ -506,3 +506,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should we migrate the repository's shared utilities to ESM to align with the modern tool baseline, or should we adopt a dual-export strategy (CJS/ESM) for core helpers?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Migrate `scripts/resilience_helpers.js` to ESM or implement a dual-module export pattern to ensure compatibility with both CLI utilities and modern Node.js services.*
+
+### ❓ Question [2026-06-21] - SecretOps Fatal Error Policy Scope
+**Context:** `AGENTS.md` mandates that missing SecretOps authentication in `docker` mode MUST be a fatal error (exit 1).
+**Ambiguity / Drift:** `scripts/verify-env.sh` and `scripts/verify-env.ps1` currently only issue warnings for missing authentication in all modes. Enforcing a fatal error may block initial local exploration for users who haven't yet configured 1Password or Infisical, but it is required for production-like runtime reliability.
+**Question for Product Owner:** Should the fatal error (exit 1) be strictly enforced for the `docker` mode, even if it creates a higher barrier to entry for the first Docker launch?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) for missing SecretOps authentication when `--mode=docker` is specified.*
+
+### ❓ Question [2026-06-21] - Substantive Audit "TBD" Rejection
+**Context:** `scripts/audit-repo.js` currently passes agent personas and skills that contain "TBD" or "placeholder" text in mandatory sections (100% of skills currently contain them).
+**Ambiguity / Drift:** This results in a repository that is structurally compliant but substantively hollow, violating the 4D framework's "Description" (D2) and Refusal Principle mandates.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be updated to treat "TBD" or empty placeholders in mandatory sections as a fatal audit failure (exit 1) in CI?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to flag and reject "TBD" placeholders in mandatory persona and skill sections.*
+
+### ❓ Question [2026-06-21] - Executive Assistant Admin API & Learning Agent Loop
+**Context:** `tools/executive-assistant/server.js` implements several undocumented admin endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`) and a "Learning Agent" resolution path that maps human feedback back into the system.
+**Ambiguity / Drift:** These features provide a powerful management surface and feedback loop but are not governed by the project's requirements or any agent persona. This creates an undocumented feature drift from the core reference architecture.
+**Question for Product Owner:** Should these admin APIs and the "Learning Agent" feedback loop be formalized as core NoéMI requirements and documented in `REQUIREMENTS.md`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Document the Agent Control Plane (Admin APIs) and the "Learning Agent" resolution pattern in `REQUIREMENTS.md` and create a matching persona specification.*

@@ -527,3 +527,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should these admin APIs and the "Learning Agent" feedback loop be formalized as core NoéMI requirements and documented in `REQUIREMENTS.md`?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Document the Agent Control Plane (Admin APIs) and the "Learning Agent" resolution pattern in `REQUIREMENTS.md` and create a matching persona specification.*
+
+### ❓ Question [2026-06-27] - Doc Persona Specification Drift
+**Context:** My system instructions mandate updating `AGENTS.md` when a human answer dictates new rules, but the `Doc` persona specification in `agents/product/doc.md` omits `AGENTS.md` from its "Files of Interest" and "Workflow".
+**Ambiguity / Drift:** This creates a risk where future Jules agents adopting the `Doc` persona may fail to update the project's core AI rules, leading to a breakdown in automated governance and architectural consistency.
+**Question for Product Owner:** Should `agents/product/doc.md` be updated to include `AGENTS.md` in its "Files of Interest" and include explicit instructions to update project rules in its "Workflow" to align with my operational mandate?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `agents/product/doc.md` to include `AGENTS.md` as a File of Interest and add a step to the Workflow for updating core AI rules based on human feedback.*
+
+### ❓ Question [2026-06-27] - Agent Index Regex Truncation Bug
+**Context:** `scripts/context_helpers.js` uses a regex (`/^[^.!?]+[.!?]/`) to extract the first sentence of an agent's Role for the Agent Index.
+**Ambiguity / Drift:** For agents specializing in technologies with dots in their name (e.g., "Next.js", "Node.js"), this regex truncates the description prematurely (e.g., "Performance-obsessed agent specializing in **Next." instead of "**Next.js 16**"). This violates the Agent Index Richness mandate in `AGENTS.md` and misleads downstream agents.
+**Question for Product Owner:** Should the Agent Index extraction logic be updated to be more robust against dots in common technology names, or should we switch to extracting the full first paragraph as already suggested in pending clarifications?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update the regex in `scripts/context_helpers.js` to correctly handle dots in technology names or refactor the helper to extract the full first paragraph of the Role section.*
+
+### ❓ Question [2026-06-27] - Context Generator Failure Policy
+**Context:** `scripts/generate_all.js` currently injects HTML comments (e.g., `<!-- Framework directory not found... -->`) when framework directories or skills are missing, allowing the generation process to exit with status 0 (Success).
+**Ambiguity / Drift:** This "silent success" pattern can lead to agents receiving hollow context files, directly violating the "Contract and Generator Drift Must Fail Fast" mandate in `REQUIREMENTS.md` Section 3.
+**Question for Product Owner:** Should `scripts/generate_all.js` be updated to exit with a non-zero status (Fail Fast) if any mandated context section (Value Lenses, Operating Profiles, Active Skills) cannot be populated?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/generate_all.js` to throw an error and exit with a non-zero status if any of the mandated context sections fail to find their source assets.*

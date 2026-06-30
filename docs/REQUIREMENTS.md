@@ -142,6 +142,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Testing Blind Spots (Known Gaps)**:
   - `tests/examples-smoke.test.js` lacks validation logic for `NOEMI_DOCKER_SMOKE_*` environment variables mandated by Requirement 9.
   - `scripts/audit-repo.js` lacks JSON schema validation for Audit Logs and referential integrity checks for internal links and skill paths.
+  - `scripts/audit-repo.js` lacks logic to verify the presence of the 8+ mandated assessment files in `docs/phase-zero-assessment/`, violating Requirement §1.
   - The E2E suite `tests/e2e/docker-smoke.test.js` skips silently if Docker is missing, potentially masking configuration errors in CI environments.
 
 ### 10. Docker Guidance Must Describe the Home, Not a Fake Runtime
@@ -178,7 +179,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 ### 2. Structural & Architectural Drift
 - **Audit Script Coverage Blind Spot**: `scripts/audit-repo.js` entirely skips the `mcp-protocols/`, `value-lenses/`, and `operating-profiles/` directories, leaving critical framework assets ungoverned.
 - **Phase 0 Audit Gap**: `scripts/audit-repo.js` lacks logic to verify the presence of the 8+ mandated assessment files in `docs/phase-zero-assessment/`, violating Requirement §1.
-- **Agent Index Descriptive Truncation**: `scripts/context_helpers.js` extracts only the first sentence of the `Role` section (`role.split('\n')[0]` followed by sentence regex), violating the "paragraph extraction" mandate for Agent Index richness in `AGENTS.md`.
+- **Agent Index Descriptive Truncation**: `scripts/context_helpers.js` extracts only the first sentence of the `Role` section (`role.split('\n')[0]` followed by sentence regex), violating the "paragraph extraction" mandate for Agent Index richness in `AGENTS.md`. This regex currently breaks on technologies with dots, such as "Next.js".
 - **Red Team Gauntlet Serialization Gap**: Test vectors required by the `Client Onboarding` agent are documented in prose in `examples/red-team-gauntlet/README.md` and lack machine-readable serialization (JSON/YAML).
 - **Infrastructure Asset Implementation Gap**: `templates/tiers/` and `operating-profiles/` contain only READMEs and templates, resulting in hollow or empty injection blocks in generated context.
 - **Heading Inconsistency**: The mandatory Diligence heading is "Rules & Constraints" in agents but "Rules & Constraints (4D Diligence)" in skills, complicating automated audit logic.
@@ -187,7 +188,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 
 ### 3. Substantive & Safety Drift
 - **Substantive Content Baseline (The "TBD" Problem)**: 100% of reusable skills and most agent personas use "TBD" placeholders or boilerplate for `Data Inventory` and `Refusal Criteria`, bypassing the D2 (Description) and Refusal Principle mandates.
-- **Audit Script Substantive Blindness**: `scripts/audit-repo.js` verifies the presence of headings but fails to detect "TBD" placeholders or validate the content of `Refusal Criteria` subsections.
+- **Audit Script Substantive Blindness**: `scripts/audit-repo.js` verifies the presence of headings but fails to detect "TBD" placeholders (verified in 100% of skills) or validate the content of `Refusal Criteria` subsections.
 - **Audit Log Schema Blindness**: `scripts/audit-repo.js` verifies that Audit Logs are valid JSON but fails to validate the presence of mandated fields (`task`, `inputs`, `actions`, `risks`, `result`).
 
 ### 4. Referential & Link Integrity Drift

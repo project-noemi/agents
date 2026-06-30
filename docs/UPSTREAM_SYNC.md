@@ -17,40 +17,110 @@
 
 ## Conflict Policy
 
-- **Always resolve conflicts in favour of my Organization's own changes** where they diverge from upstream.
+- **Always resolve conflicts in favour of my Organization's own changes** where they diverge from upstream. The script does this automatically with `-X ours`.
 - Never force-push upstream changes over local work.
 - Both `upstream/develop` and `upstream/main` should be merged (they may contain different commits).
+- **Overrides are surfaced, not silent.** Any file where an upstream edit collided with a local customization (and our version was kept) is listed in the PR body so a reviewer can confirm we didn't drop an upstream fix we actually wanted.
 
 ---
 
-## Weekly Sync Process
+## PR-Based Sync (Reviewed)
 
-This should be performed **every Monday** by the repository admin. Budget 5–10 minutes.
-
-### Option 1: Automated Script (Recommended)
-
-A sync script is included in the repository at `scripts/sync-upstream.sh`.
+The reference script `scripts/sync-upstream.sh` is **PR-based**: it never pushes
+to `develop` or `main` directly. Instead it opens a **reviewed pull request** so
+a human approves every upstream change before it lands. This is the recommended
+and default path.
 
 ```bash
 cd /path/to/MyOrganization/agents
+git checkout develop          # start clean, on develop
 
-# Step 1: Check what's new (dry run, no changes made)
-./scripts/sync-upstream.sh --dry-run
+./scripts/sync-upstream.sh --dry-run   # report drift only; change nothing
+./scripts/sync-upstream.sh             # detect drift, merge, open a PR
+```
 
-# Step 2: If the drift looks good, merge and push
+What the script does:
+
+1. Checks `git` and `gh` are present (fails clearly if `gh` is missing).
+2. Ensures the `upstream` remote exists; fetches `origin` and `upstream`.
+3. **Duplicate guard:** if a `sync/upstream-*` PR is already open, it prints that
+   PR's URL and exits — it will not open a second one.
+4. Reports drift from `upstream/main` and `upstream/develop`. With `--dry-run`,
+   stops here. If there's no drift, reports "Already up to date" and exits 0.
+5. Creates a collision-safe `sync/upstream-YYYY-MM-DD` branch from `origin/develop`.
+6. Merges `upstream/main` then `upstream/develop`, auto-resolving conflicting
+   hunks with `-X ours` and recording every overridden file.
+7. Pushes the sync branch and opens a PR whose body lists overridden files,
+   changed files, included upstream commits, and a reviewer checklist.
+
+### Resuming after a structural conflict (`--continue`)
+
+`-X ours` resolves *content* conflicts automatically. **Structural** conflicts —
+upstream renamed a file we modified, or modified a file we deleted — cannot be
+auto-resolved and stop the run with exit code 1. Resolve them by hand, then
+resume the same sync branch (do **not** re-run bare, which would start a new
+branch):
+
+```bash
+git status                    # see the unmerged paths
+# edit conflicts — keep our logic; for modify/delete decide if the file stays
+git add -A && git commit -m "Resolve structural conflicts"
+./scripts/sync-upstream.sh --continue
+```
+
+### Letting an agent drive it
+
+For a scheduled (e.g. daily) run, hand the whole flow to a coding agent using the
+drop-in prompt in [SYNC_AGENT_PROMPT.md](SYNC_AGENT_PROMPT.md). It encodes the
+preflight → dry-run → execute → evaluate-exit-code → resolve loop, including the
+duplicate and structural-conflict cases.
+
+### Testing the sync logic offline
+
+Before relying on a change to the script, run the offline harness. It builds a
+synthetic upstream + fork, stubs `gh`, and verifies override surfacing,
+`--continue`, dry-run, and the duplicate guard — **no network or real `gh`/auth
+required**:
+
+```bash
+./scripts/test-sync-upstream.sh        # expects: ALL PASS
+```
+
+### Forking to another organization
+
+Org-specific values are environment-driven (Decision `[2026-06-19-0002]`), so a
+clean fork runs unmodified. Override defaults without patching the script:
+
+```bash
+NOEMI_UPSTREAM_URL=https://github.com/project-noemi/agents.git \
+NOEMI_LOCAL_BRANCH=develop \
 ./scripts/sync-upstream.sh
 ```
 
-The script will:
-1. Ensure you are on the `develop` branch with a clean working tree
-2. Add the `upstream` remote if it doesn't exist
-3. Fetch the latest from upstream
-4. Show all new commits on both `upstream/develop` and `upstream/main`
-5. Merge both branches (if `--dry-run` is not set)
-6. Abort on conflict so you can resolve manually
-7. Push to `origin/develop`
+| Variable                | Default                                      | Purpose                  |
+|-------------------------|----------------------------------------------|--------------------------|
+| `NOEMI_UPSTREAM_REMOTE` | `upstream`                                   | Name of the upstream git remote |
+| `NOEMI_UPSTREAM_URL`    | `https://github.com/project-noemi/agents.git`| Upstream repository URL  |
+| `NOEMI_LOCAL_BRANCH`    | `develop`                                    | PR base branch in your fork |
+
+---
+
+## Weekly (or Daily) Sync Process
+
+This can be performed on any cadence by the repository admin. Budget 5–10 minutes.
+
+### Option 1: Automated Script (Recommended)
+
+See [PR-Based Sync (Reviewed)](#pr-based-sync-reviewed) above — run
+`./scripts/sync-upstream.sh --dry-run` then `./scripts/sync-upstream.sh`. The
+script opens a reviewed PR; a human merges it.
 
 ### Option 2: Manual Git Commands
+
+> **Note:** Options 2–4 below are **direct-merge fallbacks** that push to
+> `develop` without a review PR. Prefer Option 1 (the script) so every upstream
+> change lands through a reviewed pull request. Use these only for manual
+> recovery or in environments without `gh`.
 
 ```bash
 cd /path/to/MyOrganization/agents
@@ -311,15 +381,40 @@ The sync script (`scripts/sync-upstream.sh`) will also add the remote automatica
 
 ## Troubleshooting
 
+### "GitHub CLI (gh) not found"
+The script requires `gh` on `PATH`, authenticated (`gh auth status`). Install it
+from <https://cli.github.com/> and authenticate before running.
+
+### `403` on push or `gh pr create`
+The repo exists and `gh` is authenticated, but the push/PR is rejected. Under
+Claude Code, pushing to the `project-noemi` org requires the **Claude GitHub
+App** to be installed on the org — a personal access token is not sufficient.
+Ask an org admin to install/grant the App, then retry.
+
 ### "Repository not found" when fetching upstream
 The upstream URL is `https://github.com/project-noemi/agents.git` (public, no auth needed). Make sure you're not behind a corporate proxy that blocks GitHub.
 
-### Merge conflicts
-Conflicts mean my organization has modified a file that upstream also changed. Policy: **keep my organization's version**. Open the conflicting file, look for `<<<<<<<` markers, keep the code under `HEAD`, remove the upstream version, then:
+### Merge conflicts (content)
+The script auto-resolves content conflicts with `-X ours` and lists every
+overridden file in the PR body — no manual action needed during the run, but
+**review that list**. If you're merging manually (Options 2–4): keep my
+organization's version. Open the conflicting file, look for `<<<<<<<` markers,
+keep the code under `HEAD`, remove the upstream version, then:
 ```bash
 git add <file>
 git commit
 ```
+
+### "Structural conflict on ..." (script exits 1)
+A rename or modify/delete that `-X ours` cannot take. Resolve it by hand on the
+current `sync/upstream-*` branch, commit, then resume with
+`./scripts/sync-upstream.sh --continue` — **do not** re-run the script bare, as
+that starts a fresh sync branch. See
+[Resuming after a structural conflict](#resuming-after-a-structural-conflict---continue).
+
+### "An open sync PR already exists" (script exits 1)
+A `sync/upstream-*` PR is still open. The script won't open a second one — review
+and merge (or close) the existing PR whose URL it printed, then run again.
 
 ### "Not on develop branch"
 The script requires you to be on `develop`. Switch first:

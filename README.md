@@ -47,15 +47,24 @@ It evolves continuously as AI capabilities, tooling, and best practices change.
 
 To support this, organizations maintain a **private working copy** of the repository while selectively syncing improvements from upstream.
 
-This repository includes a reference sync mechanism:
+This repository includes a reference sync mechanism built around a **reviewed pull request** — upstream improvements are *proposed*, never auto-applied:
 
 * Documentation: [docs/UPSTREAM_SYNC.md](https://github.com/project-noemi/agents/blob/main/docs/UPSTREAM_SYNC.md)
-* Script: [scripts/sync-upstream.sh](https://github.com/project-noemi/agents/blob/main/scripts/sync-upstream.sh)
+* Script: [scripts/sync-upstream.sh](https://github.com/project-noemi/agents/blob/main/scripts/sync-upstream.sh) — detects drift, merges (favouring local customizations), and opens a PR
+* Test harness: [scripts/test-sync-upstream.sh](https://github.com/project-noemi/agents/blob/main/scripts/test-sync-upstream.sh) — offline verification of the sync logic (no network or `gh` required)
+* Agent instruction: [docs/SYNC_AGENT_PROMPT.md](https://github.com/project-noemi/agents/blob/main/docs/SYNC_AGENT_PROMPT.md) — a drop-in prompt for a **scheduled Claude Code routine** that opens the PR for you
+
+How it works:
+
+* conflicting upstream hunks are auto-resolved in favour of your customizations (`-X ours`), and **every overridden file is surfaced in the PR body** for human review
+* structural conflicts (rename, modify/delete) stop the run for manual resolution, then resume with `--continue`
+* a duplicate guard means a daily run never piles up sync PRs — it reports the open one until a human merges it
 
 This allows teams to:
 
-* pull in updates from the core architecture
-* avoid overwriting local customizations
+* pull in updates from the core architecture on a daily or weekly schedule
+* avoid overwriting local customizations — and see exactly what was kept vs. dropped
+* keep a human in the loop on every upstream change via reviewed PRs
 * stay aligned with the evolving NoéMI model
 
 This model combines:

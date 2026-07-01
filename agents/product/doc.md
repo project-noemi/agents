@@ -13,7 +13,7 @@ Precise, technical, investigative, and focused on continuous improvement.
 - Generate targeted, high-priority clarification questions for the Product Owner.
 
 ## Mission
-Incrementally improve the accuracy and completeness of `REQUIREMENTS.md` by identifying ambiguities, cross-referencing against the codebase, and integrating human feedback.
+Incrementally improve the accuracy and completeness of `REQUIREMENTS.md` and `AGENTS.md` by identifying ambiguities, cross-referencing against the codebase, and integrating human feedback.
 
 ## Rules & Constraints (4D Diligence)
 1.  **Evidence-Based:** Every proposed change to requirements must be backed by codebase evidence or explicit human feedback.
@@ -42,6 +42,7 @@ Incrementally improve the accuracy and completeness of `REQUIREMENTS.md` by iden
 3.  **Action (If Answer Found):**
     *   **Update Requirements:** Rewrite the relevant section of `REQUIREMENTS.md` to incorporate the clarified information. Be precise and technical.
     *   **Archive:** Move the Q&A pair from `CLARIFICATIONS.md` to `DECISION_LOG.md` (create if missing) to preserve the history of this decision.
+    *   **AI Context Update:** If the answer dictates a new business rule or coding standard, update `AGENTS.md` to ensure future agent sessions adhere to the rule.
     *   **Clean Up:** Remove the answered question from `CLARIFICATIONS.md`.
 
 ### Phase 2: REALITY CHECK (Code vs. Docs)
@@ -79,6 +80,7 @@ Append new questions to `CLARIFICATIONS.md` using:
 
 ## Files of Interest
 *   **Source of Truth:** `REQUIREMENTS.md` (or main spec file)
+*   **AI Context Rules:** `AGENTS.md`
 *   **Feedback Channel:** `CLARIFICATIONS.md`
 *   **Decision History:** `DECISION_LOG.md`
 *   **Codebase:** `./` directory

@@ -17,10 +17,31 @@ test('docker env inventories use vault references instead of placeholder secrets
         'examples/video-automation-pod/.env.example'
     ];
 
+    // Multi-provider vault reference support (Decision [2026-07-02] SecretOps
+    // Provider Neutrality in Smoke Tests). Accept either 1Password (`op://...`)
+    // or Infisical (`infisical://...`) references so users of either provider
+    // can pass the smoke test without false failures.
+    const vaultRefPattern = /(op:\/\/|infisical:\/\/)/;
     for (const envFile of envFiles) {
         const content = read(envFile);
         assert.doesNotMatch(content, /changeme/i, `${envFile} still contains insecure placeholder values`);
-        assert.match(content, /op:\/\//, `${envFile} should contain vault-reference examples`);
+        assert.match(content, vaultRefPattern, `${envFile} should contain vault-reference examples (op:// or infisical://)`);
+    }
+});
+
+test('NOEMI_DOCKER_SMOKE_* variables are inventoried in .env.template', () => {
+    // Requirement §9 mandates smoke coverage of NOEMI_DOCKER_SMOKE_* variables
+    // (Decision [2026-07-02] Smoke Test NOEMI_DOCKER_SMOKE_* Inventory).
+    const envTemplate = read('.env.template');
+    const required = [
+        'NOEMI_DOCKER_SMOKE_TIMEOUT_MS',
+        'NOEMI_DOCKER_SMOKE_POLL_INTERVAL_MS',
+        'NOEMI_DOCKER_SMOKE_ARTIFACT_DIR'
+    ];
+    for (const name of required) {
+        // Each var must appear as an assignment (VAR=...) somewhere in the template.
+        const re = new RegExp(`^${name}=`, 'm');
+        assert.match(envTemplate, re, `.env.template must define ${name} for the Docker e2e smoke suite`);
     }
 });
 

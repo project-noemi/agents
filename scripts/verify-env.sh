@@ -138,11 +138,13 @@ echo -e "✅ Node.js $(node -v) meets the 24.x LTS baseline."
 
 echo -e "\n🔒 Checking SecretOps CLI (Fetch-on-Demand)..."
 SECRETS_CLI=false
+SECRETS_AUTHED=false
 if command -v op >/dev/null 2>&1; then
     echo -e "✅ 1Password CLI (op) is installed."
     SECRETS_CLI=true
     if op user get --me >/dev/null 2>&1; then
         echo -e "   ✅ Authenticated to 1Password."
+        SECRETS_AUTHED=true
     else
         echo -e "   ⚠️  Not authenticated to 1Password. Run 'op signin'."
     fi
@@ -152,6 +154,7 @@ if command -v infisical >/dev/null 2>&1; then
     SECRETS_CLI=true
     if infisical whoami >/dev/null 2>&1; then
         echo -e "   ✅ Authenticated to Infisical."
+        SECRETS_AUTHED=true
     else
         echo -e "   ⚠️  Not authenticated to Infisical. Run 'infisical login'."
     fi
@@ -161,6 +164,20 @@ if [ "$SECRETS_CLI" = false ]; then
     echo -e "   - 1Password CLI: https://developer.1password.com/docs/cli/get-started/"
     echo -e "   - Infisical CLI: https://infisical.com/docs/cli/overview"
     echo -e "   Local repo-only prompts can still work without secrets, but Gmail, GitHub, n8n, and Workspace flows should use Fetch-on-Demand wrappers."
+fi
+
+# Docker mode hard-fail (AGENTS.md mandate + Decision [2026-05-26] Pre-flight Logic Normalization
+# + Decision [2026-07-02] SecretOps Docker Hard-Fail). Missing or unauthenticated SecretOps
+# in docker mode is a fatal error; other modes remain warning-only for local exploration.
+if [ "$MODE" = "docker" ]; then
+    if [ "$SECRETS_CLI" = false ]; then
+        echo -e "\n❌ Docker mode requires a SecretOps CLI (op or infisical). Aborting."
+        exit 1
+    fi
+    if [ "$SECRETS_AUTHED" = false ]; then
+        echo -e "\n❌ Docker mode requires an authenticated SecretOps session. Run 'op signin' or 'infisical login'. Aborting."
+        exit 1
+    fi
 fi
 
 echo -e "\n🔑 Checking common API key env vars in the current shell..."

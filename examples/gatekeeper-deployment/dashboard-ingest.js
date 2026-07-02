@@ -2,6 +2,25 @@
 
 const crypto = require('crypto');
 const http = require('http');
+const path = require('path');
+
+// Shared JSON Audit Log emitter (AGENTS.md Internal Tool & Service Audit Logs mandate
+// + Decision [2026-07-02] Internal Tool Observability). Optional import — if the
+// shared utility is not bundled into the container, fall back to console.error so
+// the service remains deployable in stripped-down environments.
+let auditLogger;
+try {
+    auditLogger = require(path.join(__dirname, '..', '..', 'scripts', 'audit_logger'));
+} catch (_e) {
+    auditLogger = {
+        logEvent: (event, details, extras) => {
+            process.stderr.write(`AUDIT_LOG ${JSON.stringify({ task: event, inputs: [], actions: [event.toLowerCase()], risks: [], result: (extras && extras.result) || 'ok', details })}\n`);
+        },
+        emit: (record) => {
+            process.stderr.write(`AUDIT_LOG ${JSON.stringify(record)}\n`);
+        }
+    };
+}
 
 const PORT = Number(process.env.PORT || '8081');
 const DASHBOARD_API_TOKEN = process.env.DASHBOARD_API_TOKEN;
@@ -127,9 +146,23 @@ const server = http.createServer(async (request, response) => {
             const lineProtocol = buildInfluxLine(report);
             await writeInflux(lineProtocol);
             sendJson(response, 202, { status: 'accepted' });
+            auditLogger.emit({
+                task: 'REPORT_INGEST',
+                inputs: [`report_id=${report.report_id || 'unknown'}`, `agent=${report.agent || 'unknown'}`],
+                actions: ['signature_verified', 'influx_write'],
+                risks: [],
+                result: 'accepted'
+            });
         } catch (error) {
             logError(error.message);
             sendJson(response, 502, { error: 'Failed to persist report' });
+            auditLogger.emit({
+                task: 'REPORT_INGEST',
+                inputs: [`report_id=${report.report_id || 'unknown'}`],
+                actions: ['signature_verified', 'influx_write_failed'],
+                risks: [error.message],
+                result: 'failed'
+            });
         }
     });
 
@@ -141,4 +174,11 @@ const server = http.createServer(async (request, response) => {
 
 server.listen(PORT, () => {
     console.log(`${new Date().toISOString()} Dashboard ingest listening on :${PORT}`);
+    auditLogger.emit({
+        task: 'SERVICE_START',
+        inputs: [`port=${PORT}`],
+        actions: ['bound_listener'],
+        risks: [],
+        result: 'listening'
+    });
 });

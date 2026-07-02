@@ -174,18 +174,20 @@ function discoverAgents(baseDir, prefix = '') {
         
         let role = '';
         if (roleMatch) {
-            role = roleMatch[1].trim().split('\n')[0];
-            // Take only the first sentence if it exists
-            const sentenceMatch = role.match(/^[^.!?]+[.!?]/);
-            if (sentenceMatch) {
-                role = sentenceMatch[0];
-            }
+            // AGENTS.md Agent Index Richness mandate + Decision [2026-07-02] Agent Index
+            // First-Paragraph Extraction: extract the full first paragraph (up to the first
+            // blank line) rather than a truncated first sentence. This preserves technical
+            // terms containing dots (e.g., "Next.js", "v1.0") and gives downstream models
+            // enough context to disambiguate roles.
+            const paragraph = roleMatch[1].trim().split(/\n\s*\n/)[0] || '';
+            // Collapse internal newlines/whitespace so the paragraph fits on one table row.
+            role = paragraph.replace(/\s+/g, ' ').trim();
         }
 
         agents.push({
             path: `agents/${relativePath}`,
             title,
-            role: role.slice(0, 200),
+            role: role.slice(0, 400),
             domain: prefix.split(path.sep)[0] || 'root'
         });
     }

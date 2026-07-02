@@ -9,10 +9,13 @@
 
 set -euo pipefail
 
-UPSTREAM_REMOTE="upstream"
-UPSTREAM_URL="https://github.com/project-noemi/agents.git"
-LOCAL_BRANCH="develop"
-MY_ORGANIZATION="[MyOrganization]"
+# Cross-organization parameterization (Decision [2026-07-02] — Sync Script Parameterization).
+# All identity-carrying values are pulled from environment variables so forks can
+# use this script without editing source. Defaults are safe for the upstream repo.
+UPSTREAM_REMOTE="${NOEMI_UPSTREAM_REMOTE:-upstream}"
+UPSTREAM_URL="${NOEMI_UPSTREAM_URL:-https://github.com/project-noemi/agents.git}"
+LOCAL_BRANCH="${NOEMI_SYNC_BRANCH:-develop}"
+MY_ORGANIZATION="${NOEMI_ORG_NAME:-[MyOrganization]}"
 
 # --- Helpers ---------------------------------------------------------------
 info()  { printf "\033[1;34m▸ %s\033[0m\n" "$*"; }

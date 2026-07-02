@@ -97,12 +97,14 @@ Write-Host "✅ Node.js $(node --version) meets the 24.x LTS baseline." -Foregro
 
 Write-Host "`n🔒 Checking SecretOps CLI (Fetch-on-Demand)..." -ForegroundColor Cyan
 $secretsCli = $false
+$secretsAuthed = $false
 if (Get-Command op -ErrorAction SilentlyContinue) {
     Write-Host "✅ 1Password CLI (op) is installed." -ForegroundColor Green
     $secretsCli = $true
     & op user get --me >$null 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Host "   ✅ Authenticated to 1Password." -ForegroundColor Green
+        $secretsAuthed = $true
     } else {
         Write-Host "   ⚠️  Not authenticated to 1Password. Run 'op signin'." -ForegroundColor Yellow
     }
@@ -113,6 +115,7 @@ if (Get-Command infisical -ErrorAction SilentlyContinue) {
     & infisical whoami >$null 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Host "   ✅ Authenticated to Infisical." -ForegroundColor Green
+        $secretsAuthed = $true
     } else {
         Write-Host "   ⚠️  Not authenticated to Infisical. Run 'infisical login'." -ForegroundColor Yellow
     }
@@ -122,6 +125,18 @@ if (-not $secretsCli) {
     Write-Host "   - 1Password CLI: https://developer.1password.com/docs/cli/get-started/" -ForegroundColor Yellow
     Write-Host "   - Infisical CLI: https://infisical.com/docs/cli/overview" -ForegroundColor Yellow
     Write-Host "   Local repo-only prompts can still work without secrets, but Gmail, GitHub, n8n, and Workspace flows should use Fetch-on-Demand wrappers." -ForegroundColor Yellow
+}
+
+# Docker mode hard-fail (Decision [2026-07-02] SecretOps Docker Hard-Fail).
+if ($Mode -eq "docker") {
+    if (-not $secretsCli) {
+        Write-Host "`n❌ Docker mode requires a SecretOps CLI (op or infisical). Aborting." -ForegroundColor Red
+        exit 1
+    }
+    if (-not $secretsAuthed) {
+        Write-Host "`n❌ Docker mode requires an authenticated SecretOps session. Run 'op signin' or 'infisical login'. Aborting." -ForegroundColor Red
+        exit 1
+    }
 }
 
 Write-Host "`n🔑 Checking common API key env vars in the current shell..." -ForegroundColor Cyan

@@ -135,6 +135,16 @@ function stack(name, relativeDir, env, expectedServices) {
 }
 
 const dockerAvailable = dockerIsAvailable();
+
+// FORCE_DOCKER_SMOKE mode (Decision [2026-07-02] E2E FORCE_DOCKER_SMOKE Mandatory Mode).
+// Default: skip cleanly when Docker is missing (preserves local dev ergonomics).
+// When FORCE_DOCKER_SMOKE=true: missing Docker becomes a fatal test-suite failure so
+// CI environments that expect Docker cannot silently "false-green".
+const forceDockerSmoke = String(process.env.FORCE_DOCKER_SMOKE || '').toLowerCase() === 'true';
+if (!dockerAvailable && forceDockerSmoke) {
+    console.error('FORCE_DOCKER_SMOKE=true but Docker is unavailable. Aborting.');
+    process.exit(1);
+}
 const dockerTestOptions = dockerAvailable
     ? { timeout: dockerTimeoutMs + 30000 }
     : { skip: 'Docker CLI or Docker Compose is not available in this environment.' };

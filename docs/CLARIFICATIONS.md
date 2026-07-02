@@ -493,3 +493,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules update `audit-repo.js` to treat "TBD" or empty placeholders in mandatory persona and skill sections as a fatal error (exit 1) in CI?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to reject files containing "TBD" placeholders in mandatory sections as a fatal audit failure.*
+
+### ❓ Question [2026-07-02] - Branch Governance Reality vs. Canonical develop → main Flow
+**Context:** The requirements state (§7) that branch protection must enforce "the canonical `develop → main` flow", and `.github/workflows/require-develop-source.yml` rejects PRs to `main` unless they originate from `develop` or one of six hardcoded `doc-*` automation prefixes. However, no `develop` branch exists at origin, and the autonomous documentation sessions now run on `claude/*` branches — requiring the security gate itself to be edited each time the automation's branch naming changes (see prior commits "fix CI branch rule" / "fix CI branch check"; this run added `claude/*` as an interim fix).
+**Ambiguity / Drift:** The documented governance model does not match operational reality: the effective flow is automation branch → `main`, and the ever-growing allowlist turns every naming change into a modification of a branch-protection control, which is itself a governance risk.
+**Question for Product Owner:** Should the repository (a) create a real `develop` branch and route automation PRs through it, (b) revise Requirement §7 to document the actual automation-branch → `main` flow, or (c) replace the hardcoded prefix allowlist with a stable mechanism (e.g., a single namespaced prefix or an actor/label-based exemption)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `.github/workflows/require-develop-source.yml` to use the chosen stable exemption mechanism and align Requirement §7 and `scripts/setup-branch-protection.sh` with the decided branch flow.*
+
+### ❓ Question [2026-07-02] - NOEMI_DOCKER_SMOKE_* Default Value Divergence
+**Context:** The requirements state (§9) that the test suite covers "Docker env inventories (including `NOEMI_DOCKER_SMOKE_*` variable validation)", but `.env.template` documents `NOEMI_DOCKER_SMOKE_TIMEOUT_MS=60000`, `NOEMI_DOCKER_SMOKE_POLL_INTERVAL_MS=5000`, and `NOEMI_DOCKER_SMOKE_ARTIFACT_DIR=./tests/e2e/artifacts`, while `tests/e2e/docker-smoke.test.js` implements fallback defaults of `600000`, `2000`, and `test-artifacts/docker-smoke`.
+**Ambiguity / Drift:** A user who copies the template inherits a timeout 10× shorter than the code default — long compose pulls will produce false failures — and an artifact directory inside `tests/e2e/` that is not covered by `.gitignore` (which only ignores `test-artifacts/`), polluting the working tree with untracked test output. It is unclear which set of values is canonical.
+**Question for Product Owner:** Should `.env.template` be aligned to the code defaults (`600000` / `2000` / `test-artifacts/docker-smoke`), or are the template's tighter values intentional for local runs — in which case should the code defaults and `.gitignore` be updated to match?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Align the `NOEMI_DOCKER_SMOKE_*` values between `.env.template` and `tests/e2e/docker-smoke.test.js` per the decided canonical set, and ensure the chosen artifact directory is covered by `.gitignore`.*

@@ -493,3 +493,10 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules update `audit-repo.js` to treat "TBD" or empty placeholders in mandatory persona and skill sections as a fatal error (exit 1) in CI?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to reject files containing "TBD" placeholders in mandatory sections as a fatal audit failure.*
+
+### ❓ Question [2026-06-27] - Generator Fail-Fast Policy for Framework Assets
+**Context:** `REQUIREMENTS.md` Section 3 mandates "Contract and Generator Drift Must Fail Fast," but the codebase in `scripts/generate_all.js` (via `context_helpers.js`) implements a "silent success" pattern where missing framework directories or empty assets return HTML comments rather than an exit 1.
+**Ambiguity / Drift:** This allows for "hollow" context files to be generated and shipped without surfacing the structural gap, potentially leading to agents operating without mandated framework layers (Value Lenses/Operating Profiles) in production-like environments.
+**Question for Product Owner:** Should the generator be updated to enforce a fatal error (exit 1) if any mandated framework asset directory is missing or contains no operational files?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/generate_all.js` and `scripts/context_helpers.js` to enforce a fatal error if mandated framework assets or active skills/MCPs are missing during context generation.*

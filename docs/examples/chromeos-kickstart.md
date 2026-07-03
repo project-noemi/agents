@@ -27,7 +27,7 @@ If your Chromebook is managed and Linux is disabled, stop here and use another m
 ## Step 2: Clone The Repository In The Linux Terminal
 
 ```bash
-git clone https://github.com/newpush/agents.git
+git clone https://github.com/project-noemi/agents.git
 cd agents
 ```
 
@@ -54,6 +54,8 @@ node scripts/generate_all.js
 npm run validate
 ```
 
+> **Heads up:** `CLAUDE.md` and `GEMINI.md` are *generated* by this command — don't hand-edit them. To change what your client sees, edit the sources under `templates/context/` and re-run `node scripts/generate_all.js`. Manual edits get overwritten, and CI checks these files against golden fixtures.
+
 ## Step 5: Get One Safe First Win
 
 Use one read-only prompt against the local repository first.
@@ -66,9 +68,13 @@ gemini -p GEMINI.md "List the engineering agents in this repository and summariz
 
 ### Claude Code
 
-Open the repository in Claude Code and ask:
+From the repository root, launch Claude Code with the same task:
 
-> Read `CLAUDE.md`, inspect the engineering agents in this repository, and summarize what each one does in one sentence. Then tell me which one would help first with PR review.
+```bash
+claude "Read CLAUDE.md, inspect the engineering agents in this repository, and summarize what each one does in one sentence. Then tell me which one would help first with PR review."
+```
+
+(Prefer to drive it interactively? Just run `claude` in the repo and paste the same request.)
 
 ### OpenAI Codex
 
@@ -78,14 +84,19 @@ Open the repository in Codex and ask:
 
 ## Step 6: Add Secret Injection Only When You Need Business Systems
 
-When you move beyond local read-only work, wrap the client at launch:
+When you move beyond local read-only work, wrap the client at launch with whichever SecretOps CLI your team uses — **pick one**, don't run both:
 
 ```bash
+# Infisical
 infisical run --env=dev -- gemini
+```
+
+```bash
+# 1Password (.env.template maps env-var names to op:// secret references — no real secrets on disk)
 op run --env-file=.env.template -- gemini
 ```
 
-The same pattern applies to Claude Code and Codex.
+The same pattern applies to Claude Code and Codex (swap `gemini` for `claude` or `codex`).
 
 ## ChromeOS Notes
 

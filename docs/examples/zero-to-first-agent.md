@@ -53,7 +53,7 @@ From the repository root, run the preflight mode from your matching workstation 
 - `claude` if Claude Code is your first client
 - `codex` if OpenAI Codex is your first client
 
-Your workstation guide gives you the exact shell command for that machine architecture.
+Your workstation guide shows the exact `builder` command for your machine; substitute the client mode name (`gemini`, `claude`, or `codex`) in the same command to target one specific client.
 
 This verifies Git, Node.js, and the local client you actually plan to use. It does **not** require Docker for the beginner path.
 
@@ -71,6 +71,8 @@ This gives you the latest:
 
 and confirms the repo contracts are healthy before you ask the client to do anything with them.
 
+> **Heads up:** `CLAUDE.md` and `GEMINI.md` are *generated* by this command — don't hand-edit them. To change what your client sees, edit the sources under `templates/context/` (plus the agents, skills, and protocols they include) and re-run `node scripts/generate_all.js`. Manual edits are overwritten on the next run, and CI checks these files against golden fixtures.
+
 ## Step 4: Get One Safe First Win
 
 Use a local, read-only task that does not touch external systems.
@@ -87,9 +89,13 @@ gemini -p GEMINI.md "List the engineering agents in this repository and summariz
 
 ### Claude Code
 
-Open the repository in Claude Code and ask:
+From the repository root, launch Claude Code with the same task:
 
-> Read `CLAUDE.md`, inspect the engineering agents in this repository, and summarize what each one does in one sentence. Then tell me which one would help first with PR review.
+```bash
+claude "Read CLAUDE.md, inspect the engineering agents in this repository, and summarize what each one does in one sentence. Then tell me which one would help first with PR review."
+```
+
+(Prefer to drive it interactively? Just run `claude` in the repo and paste the same request.)
 
 ### OpenAI Codex
 

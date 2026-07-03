@@ -21,13 +21,13 @@ It is not a runtime or execution engine. External orchestrators such as Gemini C
 
 - The repository must present **Phase 0 security** as the prerequisite for serious AI adoption.
 - Client and buyer navigation must reach [`PHASE_ZERO_SECURITY_BASELINE.md`](PHASE_ZERO_SECURITY_BASELINE.md) directly from the top-level experience.
-- The public documentation must include a reusable **Phase 0 Assessment Kit** (located in `docs/phase-zero-assessment/`) with:
-  - separate security (`security-assessment.md`) and AI readiness (`ai-readiness-assessment.md`) assessment guides
+- The public documentation must include a reusable **Phase 0 Assessment Kit** with:
+  - separate security and AI readiness assessment guides
   - `network-security-assessment.md` and `PRACTITIONER_NOTES.md`
-  - `consent-template.md`
-  - `report-template.md` (report-of-findings)
-  - `roadmap-template.md` (30/60/90-day roadmap)
-  - `readiness-rubric.md` covering security readiness, AI readiness, and the overall recommendation
+  - consent template
+  - report-of-findings template
+  - 30/60/90-day roadmap template
+  - readiness rubric covering security readiness, AI readiness, and the overall recommendation
 
 ### 2. Persona and Skill Contracts are Mandatory
 
@@ -84,15 +84,13 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
 
 ### 4. Context Generation Must Stay Aligned
 
-- [`scripts/generate_all.js`](../scripts/generate_all.js) is the canonical context generator orchestrator.
-- The generator must inject:
+- Both [`scripts/generate_gemini.js`](../scripts/generate_gemini.js) and [`scripts/generate_claude.js`](../scripts/generate_claude.js) must use shared helper logic.
+- Both generators must inject:
   - the full mandate set from `AGENTS.md`
   - the agent index discovered from `agents/`
   - active skills from `mcp.config.json`
   - active MCP protocol content from `mcp.config.json`
-  - value lenses from `value-lenses/`
-  - operating profiles from `operating-profiles/`
-- The generator must support `--config=path/to/mcp.config.json`.
+- Both generators must support `--config=path/to/mcp.config.json`.
 
 ### 5. Fetch-on-Demand Security Is Non-Negotiable
 
@@ -118,7 +116,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - Project NoéMI aligns agent design and deployment with Gartner AI TRiSM.
 - Red Team validation is required for agent deployment readiness.
 - Guardian-layer patterns remain a core architectural requirement where trust, data protection, or prompt integrity matters.
-- **Branch protection enforcement is mandatory** (Decision [2026-05-20] — Branch Protection: Mandatory Enforcement). All forks of the reference architecture MUST run `scripts/setup-branch-protection.sh` (or an equivalent automated mechanism) on first setup to enforce the canonical `develop → main` flow. `scripts/audit-repo.js` SHOULD acquire a check that surfaces missing protection as a non-fatal warning in non-CI runs and as a fatal error in CI.
+- **Branch protection enforcement is mandatory** (Decision [2026-05-20] — Branch Protection: Mandatory Enforcement). All forks of the reference architecture MUST run `scripts/setup-branch-protection.sh` (or an equivalent automated mechanism) on first setup to enforce the canonical `develop → main` flow. `scripts/audit-repo.js` SHOULD surface missing protection as a non-fatal warning in non-CI runs and as a fatal error in CI.
 
 ### 8. Reference Examples Must Tell the Truth
 
@@ -139,10 +137,6 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - The repository must expose a Docker-focused smoke entrypoint through `npm run test:e2e`.
 - The same validation contract must be enforced in GitHub Actions on pushes and pull requests targeting `develop` and `main`.
 - The Docker e2e suite must skip cleanly when Docker is unavailable and execute real compose-based runtime checks when it is available.
-- **Testing Blind Spots (Known Gaps)**:
-  - `tests/examples-smoke.test.js` lacks validation logic for `NOEMI_DOCKER_SMOKE_*` environment variables mandated by Requirement 9.
-  - `scripts/audit-repo.js` lacks JSON schema validation for Audit Logs and referential integrity checks for internal links and skill paths.
-  - The E2E suite `tests/e2e/docker-smoke.test.js` skips silently if Docker is missing, potentially masking configuration errors in CI environments.
 
 ### 10. Docker Guidance Must Describe the Home, Not a Fake Runtime
 

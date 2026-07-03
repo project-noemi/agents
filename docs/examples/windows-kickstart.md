@@ -14,6 +14,7 @@ This is the right starting point if:
 
 - Git
 - Node.js 24 or newer
+  - Install with `winget install OpenJS.NodeJS.LTS`, or use [nvm-windows](https://github.com/coreybutler/nvm-windows) to manage versions. Confirm with `node -v` showing `v24` or higher.
 - one supported local AI client: Gemini CLI, Claude Code, or OpenAI Codex
 - PowerShell
   - `powershell` works on stock Windows
@@ -24,7 +25,7 @@ This is the right starting point if:
 Open PowerShell and run:
 
 ```powershell
-git clone https://github.com/newpush/agents.git
+git clone https://github.com/project-noemi/agents.git
 cd agents
 ```
 
@@ -50,6 +51,12 @@ This checks:
 - whether Docker is present, without requiring it yet
 - whether Infisical CLI or 1Password CLI is available for later Fetch-on-Demand work
 
+Already know you want to start with **Claude Code**? Target it directly (swap `builder` for `claude`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode claude
+```
+
 ## Step 3: Generate The Current Agent Context
 
 ```powershell
@@ -58,6 +65,8 @@ npm run validate
 ```
 
 This gives you the current generated context files and confirms the repository contracts are healthy.
+
+> **Heads up:** `CLAUDE.md` and `GEMINI.md` are *generated* by this command — don't hand-edit them. To change what your client sees, edit the sources under `templates/context/` and re-run `node scripts/generate_all.js`. Manual edits get overwritten, and CI checks these files against golden fixtures.
 
 ## Step 4: Get One Safe First Win
 
@@ -71,9 +80,15 @@ gemini -p GEMINI.md "List the engineering agents in this repository and summariz
 
 ### Claude Code
 
-Open the repository in Claude Code and ask:
+From the repository root, launch Claude Code with the same task:
 
-> Read `CLAUDE.md`, inspect the engineering agents in this repository, and summarize what each one does in one sentence. Then tell me which one would help first with PR review.
+```powershell
+claude "Read CLAUDE.md, inspect the engineering agents in this repository, and summarize what each one does in one sentence. Then tell me which one would help first with PR review."
+```
+
+(Prefer to drive it interactively? Just run `claude` in the repo and paste the same request.)
+
+New to Claude Code, or only know the desktop app? See [`../tool-usages/claude-code-local-workspace.md`](../tool-usages/claude-code-local-workspace.md) for the difference between the CLI and the app.
 
 ### OpenAI Codex
 
@@ -85,14 +100,19 @@ Open the repository in Codex and ask:
 
 Do not start by pasting secrets into files.
 
-When you move beyond local read-only work, wrap the client at launch:
+When you move beyond local read-only work, wrap the client at launch with whichever SecretOps CLI your team uses — **pick one**, don't run both:
 
 ```powershell
+# Infisical
 infisical run --env=dev -- gemini
+```
+
+```powershell
+# 1Password (.env.template maps env-var names to op:// secret references — no real secrets on disk)
 op run --env-file=.env.template -- gemini
 ```
 
-The same pattern applies to Claude Code and Codex.
+The same pattern applies to Claude Code and Codex (swap `gemini` for `claude` or `codex`).
 
 ## Step 6: Know What Comes Later
 
@@ -107,6 +127,8 @@ After this local-first success:
 
 - You do **not** need WSL for the first beginner path.
 - You do **not** need Docker Desktop for the first beginner path.
+- Run every command in this guide in **PowerShell** — not Git Bash or WSL. Forward slashes in script paths (`scripts/verify-env.ps1`) work fine in PowerShell; you do not need to convert them to backslashes.
+- `-ExecutionPolicy Bypass` is needed only because Windows blocks unsigned local scripts by default. It applies to that single command and does **not** change your system-wide policy.
 - If you later move into Docker homes, use [`builder-first-30-minutes.md`](builder-first-30-minutes.md) and install Docker Desktop at that stage.
 
 ## Outcome

@@ -22,7 +22,7 @@ If your machine is ChromeOS, use [`chromeos-kickstart.md`](chromeos-kickstart.md
 Open Terminal and run:
 
 ```bash
-git clone https://github.com/newpush/agents.git
+git clone https://github.com/project-noemi/agents.git
 cd agents
 ```
 
@@ -40,6 +40,12 @@ This checks:
 - whether Docker is present, without requiring it yet
 - whether Infisical CLI or 1Password CLI is available for later Fetch-on-Demand work
 
+Already know you want to start with **Claude Code**? Target it directly:
+
+```bash
+bash scripts/verify-env.sh --mode=claude
+```
+
 ## Step 3: Generate The Current Agent Context
 
 ```bash
@@ -48,6 +54,8 @@ npm run validate
 ```
 
 This gives you the current generated context files and confirms the repository contracts are healthy.
+
+> **Heads up:** `CLAUDE.md` and `GEMINI.md` are *generated* by this command — don't hand-edit them. To change what your client sees, edit the sources under `templates/context/` and re-run `node scripts/generate_all.js`. Manual edits get overwritten, and CI checks these files against golden fixtures.
 
 ## Step 4: Get One Safe First Win
 
@@ -61,9 +69,13 @@ gemini -p GEMINI.md "List the engineering agents in this repository and summariz
 
 ### Claude Code
 
-Open the repository in Claude Code and ask:
+From the repository root, launch Claude Code with the same task:
 
-> Read `CLAUDE.md`, inspect the engineering agents in this repository, and summarize what each one does in one sentence. Then tell me which one would help first with PR review.
+```bash
+claude "Read CLAUDE.md, inspect the engineering agents in this repository, and summarize what each one does in one sentence. Then tell me which one would help first with PR review."
+```
+
+(Prefer to drive it interactively? Just run `claude` in the repo and paste the same request.)
 
 ### OpenAI Codex
 
@@ -75,14 +87,19 @@ Open the repository in Codex and ask:
 
 Do not start by pasting secrets into files.
 
-When you move beyond local read-only work, wrap the client at launch:
+When you move beyond local read-only work, wrap the client at launch with whichever SecretOps CLI your team uses — **pick one**, don't run both:
 
 ```bash
+# Infisical
 infisical run --env=dev -- gemini
+```
+
+```bash
+# 1Password (.env.template maps env-var names to op:// secret references — no real secrets on disk)
 op run --env-file=.env.template -- gemini
 ```
 
-The same pattern applies to Claude Code and Codex.
+The same pattern applies to Claude Code and Codex (swap `gemini` for `claude` or `codex`).
 
 ## Step 6: Know What Comes Later
 

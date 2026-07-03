@@ -5,8 +5,10 @@ const path = require('path');
 const {
     REQUIRED_AGENT_SECTIONS,
     REQUIRED_GLOBAL_SECTIONS,
+    REQUIRED_SKILL_SECTIONS,
     REQUIRED_TEMPLATE_MARKERS,
     discoverAgents,
+    discoverSkills,
     extractAgentHeadings,
     extractTopLevelSections
 } = require('../scripts/context_helpers');
@@ -49,6 +51,23 @@ test('all personas expose the required contract headings', () => {
             assert.ok(
                 headings.some((heading) => heading === required || heading.startsWith(`${required} (`)),
                 `${agent.path} is missing required heading: ${required}`
+            );
+        }
+    }
+});
+
+test('all skills expose the required contract headings', () => {
+    const skills = discoverSkills(path.join(repoRoot, 'skills'));
+    assert.ok(skills.length > 0, 'Expected at least one skill');
+
+    for (const skill of skills) {
+        const headings = extractAgentHeadings(fs.readFileSync(skill.path, 'utf8'));
+        const headingsCi = headings.map((heading) => heading.toLowerCase());
+        for (const required of REQUIRED_SKILL_SECTIONS) {
+            const requiredCi = required.toLowerCase();
+            assert.ok(
+                headingsCi.some((heading) => heading === requiredCi || heading.startsWith(`${requiredCi} (`)),
+                `${path.relative(repoRoot, skill.path)} is missing required heading: ${required}`
             );
         }
     }

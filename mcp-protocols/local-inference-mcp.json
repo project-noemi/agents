@@ -1,0 +1,30 @@
+{
+  "protocol_name": "local-inference-mcp",
+  "version": "1.0.0",
+  "transport": "stdio",
+  "capabilities": {
+    "tools": [
+      {
+        "name": "query_local_llm",
+        "description": "Send a prompt directly to the local open-source model gateway (Ollama/vLLM).",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "model_name": { "type": "string" },
+            "prompt": { "type": "string" },
+            "temperature": { "type": "number", "default": 0.2 },
+            "max_tokens": { "type": "number" }
+          },
+          "required": ["model_name", "prompt"]
+        }
+      },
+      {
+        "name": "check_local_models",
+        "description": "Lists all open-source models currently cached and running on local hardware.",
+        "inputSchema": {
+          "type": "object"
+        }
+      }
+    ]
+  }
+}

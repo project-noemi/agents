@@ -1,0 +1,81 @@
+# Gatekeeper Configuration (Example)
+#
+# Decision reference: docs/DECISION_LOG.md → [2026-06-12-0018]
+# Resolves CLARIFICATIONS.md Q [2026-05-29] (Gatekeeper Config Schema Absent).
+#
+# This file documents the per-repository configuration surface for the
+# Gatekeeper agent (`agents/engineering/gatekeeper.md`). Copy it to
+# `.gatekeeper/config.yml`, edit for your fork, and the Gatekeeper deployment
+# stack will pick it up at startup.
+#
+# Runtime state in `.gatekeeper/` is git-ignored; only this `.example` file
+# is tracked in the reference architecture.
+
+# ---------------------------------------------------------------------------
+# Repository allowlist
+# ---------------------------------------------------------------------------
+# Which repositories this Gatekeeper instance is authorized to act on.
+# Entries match `<org>/<repo>`. Wildcards (`*`) are allowed in either position.
+# An empty list means "no repositories" (the Gatekeeper will report but not act).
+repos:
+  - example-org/example-repo
+  # - example-org/*               # all repos in an org
+  # - "*/docs-*"                  # all docs-* repos across orgs
+
+# ---------------------------------------------------------------------------
+# File-pattern overrides
+# ---------------------------------------------------------------------------
+# Per-pattern rules that modify the Gatekeeper's default judgement. Each entry
+# is a glob pattern (matched against the PR's changed files) plus a policy:
+#   action: allow | require-review | block
+#   reason: human-readable string emitted in the audit log
+file_patterns:
+  - pattern: "docs/**/*.md"
+    action: allow
+    reason: "Documentation-only changes are auto-approved."
+  - pattern: ".github/workflows/**"
+    action: require-review
+    reason: "CI changes require a human reviewer."
+  - pattern: "**/*.env*"
+    action: block
+    reason: "Secrets must never land in version control."
+
+# ---------------------------------------------------------------------------
+# Diff-size thresholds
+# ---------------------------------------------------------------------------
+# Per-PR diff size limits. Exceeding any threshold downgrades the verdict.
+# Set a value to `null` to disable that specific threshold.
+diff_thresholds:
+  max_lines_added: 2000          # PRs adding more lines require review
+  max_lines_removed: 2000
+  max_files_changed: 50
+  warn_lines_added: 500          # soft warning below the hard limit
+  warn_files_changed: 20
+
+# ---------------------------------------------------------------------------
+# Conflict grace period
+# ---------------------------------------------------------------------------
+# How long the Gatekeeper waits for branch conflicts to clear before
+# downgrading a PR to "blocked". Format: ISO-8601 duration or shorthand
+# (e.g. "2h", "30m", "1d").
+conflict_grace_period: "2h"
+
+# ---------------------------------------------------------------------------
+# Mutating actions
+# ---------------------------------------------------------------------------
+# Decision [2026-06-12-0005] mandates that mutating actions default to dry-run.
+# Valid modes: off | dry-run | live
+# - off:     Gatekeeper reports verdicts but never calls the GitHub API.
+# - dry-run: Gatekeeper logs the action it WOULD take, with rationale.
+# - live:    Gatekeeper performs the action via the GitHub API (requires
+#            GITHUB_TOKEN with appropriate scopes).
+mutating_mode: "dry-run"
+
+# ---------------------------------------------------------------------------
+# Observability
+# ---------------------------------------------------------------------------
+# Audit log destination is fixed at stderr per Decision [2026-04-13]; this
+# section only controls additional sinks if the operator wants them.
+observability:
+  emit_to_logging_mcp: false     # set true when logging-mcp is active
+  include_diff_summary: true     # include changed-file counts in audit log

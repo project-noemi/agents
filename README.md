@@ -47,15 +47,24 @@ It evolves continuously as AI capabilities, tooling, and best practices change.
 
 To support this, organizations maintain a **private working copy** of the repository while selectively syncing improvements from upstream.
 
-This repository includes a reference sync mechanism:
+This repository includes a reference sync mechanism built around a **reviewed pull request** — upstream improvements are *proposed*, never auto-applied:
 
 * Documentation: [docs/UPSTREAM_SYNC.md](https://github.com/project-noemi/agents/blob/main/docs/UPSTREAM_SYNC.md)
-* Script: [scripts/sync-upstream.sh](https://github.com/project-noemi/agents/blob/main/scripts/sync-upstream.sh)
+* Script: [scripts/sync-upstream.sh](https://github.com/project-noemi/agents/blob/main/scripts/sync-upstream.sh) — detects drift, merges (favouring local customizations), and opens a PR
+* Test harness: [scripts/test-sync-upstream.sh](https://github.com/project-noemi/agents/blob/main/scripts/test-sync-upstream.sh) — offline verification of the sync logic (no network or `gh` required)
+* Agent instruction: [docs/SYNC_AGENT_PROMPT.md](https://github.com/project-noemi/agents/blob/main/docs/SYNC_AGENT_PROMPT.md) — a drop-in prompt for a **scheduled Claude Code routine** that opens the PR for you
+
+How it works:
+
+* conflicting upstream hunks are auto-resolved in favour of your customizations (`-X ours`), and **every overridden file is surfaced in the PR body** for human review
+* structural conflicts (rename, modify/delete) stop the run for manual resolution, then resume with `--continue`
+* a duplicate guard means a daily run never piles up sync PRs — it reports the open one until a human merges it
 
 This allows teams to:
 
-* pull in updates from the core architecture
-* avoid overwriting local customizations
+* pull in updates from the core architecture on a daily or weekly schedule
+* avoid overwriting local customizations — and see exactly what was kept vs. dropped
+* keep a human in the loop on every upstream change via reviewed PRs
 * stay aligned with the evolving NoéMI model
 
 This model combines:
@@ -190,9 +199,11 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 → [docs/examples/zero-to-first-agent.md](docs/examples/zero-to-first-agent.md)
 (Building your first Virtual Coworker)
 
-**Onboarding by Platform**
-→ [docs/examples/cross-platform-kickstart.md](docs/examples/cross-platform-kickstart.md)
-(macOS / Linux, Windows, and ChromeOS kickstart paths)
+**Onboarding by Platform** — go straight to the guide for your machine and get one safe, read-only AI win in ~15 minutes:
+→ [macOS / Linux](docs/examples/macos-linux-kickstart.md)
+&nbsp;·&nbsp; [Windows](docs/examples/windows-kickstart.md)
+&nbsp;·&nbsp; [ChromeOS](docs/examples/chromeos-kickstart.md)
+(Not sure, or want the concepts first? Use the [platform chooser](docs/examples/cross-platform-kickstart.md) or [zero-to-first-agent.md](docs/examples/zero-to-first-agent.md).)
 
 **Contributors**
 → [CONTRIBUTING.md](CONTRIBUTING.md)
@@ -201,6 +212,10 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 **Visual Orientation**
 → [docs/visuals/README.md](docs/visuals/README.md)
 (System maps and flows)
+
+---
+
+> **Working in this repo?** `CLAUDE.md` and `GEMINI.md` are **generated** context files — built from `templates/context/` plus the active agents, skills, and MCP protocols. After changing any of those sources, run `node scripts/generate_all.js` to refresh them. Don't hand-edit `CLAUDE.md` or `GEMINI.md`: regeneration overwrites manual changes, and CI checks them against golden fixtures.
 
 ---
 

@@ -1,5 +1,15 @@
 # Decision Log
 
+## [2026-07-03] Documentation Alignment and Technical Drift Formalization
+
+- **Decision:** Formalize and align `REQUIREMENTS.md` and `AGENTS.md` with the verified codebase state, specifically mandating JSON schema validation for Audit Logs and full first-paragraph extraction for the Agent Index.
+- **Context:** An autonomous audit by the "Doc" agent identified several persistent technical drifts (undocumented APIs in `executive-assistant`, sentence-based role truncation in `context_helpers.js`, and hollow `TBD` placeholders in skills) that required formal governance and requirement updates to ensure absolute accuracy.
+- **Impact:**
+  - `REQUIREMENTS.md` updated to include categorized technical drifts and formalized requirements for Audit Log schema validation and Agent Index richness.
+  - `AGENTS.md` updated to prohibit `TBD` placeholders and mandate JSON schema validation (task, inputs, actions, risks, result) for all Audit Logs.
+  - `CLARIFICATIONS.md` updated with high-priority questions regarding Executive Assistant security, ESM migration, and Generator Fail-Fast enforcement.
+  - Root generated context (`GEMINI.md`, `CLAUDE.md`) and fixtures updated to reflect these new mandates.
+
 ## [2026-04-02] Docker Image and Compose Version Update
 
 - **Decision:** Bump `pgvector` and `Casdoor` image tags to their current versions, correct repository names, and remove the obsolete `version` attribute from `docker-compose.yml` files.

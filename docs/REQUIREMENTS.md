@@ -77,7 +77,7 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
 - [`scripts/audit-repo.js`](../scripts/audit-repo.js) is the repository audit gate for persona/skill headings and generator invariants.
 - The audit must fail when:
   - required persona or skill headings are missing (auditing both `agents/` and `skills/`)
-  - `Audit Log` sections contain structurally invalid JSON (Mandatory JSON shape validation)
+  - `Audit Log` sections contain structurally invalid JSON or fail **mandatory JSON schema validation** (checking for `task`, `inputs`, `actions`, `risks`, and `result`).
   - `AGENTS.md` is missing required top-level mandate sections
   - generator template markers drift
   - generated context files omit required global mandate headings
@@ -87,7 +87,7 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
 - Both [`scripts/generate_gemini.js`](../scripts/generate_gemini.js) and [`scripts/generate_claude.js`](../scripts/generate_claude.js) must use shared helper logic.
 - Both generators must inject:
   - the full mandate set from `AGENTS.md`
-  - the agent index discovered from `agents/`
+  - the **complete agent index** discovered from `agents/` (Automated tools must extract the **full first paragraph** of the `## Role` section for context richness).
   - active skills from `mcp.config.json`
   - active MCP protocol content from `mcp.config.json`
 - Both generators must support `--config=path/to/mcp.config.json`.

@@ -1,0 +1,24 @@
+{
+  "profile_name": "local-sovereign-inference",
+  "description": "Enforces complete data sovereignty and zero-latency external dependencies by routing all agent queries to local self-hosted open-source models.",
+  "engine_configuration": {
+    "primary_model": "deepseek-coder:67b-instruct",
+    "fallback_model": "llama3.3:70b-instruct",
+    "routing_type": "local-orchestration",
+    "api_base_url": "http://local-inference-gateway.internal:11434/v1",
+    "api_key_vault_reference": "FETCH_ON_DEMAND_LOCAL_LLM_KEY"
+  },
+  "governance_override": {
+    "zero_data_leakage_enforced": true,
+    "prompt_logging": {
+      "enabled": true,
+      "destination": "loki-unified-logging"
+    },
+    "max_token_budget_per_run": 500000
+  },
+  "value_lens_adjustments": {
+    "cost_efficiency": "maximum",
+    "risk_aversion": "maximum",
+    "latency_tolerance": "medium"
+  }
+}

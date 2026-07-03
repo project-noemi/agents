@@ -1,3 +1,10 @@
+<!-- GENERATED FILE — DO NOT EDIT.
+     This file is built by `node scripts/generate_all.js` from templates/context/CLAUDE.template.md
+     plus the active agents/, skills/, mcp-protocols/, value-lenses/, operating-profiles/, AGENTS.md, and mcp.config.json.
+     • To change the static prose, edit templates/context/CLAUDE.template.md.
+     • To change the injected sections (agent index, skills, MCP protocols, value lenses, global mandates),
+       edit the upstream source, then re-run `node scripts/generate_all.js`.
+     Manual edits to CLAUDE.md are overwritten on the next run and will fail the CI golden-fixture / determinism checks. -->
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -10,11 +17,9 @@ Project NoéMI also serves as the **public reference architecture** for NewPush'
 ## Key Commands
 
 ```bash
-# Generate GEMINI.md from template + active MCP protocols
-node scripts/generate_gemini.js
-
-# Generate CLAUDE.md from template + active MCP protocols
-node scripts/generate_claude.js
+# Regenerate BOTH GEMINI.md and CLAUDE.md from templates + active agents/skills/MCP protocols
+node scripts/generate_all.js   # alias: npm run generate
+# (generate_gemini.js and generate_claude.js are thin shims that both forward to generate_all.js)
 
 # Verify environment prerequisites (Docker, Gemini CLI, etc.)
 bash scripts/verify-env.sh

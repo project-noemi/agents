@@ -1,3 +1,9 @@
+<!-- GENERATED FILE — DO NOT EDIT.
+     This file is built by `node scripts/generate_all.js` from templates/context/GEMINI.template.md
+     plus the active agents/, skills/, mcp-protocols/, value-lenses/, operating-profiles/, AGENTS.md, and mcp.config.json.
+     • To change the static prose, edit templates/context/GEMINI.template.md.
+     • To change the injected sections, edit the upstream source, then re-run `node scripts/generate_all.js`.
+     Manual edits to GEMINI.md are overwritten on the next run and will fail the CI golden-fixture / determinism checks. -->
 # Project NoéMI Context
 
 You are operating within **Project NoéMI**, the public reference architecture and agent specification library used to define governable AI personas, workflows, and MCP integrations.
@@ -125,7 +131,7 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 | coding | Bolt (Next.js 16) — Performance Agent | Performance-obsessed agent specializing in **Next. | `agents/coding/bolt/nextjs-16.md` |
 | coding | Sentinel — Security Agent | Security-focused agent who protects the codebase from vulnerabilities and security risks. | `agents/coding/sentinel/core.md` |
 | communication | Postman — Communication Agent | Professional communication assistant specializing in efficient email management and summarization. | `agents/communication/postman.md` |
-| education | Student Success Coach — Education Agent | A compassionate and strategic academic mentor specialized in supporting students from low-income backgrounds. | `agents/education/student-success-coach.md` |
+| education | Student Success Coach — Education Agent | A compassionate, flexible, and strategic academic mentor specialized in supporting students from low-income or housing-unstable backgrounds. | `agents/education/student-success-coach.md` |
 | engineering | AI Architect — Engineering Agent | You are the AI Architect, the capstone persona of Project NoeMI. | `agents/engineering/ai-architect.md` |
 | engineering | Gatekeeper — Engineering Agent | Automated pull request triage agent that continuously monitors all repositories in a GitHub organization, classifies open PRs by risk level, and takes decisive action: auto-merges safe changes, flags  | `agents/engineering/gatekeeper.md` |
 | guardian | PIIGuard — Guardian Agent | Primary Data Privacy Guardian for the Project NoéMI agent fleet. | `agents/guardian/pii-guard.md` |

@@ -500,3 +500,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the generator be updated to enforce a fatal error (exit 1) if any mandated framework asset directory is missing or contains no operational files?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/generate_all.js` and `scripts/context_helpers.js` to enforce a fatal error if mandated framework assets or active skills/MCPs are missing during context generation.*
+
+### ❓ Question [2026-07-03] - Executive Assistant Admin API Security Baseline
+**Context:** `tools/executive-assistant/server.js` exposes multiple admin endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`) that currently bypass the project's security baseline for identity and authorization.
+**Ambiguity / Drift:** This creates a governance gap where internal agent state and operational logs are accessible without verification, contradicting the "Governance and Trust Controls" mandate.
+**Question for Product Owner:** Should these endpoints be protected by the reference identity layer (Casdoor) using the same JWT pattern intended for fleet deployments, or should they remain open for the public reference implementation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement JWT-based authorization for all admin API endpoints in `tools/executive-assistant/server.js` using the reference Casdoor configuration.*
+
+### ❓ Question [2026-07-03] - Shared Utility ESM Migration Strategy
+**Context:** `tools/executive-assistant/` uses ESM, but shared utilities in `scripts/` (like `resilience_helpers.js`) use CommonJS. This causes integration friction when trying to adopt the mandated resilience patterns.
+**Ambiguity / Drift:** Modern Node.js baselines (Node 24) favor ESM, and having a fragmented module system increases technical debt and prevents direct code reuse between CLI tools and services.
+**Question for Product Owner:** Should Jules perform a wholesale migration of the `scripts/` directory to ESM, or should we adopt a dual-export strategy (CJS/ESM) for shared utilities?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Migrate all shared Node.js utilities in `scripts/` to ESM to align with the Node 24 baseline and ensure seamless integration with modern reference services.*
+
+### ❓ Question [2026-07-03] - Generator Fail-Fast Enforcement for Skills/MCPs
+**Context:** `scripts/generate_all.js` currently allows "silent success" (exit 0) when skills or MCP protocols defined in `mcp.config.json` are missing from the filesystem, injecting a warning comment into the generated markdown instead.
+**Ambiguity / Drift:** This violates the "Fail Fast" mandate in Requirement §3. It allows agents to be deployed with "broken" workflows because they are missing the specific skills or tools they expect to have available.
+**Question for Product Owner:** Should the generator be updated to enforce a fatal error (exit 1) if any active skill or MCP protocol specified in the configuration is missing during generation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/generate_all.js` to enforce a fatal error (exit 1) if any active skill or MCP protocol defined in `mcp.config.json` is missing from the filesystem.*

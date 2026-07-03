@@ -1,0 +1,36 @@
+{
+  "skill_id": "model-fusion-consensus",
+  "name": "Multi-Model Fusion and Consensus",
+  "description": "Executes parallel queries to multiple distinct LLMs and consolidates their findings into a unified, verified report to minimize hallucination and individual model bias.",
+  "inputs": {
+    "user_query": "string",
+    "target_models": ["string"],
+    "consolidation_style": "string"
+  },
+  "steps": [
+    {
+      "step_id": "parallel_query",
+      "action": "execute_concurrent_llm_calls",
+      "parameters": {
+        "endpoints": "$target_models",
+        "prompt": "$user_query"
+      }
+    },
+    {
+      "step_id": "consensus_analysis",
+      "action": "evaluate_and_judge",
+      "parameters": {
+        "primary_judge_model": "local-sovereign-inference",
+        "raw_responses": "$parallel_query.outputs",
+        "conflict_resolution_mode": "majority-consensus"
+      }
+    },
+    {
+      "step_id": "consolidated_output",
+      "action": "format_markdown_report",
+      "parameters": {
+        "data": "$consensus_analysis.consolidated_report"
+      }
+    }
+  ]
+}

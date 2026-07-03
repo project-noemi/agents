@@ -157,7 +157,7 @@ See the report template in Workflow § 4. All reports use GitHub-flavored Markdo
 
 ## Files of Interest
 - `.github/CODEOWNERS` — reviewer resolution for flagged PRs.
-- `.gatekeeper/config.yml` — per-repo overrides (allowlisted file patterns, custom thresholds).
+- `.gatekeeper/config.yml` — per-repo overrides (allowlisted file patterns, custom thresholds). See `.gatekeeper/config.yml.example` for the full documented schema (Decision [2026-06-12-0018]).
 - `.gatekeeper/journal.md` — persistent learning log.
 
 ## Audit Log

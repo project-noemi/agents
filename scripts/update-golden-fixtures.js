@@ -11,6 +11,8 @@ const sourcePath = path.join(repoRoot, 'GEMINI.md');
 const sections = [
     { marker: 'GLOBAL_MANDATES', file: 'global-mandates.md' },
     { marker: 'AGENT_INDEX', file: 'agent-index.md' },
+    { marker: 'VALUE_LENS_INJECTIONS', file: 'value-lenses.md' },
+    { marker: 'OPERATING_PROFILE_INJECTIONS', file: 'operating-profiles.md' },
     { marker: 'SKILLS_INJECTIONS', file: 'active-skills.md' },
     { marker: 'MCP_INJECTIONS', file: 'active-mcps.md' }
 ];

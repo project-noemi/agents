@@ -277,6 +277,48 @@ test('n8n guidance avoids invented helper APIs and documents the real runtime su
     assert.match(protocol, /Do Not Assume Hidden Helper Tools/);
 });
 
+test('.env.template inventories all NOEMI_DOCKER_SMOKE_* variables consumed by the e2e suite', () => {
+    // REQUIREMENTS.md §9 mandates that the test suite cover Docker env
+    // inventories including NOEMI_DOCKER_SMOKE_* variables. Resolves
+    // CLARIFICATIONS Q [2026-05-29] / Q [2026-06-11] (Decision [2026-06-19-0003]).
+    const envTemplate = read('.env.template');
+    const smokeTest = read('tests/e2e/docker-smoke.test.js');
+
+    // 1. Discover every NOEMI_DOCKER_SMOKE_* variable referenced by the e2e suite.
+    const referenced = new Set();
+    const refPattern = /NOEMI_DOCKER_SMOKE_[A-Z0-9_]+/g;
+    let match;
+    while ((match = refPattern.exec(smokeTest)) !== null) {
+        referenced.add(match[0]);
+    }
+    assert.ok(
+        referenced.size > 0,
+        'docker-smoke.test.js should reference at least one NOEMI_DOCKER_SMOKE_* variable'
+    );
+
+    // 2. Every referenced variable must appear in .env.template as a KEY=VALUE
+    //    declaration (i.e. inventoried, not just commented).
+    for (const name of referenced) {
+        const declPattern = new RegExp(`^${name}=`, 'm');
+        assert.match(
+            envTemplate,
+            declPattern,
+            `${name} is consumed by tests/e2e/docker-smoke.test.js but missing from .env.template`
+        );
+    }
+
+    // 3. Each declared NOEMI_DOCKER_SMOKE_* variable must have a non-empty
+    //    default value so the test suite has a usable baseline without a vault.
+    const declPattern = /^(NOEMI_DOCKER_SMOKE_[A-Z0-9_]+)=(.*)$/gm;
+    let decl;
+    while ((decl = declPattern.exec(envTemplate)) !== null) {
+        assert.ok(
+            decl[2].trim().length > 0,
+            `${decl[1]} in .env.template must have a non-empty default value`
+        );
+    }
+});
+
 test('RFP responder workflow uses the current Google Gemini node path', () => {
     const workflow = JSON.parse(read('examples/workflows/rfp-responder.json'));
     const workflowText = read('examples/workflows/rfp-responder.json');

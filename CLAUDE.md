@@ -1,3 +1,10 @@
+<!-- GENERATED FILE — DO NOT EDIT.
+     This file is built by `node scripts/generate_all.js` from templates/context/CLAUDE.template.md
+     plus the active agents/, skills/, mcp-protocols/, value-lenses/, operating-profiles/, AGENTS.md, and mcp.config.json.
+     • To change the static prose, edit templates/context/CLAUDE.template.md.
+     • To change the injected sections (agent index, skills, MCP protocols, value lenses, global mandates),
+       edit the upstream source, then re-run `node scripts/generate_all.js`.
+     Manual edits to CLAUDE.md are overwritten on the next run and will fail the CI golden-fixture / determinism checks. -->
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -10,11 +17,9 @@ Project NoéMI also serves as the **public reference architecture** for NewPush'
 ## Key Commands
 
 ```bash
-# Generate GEMINI.md from template + active MCP protocols
-node scripts/generate_gemini.js
-
-# Generate CLAUDE.md from template + active MCP protocols
-node scripts/generate_claude.js
+# Regenerate BOTH GEMINI.md and CLAUDE.md from templates + active agents/skills/MCP protocols
+node scripts/generate_all.js   # alias: npm run generate
+# (generate_gemini.js and generate_claude.js are thin shims that both forward to generate_all.js)
 
 # Verify environment prerequisites (Docker, Gemini CLI, etc.)
 bash scripts/verify-env.sh
@@ -175,7 +180,7 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 | coding | Bolt (Next.js 16) — Performance Agent | Performance-obsessed agent specializing in **Next. | `agents/coding/bolt/nextjs-16.md` |
 | coding | Sentinel — Security Agent | Security-focused agent who protects the codebase from vulnerabilities and security risks. | `agents/coding/sentinel/core.md` |
 | communication | Postman — Communication Agent | Professional communication assistant specializing in efficient email management and summarization. | `agents/communication/postman.md` |
-| education | Student Success Coach — Education Agent | A compassionate and strategic academic mentor specialized in supporting students from low-income backgrounds. | `agents/education/student-success-coach.md` |
+| education | Student Success Coach — Education Agent | A compassionate, flexible, and strategic academic mentor specialized in supporting students from low-income or housing-unstable backgrounds. | `agents/education/student-success-coach.md` |
 | engineering | AI Architect — Engineering Agent | You are the AI Architect, the capstone persona of Project NoeMI. | `agents/engineering/ai-architect.md` |
 | engineering | Gatekeeper — Engineering Agent | Automated pull request triage agent that continuously monitors all repositories in a GitHub organization, classifies open PRs by risk level, and takes decisive action: auto-merges safe changes, flags  | `agents/engineering/gatekeeper.md` |
 | guardian | PIIGuard — Guardian Agent | Primary Data Privacy Guardian for the Project NoéMI agent fleet. | `agents/guardian/pii-guard.md` |

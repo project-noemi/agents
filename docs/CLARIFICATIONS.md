@@ -521,3 +521,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the generator be updated to enforce a fatal error (exit 1) if any active skill or MCP protocol specified in the configuration is missing during generation?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/generate_all.js` to enforce a fatal error (exit 1) if any active skill or MCP protocol defined in `mcp.config.json` is missing from the filesystem.*
+
+### ❓ Question [2026-07-04] - ESM Migration vs. Dual-Export for Shared Utilities
+**Context:** The `Executive Assistant` tool (`tools/executive-assistant/`) and modern reference services use Node.js ESM (`"type": "module"`), but shared repository utilities like `scripts/resilience_helpers.js` use CommonJS. This prevents direct code reuse and integration of mandated resilience patterns.
+**Ambiguity / Drift:** We have a mismatch between the Node 24 ESM baseline for services and the legacy CJS baseline for scripts.
+**Question for Product Owner:** Should Jules perform a wholesale migration of the `scripts/` directory to ESM to align with the Node 24 baseline, or should we implement a dual-export strategy (CJS/ESM) for shared utilities?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Migrate all shared Node.js utilities in `scripts/` to ESM to ensure seamless integration with modern reference services and tools.*
+
+### ❓ Question [2026-07-04] - Substantive Audit Gate Enforcement (TBD Rejection)
+**Context:** `AGENTS.md` mandates that persona and skill specifications must contain role-specific, technically accurate content and prohibits the use of "TBD" or boilerplate. Currently, `scripts/audit-repo.js` only performs a structural check (heading presence).
+**Ambiguity / Drift:** 100% of the active reusable skills in `skills/` currently contain "TBD" placeholders in mandatory sections, allowing them to pass the structural audit while remaining substantively safety-deficient.
+**Question for Product Owner:** Should Jules update `scripts/audit-repo.js` to treat "TBD" placeholders or empty mandated sections as a fatal error (exit 1) in CI?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to reject files containing "TBD" placeholders in mandatory persona and skill sections as a fatal audit failure.*

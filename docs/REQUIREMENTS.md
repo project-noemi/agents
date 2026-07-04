@@ -163,8 +163,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **CI/CD "False Green" Risk in E2E**: `tests/e2e/docker-smoke.test.js` silently skips runtime checks if Docker is absent. This masks environmental gaps in CI/CD when `FORCE_DOCKER_SMOKE=true` is not set.
 - **SecretOps Provider Bias**: `tests/examples-smoke.test.js` contains hardcoded assertions for the `op://` (1Password) pattern (`assert.match(content, /op:\/\//)`), causing false failures for users of Infisical or other providers.
 - **Sync Script Identity Drift**: `scripts/sync-upstream.sh` relies on a hardcoded `MY_ORGANIZATION="[MyOrganization]"` placeholder. Organizations forking the repo must manually edit the script, increasing maintenance friction.
-- **Internal Tool Observability Gap**: Node.js tools like `executive-assistant` and reference services like `dashboard-ingest.js` rely on unstructured `console.log` and lack the mandated JSON Audit Log emission to `stderr`.
-- **Missing shared `audit_logger.js`**: The utility mandated in `AGENTS.md` to standardize JSON Audit Log emission is absent from the `scripts/` directory.
+- **Internal Tool Observability Gap**: While the shared `scripts/audit_logger.js` utility is available, Node.js tools like `executive-assistant` and reference services like `dashboard-ingest.js` still rely on unstructured `console.log` and have not yet adopted the mandated JSON Audit Log emission to `stderr`.
 - **AI Model Baseline Drift**: Legacy Python/Bash examples (e.g., `examples/docker/agent.py`) are pinned to `gemini-2.0-flash` rather than the canonical `gemini-2.5-flash` baseline.
 - **Resilience Helper Integration Gap**: `scripts/resilience_helpers.js` exists but is not utilized by any agent personas or network-bound tools, despite the mandate for resilience.
 - **Resilience Helper Module Mismatch**: `tools/executive-assistant/` uses ESM (`"type": "module"`), preventing direct import of the CommonJS `scripts/resilience_helpers.js`.
@@ -183,13 +182,14 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 ### 3. Substantive & Safety Drift
 - **Substantive Content Baseline (The "TBD" Problem)**: 100% of reusable skills and most agent personas use "TBD" placeholders or boilerplate for `Data Inventory` and `Refusal Criteria`, bypassing the D2 (Description) and Refusal Principle mandates.
 - **Audit Script Substantive Blindness**: `scripts/audit-repo.js` verifies the presence of headings but fails to detect "TBD" placeholders or validate the content of `Refusal Criteria` subsections.
-- **Audit Log Schema Blindness**: `scripts/audit-repo.js` verifies that Audit Logs are valid JSON but fails to validate the presence of mandated fields (`task`, `inputs`, `actions`, `risks`, `result`).
+- **Audit Log Schema Validation Gap**: `scripts/audit-repo.js` verifies that Audit Logs are valid JSON but does not yet implement the mandated JSON schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result`), despite the requirement in §3.
 
 ### 4. Referential & Link Integrity Drift
 - **Internal Referential Integrity Gap**: The repository lacks automated verification for internal markdown links and `**Skill:**` path references within agent workflows.
 - **Audit Script File Verification Gap**: `scripts/audit-repo.js` does not verify that skills or MCPs referenced in `mcp.config.json` exist as physical files.
 
 ### 5. Remediated Limitations (Archive)
+- **Missing shared `audit_logger.js`** (Remediated: 2026-06-19): The shared utility for structured JSON Audit Log emission is now available in the `scripts/` directory.
 - **Missing Onboarding and Configuration Directories** (Remediated: 2026-05-28): `clients/`, `.gatekeeper/`, and `templates/tiers/` directories now exist with `.gitignore` placeholders.
 - **Framework Injection Gap** (Remediated: 2026-05-28): `Value Lenses` and `Operating Profiles` are now injected by `scripts/generate_all.js`.
 - **Artifact Naming Convention Alignment** (Remediated: 2026-05-10): `docs/n8n workflows/` renamed to `docs/n8n-workflows/`.

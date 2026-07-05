@@ -2,14 +2,14 @@
 
 ## Overview
 
-\[MyOrganization]/agents is derived from [project-noemi/agents](https://github.com/project-noemi/agents), the open-source Project NoéMI agent library. This guide describes the process for keeping the your private "fork" in sync with upstream improvements of Project NoéMI while preserving Organization-specific intellectual property.
+\[MyOrganization]/agents is derived from [project-noemi/agents](https://github.com/project-noemi/agents), the Fair Source (FSL-1.1-Apache-2.0) Project NoéMI agent library. This guide describes the process for keeping the your private "fork" in sync with upstream improvements of Project NoéMI while preserving Organization-specific intellectual property.
 
 **Source of truth:**
 
 | Remote     | Repository                                      | Purpose                        |
 |------------|-------------------------------------------------|--------------------------------|
 | `origin`   | `github.com/MyOrganization/agents`              | MyOrganization's private fork  |
-| `upstream` | `github.com/project-noemi/agents`               | NoéMI open-source original     |
+| `upstream` | `github.com/project-noemi/agents`               | NoéMI Fair Source original     |
 
 **Working branch:** `develop`
 
@@ -169,7 +169,7 @@ Claude will recognise the workflow from project memory and execute the full sync
    **Workflow name:** `sync-upstream`
    **Prompt:**
    ```
-   Sync this repository with the upstream open-source source (project-noemi/agents).
+   Sync this repository with the upstream Fair Source repository (project-noemi/agents).
 
    Steps:
    1. Run: git remote add upstream https://github.com/project-noemi/agents.git 2>/dev/null || true

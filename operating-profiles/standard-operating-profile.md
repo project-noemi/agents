@@ -1,7 +1,3 @@
-## Operating Profiles
-
-The following Operating Profiles describe how agents should adapt their tone, cadence, and escalation behavior to different organizational contexts.
-
 # Standard Operating Profile
 
 ## Profile Metadata

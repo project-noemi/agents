@@ -520,3 +520,96 @@
 - **Decision:** `scripts/sync-upstream.sh` is hardened to a **reviewed pull-request** model instead of pushing merges directly to `develop`. It creates a collision-safe `sync/upstream-*` branch from `origin/develop`, merges `upstream/main` then `upstream/develop` auto-resolving content conflicts with `-X ours`, surfaces every overridden file in the PR body, and opens the PR via `gh`. A duplicate guard refuses to open a second sync PR while one is open; structural conflicts (rename, modify/delete) stop the run for manual resolution and resume via `--continue`. A companion offline harness `scripts/test-sync-upstream.sh` verifies override surfacing, `--continue`, dry-run, and the duplicate guard with a stubbed `gh` (no network/auth). The environment-driven parameterization from Decision [2026-06-19-0002] is preserved (`NOEMI_UPSTREAM_REMOTE`, `NOEMI_UPSTREAM_URL`, `NOEMI_LOCAL_BRANCH`).
 - **Context:** The previous script pushed merges straight to `develop`, leaving no human review gate and silently dropping upstream hunks on conflict. Best practice for a governed fork that tracks a moving upstream is to *propose* changes through a reviewed PR with a visible record of what local customization overrode upstream. Supports a daily scheduled Claude Code routine (see `docs/SYNC_AGENT_PROMPT.md`) without PR pile-up.
 - **Impact:** `docs/UPSTREAM_SYNC.md` updated (new "PR-Based Sync (Reviewed)" section, `--continue` flow, `gh`/Claude-GitHub-App troubleshooting), `README.md` "Staying Aligned with a Moving Architecture" updated, and `docs/SYNC_AGENT_PROMPT.md` added as the drop-in routine prompt. Direct-merge Options 2–4 in the sync guide are retained as labelled fallbacks.
+
+## [2026-07-05-0001] Bulk Closure of Late-Cycle Clarifications Subsumed by Prior Decisions
+
+- **Decision:** The following CLARIFICATIONS.md questions are closed as already-resolved by prior entries in this log and are removed from the active backlog without further action:
+  - Q [2026-04-23] Gatekeeper Reference Implementation Mutating Actions → resolved by [2026-06-12-0005] (dry-run mode, env-switched).
+  - Q [2026-05-01] Node.js 24 Baseline Enforcement in Docker → resolved by [2026-06-19-0012] (audit check approved, tracked as implementation task).
+  - Q [2026-05-01] Persona Journal Section Standardization → resolved by [2026-06-12-0008] and [2026-06-19-0012] (Journal remains optional).
+  - Q [2026-05-02] Agent Index Role Truncation → resolved by [2026-06-12-0012] and [2026-06-19-0012] (full-first-paragraph extraction; tracked as implementation task).
+  - Q [2026-05-02] Config-to-Asset Mapping Validation → subsumed by [2026-06-19-0005] (referential integrity is part of the consolidated audit-coverage expansion).
+  - Q [2026-05-02] Automated Naming Convention Audit → resolved by [2026-06-19-0012] (approved; tracked as implementation task).
+  - Q [2026-05-02] Standardized Audit Log Emission for Build Utilities → resolved by [2026-06-12-0010] and [2026-06-19-0001] (utility shipped; adoption tracked as implementation task).
+  - Q [2026-05-02] Audit Log Descriptor Standardization → resolved by [2026-06-12-0009] (NDJSON on stderr; no dedicated FD).
+  - Q [2026-05-02] Refusal Criteria Substantive Enforcement → subsumed by [2026-06-19-0005].
+  - Q [2026-05-02] Tool Baseline Alignment (Executive Assistant) → resolved by [2026-06-12-0010] (audit log adoption tracked as implementation task).
+  - Q [2026-05-02] Skill Contract Enforcement Depth → structural portion subsumed by [2026-06-19-0005]; substantive portion covered by open Q [2026-05-28].
+  - Q [2026-05-13] RFP Split Naming Convention Remediation → resolved by [2026-06-12-0013] (approved; tracked as implementation task).
+  - Q [2026-05-15] Test Suite Reinforcement of API Path Drift → resolved by [2026-06-12-0014] (verified aligned).
+  - Q [2026-05-15] Skill-to-Agent Referential Integrity → subsumed by [2026-06-19-0005].
+  - Q [2026-05-17] Generator Script Redundancy → resolved by [2026-06-12-0015] and [2026-06-19-0012] (deprecate the two single-target wrappers; tracked as implementation task).
+  - Q [2026-05-19] Internal Tool Observability Standard → resolved by [2026-06-12-0010] and [2026-06-19-0001].
+  - Q [2026-05-20] AI Model Version Baseline Formalization Follow-through → resolved by [2026-06-19-0012] (audit check approved; tracked as implementation task).
+  - Q [2026-05-29] Docker Smoke Test Variable Validation → resolved by [2026-06-19-0003] (bidirectional NOEMI_DOCKER_SMOKE_* check shipped).
+  - Q [2026-05-29] Sync Script Parameterization → resolved by [2026-06-19-0002] (environment-variable-driven; sync-upstream.sh updated).
+  - Q [2026-05-29] Branch Protection Audit Implementation → resolved by [2026-06-19-0012] (audit probe approved; tracked as implementation task).
+  - Q [2026-05-29] Internal Tool Observability Implementation → resolved by [2026-06-19-0001] (shared utility shipped; adoption is now an implementation chore).
+  - Q [2026-06-01] Memory-Code Synchronization Drift → resolved by [2026-06-19-0016] (component-wise closure across `audit_logger.js`, `sync-upstream.sh`, and Agent Index scope).
+  - Q [2026-06-01] Substantive vs. Structural Audit Policy → structural portion subsumed by [2026-06-19-0005]; substantive portion remains open (Q [2026-06-15]).
+  - Q [2026-06-01] Audit Log Schema Enforcement → subsumed by [2026-06-19-0005].
+  - Q [2026-06-10] Red Team Gauntlet Machine-Readable Test Vectors → resolved by [2026-06-19-0008]; the machine-readable file `examples/red-team-gauntlet/test-vectors.yaml` is now present.
+  - Q [2026-06-10] Mandated audit_logger.js Absence and Ownership → resolved by [2026-06-19-0001] (utility shipped, canonical schema documented).
+  - Q [2026-06-11] verify-env.sh Mode Discrepancy → resolved by [2026-06-19-0007] (docker-mode hard-fail policy reaffirmed; tracked as implementation task).
+  - Q [2026-06-11] sync-upstream.sh Hardcoded Identity → resolved by [2026-06-19-0002].
+  - Q [2026-06-11] tests/examples-smoke.test.js Environmental Blindness → resolved by [2026-06-19-0003].
+  - Q [2026-06-11] audit_logger.js Mandated Absence → resolved by [2026-06-19-0001].
+  - Q [2026-06-15] Red Team Gauntlet Serialization Strategy → resolved by [2026-06-19-0008] (single file preferred; YAML variant shipped as `test-vectors.yaml`).
+  - Q [2026-06-15] Operating Profile Baseline Absence → resolved by [2026-06-19-0011] (bounded baseline set approved; tracked as implementation task).
+  - Q [2026-06-15] Internal Tool Audit Log Event Mapping → resolved by [2026-06-19-0001] (event-to-schema mapping is the caller's responsibility; the utility provides the schema).
+  - Q [2026-06-17] MCP Protocol Specification Contract Audit Gap → resolved by [2026-06-19-0006].
+  - Q [2026-06-17] Value Lens and Operating Profile Structural Audit → resolved by [2026-06-19-0006].
+  - Q [2026-06-17] Automated Internal Documentation Link Integrity → subsumed by [2026-06-19-0005].
+  - Q [2026-06-17] Internal Tool Audit Log Mapping → resolved by [2026-06-19-0001].
+  - Q [2026-06-18] Audit Script JSON Schema Validation Mandate → subsumed by [2026-06-19-0005].
+  - Q [2026-06-18] audit_logger.js Canonical Schema and Behavior → resolved by [2026-06-19-0001] (canonical schema documented; `emit`, `createLogger`, `normalize`, `validate` API surface defined).
+  - Q [2026-06-18] verify-env.sh Fatal Error Enforcement in Docker Mode → resolved by [2026-06-19-0007].
+  - Q [2026-06-19] Resilience Helper Persona Integration → resolved by [2026-06-12-0006] (incremental per-PR remediation; each network-bound persona touched by a PR exits with `withRetry` logic where appropriate).
+  - Q [2026-06-19] audit_logger.js Schema and Event Mapping → resolved by [2026-06-19-0001] (canonical persona-contract schema is reused).
+- **Context:** A large block of clarifications logged between May and July 2026 restate or duplicate earlier resolved decisions. Carrying them in the active backlog makes the queue look far larger than the real outstanding work. This closure follows the same pattern as [2026-05-28-0006] and [2026-06-19-0005].
+- **Impact:** CLARIFICATIONS.md shrinks to the genuinely open product-owner questions; the durable answers remain in this log for traceability. The listed limitations in `REQUIREMENTS.md` §Current Known Limitations remain open until each implementation task lands.
+
+## [2026-07-05-0002] Shared Node.js Utility Module Strategy — Dual CommonJS/ESM Export
+
+- **Decision:** Shared Node.js utilities in `scripts/` (currently `scripts/resilience_helpers.js`, `scripts/audit_logger.js`, `scripts/context_helpers.js`) MAY adopt a dual-export pattern so both the legacy CommonJS `require(...)` path used by build utilities and the modern ESM `import ... from '...'` path used by service tools (e.g., `tools/executive-assistant`, `examples/gatekeeper-deployment`) work without a wrapper. The reference pattern is to author the module in CommonJS and add a companion `.mjs` re-export shim, OR (equivalently) author in ESM and use `createRequire` in the few CJS callers. Wholesale migration of the `scripts/` directory to ESM is NOT approved because it would break every `require('./context_helpers')` call in the existing audit and generator scripts without proportional benefit.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-19] Resilience Helper Module System Mismatch, Q [2026-07-03] Shared Utility ESM Migration Strategy, and Q [2026-07-04] ESM Migration vs. Dual-Export for Shared Utilities. Industry practice for library modules crossing runtime generations is dual-package or dual-export (e.g. `chalk`, `nanoid`, `@sindresorhus/*` v5+); best practice for a reference architecture with heavy CJS baggage is to keep the CJS surface working and add ESM shims where actually needed; the recommendation is therefore dual-export rather than a big-bang migration.
+- **Impact:** Utility authors add `.mjs` shims as ESM consumers actually need them; nothing changes for existing CJS callers. Tracked as an implementation task (`Resilience Helper Module Mismatch`) in `REQUIREMENTS.md` §Current Known Limitations, resolved when `scripts/resilience_helpers.mjs` and `scripts/audit_logger.mjs` shims are added and referenced by the ESM-native tools.
+
+## [2026-07-05-0003] E2E Smoke Test — Optional Mandatory Docker Mode via FORCE_DOCKER_SMOKE
+
+- **Decision:** `tests/e2e/docker-smoke.test.js` SHALL preserve its current "clean skip when Docker is unavailable" default (so local developers without Docker can still run `npm test` cleanly), AND additionally support an explicit `FORCE_DOCKER_SMOKE=true` environment flag that promotes a missing Docker binary from "skip" to "fail". CI workflows for `develop` and `main` SHOULD set `FORCE_DOCKER_SMOKE=true` on hosts where Docker is expected, so a runner misconfigured to lack Docker fails loudly instead of silently passing.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-18] E2E Smoke Test Docker Mandatory Check. Industry practice for optional-runtime tests is a soft skip in development plus an opt-in mandatory mode in CI (e.g., `RUN_INTEGRATION_TESTS=true` in `jest` and `pytest` conventions); best practice is to make the opt-in explicit and documented; the recommendation is therefore a single `FORCE_DOCKER_SMOKE` flag rather than a per-test override.
+- **Impact:** Closes the CI/CD "False Green" risk described in `REQUIREMENTS.md` §Current Known Limitations. Tracked as an open implementation task under `Current Known Limitations` until the flag is wired into `docker-smoke.test.js` and the CI workflow.
+
+## [2026-07-05-0004] SecretOps Multi-Provider Test Assertions — Accept Both 1Password and Infisical
+
+- **Decision:** `tests/examples-smoke.test.js` SHALL accept either `op://` (1Password) or `infisical://` (Infisical) vault-reference patterns in `.env.example` files, and either `op run` or `infisical run` wrappers in Docker Compose examples. The assertion pattern is a regex alternation (`/(op:\/\/|infisical:\/\/)/`) rather than a hardcoded 1Password check. This aligns the test suite with the multi-provider mandate already documented in Requirement §5 (Fetch-on-Demand: "Infisical OR 1Password").
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-19] SecretOps Provider Bias in Smoke Tests and Q [2026-07-04] SecretOps Multi-Provider Validation Strategy. The hardcoded `/op:\/\//` and `/op run --env-file=.env.example -- docker compose up -d/` regexes in the test suite silently punish Infisical users; the requirement was already multi-provider from Day 1 (`[2026-04-02] Verified Codebase Realignment` decision line "One of `infisical` or `op` is a required SecretOps dependency"). Best practice for a multi-provider reference architecture is to test against the union of supported providers, not the intersection.
+- **Impact:** Closes the "SecretOps Provider Bias" entry under `REQUIREMENTS.md` §Current Known Limitations. Implemented in this PR: `tests/examples-smoke.test.js` now accepts either provider's vault-reference syntax and Compose wrapper syntax.
+
+## [2026-07-05-0005] Legacy Python Example — Align Model Baseline to Gemini 2.5 Flash
+
+- **Decision:** `examples/docker/agent.py` SHALL use `gemini-2.5-flash` as the model identifier, aligning it with the canonical AI Model Baseline in `REQUIREMENTS.md` §Runtime and Tooling Requirements ("Reference workflows, lab examples, and smoke tests are pinned to Gemini 2.5 Flash"). Its LEGACY/ILLUSTRATIVE header is preserved; only the model string changes.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-19] Legacy Example Model Drift. The `AGENTS.md` and `REQUIREMENTS.md` mandates for `gemini-2.5-flash` post-date the Python example, and the previous decision-to-defer legacy migration ([2026-04-02] "Legacy Python examples remain allowed as historical references and should be migrated incrementally") explicitly contemplates one-line updates like this. This is a per-file incremental migration, not a bulk rewrite.
+- **Impact:** Closes the "AI Model Baseline Drift" entry under `REQUIREMENTS.md` §Current Known Limitations. Implemented in this PR.
+
+## [2026-07-05-0006] Generator Fail-Fast on Missing Framework Assets and Active Skills/MCPs
+
+- **Decision:** `scripts/generate_all.js` (via `scripts/context_helpers.js`) SHALL be updated to enforce a fatal error (exit code 1) when:
+  (a) `value-lenses/` or `operating-profiles/` are configured for injection but are missing from the filesystem, contain only `README.md` / `*_TEMPLATE.md`, or are otherwise structurally empty; AND
+  (b) any entry in `mcp.config.json` under `active_mcps` or `active_skills` references a file that does not exist in the filesystem.
+  The current "silent success" pattern (return HTML comment placeholders like `<!-- Framework directory not found ... -->`) SHALL be replaced with `process.exit(1)` after emitting a `AUDIT FAIL:` log line to `stderr` identifying the specific missing asset. This aligns generator behavior with the `Contract and Generator Drift Must Fail Fast` mandate in `REQUIREMENTS.md` §3.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-27] Generator Fail-Fast Policy for Framework Assets and Q [2026-07-03] Generator Fail-Fast Enforcement for Skills/MCPs. Both ask the same question at different layers of the same generator; a single decision covers both. Industry practice for build/generator tooling is to fail loudly on missing dependencies rather than emit warnings that get ignored (see `webpack`, `rollup`, `hugo`); best practice for a reference architecture that ships generated context files is a hard gate; the recommendation is therefore fail-fast.
+- **Impact:** Closes the "Generator 'Silent Success' on Missing Framework Assets" entry under `REQUIREMENTS.md` §Current Known Limitations once implemented. Tracked as an open implementation task in `REQUIREMENTS.md`. The change requires golden-fixture regeneration and a small update to `tests/generators.test.js` to assert the new fail-fast behavior.
+
+## [2026-07-05-0007] Rules & Constraints Heading — Retain Dual Naming with Case-Insensitive Audit Tolerance
+
+- **Decision:** The mandatory heading names remain as documented: `Rules & Constraints` for agent personas and `Rules & Constraints (4D Diligence)` for reusable skills. Decision [2026-05-28-0004] already established that `scripts/audit-repo.js` performs case-insensitive comparison and tolerates a `(4D Diligence)` suffix, so agents and skills interoperate under the same audit gate without a fleet-wide rename. A wholesale rename would touch 22+ persona files and every existing skill for a cosmetic gain that the audit already handles.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-20] Rules & Constraints Heading Inconsistency. Both headings have the same semantic role (Diligence-aligned rules); the dual naming reflects an incremental introduction, not a design principle. Industry practice for governance-heading standardization is to enforce a canonical name via audit tolerance rather than by rewriting every existing file; the recommendation is therefore no-change plus a documentation note.
+- **Impact:** No file renames. `AGENTS.md` §"Persona and Skill Contracts" is updated in this PR to note the dual naming and the audit-tolerance rule, so future contributors do not re-litigate the discrepancy.
+
+## [2026-07-05-0008] Phase 0 Assessment Kit — Audit Coverage Approved
+
+- **Decision:** `scripts/audit-repo.js` SHALL acquire a check that verifies the presence of the eight mandated files in the `docs/phase-zero-assessment/` directory (enumerated in `REQUIREMENTS.md` §1). Missing files fail the audit as a fatal error, matching the treatment of missing persona sections. This closes the "Phase 0 Audit Gap" limitation and makes Requirement §1 enforceable rather than aspirational.
+- **Context:** Resolves CLARIFICATIONS.md Q [2026-06-20] Phase 0 Assessment Kit Audit Coverage. Requirement §1 explicitly enumerates the kit's contents ("separate security and AI readiness assessment guides, `network-security-assessment.md` and `PRACTITIONER_NOTES.md`, consent template, report-of-findings template, 30/60/90-day roadmap template, readiness rubric"). The absence of an audit check for a first-class Requirement §1 mandate is a governance blind spot. Industry practice for governance-gate scripts is to enforce every explicitly-enumerated invariant; the recommendation is therefore a straightforward file-presence check.
+- **Impact:** Closes the "Phase 0 Audit Gap" entry under `REQUIREMENTS.md` §Current Known Limitations once implemented. Tracked as an open implementation task in `REQUIREMENTS.md`.

@@ -17,10 +17,17 @@ test('docker env inventories use vault references instead of placeholder secrets
         'examples/video-automation-pod/.env.example'
     ];
 
+    // Per Decision [2026-07-05-0004]: accept either 1Password (`op://`) or Infisical
+    // (`infisical://`) vault-reference syntax so the multi-provider SecretOps mandate
+    // in Requirement §5 is honored by the smoke suite.
     for (const envFile of envFiles) {
         const content = read(envFile);
         assert.doesNotMatch(content, /changeme/i, `${envFile} still contains insecure placeholder values`);
-        assert.match(content, /op:\/\//, `${envFile} should contain vault-reference examples`);
+        assert.match(
+            content,
+            /(op:\/\/|infisical:\/\/)/,
+            `${envFile} should contain vault-reference examples (op:// or infisical://)`
+        );
     }
 });
 
@@ -31,9 +38,16 @@ test('compose examples point to Fetch-on-Demand inventories', () => {
         'examples/gatekeeper-deployment/docker-compose.yml'
     ];
 
+    // Per Decision [2026-07-05-0004]: accept either `op run` (1Password) or
+    // `infisical run` (Infisical) wrappers in Compose examples so the reference
+    // stack does not silently punish Infisical adopters.
     for (const composeFile of composeFiles) {
         const content = read(composeFile);
-        assert.match(content, /op run --env-file=.env.example -- docker compose up -d/);
+        assert.match(
+            content,
+            /(op|infisical) run --env-file=.env.example -- docker compose up -d/,
+            `${composeFile} should show a SecretOps run wrapper (op or infisical)`
+        );
         assert.doesNotMatch(content, /--env-file=.env -- docker compose up -d/);
     }
 });

@@ -230,7 +230,7 @@ This lens treats three assets as the core machinery of the Dream:
 - **Durable ownership** — real estate and home ownership as the canonical household wealth vehicle, alongside business equity and other appreciating assets
 - **Generational compounding** — wealth, education, and opportunity accumulate across generations rather than resetting each one
 
-The lens carries four supporting clauses that the Dream does not work without:
+The lens carries five supporting clauses that the Dream does not work without:
 
 - **Education as the mobility engine** — accessible education and skill-building are the primary lawful converter of effort into trajectory
 - **Entrepreneurship** — the freedom to start, own, and grow a business is a first-class mobility path, not an exception

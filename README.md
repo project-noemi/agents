@@ -219,6 +219,18 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 
 ---
 
+## License & Transparency
+
+**Category:** [Fair Source](https://fair.io/)
+**License:** Functional Source License ([FSL-1.1-Apache-2.0](LICENSE))
+**Promise:** [NoéMI Transparent Source Guarantee](docs/TRANSPARENT_SOURCE.md)
+
+NoéMI uses a Fair Source distribution model. You are free to read, modify, use, and redistribute the framework; the only restriction is offering NoéMI itself as a competing commercial managed service. To ensure an ever-growing open-source commons, **each published version of NoéMI (tracked via tagged releases) automatically converts to the pure Apache 2.0 license exactly two years after its publication date.**
+
+Beyond the license, NoéMI is built on **spec-and-governance transparency**: every agent persona, skill, value lens, operating profile, and MCP protocol is a versioned, human-readable spec, and the runtime context generated from them is deterministic and CI-verified. Read the [Transparent Source Guarantee](docs/TRANSPARENT_SOURCE.md) for the five auditable clauses behind the **NoéMI Transparent™** mark.
+
+---
+
 ## Context
 
 * **Project NoéMI** — the methodology, 4D framework, and GMU-backed training program

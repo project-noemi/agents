@@ -113,6 +113,25 @@ Default rule:
 
 - this is the default lens when no higher-stakes override is selected
 
+### 4. American Dream Lens
+
+A contributed lens (owner: NewPush, status: `draft`), not a baseline lens.
+
+Optimizes for:
+
+- merit-based upward mobility with auditable merit-to-outcome conversion
+- generational wealth compounding across cohorts
+- durable ownership, with real estate and business equity as canonical vehicles
+- open entry pathways for newcomers and first-generation participants
+
+Blind spot handling:
+
+- an iterative-elimination Blind Spot Register: every blind spot carries a built-in mitigation, a detection indicator, and a status that must advance across validation cycles
+
+Default rule:
+
+- the repository default remains `balanced-enterprise`
+
 ## What Belongs In A Value Lens
 
 - success criteria
@@ -141,7 +160,8 @@ value-lenses/
 ├── LENS_TEMPLATE.md
 ├── performance-efficiency.md
 ├── care-continuity.md
-└── balanced-enterprise.md
+├── balanced-enterprise.md
+└── american-dream.md
 ```
 
 ## Activation Model

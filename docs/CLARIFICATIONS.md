@@ -535,3 +535,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules update `scripts/audit-repo.js` to treat "TBD" placeholders or empty mandated sections as a fatal error (exit 1) in CI?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to reject files containing "TBD" placeholders in mandatory persona and skill sections as a fatal audit failure.*
+
+### ❓ Question [2026-07-04] - SecretOps Multi-Provider Validation Strategy
+**Context:** The requirements state that SecretOps can be either 1Password or Infisical, but the test suite in `tests/examples-smoke.test.js` hardcodes assertions for `op://` and `op run`.
+**Ambiguity / Drift:** This creates a technical bias that fails for Infisical users, violating the multi-provider mandate and creating "false red" tests.
+**Question for Product Owner:** Should we authorize Jules to refactor `tests/examples-smoke.test.js` to use generic regex patterns that accept either `op://` or `infisical://` (and their respective wrappers)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `tests/examples-smoke.test.js` to support multi-provider SecretOps validation by accepting both 1Password and Infisical patterns.*
+
+### ❓ Question [2026-07-04] - Executive Assistant Learning Agent Schema Alignment
+**Context:** `tools/executive-assistant/server.js` implements a "Learning Agent" loop that updates `execLogs`, but the logging schema (`event`, `details`, `actions`) drifts from the mandatory `Audit Log` schema (`task`, `inputs`, `actions`, `risks`, `result`).
+**Ambiguity / Drift:** This prevents unified fleet-wide observability and automated risk analysis for the Executive Assistant's most critical feedback loop.
+**Question for Product Owner:** Should the `executive-assistant` internal logs be refactored to use the canonical 5-field Audit Log schema via the shared `audit_logger.js` utility?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor the Executive Assistant "Learning Agent" loop to use the canonical Audit Log schema and emit structured JSON via `scripts/audit_logger.js`.*

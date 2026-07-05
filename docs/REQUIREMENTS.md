@@ -77,7 +77,7 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
 - [`scripts/audit-repo.js`](../scripts/audit-repo.js) is the repository audit gate for persona/skill headings and generator invariants.
 - The audit must fail when:
   - required persona or skill headings are missing (auditing both `agents/` and `skills/`)
-  - `Audit Log` sections contain structurally invalid JSON (Mandatory JSON shape validation)
+  - `Audit Log` sections contain structurally invalid JSON or fail **mandatory JSON schema validation** (checking for `task`, `inputs`, `actions`, `risks`, and `result`).
   - `AGENTS.md` is missing required top-level mandate sections
   - generator template markers drift
   - generated context files omit required global mandate headings
@@ -87,7 +87,7 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
 - Both [`scripts/generate_gemini.js`](../scripts/generate_gemini.js) and [`scripts/generate_claude.js`](../scripts/generate_claude.js) must use shared helper logic.
 - Both generators must inject:
   - the full mandate set from `AGENTS.md`
-  - the agent index discovered from `agents/`
+  - the **complete agent index** discovered from `agents/` (Automated tools must extract the **full first paragraph** of the `## Role` section for context richness).
   - active skills from `mcp.config.json`
   - active MCP protocol content from `mcp.config.json`
 - Both generators must support `--config=path/to/mcp.config.json`.
@@ -162,10 +162,9 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **SecretOps Authentication Enforcement Gap**: `scripts/verify-env.sh` and `scripts/verify-env.ps1` currently issue only warnings for missing or invalid SecretOps authentication (e.g., failing `infisical whoami`) even in `docker` mode, violating the mandate for a fatal error (exit 1) in production-like environments.
 - **CI/CD "False Green" Risk in E2E**: `tests/e2e/docker-smoke.test.js` silently skips runtime checks if Docker is absent. This masks environmental gaps in CI/CD when `FORCE_DOCKER_SMOKE=true` is not set.
 - **SecretOps Provider Bias**: `tests/examples-smoke.test.js` contains hardcoded assertions for the `op://` (1Password) pattern (`assert.match(content, /op:\/\//)`), causing false failures for users of Infisical or other providers.
-- **Sync Script Identity Drift**: `scripts/sync-upstream.sh` relies on a hardcoded `MY_ORGANIZATION="[MyOrganization]"` placeholder. Organizations forking the repo must manually edit the script, increasing maintenance friction.
-- **Internal Tool Observability Gap**: Node.js tools like `executive-assistant` and reference services like `dashboard-ingest.js` rely on unstructured `console.log` and lack the mandated JSON Audit Log emission to `stderr`.
-- **Missing shared `audit_logger.js`**: The utility mandated in `AGENTS.md` to standardize JSON Audit Log emission is absent from the `scripts/` directory.
-- **AI Model Baseline Drift**: Legacy Python/Bash examples (e.g., `examples/docker/agent.py`) are pinned to `gemini-2.0-flash` rather than the canonical `gemini-2.5-flash` baseline.
+- **Automation Branch Flow Undocumented Under the develop-only Merge Gate**: Decision [2026-07-03-0001] makes `develop` the only valid PR source into `main` (the `doc-*` wildcard exceptions were removed from `.github/workflows/require-develop-source.yml`). Governed automation runs on `claude/*` session branches and `sync/upstream-*` branches whose PRs must therefore target `develop`, but Requirement §7 and the automation prompt docs (`docs/DEV_AGENT_PROMPT.md`, `docs/SYNC_AGENT_PROMPT.md`) do not yet document this integration path (see Clarification [2026-07-05] Automation Branch Flow).
+- **Internal Tool Observability Gap**: While the shared `scripts/audit_logger.js` utility is available, Node.js tools like `executive-assistant` and reference services like `dashboard-ingest.js` still rely on unstructured `console.log` and have not yet adopted the mandated JSON Audit Log emission to `stderr`.
+- **AI Model Baseline Drift**: Legacy Python/Bash examples (e.g., `examples/docker/agent.py`) are pinned to `gemini-2.0-flash` rather than the canonical `gemini-2.5-flash` baseline. Additionally, `operating-profiles/local-sovereign-profile.json` pins `deepseek-coder:67b-instruct` and `llama3.3:70b-instruct`, which the single-baseline mandate does not currently recognize (see Clarification [2026-07-05] Sovereign Model Pins).
 - **Resilience Helper Integration Gap**: `scripts/resilience_helpers.js` exists but is not utilized by any agent personas or network-bound tools, despite the mandate for resilience.
 - **Resilience Helper Module Mismatch**: `tools/executive-assistant/` uses ESM (`"type": "module"`), preventing direct import of the CommonJS `scripts/resilience_helpers.js`.
 
@@ -174,8 +173,8 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Phase 0 Audit Gap**: `scripts/audit-repo.js` lacks logic to verify the presence of the 8+ mandated assessment files in `docs/phase-zero-assessment/`, violating Requirement §1.
 - **Agent Index Descriptive Truncation (Sentence Regex Failure)**: `scripts/context_helpers.js` extracts only the first sentence of the `Role` section (`role.split('\n')[0]` followed by sentence regex), violating the "paragraph extraction" mandate in `AGENTS.md`. The regex `/^[^.!?]+[.!?]/` fails to capture full technology names containing dots (e.g., "Next.js" is truncated to "Next."), leading to inaccurate role summaries in the Agent Index.
 - **Generator "Silent Success" on Missing Framework Assets**: `scripts/generate_all.js` returns HTML comments (e.g., `<!-- Framework directory not found... -->`) when `value-lenses/` or `operating-profiles/` are missing or empty, rather than failing the build. This violates the "Fail Fast" mandate for generator drift (Requirement 3).
-- **Red Team Gauntlet Serialization Gap**: Test vectors required by the `Client Onboarding` agent are documented in prose in `examples/red-team-gauntlet/README.md` and lack machine-readable serialization (JSON/YAML).
-- **Infrastructure Asset Implementation Gap**: `templates/tiers/` and `operating-profiles/` contain only READMEs and templates, resulting in hollow or empty injection blocks in generated context.
+- **Sovereign JSON Asset Layer Governance Gap**: Commit `64f5a09` ("The Great AI Pivot") added an agent persona (`agents/guardian/jailbreak-monitor-agent.json`), a skill (`skills/model-fusion-consensus/definition.json`), an MCP protocol (`mcp-protocols/local-inference-mcp.json`), and an operating profile (`operating-profiles/local-sovereign-profile.json`) as JSON files. The Markdown-only pipeline (`scripts/audit-repo.js`, `scripts/context_helpers.js` filtering `.endsWith('.md')`) neither audits, indexes, nor injects them, so these assets exist outside every structural contract, and `docs/SOVEREIGN_LLM_GUIDELINES.md` is referenced nowhere in this document (see Clarification [2026-07-05] Sovereign JSON Asset Layer Governance).
+- **Infrastructure Asset Implementation Gap**: `templates/tiers/` contains only a README, and `operating-profiles/` contains no Markdown profiles (only the template, README, and the JSON sovereign profile invisible to the generator), resulting in hollow or empty injection blocks in generated context. The approved starter profile set from Decision [2026-06-19-0011] remains unimplemented.
 - **Heading Inconsistency**: The mandatory Diligence heading is "Rules & Constraints" in agents but "Rules & Constraints (4D Diligence)" in skills, complicating automated audit logic.
 - **Undocumented "Learning Agent" Pattern**: `tools/executive-assistant/server.js` implements a `/api/resolution` feedback loop and "Learning Agent" logic (`event: 'LEARNING_AGENT_UPDATE'`) that maps human feedback back into the system's execution logs. This pattern lacks a persona specification and governance requirements in `REQUIREMENTS.md`.
 - **Undocumented Admin Control Surface**: `tools/executive-assistant/server.js` implements several admin-facing API endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`) that provide unauthenticated access to internal agent state, queued tasks, and rule configurations, creating a governance drift from the security baseline.
@@ -183,13 +182,17 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 ### 3. Substantive & Safety Drift
 - **Substantive Content Baseline (The "TBD" Problem)**: 100% of reusable skills and most agent personas use "TBD" placeholders or boilerplate for `Data Inventory` and `Refusal Criteria`, bypassing the D2 (Description) and Refusal Principle mandates.
 - **Audit Script Substantive Blindness**: `scripts/audit-repo.js` verifies the presence of headings but fails to detect "TBD" placeholders or validate the content of `Refusal Criteria` subsections.
-- **Audit Log Schema Blindness**: `scripts/audit-repo.js` verifies that Audit Logs are valid JSON but fails to validate the presence of mandated fields (`task`, `inputs`, `actions`, `risks`, `result`).
+- **Audit Log Schema Validation Gap**: `scripts/audit-repo.js` verifies that Audit Logs are valid JSON but does not yet implement the mandated JSON schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result`), despite the requirement in §3.
 
 ### 4. Referential & Link Integrity Drift
 - **Internal Referential Integrity Gap**: The repository lacks automated verification for internal markdown links and `**Skill:**` path references within agent workflows.
 - **Audit Script File Verification Gap**: `scripts/audit-repo.js` does not verify that skills or MCPs referenced in `mcp.config.json` exist as physical files.
 
 ### 5. Remediated Limitations (Archive)
+- **Sync Script Identity Drift** (Remediated: 2026-06-19, verified 2026-07-05): `scripts/sync-upstream.sh` now reads `NOEMI_UPSTREAM_REMOTE`, `NOEMI_UPSTREAM_URL`, and related values from the environment with upstream-preserving defaults; the hardcoded `MY_ORGANIZATION` placeholder is gone (Decision [2026-06-19-0002]).
+- **Red Team Gauntlet Serialization Gap** (Remediated, verified 2026-07-05): machine-readable starter vectors now ship as `examples/red-team-gauntlet/test-vectors.yaml` (five vectors: three prompt-injection, two PII), consumable by the `Client Onboarding` validation workflow (Decision [2026-06-19-0008]; shipped as YAML rather than the JSON named in the decision).
+- **Smoke Test Variable Validation Gap** (Remediated: 2026-06-19, verified 2026-07-05): `tests/examples-smoke.test.js` now bidirectionally validates every `NOEMI_DOCKER_SMOKE_*` variable referenced by the e2e suite against `.env.template` (Decision [2026-06-19-0003]).
+- **Missing shared `audit_logger.js`** (Remediated: 2026-06-19): The shared utility for structured JSON Audit Log emission is now available in the `scripts/` directory.
 - **Missing Onboarding and Configuration Directories** (Remediated: 2026-05-28): `clients/`, `.gatekeeper/`, and `templates/tiers/` directories now exist with `.gitignore` placeholders.
 - **Framework Injection Gap** (Remediated: 2026-05-28): `Value Lenses` and `Operating Profiles` are now injected by `scripts/generate_all.js`.
 - **Artifact Naming Convention Alignment** (Remediated: 2026-05-10): `docs/n8n workflows/` renamed to `docs/n8n-workflows/`.

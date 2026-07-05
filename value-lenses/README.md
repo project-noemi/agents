@@ -39,7 +39,8 @@ value-lenses/
 ├── LENS_TEMPLATE.md
 ├── performance-efficiency.md
 ├── care-continuity.md
-└── balanced-enterprise.md
+├── balanced-enterprise.md
+└── american-dream.md
 ```
 
 ## Authoring Rules
@@ -88,6 +89,8 @@ The repository starts with three baseline lenses:
 1. `performance-efficiency`
 2. `care-continuity`
 3. `balanced-enterprise`
+
+A fourth lens, `american-dream`, is a contributed lens (owner: NewPush, status: `draft`) rather than a baseline lens. It optimizes for merit-based upward mobility that compounds across generations: auditable merit-to-outcome conversion, broad durable ownership, open entry pathways, and a better starting position for each successor cohort. Its blind spots are governed by an iterative-elimination register in which every entry carries a built-in mitigation, a detection indicator, and a status that must advance across validation cycles. The repository default remains `balanced-enterprise`.
 
 ## Template
 

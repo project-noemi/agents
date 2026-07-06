@@ -206,3 +206,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Requirement §7 and the automation prompt documents be updated to codify that all automation PRs target `develop` (reaching `main` only via a `develop → main` release PR), and is a periodic `develop → main` release cadence the responsibility of a human or a scheduled routine?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` §7 and the automation prompt docs (`DEV_AGENT_PROMPT.md`, `SYNC_AGENT_PROMPT.md`) to codify the develop-only merge invariant from Decision [2026-07-03-0001] for all automation PRs.*
+
+### ❓ Question [2026-07-05] - Executive Assistant Admin API Security Baseline
+**Context:** The `Executive Assistant` tool (`tools/executive-assistant/server.js`) exposes several unauthenticated admin endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`) and a "Learning Agent" feedback loop (`/api/resolution`).
+**Ambiguity / Drift:** These endpoints provide direct access to internal state and rule-mutation capabilities without adhering to the project's Phase 0 Security Baseline (SecretOps, JWT-based identity). This creates a "shadow" control surface that bypasses mandated governance.
+**Question for Product Owner:** Should these admin endpoints be formalized in the requirements as a standard "Agent Control Plane" and secured via the reference identity layer (Casdoor), or should they be removed to align with the core security baseline?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Formalize the Agent Control Plane requirements in `REQUIREMENTS.md` and implement JWT-based authorization for all `/api/` endpoints in the `executive-assistant` tool.*
+
+### ❓ Question [2026-07-05] - Sovereign JSON Asset Specification Governance
+**Context:** The "Great AI Pivot" (commit `64f5a09`) introduced several framework assets as JSON files (e.g., `agents/guardian/jailbreak-monitor-agent.json`). The current audit (`audit-repo.js`) and generation (`generate_all.js`) pipelines only recognize Markdown (`.md`) files.
+**Ambiguity / Drift:** These assets exist outside the structural contracts (Refusal Criteria, Audit Log) and are never injected into the generated context (`GEMINI.md`, `CLAUDE.md`). This creates a parallel, ungoverned specification format that is invisible to the primary AI context.
+**Question for Product Owner:** Should sovereign JSON assets be converted to canonical Markdown specifications (using JSON only for machine-readable sidecars), or should the repository formalize a parallel JSON specification contract with full audit and generator support?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Bring sovereign JSON assets under governance by either converting them to Markdown or extending `scripts/audit-repo.js` and `scripts/context_helpers.js` to support JSON specifications.*

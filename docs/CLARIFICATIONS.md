@@ -11,6 +11,7 @@ This file now tracks only active, unresolved questions that still require produc
 - [2026-04-04] Resolved Node.js Resilience Helper scope (mandate satisfied by reference pattern; core scripts do not need retry for local filesystem ops) and Legacy Example Labeling (bulk update completed — LEGACY/ILLUSTRATIVE headers added to all Python and Bash examples).
 - [2026-05-28] Bulk closure: a large block of late-cycle clarifications was either resolved by Decision entries dated 2026-05-28-0001 through 2026-05-28-0006 (logging-mcp payload alignment, onboarding directory bootstrap, SecretOps reference standardization, case-insensitive heading audits, Value Lens/Operating Profile injection, and the bulk closure of clarifications overtaken by prior decisions), or recognized as restatements of already-resolved questions. See `DECISION_LOG.md` for the durable record.
 - [2026-07-05] Backlog reconciliation: fifty questions that had already been decided by the `[2026-06-19-0001]` through `[2026-06-19-0016]` decision series (shared `audit_logger.js`, sync-script parameterization, `NOEMI_DOCKER_SMOKE_*` inventory gate, Red Team vector serialization, audit-coverage scope, verify-env docker hard-fail policy, Operating Profile baseline, and the approved audit-script enhancement set) — or that duplicated still-open questions — were removed from this backlog. See Decision [2026-07-05-0001] for the full removal-to-decision mapping. Verified during removal: `scripts/audit_logger.js`, env-driven `scripts/sync-upstream.sh`, the `NOEMI_DOCKER_SMOKE_*` inventory test, and `examples/red-team-gauntlet/test-vectors.yaml` all exist in the codebase.
+- [2026-07-06] Overtaken by events: the two service-tier-template questions ([2026-06-10] and [2026-06-15]) were closed and archived to Decision [2026-07-06-0001] — `templates/tiers/basic.md`, `standard.md`, and `premium.md` shipped via PR #264 (verified in the working tree). Pricing remains intentionally outside the public reference architecture per Decision [2026-06-19-0009].
 
 ## Template for New Questions
 
@@ -87,20 +88,6 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules prioritize a bulk remediation of these placeholders with generic/safe defaults, or should remediation be deferred until a human provides the domain-specific logic for each skill?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory, replacing "TBD" placeholders with technically grounded defaults based on each skill's documented Procedure.*
-
-### ❓ Question [2026-06-10] - Empty Tier Templates Implementation Gap
-**Context:** The `Client Onboarding` agent specification references service tier templates (e.g., `basic.md`, `standard.md`) located in `templates/tiers/`.
-**Ambiguity / Drift:** The `templates/tiers/` directory currently contains only a `README.md` and lacks the actual template files, preventing the Onboarding agent from fulfilling its mission.
-**Question for Product Owner:** Should Jules implement a starter set of service tier templates in `templates/tiers/` based on the documented `basic`, `standard`, and `premium` tiers?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Implement the starter service tier templates (`basic.md`, `standard.md`, `premium.md`) in `templates/tiers/` to enable the Client Onboarding workflow.*
-
-### ❓ Question [2026-06-15] - Service Tier Template Specifications
-**Context:** The requirements state the Client Onboarding agent references service tier templates in `templates/tiers/`, but the codebase in that directory implements only a placeholder README.
-**Ambiguity / Drift:** Without these templates, the onboarding workflow cannot be demonstrated or executed, leaving the "Explorer" path blocked.
-**Question for Product Owner:** Can you provide the specific service definitions (features, limits, pricing) for the Basic, Standard, and Premium tiers so I can implement the missing templates?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Implement the `basic.md`, `standard.md`, and `premium.md` templates in `templates/tiers/` using the provided service definitions.*
 
 ### ❓ Question [2026-06-17] - Substantive Content Baseline for Agents
 **Context:** The requirements state "Persona and Skill Contracts are Mandatory", but a whole-codebase audit revealed that 100% of agent personas use identical boilerplate text for the `Refusal Criteria` and `Data Inventory` sections.
@@ -206,3 +193,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Requirement §7 and the automation prompt documents be updated to codify that all automation PRs target `develop` (reaching `main` only via a `develop → main` release PR), and is a periodic `develop → main` release cadence the responsibility of a human or a scheduled routine?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` §7 and the automation prompt docs (`DEV_AGENT_PROMPT.md`, `SYNC_AGENT_PROMPT.md`) to codify the develop-only merge invariant from Decision [2026-07-03-0001] for all automation PRs.*
+
+### ❓ Question [2026-07-06] - FSL Conversion Clock Anchor (Post-Relicense Release Tag)
+**Context:** The requirements (Decision [2026-07-05-0004], now codified in `REQUIREMENTS.md` §11) state "Tagged GitHub releases become the canonical published versions so the rolling two-year conversion timeline is legally unambiguous", but the repository's only tag, `v0.1.0`, points at the pre-relicense PR #162 merge commit — no release has been tagged at or after the FSL relicense commits (`c3c0e82`, `7f756b6`, merged 2026-07-05).
+**Ambiguity / Drift:** Without a post-relicense tag, the first FSL-1.1-Apache-2.0 "published version" has no unambiguous start date, so the two-year Apache-2.0 conversion clock — the mechanism that answers the OSI/delayed-open-source objection — is legally unanchored. Every day without a tag extends the ambiguity about which tree state constitutes the first FSL version.
+**Question for Product Owner:** Should a release (e.g., `v0.2.0`) be tagged at the current `main` (which includes the relicense, the American Dream lens, and the tier templates), and what versioning scheme should govern subsequent canonical published versions (semver per release PR, date-based tags, or milestone-based)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Action Prompt:** *Tag and publish a GitHub release at the current `main` head as the first canonical FSL-1.1-Apache-2.0 published version, and document the release-tagging cadence in `REQUIREMENTS.md` §11 and `CONTRIBUTING.md`.*
+
+### ❓ Question [2026-07-06] - Top-Level Asset Layer Governance (infrastructure/ and n8n-templates/)
+**Context:** The requirements govern `agents/`, `skills/`, `mcp-protocols/`, `value-lenses/`, and `operating-profiles/`, but the codebase now contains two additional top-level asset layers: `infrastructure/secret-ops/agent_logic.py` (LEGACY-labeled Phase 0 fetch-on-demand boilerplate) and `n8n-templates/layer-b-labs/` (importable Layer B Dynamic Labs workflows with embedded 4D microburst pedagogy), both added by the salvage commit `9c19548` (PR #264).
+**Ambiguity / Drift:** Neither directory appears in the documented repository layout (`CLAUDE.md`/`GEMINI.md` templates, `REQUIREMENTS.md`), and `scripts/audit-repo.js` scans only `agents/` and `skills/`, so these assets have no structural contract, no audit coverage, and no discoverability from the generated context. The n8n templates arguably belong beside the existing `docs/n8n-workflows/` and `templates/` conventions, and future Layer B labs will accumulate in an ungoverned space.
+**Question for Product Owner:** Should `infrastructure/` and `n8n-templates/` be formalized as first-class documented asset layers (with layout documentation and at least file-presence audit coverage), or should their contents be relocated into existing governed directories (e.g., `examples/` for the secret-ops boilerplate, `docs/n8n-workflows/` or `templates/` for the Layer B labs)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Action Prompt:** *Formalize the `infrastructure/` and `n8n-templates/` asset layers: document them in the repository layout sections of the context templates and `REQUIREMENTS.md`, and extend `scripts/audit-repo.js` with file-presence checks (or relocate the assets into existing governed directories per the PO's choice).*

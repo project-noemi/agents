@@ -10,6 +10,7 @@ This file now tracks only active, unresolved questions that still require produc
 - Questions that were superseded by implemented repo changes were closed as overtaken by events and removed from the active backlog.
 - [2026-04-04] Resolved Node.js Resilience Helper scope (mandate satisfied by reference pattern; core scripts do not need retry for local filesystem ops) and Legacy Example Labeling (bulk update completed — LEGACY/ILLUSTRATIVE headers added to all Python and Bash examples).
 - [2026-05-28] Bulk closure: a large block of late-cycle clarifications was either resolved by Decision entries dated 2026-05-28-0001 through 2026-05-28-0006 (logging-mcp payload alignment, onboarding directory bootstrap, SecretOps reference standardization, case-insensitive heading audits, Value Lens/Operating Profile injection, and the bulk closure of clarifications overtaken by prior decisions), or recognized as restatements of already-resolved questions. See `DECISION_LOG.md` for the durable record.
+- [2026-07-07] Overtaken by events: the two service-tier-template questions ([2026-06-10] and [2026-06-15]) were closed without an answer because `templates/tiers/basic.md`, `standard.md`, and `premium.md` shipped in commit `9c19548` (PR #264). See Decision [2026-07-07-0001].
 - [2026-07-05] Backlog reconciliation: fifty questions that had already been decided by the `[2026-06-19-0001]` through `[2026-06-19-0016]` decision series (shared `audit_logger.js`, sync-script parameterization, `NOEMI_DOCKER_SMOKE_*` inventory gate, Red Team vector serialization, audit-coverage scope, verify-env docker hard-fail policy, Operating Profile baseline, and the approved audit-script enhancement set) — or that duplicated still-open questions — were removed from this backlog. See Decision [2026-07-05-0001] for the full removal-to-decision mapping. Verified during removal: `scripts/audit_logger.js`, env-driven `scripts/sync-upstream.sh`, the `NOEMI_DOCKER_SMOKE_*` inventory test, and `examples/red-team-gauntlet/test-vectors.yaml` all exist in the codebase.
 
 ## Template for New Questions
@@ -87,20 +88,6 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules prioritize a bulk remediation of these placeholders with generic/safe defaults, or should remediation be deferred until a human provides the domain-specific logic for each skill?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory, replacing "TBD" placeholders with technically grounded defaults based on each skill's documented Procedure.*
-
-### ❓ Question [2026-06-10] - Empty Tier Templates Implementation Gap
-**Context:** The `Client Onboarding` agent specification references service tier templates (e.g., `basic.md`, `standard.md`) located in `templates/tiers/`.
-**Ambiguity / Drift:** The `templates/tiers/` directory currently contains only a `README.md` and lacks the actual template files, preventing the Onboarding agent from fulfilling its mission.
-**Question for Product Owner:** Should Jules implement a starter set of service tier templates in `templates/tiers/` based on the documented `basic`, `standard`, and `premium` tiers?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Implement the starter service tier templates (`basic.md`, `standard.md`, `premium.md`) in `templates/tiers/` to enable the Client Onboarding workflow.*
-
-### ❓ Question [2026-06-15] - Service Tier Template Specifications
-**Context:** The requirements state the Client Onboarding agent references service tier templates in `templates/tiers/`, but the codebase in that directory implements only a placeholder README.
-**Ambiguity / Drift:** Without these templates, the onboarding workflow cannot be demonstrated or executed, leaving the "Explorer" path blocked.
-**Question for Product Owner:** Can you provide the specific service definitions (features, limits, pricing) for the Basic, Standard, and Premium tiers so I can implement the missing templates?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Implement the `basic.md`, `standard.md`, and `premium.md` templates in `templates/tiers/` using the provided service definitions.*
 
 ### ❓ Question [2026-06-17] - Substantive Content Baseline for Agents
 **Context:** The requirements state "Persona and Skill Contracts are Mandatory", but a whole-codebase audit revealed that 100% of agent personas use identical boilerplate text for the `Refusal Criteria` and `Data Inventory` sections.
@@ -206,3 +193,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Requirement §7 and the automation prompt documents be updated to codify that all automation PRs target `develop` (reaching `main` only via a `develop → main` release PR), and is a periodic `develop → main` release cadence the responsibility of a human or a scheduled routine?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` §7 and the automation prompt docs (`DEV_AGENT_PROMPT.md`, `SYNC_AGENT_PROMPT.md`) to codify the develop-only merge invariant from Decision [2026-07-03-0001] for all automation PRs.*
+
+### ❓ Question [2026-07-07] - FSL Conversion Clock — Post-Relicense Tagged Release
+**Context:** The requirements (§10) and Decision [2026-07-05-0004] state "Tagged GitHub releases become the canonical published versions so the rolling two-year conversion timeline is legally unambiguous", but the repository's only tag is `v0.1.0` at the PR #162 merge — well before the relicense commit (`c3c0e82`). No post-relicense release has been tagged.
+**Ambiguity / Drift:** Until a release is tagged at or after the relicense merge, the first FSL-to-Apache-2.0 conversion clock has no unambiguous start date, weakening the legal clarity the relicense decision was designed to provide. Cutting a release also interacts with the develop-only merge gate (Decision [2026-07-03-0001]), so the versioning scheme and cadence need an owner.
+**Question for Product Owner:** What version number should the relicense release carry (e.g., `v0.2.0` or `v1.0.0`), and should tagging releases at each `develop → main` merge become a standing step of the release process (human-performed or automated)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Document the release tagging procedure in `REQUIREMENTS.md` §10 and `CONTRIBUTING.md`, and prepare the release notes for the first post-relicense tagged release once the version number is confirmed.*
+
+### ❓ Question [2026-07-07] - Compassion Lens Governance and Fleet-Wide Injection
+**Context:** Commit `bb381d2` added `value-lenses/compassion-lens.json` explicitly "to inject these values fleet-wide" (Anti-Replacement rule, precarity consciousness, contextual forgiveness), and Decision [2026-07-05-0003] cites its shape as the pattern for JSON lens companions. However, `scripts/context_helpers.js` injects only `.md` lenses, so the JSON lens is never included in generated context; it is also absent from the `value-lenses/README.md` directory pattern and rollout list, and has no `LENS_TEMPLATE.md`-shaped Markdown contract.
+**Ambiguity / Drift:** A values layer that three persona updates (roi-auditor, student-success-coach, qa-risk-manager) depend on silently fails to reach the rest of the fleet, and the Anti-Replacement rule it enforces is not documented in `REQUIREMENTS.md` or `AGENTS.md`. The repository's de-facto JSON companion schema is anchored to a file with no governing contract.
+**Question for Product Owner:** Should `compassion-lens.md` be authored as a canonical `LENS_TEMPLATE.md`-shaped lens (with the JSON kept as its machine-readable companion) and registered in the lens README — and should the Anti-Replacement rule be formalized as a repository-level mandate in `REQUIREMENTS.md`/`AGENTS.md`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Author `value-lenses/compassion-lens.md` from the existing JSON adjustments following `LENS_TEMPLATE.md`, register it in `value-lenses/README.md`, regenerate context and golden fixtures, and add the Anti-Replacement rule to the governance mandates.*
+
+### ❓ Question [2026-07-07] - Guardian Layer Canonical Node.js Path
+**Context:** The requirements (§7) state Guardian-layer patterns are "a core architectural requirement", and the new `guardian-layer/guardian_evaluator.py` provides the only executable implementation of the "AI evaluates AI" middleware pattern — but it is labeled LEGACY/ILLUSTRATIVE per §8, which reserves the canonical implementation path for Node.js.
+**Ambiguity / Drift:** A core architectural layer whose only runnable reference is on the non-canonical path creates a contradiction: builders following the Node.js baseline have no Guardian evaluator to adopt, while the Python artifact cannot be promoted without violating the LEGACY labeling mandate. The `guardian-layer/` directory is also not referenced anywhere in `REQUIREMENTS.md` outside the new Known Limitation.
+**Question for Product Owner:** Should a canonical Node.js `guardian-layer` evaluator be implemented (mirroring `guardian_evaluator.py` and wired to the `prompt-shield`/`pii-guard` personas), or should the requirements explicitly scope the Guardian layer as Markdown-persona-plus-illustrative-Python for now?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement a canonical Node.js Guardian evaluator in `guardian-layer/` mirroring the illustrative Python middleware, with unit tests and structured JSON Audit Log emission to `stderr` per the observability mandate.*

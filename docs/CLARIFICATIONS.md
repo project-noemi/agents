@@ -60,13 +60,6 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Perform a whole-fleet update of all agent personas in `agents/` to replace placeholder `Data Inventory` and `Refusal Criteria` sections with role-specific, technically accurate content.*
 
-### ❓ Question [2026-05-13] - RFP Split Naming Convention Remediation
-**Context:** `AGENTS.md` mandates English-first, slug-based naming. `examples/rfp-split/` contains several files like `Section_1_General_Information.pdf` that violate this rule.
-**Ambiguity / Drift:** These files represent technical drift from the repository's naming standards and may cause issues in some environments.
-**Question for Product Owner:** Should Jules perform a bulk rename of the assets in `examples/rfp-split/` to align with the slug-based naming convention (e.g., `section-1-general-information.pdf`)?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Rename all files in `examples/rfp-split/` to follow the English-first, slug-based naming convention.*
-
 ### ❓ Question [2026-05-22] - Casdoor Identity Integration Logic
 **Context:** `REQUIREMENTS.md` and `DECISION_LOG.md` identify Casdoor as the reference identity layer for multi-tenant deployments.
 **Ambiguity / Drift:** While Casdoor is present in `fleet-deployment` compose files, there is no implementation logic in the repository (scripts, middleware, or agents) that actually performs token validation or user context extraction.
@@ -109,33 +102,12 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Perform a fleet-wide substantive remediation of all agent personas in `agents/`, replacing boilerplate `Data Inventory` and `Refusal Criteria` with role-specific, technically accurate content.*
 
-### ❓ Question [2026-06-18] - E2E Smoke Test Docker Mandatory Check
-**Context:** The requirements in `REQUIREMENTS.md` Section 9 state "The Docker e2e suite must skip cleanly when Docker is unavailable", but the codebase in `tests/e2e/docker-smoke.test.js` implements this as a silent skip.
-**Ambiguity / Drift:** In CI/CD pipelines, a silent skip can lead to a "false green" where critical runtime checks are never actually executed because the runner lacks Docker or has a configuration error. This masks environmental gaps that would be fatal in production.
-**Question for Product Owner:** Should the E2E suite be updated to require an explicit flag (e.g., `FORCE_DOCKER_SMOKE=true`) that, when set, causes the test to FAIL if Docker is missing, while preserving the "clean skip" behavior for local development?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `tests/e2e/docker-smoke.test.js` to implement an optional mandatory mode that fails if Docker is missing when `FORCE_DOCKER_SMOKE` is true.*
-
-### ❓ Question [2026-06-19] - SecretOps Provider Bias in Smoke Tests
-**Context:** The `AGENTS.md` mandates that secrets can be stored in Infisical OR 1Password, but the test suite in `tests/examples-smoke.test.js` explicitly asserts the presence of the `op://` pattern.
-**Ambiguity / Drift:** This creates a "false failure" for users who have adopted Infisical as their primary SecretOps provider, violating the multi-provider architectural mandate.
-**Question for Product Owner:** Should the smoke test be updated to accept either `op://` or `infisical://` (or generic vault reference patterns) to truly support the multi-provider mandate?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `tests/examples-smoke.test.js` to support both `op://` and `infisical://` vault reference patterns in its assertion logic.*
-
 ### ❓ Question [2026-06-19] - Resilience Helper Persona Integration
 **Context:** `REQUIREMENTS.md` identifies a "Resilience Helper Integration Gap" where `scripts/resilience_helpers.js` is not utilized by any agent personas, despite a mandate for resilience in agentic systems.
 **Ambiguity / Drift:** Network-bound agents like `Gatekeeper` and `Client Onboarding` remain susceptible to transient failures because their specifications do not explicitly mandate retry-with-backoff logic for tool interactions.
 **Question for Product Owner:** Should we authorize Jules to perform a bulk update to all network-bound agent personas to include `withRetry` logic in their `Workflow` and `External Tooling Dependencies` sections?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Integrate the `withRetry` resilience pattern into the `Workflow` and `External Tooling Dependencies` of all network-bound agent personas in `agents/`.*
-
-### ❓ Question [2026-06-19] - Legacy Example Model Drift
-**Context:** The `AGENTS.md` mandates **Gemini 2.5 Flash** as the canonical baseline, but `examples/docker/agent.py` is pinned to `gemini-2.0-flash`.
-**Ambiguity / Drift:** This creates inconsistent behavior and cost profiles across the reference architecture, potentially confusing users who follow the legacy examples.
-**Question for Product Owner:** Should all legacy Python/Bash examples be updated to point to the `gemini-2.5-flash` baseline, or should they be allowed to remain on older models for illustrative purposes?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `examples/docker/agent.py` and any other legacy examples to use the canonical `models/gemini-2.5-flash` baseline.*
 
 ### ❓ Question [2026-06-20] - Executive Assistant "Learning Agent" Resolution Path
 **Context:** The `Executive Assistant` reference implementation in `tools/executive-assistant/server.js` includes an `/api/resolution` endpoint that claims to be processed by a "Learning Agent" and updates internal execution logs with "Historical messages passed".
@@ -144,47 +116,12 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Document the "Learning Agent" resolution pattern in `REQUIREMENTS.md` and create a dedicated persona specification in `agents/operations/learning-agent.md` that governs how agents should learn from human resolutions.*
 
-### ❓ Question [2026-06-20] - Rules & Constraints Heading Inconsistency
-**Context:** `AGENTS.md` and `audit-repo.js` require "Rules & Constraints" for agent personas but "Rules & Constraints (4D Diligence)" for reusable skills.
-**Ambiguity / Drift:** This inconsistency in the mandatory heading name complicates the audit logic and creates confusion for builders. Given that both are intended to incorporate the 4D framework (specifically Diligence), there is no clear reason for the different naming conventions.
-**Question for Product Owner:** Should we standardize on a single heading name (e.g., `Rules & Constraints (4D Diligence)`) for both agent personas and skills to ensure consistency across the repository?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Standardize the "Rules & Constraints" heading name across all personas, skills, and audit scripts to use the `(4D Diligence)` suffix.*
-
-### ❓ Question [2026-06-20] - Phase 0 Assessment Kit Audit Coverage
-**Context:** Requirement §1 mandates a specific inventory of 8+ files for the Phase 0 Assessment Kit, but `scripts/audit-repo.js` currently provides no verification for this critical business asset.
-**Ambiguity / Drift:** As the "front door" for buyers, the Assessment Kit's completeness is paramount. Without automated auditing, files can be accidentally moved or renamed, breaking the buyer's first-contact experience and violating Requirement §1.
-**Question for Product Owner:** Should the Phase 0 Assessment Kit inventory be added to the mandatory repository audit performed by `scripts/audit-repo.js`?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Extend `scripts/audit-repo.js` to verify the presence of all 8 mandated files in the `docs/phase-zero-assessment/` directory.*
-
 ### ❓ Question [2026-06-22] - Executive Assistant Admin API Formalization
 **Context:** The requirements state that agents and reference services must adhere to strict observability and security standards, but the codebase in `tools/executive-assistant/server.js` implements several undocumented admin endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`).
 **Ambiguity / Drift:** These endpoints provide direct access to internal agent state and configuration without any documented authentication or authorization requirement in `REQUIREMENTS.md`. This creates a "shadow" management surface that isn't governed by the project's security baseline.
 **Question for Product Owner:** Should these admin endpoints be formalized in the requirements as a standard "Agent Control Plane" and secured via the reference identity layer (Casdoor), or should they be removed from the public reference implementation?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Formalize the Agent Control Plane API requirements in `REQUIREMENTS.md` and implement JWT-based authorization for all `/api/` endpoints in the `executive-assistant` tool.*
-
-### ❓ Question [2026-06-27] - Generator Fail-Fast Policy for Framework Assets
-**Context:** `REQUIREMENTS.md` Section 3 mandates "Contract and Generator Drift Must Fail Fast," but the codebase in `scripts/generate_all.js` (via `context_helpers.js`) implements a "silent success" pattern where missing framework directories or empty assets return HTML comments rather than an exit 1.
-**Ambiguity / Drift:** This allows for "hollow" context files to be generated and shipped without surfacing the structural gap, potentially leading to agents operating without mandated framework layers (Value Lenses/Operating Profiles) in production-like environments.
-**Question for Product Owner:** Should the generator be updated to enforce a fatal error (exit 1) if any mandated framework asset directory is missing or contains no operational files?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `scripts/generate_all.js` and `scripts/context_helpers.js` to enforce a fatal error if mandated framework assets or active skills/MCPs are missing during context generation.*
-
-### ❓ Question [2026-07-03] - Generator Fail-Fast Enforcement for Skills/MCPs
-**Context:** `scripts/generate_all.js` currently allows "silent success" (exit 0) when skills or MCP protocols defined in `mcp.config.json` are missing from the filesystem, injecting a warning comment into the generated markdown instead.
-**Ambiguity / Drift:** This violates the "Fail Fast" mandate in Requirement §3. It allows agents to be deployed with "broken" workflows because they are missing the specific skills or tools they expect to have available.
-**Question for Product Owner:** Should the generator be updated to enforce a fatal error (exit 1) if any active skill or MCP protocol specified in the configuration is missing during generation?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `scripts/generate_all.js` to enforce a fatal error (exit 1) if any active skill or MCP protocol defined in `mcp.config.json` is missing from the filesystem.*
-
-### ❓ Question [2026-07-04] - ESM Migration vs. Dual-Export for Shared Utilities
-**Context:** The `Executive Assistant` tool (`tools/executive-assistant/`) and modern reference services use Node.js ESM (`"type": "module"`), but shared repository utilities like `scripts/resilience_helpers.js` use CommonJS. This prevents direct code reuse and integration of mandated resilience patterns.
-**Ambiguity / Drift:** We have a mismatch between the Node 24 ESM baseline for services and the legacy CJS baseline for scripts.
-**Question for Product Owner:** Should Jules perform a wholesale migration of the `scripts/` directory to ESM to align with the Node 24 baseline, or should we implement a dual-export strategy (CJS/ESM) for shared utilities?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Migrate all shared Node.js utilities in `scripts/` to ESM to ensure seamless integration with modern reference services and tools.*
 
 ### ❓ Question [2026-07-05] - Sovereign JSON Asset Layer Governance ("Great AI Pivot")
 **Context:** The requirements state "Persona and Skill Contracts are Mandatory" (§2) and mandate audit/generation alignment (§3, §4), but commit `64f5a09` ("The Great AI Pivot") introduced four framework assets as **JSON files** that the Markdown-only pipeline cannot see: `agents/guardian/jailbreak-monitor-agent.json`, `skills/model-fusion-consensus/definition.json`, `mcp-protocols/local-inference-mcp.json`, and `operating-profiles/local-sovereign-profile.json`. `scripts/context_helpers.js` filters on `.endsWith('.md')`, and `scripts/audit-repo.js` audits only Markdown personas/skills.

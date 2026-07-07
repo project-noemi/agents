@@ -206,3 +206,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Requirement §7 and the automation prompt documents be updated to codify that all automation PRs target `develop` (reaching `main` only via a `develop → main` release PR), and is a periodic `develop → main` release cadence the responsibility of a human or a scheduled routine?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` §7 and the automation prompt docs (`DEV_AGENT_PROMPT.md`, `SYNC_AGENT_PROMPT.md`) to codify the develop-only merge invariant from Decision [2026-07-03-0001] for all automation PRs.*
+
+### ❓ Question [2026-07-06] - Audit Script "TBD" Placeholder Rejection Enforcement
+**Context:** `AGENTS.md` mandates that "substantive compliance" is required and that "TBD" placeholders are prohibited. However, the current `scripts/audit-repo.js` only checks for the presence of headings and does not introspect the content for these placeholders.
+**Ambiguity / Drift:** The repository is currently in a state of "hollow compliance" where 100% of skills pass the audit despite containing "TBD" placeholders in mandatory safety sections.
+**Question for Product Owner:** Should `scripts/audit-repo.js` be updated to perform a case-insensitive search for "TBD" or "placeholder" within required sections and fail the audit if found, or should this check remain as a manual review item?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to reject files containing "TBD" or "placeholder" text within mandatory sections to enforce substantive compliance.*
+
+### ❓ Question [2026-07-06] - Agent Index Regex Refinement for Technical Names
+**Context:** The current Agent Index extraction in `scripts/context_helpers.js` uses a sentence-splitting regex `/^[^.!?]+[.!?]/` that prematurely truncates technical names containing dots, such as "Next.js".
+**Ambiguity / Drift:** This results in inaccurate role summaries in the Agent Index, violating the mandate for "Agent Index Richness".
+**Question for Product Owner:** Should the Agent Index extraction be updated to capture the full first paragraph (as mandated in `AGENTS.md`) regardless of sentence structure, or should we refine the regex to better handle technical nomenclature?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Refactor `scripts/context_helpers.js` to extract the full first paragraph of the `## Role` section for the Agent Index, ensuring technical names like "Next.js" are preserved.*

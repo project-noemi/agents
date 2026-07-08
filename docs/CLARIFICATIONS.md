@@ -220,3 +220,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the Agent Index extraction be updated to capture the full first paragraph (as mandated in `AGENTS.md`) regardless of sentence structure, or should we refine the regex to better handle technical nomenclature?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Refactor `scripts/context_helpers.js` to extract the full first paragraph of the `## Role` section for the Agent Index, ensuring technical names like "Next.js" are preserved.*
+
+### ❓ Question [2026-07-08] - Executive Assistant Undocumented API Lifecycle
+**Context:** The `Executive Assistant` reference implementation in `tools/executive-assistant/server.js` exposes several undocumented admin endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`).
+**Ambiguity / Drift:** These endpoints are not covered by the `REQUIREMENTS.md` security baseline or documented as part of the official "NoéMI Agent Control Plane."
+**Question for Product Owner:** Should these admin endpoints be formalized and secured via Casdoor (as proposed in the 2026-06-22 question), or should they be removed to maintain a minimal, secure reference footprint?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Align the `executive-assistant` admin API with the project's security baseline: either formalize and secure the endpoints with Casdoor middleware or remove them from the reference implementation.*
+
+### ❓ Question [2026-07-08] - Audit Script Expansion for Sovereign JSON Assets
+**Context:** The "Great AI Pivot" introduced agent specifications as JSON files (e.g., `agents/guardian/jailbreak-monitor-agent.json`) that are currently invisible to the Markdown-only audit and generation pipeline.
+**Ambiguity / Drift:** This creates a significant governance gap where sovereign assets bypass structural, substantive, and safety audits.
+**Question for Product Owner:** Should Jules extend `scripts/audit-repo.js` and `scripts/context_helpers.js` to support JSON specifications with matching schema validation, or should these assets be converted back to the canonical Markdown contract format?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Extend the repository audit and generation pipeline to support sovereign JSON assets, ensuring they meet the same structural and safety contracts as Markdown specifications.*

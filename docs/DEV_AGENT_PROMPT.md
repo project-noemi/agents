@@ -156,3 +156,12 @@ feature/* ──► develop ──► main
 - PR to `develop` for review
 - `develop` → `main` via PR only (enforced by CI)
 - After merging to `main`, regenerate context files and verify
+
+### Develop-Only Merge Invariant (MANDATORY)
+
+Per Decisions [2026-07-03-0001] and [2026-07-07-0002] in `docs/DECISION_LOG.md`, **`develop` is the ONLY valid PR source into `main`**. This applies to automation as well as humans:
+
+- All automation PRs — governed session branches (`claude/*`), upstream-sync branches (`sync/upstream-*`), doc-uplift branches (`doc/*`) — MUST target `develop`, never `main`.
+- `main` is reached exclusively through a periodic `develop → main` release PR (scheduled routine responsibility, weekly by default).
+- The `require-develop-source` CI gate (`.github/workflows/require-develop-source.yml`) will fail any PR into `main` whose head is not `develop`; PR #266 was superseded (see Decision [2026-07-05-0012]) because automation building from `main` produced unmergeable work.
+- If you run `gh pr create` from an automation session, pass `--base develop`. Never `--base main`.

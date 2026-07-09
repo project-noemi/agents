@@ -10,6 +10,15 @@
   - `CLARIFICATIONS.md` updated with high-priority questions regarding Executive Assistant security, ESM migration, and Generator Fail-Fast enforcement.
   - Root generated context (`GEMINI.md`, `CLAUDE.md`) and fixtures updated to reflect these new mandates.
 
+## [2026-07-09] Holistic Audit and Requirements Refinement
+
+- **Decision:** Formally record technical drifts in `REQUIREMENTS.md` regarding the Executive Assistant admin control surface, SecretOps enforcement logic, and persistent audit script gaps. Raise high-priority clarifications to resolve governance policy for undocumented APIs and substantive compliance gates.
+- **Context:** A repository-wide audit identified that while many mandates are codified in `AGENTS.md`, the implementation in core scripts (e.g., `verify-env.sh`, `audit-repo.js`) and tools (e.g., `executive-assistant`) continues to exhibit drift.
+- **Impact:**
+  - `REQUIREMENTS.md` updated with technical specifics of identified drifts, including line-level references for environmental gaps and specific missing files for the Phase 0 audit.
+  - `CLARIFICATIONS.md` updated with high-priority questions to resolve the security baseline for undocumented admin endpoints and the enforcement policy for "TBD" placeholders.
+  - No new rules were added to `AGENTS.md` pending human feedback on the raised clarifications.
+
 ## [2026-04-02] Docker Image and Compose Version Update
 
 - **Decision:** Bump `pgvector` and `Casdoor` image tags to their current versions, correct repository names, and remove the obsolete `version` attribute from `docker-compose.yml` files.

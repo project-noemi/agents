@@ -220,3 +220,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should the Agent Index extraction be updated to capture the full first paragraph (as mandated in `AGENTS.md`) regardless of sentence structure, or should we refine the regex to better handle technical nomenclature?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Refactor `scripts/context_helpers.js` to extract the full first paragraph of the `## Role` section for the Agent Index, ensuring technical names like "Next.js" are preserved.*
+
+### ❓ Question [2026-07-09] - Executive Assistant Admin API Security Baseline
+**Context:** The requirements state that agents and reference services must adhere to strict security standards, but the codebase in `tools/executive-assistant/server.js` implements several undocumented admin endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`, `/api/resolution`) that provide unauthenticated access to internal state.
+**Ambiguity / Drift:** These endpoints create a governance drift from the security baseline. It is unclear if they should be formalized as a standard "Agent Control Plane" or removed to maintain the fetch-on-demand security posture.
+**Question for Product Owner:** Should the `executive-assistant` admin endpoints be formalized and secured via the reference identity layer (Casdoor), or should they be removed from the reference implementation to ensure alignment with the Phase 0 security baseline?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Formalize the Agent Control Plane requirements in `REQUIREMENTS.md` and implement JWT-based authorization for all `/api/` endpoints in the `executive-assistant` tool.*
+
+### ❓ Question [2026-07-09] - Audit Script Substantive Compliance Enforcement
+**Context:** `AGENTS.md` mandates that "substantive compliance" is required and that "TBD" placeholders are prohibited. However, the current `scripts/audit-repo.js` only checks for the presence of headings and does not detect these placeholders.
+**Ambiguity / Drift:** This allows 100% of skills to pass the audit despite containing "TBD" placeholders in mandatory safety sections, leading to a state of "hollow compliance."
+**Question for Product Owner:** Should `scripts/audit-repo.js` be updated to perform a case-insensitive search for "TBD" or "placeholder" within required sections and fail the audit if found?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to reject files containing "TBD" or "placeholder" text within mandatory sections to enforce substantive compliance.*

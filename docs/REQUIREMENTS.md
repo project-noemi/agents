@@ -178,7 +178,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Undocumented Admin Control Surface**: `tools/executive-assistant/server.js` implements several admin-facing API endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`) that provide unauthenticated access to internal agent state, queued tasks, and rule configurations, creating a governance drift from the security baseline. The `/admin` path serves a Vite-based UI from `ui/dist`.
 
 ### 3. Substantive & Safety Drift
-- **Substantive Content Baseline (The "TBD" Problem)**: 100% of reusable skills and most agent personas use "TBD" placeholders or boilerplate for `Data Inventory` and `Refusal Criteria`, bypassing the D2 (Description) and Refusal Principle mandates.
+- **Substantive Content Baseline (The "TBD" Problem)**: 100% of reusable skills (e.g., `skills/reporting/alert-notify.md`) and most agent personas use "TBD" placeholders or boilerplate for `Data Inventory` and `Refusal Criteria`, bypassing the D2 (Description) and Refusal Principle mandates.
 - **Audit Script Substantive Blindness**: `scripts/audit-repo.js` verifies the presence of headings but fails to detect "TBD" placeholders or validate the content of `Refusal Criteria` subsections.
 - **Audit Log Schema Validation Gap**: `scripts/audit-repo.js` verifies that Audit Logs are valid JSON but does not yet implement the mandated JSON schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result`), despite the requirement in §3.
 

@@ -234,3 +234,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `scripts/audit-repo.js` be updated to perform a case-insensitive search for "TBD" or "placeholder" within required sections and fail the audit if found?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to reject files containing "TBD" or "placeholder" text within mandatory sections to enforce substantive compliance.*
+
+### ❓ Question [2026-07-10] - SecretOps Fatal Error Policy in Docker Mode
+**Context:** The requirements in `AGENTS.md` and `REQUIREMENTS.md` mandate that SecretOps authentication failures in `docker` mode must be a fatal error (exit 1), but the implementation in `scripts/verify-env.sh` (lines 140-167) and `scripts/verify-env.ps1` (lines 99-125) only issues a warning.
+**Ambiguity / Drift:** This allows Docker-based deployments to proceed without verified secrets, violating the Phase 0 security baseline and the fetch-on-demand mandate.
+**Question for Product Owner:** Should we immediately enforce the fatal error policy (exit 1) for missing or unauthenticated SecretOps in `docker` mode within the verification scripts?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode if SecretOps authentication is missing or invalid.*
+
+### ❓ Question [2026-07-10] - Generator Fail-Fast Policy for Missing Assets
+**Context:** `REQUIREMENTS.md` Section 3 mandates that generator drift must "fail fast," but `scripts/generate_all.js` (via `context_helpers.js` lines 263-278) returns HTML comments for missing framework assets rather than an exit 1.
+**Ambiguity / Drift:** This allows for "silent success" during context generation even when critical framework layers like Value Lenses or Operating Profiles are missing, which could lead to agents operating without mandated governance.
+**Question for Product Owner:** Should the generator scripts be updated to exit with a non-zero status (fail fast) if any mandated framework asset directory or active skill/MCP is missing?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/generate_all.js` and `scripts/context_helpers.js` to enforce a fatal error (exit 1) if any mandated framework assets, active skills, or MCPs are missing during context generation.*

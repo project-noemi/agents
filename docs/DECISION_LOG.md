@@ -10,6 +10,15 @@
   - `CLARIFICATIONS.md` updated with high-priority questions regarding Executive Assistant security, ESM migration, and Generator Fail-Fast enforcement.
   - Root generated context (`GEMINI.md`, `CLAUDE.md`) and fixtures updated to reflect these new mandates.
 
+## [2026-07-10] Holistic Repository Alignment and Requirements Uplift
+
+- **Decision:** Align `REQUIREMENTS.md` with the verified codebase state by archiving remediated infrastructure gaps and refining technical drift descriptions with line-level precision.
+- **Context:** A whole-codebase reality check by the "Doc" agent verified that service tier templates and baseline operating profiles have been implemented, while identifying specific line references in SecretOps and generation scripts where drift persists.
+- **Impact:**
+  - `REQUIREMENTS.md` updated to archive the "Infrastructure Asset Implementation Gap" and provide technical line-level detail for SecretOps, Agent Index, and Generator drifts.
+  - Categorized all "Current Known Limitations" into logical buckets (Environmental, Structural, Substantive, Referential) for better governance.
+  - `DECISION_LOG.md` updated to record this holistic alignment.
+
 ## [2026-07-09] Holistic Audit and Requirements Refinement
 
 - **Decision:** Formally record technical drifts in `REQUIREMENTS.md` regarding the Executive Assistant admin control surface, SecretOps enforcement logic, and persistent audit script gaps. Raise high-priority clarifications to resolve governance policy for undocumented APIs and substantive compliance gates.

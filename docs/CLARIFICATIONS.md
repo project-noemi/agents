@@ -234,3 +234,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should `scripts/audit-repo.js` be updated to perform a case-insensitive search for "TBD" or "placeholder" within required sections and fail the audit if found?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to reject files containing "TBD" or "placeholder" text within mandatory sections to enforce substantive compliance.*
+
+### ❓ Question [2026-07-12] - Guardian Layer Implementation Path (Node.js vs. Python)
+**Context:** The `guardian-layer/` implements security evaluation logic in Python (`guardian_evaluator.py`), but Requirement §8 states that Node.js is the canonical implementation path and Python is for historical/illustrative purposes.
+**Ambiguity / Drift:** Implementing core security/guardian logic in Python creates a maintenance split and deviates from the Node.js baseline for modern reference services.
+**Question for Product Owner:** Should the `guardian-layer` be re-implemented in Node.js to align with the canonical architecture, or is Python the preferred runtime for LLM evaluation logic in this repository?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Re-implement the `guardian-layer/guardian_evaluator.py` logic in Node.js, ensuring it integrates with the shared `audit_logger.js` and follows the ESM baseline.*
+
+### ❓ Question [2026-07-12] - Audit Log Schema Validation Enforcement in CI
+**Context:** `scripts/audit-repo.js` currently only checks if Audit Logs are valid JSON. The mandate for 5-key schema validation (task, inputs, actions, risks, result) is documented but not enforced in code.
+**Ambiguity / Drift:** We have "hollow compliance" where agents pass audits with structurally valid but substantively incomplete logs.
+**Question for Product Owner:** Should we update the audit script to enforce the mandatory 5-key JSON schema validation, and should this be a fatal error (exit 1) in the CI pipeline?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to implement mandatory JSON schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result`) for all Audit Log sections.*
+
+### ❓ Question [2026-07-12] - SecretOps Fatal Error Policy in Docker Mode
+**Context:** Decision [2026-06-19-0007] mandates that `verify-env.sh` MUST `exit 1` in `docker` mode if SecretOps is missing or unauthenticated, but the current implementation only issues warnings.
+**Ambiguity / Drift:** This environmental drift allows Docker-based deployments to proceed with missing credentials, risking runtime failures.
+**Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic in `scripts/verify-env.sh` and `scripts/verify-env.ps1` for the `docker` mode immediately?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode when SecretOps is missing or unauthenticated.*

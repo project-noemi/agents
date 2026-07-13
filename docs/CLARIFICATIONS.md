@@ -11,6 +11,11 @@ This file now tracks only active, unresolved questions that still require produc
 - [2026-04-04] Resolved Node.js Resilience Helper scope (mandate satisfied by reference pattern; core scripts do not need retry for local filesystem ops) and Legacy Example Labeling (bulk update completed — LEGACY/ILLUSTRATIVE headers added to all Python and Bash examples).
 - [2026-05-28] Bulk closure: a large block of late-cycle clarifications was either resolved by Decision entries dated 2026-05-28-0001 through 2026-05-28-0006 (logging-mcp payload alignment, onboarding directory bootstrap, SecretOps reference standardization, case-insensitive heading audits, Value Lens/Operating Profile injection, and the bulk closure of clarifications overtaken by prior decisions), or recognized as restatements of already-resolved questions. See `DECISION_LOG.md` for the durable record.
 - [2026-07-05] Backlog reconciliation: fifty questions that had already been decided by the `[2026-06-19-0001]` through `[2026-06-19-0016]` decision series (shared `audit_logger.js`, sync-script parameterization, `NOEMI_DOCKER_SMOKE_*` inventory gate, Red Team vector serialization, audit-coverage scope, verify-env docker hard-fail policy, Operating Profile baseline, and the approved audit-script enhancement set) — or that duplicated still-open questions — were removed from this backlog. See Decision [2026-07-05-0001] for the full removal-to-decision mapping. Verified during removal: `scripts/audit_logger.js`, env-driven `scripts/sync-upstream.sh`, the `NOEMI_DOCKER_SMOKE_*` inventory test, and `examples/red-team-gauntlet/test-vectors.yaml` all exist in the codebase.
+- [2026-07-07] Four answerable clarifications resolved via Decisions `[2026-07-07-0001]` through `[2026-07-07-0004]`: Resilience Helper Persona Integration (incremental opt-in reference pattern), Automation Branch Flow (Requirement §7 codifies the develop-only invariant, both automation prompts updated), Red Team Vector Format (shipped YAML wins; `[2026-06-19-0008]` annotated as superseded), and ROI Auditor Baseline Access (committed JSON snapshot wins; `[2026-06-12-0001]` annotated as superseded). Backlog shrinks from 19 to 15 open questions; the remaining backlog is dominated by the PO-deferred substantive-remediation and tier-template families ([2026-06-19-0009], [2026-06-19-0010], [2026-06-19-0013]) plus the four genuine Executive Assistant / Sovereign JSON / Sovereign Model governance questions.
+- [2026-07-10] Overtaken-by-events closure: Questions [2026-06-10] (Empty Tier Templates Implementation Gap) and [2026-06-15] (Service Tier Template Specifications) were closed because commit `9c19548` (salvaged from stale PR #254) shipped `templates/tiers/{basic,standard,premium}.md` and `operating-profiles/standard-operating-profile.md`. Verified on `develop`: all three tier templates and the standard operating profile exist, and the profile injects into generated context. See Decision [2026-07-10-0001]. Backlog shrinks from 15 to 13, then grows to 15 with two newly verified drifts (merge-gate wildcard re-accretion on `main`; ungoverned `compassion-lens.json`).
+- [2026-07-10] Two same-day drift resolutions via Decisions `[2026-07-10-0002]` and `[2026-07-10-0003]`: (a) the merge-gate wildcard re-accretion on `main` is answered — the two `doc-*` wildcards are removed and the reconciling `develop → main` release PR is assigned to a scheduled weekly routine, with the initial reconciliation authored by a human this cycle to unblock the cadence; (b) the ungoverned `compassion-lens.json` is promoted to a canonical Markdown lens (`compassion-lens.md`) following the `american-dream` pattern (`.md` + `.json` companion), and the Project NoéMI Anti-Replacement rule is defined in `value-lenses/README.md` as the governing value-lens framework concept. Backlog shrinks from 15 to 13.
+- [2026-07-11] Duplicate consolidation: the substantive-remediation family ([2026-04-26], [2026-05-10], [2026-06-17] for personas; [2026-05-28], [2026-05-29] for skills) restated one PO decision five times — Decision [2026-06-19-0010] defers exactly this authorization — and is consolidated into the single canonical question [2026-04-26] below, widened to cover both personas and skills. The Casdoor pair ([2026-05-02], [2026-05-22]) asked the same integration question twice and is consolidated into [2026-05-02], keeping the more specific action prompt from [2026-05-22]. No question was answered or closed — the consolidated entries still await product-owner input. See Decision [2026-07-11-0001] for the mapping. Backlog goes from 13 to 9, then to 11 with two newly verified drifts (licensing posture not codified in requirements; sync-upstream test harness outside the validation gate).
+- [2026-07-13] Main/develop reconciliation on the doc-automation branch: `main`'s 2026-07-12 uplift (PR #286 and predecessors) re-raised seven questions that prior decisions had already answered or that duplicated still-open entries; six were dropped during the merge — the two "TBD"/placeholder-rejection re-raises and the Audit Log schema-validation re-raise (decided by the [2026-06-19-0005] audit-enhancement approval and the [2026-07-03] mandate, per the [2026-07-05-0001] mapping), the Agent Index regex re-raise (the `AGENTS.md` full-first-paragraph mandate already decides it; it remains tracked as a Known Limitation), the Executive Assistant Admin API re-raise (duplicate of open Q [2026-06-22]), and the SecretOps docker fatal-error re-raise (decided by [2026-06-19-0007]; tracked as a Known Limitation). Only the genuinely new Guardian Layer runtime question ([2026-07-12]) was carried over. Two newly verified drifts were added: the diverged `test-vectors.json` companion with its dangling `$schema` reference, and the missing tagged-release anchor for the FSL conversion clock. See Decision [2026-07-13-0001]. Backlog stands at 13 open questions.
 
 ## Template for New Questions
 
@@ -39,103 +44,19 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Extend the Gatekeeper deployment example and `entrypoint.sh` to include a placeholder or dry-run mode for the mutating actions defined in the Gatekeeper persona.*
 
-### ❓ Question [2026-04-26] - Substantive Persona Content Drift
-**Context:** A whole-codebase audit revealed that 100% of agent personas (22/22) currently use identical placeholder text for the `Data Inventory` and `Refusal Criteria` sections.
-**Ambiguity / Drift:** While the repository passes structural audits (headings are present), it has drifted into substantive non-compliance with the 4D framework (D2 Description) and the Refusal Principle. Agents lack the role-specific data definitions and safety-gating logic required for production readiness.
-**Question for Product Owner:** Should Jules be tasked with a bulk update to replace these placeholders with role-specific substantive content, or should this be handled incrementally during domain-specific work?
+### ❓ Question [2026-04-26] - Substantive Content Remediation for Personas and Skills (Consolidated)
+**Context:** Whole-codebase audits confirm that 100% of reusable skills and most agent personas use identical "TBD"/boilerplate text for the mandatory `Data Inventory` and `Refusal Criteria` sections. Decision [2026-06-19-0010] deferred the bulk-remediation authorization to the Product Owner and domain experts, and the question has since been restated four times without new information. This consolidated entry replaces [2026-05-10], [2026-06-17] (personas) and [2026-05-28], [2026-05-29] (skills) — see Decision [2026-07-11-0001].
+**Ambiguity / Drift:** While structurally compliant (the headings exist), the fleet is in substantive drift from the 4D Description (D2) and Refusal Principle mandates. Agents and skills lack role-specific data definitions and safety-gating logic, creating a false sense of production readiness.
+**Question for Product Owner:** Do you authorize a fleet-wide substantive remediation (personas and skills) using technically grounded defaults derived from each spec's documented Role/Procedure, or should remediation remain incremental, applied only when domain work touches a given spec?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a whole-fleet update of all agent personas in `agents/` to replace placeholder `Data Inventory` and `Refusal Criteria` sections with role-specific, technically accurate content.*
+**🤖 Jules Action Prompt:** *Perform a fleet-wide substantive remediation of `agents/` and `skills/`, replacing "TBD"/boilerplate `Data Inventory` and `Refusal Criteria` sections (and template-only Audit Log JSON in skills) with role-specific, technically accurate content derived from each spec's documented Role and Procedure.*
 
-### ❓ Question [2026-05-02] - Identity Provider Implementation Gap
-**Context:** `DECISION_LOG.md` and `REQUIREMENTS.md` mention Casdoor as the reference identity layer for multi-tenant fleet deployments.
-**Ambiguity / Drift:** While `docker-compose.yml` in `examples/fleet-deployment/` includes a Casdoor service, there is no evidence of Casdoor integration logic in any of the repository's scripts or agent personas.
-**Question for Product Owner:** Should we implement a basic `casdoor-mcp` or add authentication middleware to the reference services to make the identity layer requirement "truthful"?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Draft a `casdoor-mcp` protocol and implement basic JWT validation middleware for the Fleet Dashboard reference services.*
-
-### ❓ Question [2026-05-10] - Substantive Persona Remediation Strategy
-**Context:** All agent personas and reusable skills currently use identical placeholder text for the `Data Inventory` and `Refusal Criteria` sections.
-**Ambiguity / Drift:** While structurally compliant (the headings exist), the repository is in substantive drift from the 4D Description (D2) and Refusal Principle mandates.
-**Question for Product Owner:** Should Jules be authorized to perform a fleet-wide "substantive remediation" to replace these placeholders with role-specific, technically accurate content?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a whole-fleet update of all agent personas in `agents/` to replace placeholder `Data Inventory` and `Refusal Criteria` sections with role-specific, technically accurate content.*
-
-### ❓ Question [2026-05-13] - RFP Split Naming Convention Remediation
-**Context:** `AGENTS.md` mandates English-first, slug-based naming. `examples/rfp-split/` contains several files like `Section_1_General_Information.pdf` that violate this rule.
-**Ambiguity / Drift:** These files represent technical drift from the repository's naming standards and may cause issues in some environments.
-**Question for Product Owner:** Should Jules perform a bulk rename of the assets in `examples/rfp-split/` to align with the slug-based naming convention (e.g., `section-1-general-information.pdf`)?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Rename all files in `examples/rfp-split/` to follow the English-first, slug-based naming convention.*
-
-### ❓ Question [2026-05-22] - Casdoor Identity Integration Logic
-**Context:** `REQUIREMENTS.md` and `DECISION_LOG.md` identify Casdoor as the reference identity layer for multi-tenant deployments.
-**Ambiguity / Drift:** While Casdoor is present in `fleet-deployment` compose files, there is no implementation logic in the repository (scripts, middleware, or agents) that actually performs token validation or user context extraction.
-**Question for Product Owner:** Should Jules implement a reference `casdoor-auth` skill or Node.js middleware to demonstrate how agents should validate identity in a multi-tenant fleet?
+### ❓ Question [2026-05-02] - Casdoor Identity Integration Gap (Consolidated)
+**Context:** `DECISION_LOG.md` and `REQUIREMENTS.md` identify Casdoor as the reference identity layer for multi-tenant fleet deployments, and `examples/fleet-deployment/docker-compose.yml` includes a Casdoor service. Decision [2026-06-19-0013] deferred the integration decision to the Product Owner. This consolidated entry replaces the duplicate [2026-05-22] — see Decision [2026-07-11-0001].
+**Ambiguity / Drift:** No code in the repository (scripts, middleware, or agent personas) actually performs Casdoor token validation or user-context extraction, so the identity-layer requirement is not yet "truthful" as a reference implementation.
+**Question for Product Owner:** Should Jules implement a reference `casdoor-auth` skill and/or JWT validation middleware for the reference services to make the identity layer demonstrable, or should the Casdoor references remain compose-level only?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Create a `skills/security/casdoor-validate.md` specification and implement basic JWT validation middleware in `examples/gatekeeper-deployment/dashboard-ingest.js`.*
-
-### ❓ Question [2026-05-28] - Substantive Remediation of the Skill Library
-**Context:** While `SKILL_TEMPLATE.md` has been updated with mandatory `Data Inventory` and `Refusal Criteria` sections, the active skills in the `skills/` directory currently contain "TBD" placeholders for these sections and template-only JSON in their `Audit Log`.
-**Ambiguity / Drift:** The skill library is in substantive drift from the 4D Description (D2) and Refusal Principle mandates. This makes the skills "hollow" from a safety and documentation perspective, even if they pass structural audits.
-**Question for Product Owner:** Should Jules perform a fleet-wide "substantive remediation" to replace these placeholders with role-specific, technically accurate content for all reusable skills?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory to replace all TBD placeholders with role-specific Data Inventory, Refusal Criteria, and valid example Audit Logs.*
-
-### ❓ Question [2026-05-29] - Skill Remediation Priority
-**Context:** 100% of the active reusable skills in `skills/` currently contain "TBD" placeholders for mandatory `Data Inventory` and `Refusal Criteria` sections.
-**Ambiguity / Drift:** This represents a significant substantive drift from the 4D framework. However, remediating all skills requires domain-specific knowledge for each skill's inputs and procedures.
-**Question for Product Owner:** Should Jules prioritize a bulk remediation of these placeholders with generic/safe defaults, or should remediation be deferred until a human provides the domain-specific logic for each skill?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a bulk substantive remediation of the `skills/` directory, replacing "TBD" placeholders with technically grounded defaults based on each skill's documented Procedure.*
-
-### ❓ Question [2026-06-10] - Empty Tier Templates Implementation Gap
-**Context:** The `Client Onboarding` agent specification references service tier templates (e.g., `basic.md`, `standard.md`) located in `templates/tiers/`.
-**Ambiguity / Drift:** The `templates/tiers/` directory currently contains only a `README.md` and lacks the actual template files, preventing the Onboarding agent from fulfilling its mission.
-**Question for Product Owner:** Should Jules implement a starter set of service tier templates in `templates/tiers/` based on the documented `basic`, `standard`, and `premium` tiers?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Implement the starter service tier templates (`basic.md`, `standard.md`, `premium.md`) in `templates/tiers/` to enable the Client Onboarding workflow.*
-
-### ❓ Question [2026-06-15] - Service Tier Template Specifications
-**Context:** The requirements state the Client Onboarding agent references service tier templates in `templates/tiers/`, but the codebase in that directory implements only a placeholder README.
-**Ambiguity / Drift:** Without these templates, the onboarding workflow cannot be demonstrated or executed, leaving the "Explorer" path blocked.
-**Question for Product Owner:** Can you provide the specific service definitions (features, limits, pricing) for the Basic, Standard, and Premium tiers so I can implement the missing templates?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Implement the `basic.md`, `standard.md`, and `premium.md` templates in `templates/tiers/` using the provided service definitions.*
-
-### ❓ Question [2026-06-17] - Substantive Content Baseline for Agents
-**Context:** The requirements state "Persona and Skill Contracts are Mandatory", but a whole-codebase audit revealed that 100% of agent personas use identical boilerplate text for the `Refusal Criteria` and `Data Inventory` sections.
-**Ambiguity / Drift:** While structurally compliant, the repository is in substantive drift from the 4D Description (D2) and Refusal Principle mandates. Agents lack role-specific data and safety-gating logic, creating a false sense of production readiness.
-**Question for Product Owner:** Should we authorize Jules to perform a bulk update to replace these boilerplate placeholders with role-specific substantive content across all 22+ agent personas?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Perform a fleet-wide substantive remediation of all agent personas in `agents/`, replacing boilerplate `Data Inventory` and `Refusal Criteria` with role-specific, technically accurate content.*
-
-### ❓ Question [2026-06-18] - E2E Smoke Test Docker Mandatory Check
-**Context:** The requirements in `REQUIREMENTS.md` Section 9 state "The Docker e2e suite must skip cleanly when Docker is unavailable", but the codebase in `tests/e2e/docker-smoke.test.js` implements this as a silent skip.
-**Ambiguity / Drift:** In CI/CD pipelines, a silent skip can lead to a "false green" where critical runtime checks are never actually executed because the runner lacks Docker or has a configuration error. This masks environmental gaps that would be fatal in production.
-**Question for Product Owner:** Should the E2E suite be updated to require an explicit flag (e.g., `FORCE_DOCKER_SMOKE=true`) that, when set, causes the test to FAIL if Docker is missing, while preserving the "clean skip" behavior for local development?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `tests/e2e/docker-smoke.test.js` to implement an optional mandatory mode that fails if Docker is missing when `FORCE_DOCKER_SMOKE` is true.*
-
-### ❓ Question [2026-06-19] - SecretOps Provider Bias in Smoke Tests
-**Context:** The `AGENTS.md` mandates that secrets can be stored in Infisical OR 1Password, but the test suite in `tests/examples-smoke.test.js` explicitly asserts the presence of the `op://` pattern.
-**Ambiguity / Drift:** This creates a "false failure" for users who have adopted Infisical as their primary SecretOps provider, violating the multi-provider architectural mandate.
-**Question for Product Owner:** Should the smoke test be updated to accept either `op://` or `infisical://` (or generic vault reference patterns) to truly support the multi-provider mandate?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `tests/examples-smoke.test.js` to support both `op://` and `infisical://` vault reference patterns in its assertion logic.*
-
-### ❓ Question [2026-06-19] - Resilience Helper Persona Integration
-**Context:** `REQUIREMENTS.md` identifies a "Resilience Helper Integration Gap" where `scripts/resilience_helpers.js` is not utilized by any agent personas, despite a mandate for resilience in agentic systems.
-**Ambiguity / Drift:** Network-bound agents like `Gatekeeper` and `Client Onboarding` remain susceptible to transient failures because their specifications do not explicitly mandate retry-with-backoff logic for tool interactions.
-**Question for Product Owner:** Should we authorize Jules to perform a bulk update to all network-bound agent personas to include `withRetry` logic in their `Workflow` and `External Tooling Dependencies` sections?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Integrate the `withRetry` resilience pattern into the `Workflow` and `External Tooling Dependencies` of all network-bound agent personas in `agents/`.*
-
-### ❓ Question [2026-06-19] - Legacy Example Model Drift
-**Context:** The `AGENTS.md` mandates **Gemini 2.5 Flash** as the canonical baseline, but `examples/docker/agent.py` is pinned to `gemini-2.0-flash`.
-**Ambiguity / Drift:** This creates inconsistent behavior and cost profiles across the reference architecture, potentially confusing users who follow the legacy examples.
-**Question for Product Owner:** Should all legacy Python/Bash examples be updated to point to the `gemini-2.5-flash` baseline, or should they be allowed to remain on older models for illustrative purposes?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `examples/docker/agent.py` and any other legacy examples to use the canonical `models/gemini-2.5-flash` baseline.*
 
 ### ❓ Question [2026-06-20] - Executive Assistant "Learning Agent" Resolution Path
 **Context:** The `Executive Assistant` reference implementation in `tools/executive-assistant/server.js` includes an `/api/resolution` endpoint that claims to be processed by a "Learning Agent" and updates internal execution logs with "Historical messages passed".
@@ -144,47 +65,12 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Document the "Learning Agent" resolution pattern in `REQUIREMENTS.md` and create a dedicated persona specification in `agents/operations/learning-agent.md` that governs how agents should learn from human resolutions.*
 
-### ❓ Question [2026-06-20] - Rules & Constraints Heading Inconsistency
-**Context:** `AGENTS.md` and `audit-repo.js` require "Rules & Constraints" for agent personas but "Rules & Constraints (4D Diligence)" for reusable skills.
-**Ambiguity / Drift:** This inconsistency in the mandatory heading name complicates the audit logic and creates confusion for builders. Given that both are intended to incorporate the 4D framework (specifically Diligence), there is no clear reason for the different naming conventions.
-**Question for Product Owner:** Should we standardize on a single heading name (e.g., `Rules & Constraints (4D Diligence)`) for both agent personas and skills to ensure consistency across the repository?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Standardize the "Rules & Constraints" heading name across all personas, skills, and audit scripts to use the `(4D Diligence)` suffix.*
-
-### ❓ Question [2026-06-20] - Phase 0 Assessment Kit Audit Coverage
-**Context:** Requirement §1 mandates a specific inventory of 8+ files for the Phase 0 Assessment Kit, but `scripts/audit-repo.js` currently provides no verification for this critical business asset.
-**Ambiguity / Drift:** As the "front door" for buyers, the Assessment Kit's completeness is paramount. Without automated auditing, files can be accidentally moved or renamed, breaking the buyer's first-contact experience and violating Requirement §1.
-**Question for Product Owner:** Should the Phase 0 Assessment Kit inventory be added to the mandatory repository audit performed by `scripts/audit-repo.js`?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Extend `scripts/audit-repo.js` to verify the presence of all 8 mandated files in the `docs/phase-zero-assessment/` directory.*
-
 ### ❓ Question [2026-06-22] - Executive Assistant Admin API Formalization
 **Context:** The requirements state that agents and reference services must adhere to strict observability and security standards, but the codebase in `tools/executive-assistant/server.js` implements several undocumented admin endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`).
 **Ambiguity / Drift:** These endpoints provide direct access to internal agent state and configuration without any documented authentication or authorization requirement in `REQUIREMENTS.md`. This creates a "shadow" management surface that isn't governed by the project's security baseline.
 **Question for Product Owner:** Should these admin endpoints be formalized in the requirements as a standard "Agent Control Plane" and secured via the reference identity layer (Casdoor), or should they be removed from the public reference implementation?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Formalize the Agent Control Plane API requirements in `REQUIREMENTS.md` and implement JWT-based authorization for all `/api/` endpoints in the `executive-assistant` tool.*
-
-### ❓ Question [2026-06-27] - Generator Fail-Fast Policy for Framework Assets
-**Context:** `REQUIREMENTS.md` Section 3 mandates "Contract and Generator Drift Must Fail Fast," but the codebase in `scripts/generate_all.js` (via `context_helpers.js`) implements a "silent success" pattern where missing framework directories or empty assets return HTML comments rather than an exit 1.
-**Ambiguity / Drift:** This allows for "hollow" context files to be generated and shipped without surfacing the structural gap, potentially leading to agents operating without mandated framework layers (Value Lenses/Operating Profiles) in production-like environments.
-**Question for Product Owner:** Should the generator be updated to enforce a fatal error (exit 1) if any mandated framework asset directory is missing or contains no operational files?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `scripts/generate_all.js` and `scripts/context_helpers.js` to enforce a fatal error if mandated framework assets or active skills/MCPs are missing during context generation.*
-
-### ❓ Question [2026-07-03] - Generator Fail-Fast Enforcement for Skills/MCPs
-**Context:** `scripts/generate_all.js` currently allows "silent success" (exit 0) when skills or MCP protocols defined in `mcp.config.json` are missing from the filesystem, injecting a warning comment into the generated markdown instead.
-**Ambiguity / Drift:** This violates the "Fail Fast" mandate in Requirement §3. It allows agents to be deployed with "broken" workflows because they are missing the specific skills or tools they expect to have available.
-**Question for Product Owner:** Should the generator be updated to enforce a fatal error (exit 1) if any active skill or MCP protocol specified in the configuration is missing during generation?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `scripts/generate_all.js` to enforce a fatal error (exit 1) if any active skill or MCP protocol defined in `mcp.config.json` is missing from the filesystem.*
-
-### ❓ Question [2026-07-04] - ESM Migration vs. Dual-Export for Shared Utilities
-**Context:** The `Executive Assistant` tool (`tools/executive-assistant/`) and modern reference services use Node.js ESM (`"type": "module"`), but shared repository utilities like `scripts/resilience_helpers.js` use CommonJS. This prevents direct code reuse and integration of mandated resilience patterns.
-**Ambiguity / Drift:** We have a mismatch between the Node 24 ESM baseline for services and the legacy CJS baseline for scripts.
-**Question for Product Owner:** Should Jules perform a wholesale migration of the `scripts/` directory to ESM to align with the Node 24 baseline, or should we implement a dual-export strategy (CJS/ESM) for shared utilities?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Migrate all shared Node.js utilities in `scripts/` to ESM to ensure seamless integration with modern reference services and tools.*
 
 ### ❓ Question [2026-07-05] - Sovereign JSON Asset Layer Governance ("Great AI Pivot")
 **Context:** The requirements state "Persona and Skill Contracts are Mandatory" (§2) and mandate audit/generation alignment (§3, §4), but commit `64f5a09` ("The Great AI Pivot") introduced four framework assets as **JSON files** that the Markdown-only pipeline cannot see: `agents/guardian/jailbreak-monitor-agent.json`, `skills/model-fusion-consensus/definition.json`, `mcp-protocols/local-inference-mcp.json`, and `operating-profiles/local-sovereign-profile.json`. `scripts/context_helpers.js` filters on `.endsWith('.md')`, and `scripts/audit-repo.js` audits only Markdown personas/skills.
@@ -200,40 +86,19 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update the AI Model Baseline section of `REQUIREMENTS.md` to define the approved sovereign/local model track (or an explicit exception list) and align the planned non-baseline model-pin audit in `scripts/audit-repo.js` with it.*
 
-### ❓ Question [2026-07-05] - Automation Branch Flow Under the develop-only Merge Gate
-**Context:** Decision [2026-07-03-0001] narrows `.github/workflows/require-develop-source.yml` so that `develop` is the **only** valid PR source into `main`, removing the six accreted `doc-*` wildcard exceptions. Governed automation, however, runs on `claude/*` session branches and `sync/upstream-*` branches (Decision [2026-06-30-0001]) and historically opened PRs directly against `main`.
-**Ambiguity / Drift:** Requirement §7 documents branch-protection enforcement but not the develop-only invariant or how automation branches integrate with it. The automation prompts (`docs/DEV_AGENT_PROMPT.md`, `docs/SYNC_AGENT_PROMPT.md`, and the Doc routine) do not state that automation PRs must target `develop`, so scheduled runs risk producing PRs that fail the gate by design.
-**Question for Product Owner:** Should Requirement §7 and the automation prompt documents be updated to codify that all automation PRs target `develop` (reaching `main` only via a `develop → main` release PR), and is a periodic `develop → main` release cadence the responsibility of a human or a scheduled routine?
+### ❓ Question [2026-07-11] - Licensing Posture Missing from the Requirements Contract
+**Context:** Commit `c3c0e82` relicensed the repository from SSPL v1 to **FSL-1.1-Apache-2.0**, and commit `7f756b6` added the Transparent Source Guarantee (`docs/TRANSPARENT_SOURCE.md`, README section, Decision [2026-07-05-0004]). However, `docs/REQUIREMENTS.md` — the self-declared "current implementation truth" — contains no mention of the license, the Fair Source registration, or the Transparent Source commitments, and `scripts/audit-repo.js` performs no check that `LICENSE` and the `package.json` `license` field stay aligned.
+**Ambiguity / Drift:** The licensing posture is a first-class governance control for a public reference architecture (it determines what forks and MSP deployments may do), yet it lives only in the decision log and ancillary docs. A future contributor could change `LICENSE` or the `package.json` field without tripping any requirement or audit gate.
+**Question for Product Owner:** Should the FSL-1.1-Apache-2.0 license and the Transparent Source Guarantee be codified as a numbered requirement in `REQUIREMENTS.md` (with an audit check that `LICENSE`, the `package.json` `license` field, and `docs/TRANSPARENT_SOURCE.md` remain present and consistent), or is the decision-log record sufficient?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` §7 and the automation prompt docs (`DEV_AGENT_PROMPT.md`, `SYNC_AGENT_PROMPT.md`) to codify the develop-only merge invariant from Decision [2026-07-03-0001] for all automation PRs.*
+**🤖 Jules Action Prompt:** *Add a licensing requirement section to `docs/REQUIREMENTS.md` codifying FSL-1.1-Apache-2.0 and the Transparent Source Guarantee, and extend `scripts/audit-repo.js` to verify `LICENSE` / `package.json` license-field consistency and the presence of `docs/TRANSPARENT_SOURCE.md`.*
 
-### ❓ Question [2026-07-06] - Audit Script "TBD" Placeholder Rejection Enforcement
-**Context:** `AGENTS.md` mandates that "substantive compliance" is required and that "TBD" placeholders are prohibited. However, the current `scripts/audit-repo.js` only checks for the presence of headings and does not introspect the content for these placeholders.
-**Ambiguity / Drift:** The repository is currently in a state of "hollow compliance" where 100% of skills pass the audit despite containing "TBD" placeholders in mandatory safety sections.
-**Question for Product Owner:** Should `scripts/audit-repo.js` be updated to perform a case-insensitive search for "TBD" or "placeholder" within required sections and fail the audit if found, or should this check remain as a manual review item?
+### ❓ Question [2026-07-11] - Sync-Upstream Test Harness Outside the Validation Gate
+**Context:** Requirement §9 ("Validation Must Be Easy to Run") enumerates what `npm run validate` and `npm test` cover, and Decision [2026-06-30-0001] shipped `scripts/test-sync-upstream.sh` — an offline harness that verifies override surfacing, `--continue` resume, dry-run, and the duplicate guard for `scripts/sync-upstream.sh` with a stubbed `gh`. The harness is documented in `README.md` and `docs/UPSTREAM_SYNC.md`, but neither `package.json` scripts nor `.github/workflows/validate.yml` ever execute it.
+**Ambiguity / Drift:** A governed automation script (the upstream sync that fork owners depend on) has a working regression suite that CI never runs. A regression in `sync-upstream.sh` would ship silently and only surface when a fork's scheduled sync run breaks — exactly the "false green" pattern Requirement §9 exists to prevent.
+**Question for Product Owner:** Should `scripts/test-sync-upstream.sh` be wired into the canonical validation contract — e.g., a `test:sync` npm script included in `validate:full` and a CI job in `validate.yml` — or is it intentionally a manual-only, fork-owner tool kept outside the gate (in which case §9 should say so)?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to reject files containing "TBD" or "placeholder" text within mandatory sections to enforce substantive compliance.*
-
-### ❓ Question [2026-07-06] - Agent Index Regex Refinement for Technical Names
-**Context:** The current Agent Index extraction in `scripts/context_helpers.js` uses a sentence-splitting regex `/^[^.!?]+[.!?]/` that prematurely truncates technical names containing dots, such as "Next.js".
-**Ambiguity / Drift:** This results in inaccurate role summaries in the Agent Index, violating the mandate for "Agent Index Richness".
-**Question for Product Owner:** Should the Agent Index extraction be updated to capture the full first paragraph (as mandated in `AGENTS.md`) regardless of sentence structure, or should we refine the regex to better handle technical nomenclature?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Refactor `scripts/context_helpers.js` to extract the full first paragraph of the `## Role` section for the Agent Index, ensuring technical names like "Next.js" are preserved.*
-
-### ❓ Question [2026-07-09] - Executive Assistant Admin API Security Baseline
-**Context:** The requirements state that agents and reference services must adhere to strict security standards, but the codebase in `tools/executive-assistant/server.js` implements several undocumented admin endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`, `/api/resolution`) that provide unauthenticated access to internal state.
-**Ambiguity / Drift:** These endpoints create a governance drift from the security baseline. It is unclear if they should be formalized as a standard "Agent Control Plane" or removed to maintain the fetch-on-demand security posture.
-**Question for Product Owner:** Should the `executive-assistant` admin endpoints be formalized and secured via the reference identity layer (Casdoor), or should they be removed from the reference implementation to ensure alignment with the Phase 0 security baseline?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Formalize the Agent Control Plane requirements in `REQUIREMENTS.md` and implement JWT-based authorization for all `/api/` endpoints in the `executive-assistant` tool.*
-
-### ❓ Question [2026-07-09] - Audit Script Substantive Compliance Enforcement
-**Context:** `AGENTS.md` mandates that "substantive compliance" is required and that "TBD" placeholders are prohibited. However, the current `scripts/audit-repo.js` only checks for the presence of headings and does not detect these placeholders.
-**Ambiguity / Drift:** This allows 100% of skills to pass the audit despite containing "TBD" placeholders in mandatory safety sections, leading to a state of "hollow compliance."
-**Question for Product Owner:** Should `scripts/audit-repo.js` be updated to perform a case-insensitive search for "TBD" or "placeholder" within required sections and fail the audit if found?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to reject files containing "TBD" or "placeholder" text within mandatory sections to enforce substantive compliance.*
+**🤖 Jules Action Prompt:** *Add a `test:sync` script to `package.json` invoking `scripts/test-sync-upstream.sh`, include it in `validate:full` and as a job in `.github/workflows/validate.yml`, and update Requirement §9 to list sync-script regression coverage.*
 
 ### ❓ Question [2026-07-12] - Guardian Layer Implementation Path (Node.js vs. Python)
 **Context:** The `guardian-layer/` implements security evaluation logic in Python (`guardian_evaluator.py`), but Requirement §8 states that Node.js is the canonical implementation path and Python is for historical/illustrative purposes.
@@ -242,16 +107,16 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Re-implement the `guardian-layer/guardian_evaluator.py` logic in Node.js, ensuring it integrates with the shared `audit_logger.js` and follows the ESM baseline.*
 
-### ❓ Question [2026-07-12] - Audit Log Schema Validation Enforcement in CI
-**Context:** `scripts/audit-repo.js` currently only checks if Audit Logs are valid JSON. The mandate for 5-key schema validation (task, inputs, actions, risks, result) is documented but not enforced in code.
-**Ambiguity / Drift:** We have "hollow compliance" where agents pass audits with structurally valid but substantively incomplete logs.
-**Question for Product Owner:** Should we update the audit script to enforce the mandatory 5-key JSON schema validation, and should this be a fatal error (exit 1) in the CI pipeline?
+### ❓ Question [2026-07-13] - Red Team Vector JSON Companion Divergence and Missing Schema
+**Context:** The requirements state that `examples/red-team-gauntlet/test-vectors.yaml` is the canonical machine-readable vector set (Decision [2026-07-07-0003]), and both the gauntlet README and the `Client Onboarding` persona name the YAML as the artifact orchestrators consume. However, the salvaged companion `test-vectors.json` (commit `9c19548`) self-describes as "Consumed by the Client Onboarding validation suite," uses a divergent vector ID scheme (`PI-001`/`PII-00x` vs. the YAML's `pi-*`/`pii-*`), a different per-vector field shape, and declares `"$schema": "./test-vectors.schema.json"` — a file that does not exist anywhere in the repository.
+**Ambiguity / Drift:** Two machine-readable serializations of the same safety contract can silently diverge, and downstream tooling that trusts the JSON's self-description would validate against the wrong ID scheme or fail resolving the missing schema. The dangling `$schema` reference is a Referential Integrity (D4) violation per `AGENTS.md`.
+**Question for Product Owner:** Should `test-vectors.json` be regenerated as a faithful lockstep companion of the canonical YAML (matching IDs and field shape, plus shipping the missing `test-vectors.schema.json`), or should it be deleted outright given Decision [2026-07-07-0003] already crowned the YAML?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to implement mandatory JSON schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result`) for all Audit Log sections.*
+**🤖 Jules Action Prompt:** *Reconcile `examples/red-team-gauntlet/test-vectors.json` with the canonical `test-vectors.yaml` (matching vector IDs and field shape), ship the referenced `test-vectors.schema.json`, and correct its self-description — or delete the JSON companion if the Product Owner prefers a single serialization.*
 
-### ❓ Question [2026-07-12] - SecretOps Fatal Error Policy in Docker Mode
-**Context:** Decision [2026-06-19-0007] mandates that `verify-env.sh` MUST `exit 1` in `docker` mode if SecretOps is missing or unauthenticated, but the current implementation only issues warnings.
-**Ambiguity / Drift:** This environmental drift allows Docker-based deployments to proceed with missing credentials, risking runtime failures.
-**Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic in `scripts/verify-env.sh` and `scripts/verify-env.ps1` for the `docker` mode immediately?
+### ❓ Question [2026-07-13] - FSL Conversion Clock Has No Tagged Release Anchor
+**Context:** Decision [2026-07-05-0004] (Relicense to FSL-1.1-Apache-2.0) states that "Tagged GitHub releases become the canonical published versions so the rolling two-year conversion timeline is legally unambiguous" and that "a tagged release is to be cut at the relicense merge commit so the first FSL conversion clock has an unambiguous start date." The repository's only tag is `v0.1.0` (2026-05-25), which predates the relicense commit `c3c0e82` (2026-07-05) and therefore falls under the prior SSPL v1 terms.
+**Ambiguity / Drift:** Until a release is tagged at or after the relicense commit, no published version carries an unambiguous FSL two-year Apache-2.0 conversion start date — the central legal mechanism of the new license model is inert. This is an external action (cutting a GitHub release) that no automation in this repository is authorized to perform unilaterally.
+**Question for Product Owner:** Should a tagged release (e.g., `v0.2.0`) be cut at the relicense merge commit on `main` as Decision [2026-07-05-0004] prescribes, and do you want to cut it yourself or delegate the tagging to an authorized automation run?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode when SecretOps is missing or unauthenticated.*
+**🤖 Jules Action Prompt:** *Cut a tagged GitHub release at the relicense merge commit on `main` per Decision [2026-07-05-0004], and record the tag name and date in `DECISION_LOG.md` so the first FSL conversion clock has an auditable anchor.*

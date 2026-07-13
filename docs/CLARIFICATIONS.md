@@ -255,3 +255,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic in `scripts/verify-env.sh` and `scripts/verify-env.ps1` for the `docker` mode immediately?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode when SecretOps is missing or unauthenticated.*
+
+### ❓ Question [2026-07-13] - Standardizing Diligence Headings across Fleet
+**Context:** Requirement §2 and AGENTS.md mandate "Rules & Constraints" for agents, but "Rules & Constraints (4D Diligence)" for skills. However, a codebase scan shows 90% of agent personas have already adopted the "(4D Diligence)" suffix.
+**Ambiguity / Drift:** This inconsistency complicates the audit logic in `scripts/audit-repo.js` and creates a documentation-to-implementation drift.
+**Question for Product Owner:** Should we formally standardize on "## Rules & Constraints (4D Diligence)" as the mandatory heading for both agents and skills?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update REQUIREMENTS.md §2 and AGENTS.md to mandate "## Rules & Constraints (4D Diligence)" for all personas and skills, and update the audit script to enforce this exact string.*
+
+### ❓ Question [2026-07-13] - Sovereign JSON Layer Audit and Generator Integration
+**Context:** Commit `64f5a09` introduced agent personas and skills as JSON files (e.g., `jailbreak-monitor-agent.json`), which currently bypass the Markdown-only audit and context generation pipeline.
+**Ambiguity / Drift:** These assets exist in a "governance blind spot" where they are neither indexed in the Agent Index nor validated against the structural and safety contracts.
+**Question for Product Owner:** Should Jules implement a parallel JSON schema-based audit for these sovereign assets and extend `context_helpers.js` to inject them into the generated context, or should they be converted back to canonical Markdown?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Extend `scripts/audit-repo.js` and `scripts/context_helpers.js` to support JSON-based agent and skill definitions using a dedicated JSON schema that mirrors the Markdown contract.*

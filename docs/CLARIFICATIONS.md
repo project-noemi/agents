@@ -158,12 +158,12 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Extend `scripts/audit-repo.js` to verify the presence of all 8 mandated files in the `docs/phase-zero-assessment/` directory.*
 
-### ❓ Question [2026-06-22] - Executive Assistant Admin API Formalization
-**Context:** The requirements state that agents and reference services must adhere to strict observability and security standards, but the codebase in `tools/executive-assistant/server.js` implements several undocumented admin endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`).
-**Ambiguity / Drift:** These endpoints provide direct access to internal agent state and configuration without any documented authentication or authorization requirement in `REQUIREMENTS.md`. This creates a "shadow" management surface that isn't governed by the project's security baseline.
-**Question for Product Owner:** Should these admin endpoints be formalized in the requirements as a standard "Agent Control Plane" and secured via the reference identity layer (Casdoor), or should they be removed from the public reference implementation?
+### ❓ Question [2026-06-22] - Executive Assistant Admin API Formalization and Observability
+**Context:** The requirements state that agents and reference services must adhere to strict observability and security standards, but the codebase in `tools/executive-assistant/server.js` implements several undocumented admin endpoints (`/api/queue` at line 103, `/api/resolution` at line 107, `/api/rules` at line 125, `/api/stats` at line 150, `/api/logs` at line 156). It also uses unstructured `console.log` (lines 44, 49, 121, 161) and `console.error` (line 54) for critical events.
+**Ambiguity / Drift:** These endpoints provide direct access to internal agent state and configuration without any documented authentication or authorization requirement in `REQUIREMENTS.md`. This creates a "shadow" management surface and violates the mandate for structured JSON Audit Logs to `stderr`.
+**Question for Product Owner:** Should these admin endpoints be formalized as a secured (e.g., Casdoor JWT) "Agent Control Plane" in the requirements and refactored to use `audit_logger.js`, or should they be removed from the reference implementation?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Formalize the Agent Control Plane API requirements in `REQUIREMENTS.md` and implement JWT-based authorization for all `/api/` endpoints in the `executive-assistant` tool.*
+**🤖 Jules Action Prompt:** *Formalize the Agent Control Plane requirements in `REQUIREMENTS.md` and implement JWT-based authorization and structured `audit_logger.js` emissions for all `/api/` endpoints in the `executive-assistant` tool.*
 
 ### ❓ Question [2026-06-27] - Generator Fail-Fast Policy for Framework Assets
 **Context:** `REQUIREMENTS.md` Section 3 mandates "Contract and Generator Drift Must Fail Fast," but the codebase in `scripts/generate_all.js` (via `context_helpers.js`) implements a "silent success" pattern where missing framework directories or empty assets return HTML comments rather than an exit 1.
@@ -221,12 +221,6 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Refactor `scripts/context_helpers.js` to extract the full first paragraph of the `## Role` section for the Agent Index, ensuring technical names like "Next.js" are preserved.*
 
-### ❓ Question [2026-07-09] - Executive Assistant Admin API Security Baseline
-**Context:** The requirements state that agents and reference services must adhere to strict security standards, but the codebase in `tools/executive-assistant/server.js` implements several undocumented admin endpoints (`/api/queue`, `/api/stats`, `/api/logs`, `/api/rules`, `/api/resolution`) that provide unauthenticated access to internal state.
-**Ambiguity / Drift:** These endpoints create a governance drift from the security baseline. It is unclear if they should be formalized as a standard "Agent Control Plane" or removed to maintain the fetch-on-demand security posture.
-**Question for Product Owner:** Should the `executive-assistant` admin endpoints be formalized and secured via the reference identity layer (Casdoor), or should they be removed from the reference implementation to ensure alignment with the Phase 0 security baseline?
-**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
-**🤖 Jules Action Prompt:** *Formalize the Agent Control Plane requirements in `REQUIREMENTS.md` and implement JWT-based authorization for all `/api/` endpoints in the `executive-assistant` tool.*
 
 ### ❓ Question [2026-07-09] - Audit Script Substantive Compliance Enforcement
 **Context:** `AGENTS.md` mandates that "substantive compliance" is required and that "TBD" placeholders are prohibited. However, the current `scripts/audit-repo.js` only checks for the presence of headings and does not detect these placeholders.
@@ -250,8 +244,15 @@ Add new questions below this line using the required format.
 **🤖 Jules Action Prompt:** *Update `scripts/audit-repo.js` to implement mandatory JSON schema validation (checking for `task`, `inputs`, `actions`, `risks`, and `result`) for all Audit Log sections.*
 
 ### ❓ Question [2026-07-12] - SecretOps Fatal Error Policy in Docker Mode
-**Context:** Decision [2026-06-19-0007] mandates that `verify-env.sh` MUST `exit 1` in `docker` mode if SecretOps is missing or unauthenticated, but the current implementation only issues warnings.
-**Ambiguity / Drift:** This environmental drift allows Docker-based deployments to proceed with missing credentials, risking runtime failures.
-**Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic in `scripts/verify-env.sh` and `scripts/verify-env.ps1` for the `docker` mode immediately?
+**Context:** Decision [2026-06-19-0007] mandates that `scripts/verify-env.sh` (lines 140-164) and `scripts/verify-env.ps1` (lines 99-125) MUST `exit 1` in `docker` mode if SecretOps is missing or unauthenticated.
+**Ambiguity / Drift:** The current implementation only issues warnings even when Docker is the target mode, allowing potentially unauthenticated deployments to proceed.
+**Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic for `docker` mode in both scripts immediately to enforce the security baseline?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode when SecretOps is missing or unauthenticated.*
+
+### ❓ Question [2026-07-13] - Sovereign JSON Asset Layer Governance ("The Great AI Pivot" Drift)
+**Context:** Commit `64f5a09` ("The Great AI Pivot") introduced several framework assets as JSON files: `agents/guardian/jailbreak-monitor-agent.json`, `skills/model-fusion-consensus/definition.json`, `mcp-protocols/local-inference-mcp.json`, and `operating-profiles/local-sovereign-profile.json`.
+**Ambiguity / Drift:** These assets bypass the current Markdown-only audit and generation pipeline (`scripts/audit-repo.js`, `scripts/context_helpers.js`). They exist outside structural contracts (Refusal Criteria, Audit Log), are not indexed in the Agent Index, and are not injected into `GEMINI.md`/`CLAUDE.md`. Furthermore, `local-sovereign-profile.json` pins non-baseline models (`deepseek-coder`, `llama3.3`), conflicting with the single Gemini 2.5 Flash mandate.
+**Question for Product Owner:** Should these sovereign JSON assets be converted to the canonical Markdown format, or should the pipeline be extended to support a parallel JSON specification contract with its own schema-based audits?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Bring the sovereign JSON assets under governance by either converting them to Markdown or extending `audit-repo.js` and `context_helpers.js` to support JSON specifications.*

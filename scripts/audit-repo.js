@@ -183,11 +183,54 @@ function checkGeneratedOutputs() {
     }
 }
 
+// Licensing posture consistency check — resolves Clarification [2026-07-11] Licensing
+// Posture Missing from the Requirements Contract (Decision [2026-07-13-0002]).
+// Verifies that the FSL-1.1-Apache-2.0 declaration in LICENSE and the SPDX identifier
+// in package.json stay aligned, and that the Transparent Source Guarantee doc is present.
+const CANONICAL_LICENSE_ID = 'FSL-1.1-Apache-2.0';
+const CANONICAL_LICENSE_HEADER = 'Functional Source License, Version 1.1, Apache 2.0 Future License';
+
+function checkLicensingPosture() {
+    const licensePath = path.join(repoRoot, 'LICENSE');
+    const packageJsonPath = path.join(repoRoot, 'package.json');
+    const transparentSourcePath = path.join(repoRoot, 'docs/TRANSPARENT_SOURCE.md');
+
+    if (!fs.existsSync(licensePath)) {
+        fail('LICENSE file is missing at the repository root.');
+    } else {
+        const licenseContent = fs.readFileSync(licensePath, 'utf8');
+        if (!licenseContent.includes(CANONICAL_LICENSE_HEADER)) {
+            fail(`LICENSE does not start with the canonical FSL header ("${CANONICAL_LICENSE_HEADER}").`);
+        }
+        if (!licenseContent.includes(CANONICAL_LICENSE_ID)) {
+            fail(`LICENSE does not declare the SPDX identifier "${CANONICAL_LICENSE_ID}".`);
+        }
+    }
+
+    if (!fs.existsSync(packageJsonPath)) {
+        fail('package.json is missing at the repository root.');
+    } else {
+        try {
+            const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+            if (pkg.license !== CANONICAL_LICENSE_ID) {
+                fail(`package.json "license" field is "${pkg.license || '(unset)'}", expected "${CANONICAL_LICENSE_ID}" per Decision [2026-07-05-0004].`);
+            }
+        } catch (error) {
+            fail(`package.json is not valid JSON: ${error.message}`);
+        }
+    }
+
+    if (!fs.existsSync(transparentSourcePath)) {
+        fail('docs/TRANSPARENT_SOURCE.md is missing; the Transparent Source Guarantee must be present per Decision [2026-07-05-0004].');
+    }
+}
+
 function main() {
     checkTemplates();
     checkPersonas();
     checkSkills();
     checkGeneratedOutputs();
+    checkLicensingPosture();
 
     if (failed) {
         process.exit(1);

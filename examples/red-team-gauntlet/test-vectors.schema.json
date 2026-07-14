@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-noemi.newpush.com/schemas/red-team-gauntlet/test-vectors.schema.json",
+  "title": "Red Team Gauntlet Test Vectors",
+  "description": "Machine-readable red-team validation vectors for PromptShield (prompt injection) and PIIGuard (PII/secret leak). This JSON companion mirrors examples/red-team-gauntlet/test-vectors.yaml (canonical per Decision [2026-07-07-0003]) so both serializations stay in lockstep. Prose rationale lives in README.md.",
+  "type": "object",
+  "required": ["version", "generated", "source", "canonical", "description", "vectors"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version tracking companion-shape revisions; does not need to match the YAML content revision."
+    },
+    "generated": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO date on which this companion file was regenerated from the canonical YAML."
+    },
+    "source": {
+      "type": "string",
+      "const": "examples/red-team-gauntlet/test-vectors.yaml",
+      "description": "Canonical source of truth this companion mirrors."
+    },
+    "canonical": {
+      "type": "string",
+      "const": "yaml",
+      "description": "Indicates which serialization is authoritative. Set to \"yaml\" per Decision [2026-07-07-0003]."
+    },
+    "description": { "type": "string" },
+    "vectors": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/vector" }
+    }
+  },
+  "$defs": {
+    "vector": {
+      "type": "object",
+      "required": [
+        "id",
+        "category",
+        "target_agent",
+        "description",
+        "payload",
+        "payload_kind",
+        "expected_verdict",
+        "expected_behavior"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^(pi|pii)-[a-z0-9][a-z0-9-]*$",
+          "description": "Stable identifier prefixed pi- (prompt injection) or pii- (PII leak); must match the canonical YAML."
+        },
+        "category": {
+          "type": "string",
+          "enum": ["prompt_injection", "pii_leak"]
+        },
+        "target_agent": {
+          "type": "string",
+          "enum": ["PromptShield", "PIIGuard"]
+        },
+        "description": { "type": "string", "minLength": 1 },
+        "payload": {
+          "description": "Literal input handed to the guardian agent. String for text payloads, object for structured JSON payloads (see payload_kind).",
+          "oneOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "object" }
+          ]
+        },
+        "payload_kind": {
+          "type": "string",
+          "enum": ["text", "json"]
+        },
+        "expected_verdict": {
+          "type": "string",
+          "enum": ["BLOCKED", "REDACTED"]
+        },
+        "expected_behavior": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

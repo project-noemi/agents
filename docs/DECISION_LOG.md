@@ -10,6 +10,15 @@
   - `CLARIFICATIONS.md` updated with high-priority questions regarding Executive Assistant security, ESM migration, and Generator Fail-Fast enforcement.
   - Root generated context (`GEMINI.md`, `CLAUDE.md`) and fixtures updated to reflect these new mandates.
 
+## [2026-07-13] Multi-File Technical Drift Audit and Requirements Uplift
+
+- **Decision:** Uplift `REQUIREMENTS.md` with refined line-level precision for confirmed technical drifts and raise new high-priority clarifications for the Sovereign JSON Asset Layer and Executive Assistant API security.
+- **Context:** A multi-file audit performed by the "Doc" agent verified that several technical drifts (unauthenticated admin endpoints, sentence-based role truncation, and hollow "TBD" placeholders) persist in the codebase and framework assets.
+- **Impact:**
+  - `REQUIREMENTS.md` updated with line-level references for drifts in `verify-env.sh`, `verify-env.ps1`, `context_helpers.js`, `audit-repo.js`, and `executive-assistant/server.js`.
+  - `CLARIFICATIONS.md` updated with new questions and "Jules Action Prompts" to resolve governance for the Sovereign JSON layer and secure the Executive Assistant's management surface.
+  - Verified Phase 0 Assessment Kit completeness (10 files) and confirmed repository-wide structural compliance via `npm run validate`.
+
 ## [2026-07-09] Holistic Audit and Requirements Refinement
 
 - **Decision:** Formally record technical drifts in `REQUIREMENTS.md` regarding the Executive Assistant admin control surface, SecretOps enforcement logic, and persistent audit script gaps. Raise high-priority clarifications to resolve governance policy for undocumented APIs and substantive compliance gates.

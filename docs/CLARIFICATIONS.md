@@ -255,3 +255,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic in `scripts/verify-env.sh` and `scripts/verify-env.ps1` for the `docker` mode immediately?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode when SecretOps is missing or unauthenticated.*
+
+### ❓ Question [2026-07-13] - Sovereign JSON Asset Layer Governance Alignment
+**Context:** Commit `64f5a09` introduced critical framework assets (Guardian agent, model consensus skill, local inference MCP) as JSON files. However, the current audit and generation pipeline (`scripts/audit-repo.js`, `scripts/context_helpers.js`) is Markdown-exclusive.
+**Ambiguity / Drift:** These assets operate outside the repository's structural contracts (no Refusal Criteria/Audit Log audit) and are not injected into generated context files, creating a "shadow" specification layer.
+**Question for Product Owner:** Should these JSON assets be converted to canonical Markdown with companion JSON, or should the pipeline be extended to formally govern and inject JSON-based specifications?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Bring the sovereign JSON assets from commit `64f5a09` under formal governance by either converting them to Markdown contracts or extending the audit and generation pipeline to support JSON specifications.*
+
+### ❓ Question [2026-07-13] - Executive Assistant Admin API Security Mandate
+**Context:** The `executive-assistant` tool implements several unauthenticated API endpoints (`/api/queue`, `/api/stats`, etc.) that expose internal agent state.
+**Ambiguity / Drift:** This unauthenticated management surface contradicts the "Fetch-on-Demand" and "Phase 0 Security" baselines of the project.
+**Question for Product Owner:** Should these endpoints be removed from the reference implementation, or should they be formalized as an "Agent Control Plane" and secured via Casdoor JWT validation?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Formalize and secure the Executive Assistant's admin API by implementing Casdoor JWT validation for all `/api/` endpoints or removing the unauthenticated management surface.*

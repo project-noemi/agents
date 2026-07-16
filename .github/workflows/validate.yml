@@ -106,6 +106,10 @@ jobs:
           docker compose version
 
       - name: Run Docker smoke suite
+        # FORCE_DOCKER_SMOKE promotes a missing Docker binary from "skip" to "fail" so a
+        # misconfigured runner cannot produce a false green (Decision [2026-07-05-0006]).
+        env:
+          FORCE_DOCKER_SMOKE: "true"
         run: npm run test:e2e
 
       - name: Upload Docker smoke diagnostics

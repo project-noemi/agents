@@ -1,0 +1,99 @@
+{
+  "$comment": "Machine-readable baseline snapshot for the ROI Auditor persona (agents/guardian/roi-auditor.md). Canonical access pattern per Decision [2026-07-07-0004] (reaffirming [2026-06-19-0015]): the ROI Auditor reads baseline-time and labor-rate dictionaries from this committed file rather than from a live Google Sheets range. The Sheets template remains the human-editable source; regenerate this snapshot whenever the template's assumptions or task catalog change.",
+  "source": {
+    "canonical_template": "https://docs.google.com/spreadsheets/d/1BFMzZFs9oXAdgccjq5y1A6xba-m4nVXC",
+    "workbook_artifact": "tools/roi/project-noemi-roi-calculator-template.xlsx",
+    "generator_script": "tools/roi/generate_roi_template.py",
+    "snapshot_date": "2026-07-16"
+  },
+  "valuation_policy": {
+    "method": "labor-cost-avoidance",
+    "rate_basis": "loaded_hourly_rate",
+    "stance": "conservative",
+    "notes": "Rates are illustrative blended internal rates from the public template. Replace with approved deployment rates before production ROI reporting. When baseline human time is ambiguous, choose the lower credible savings estimate."
+  },
+  "labor_rates": {
+    "engineering_manager": {
+      "human_role": "Engineering Manager",
+      "loaded_hourly_rate": 120,
+      "rate_source": "Illustrative blended internal rate"
+    },
+    "it_ops_engineer": {
+      "human_role": "IT Operations Engineer",
+      "loaded_hourly_rate": 85,
+      "rate_source": "Illustrative blended internal rate"
+    },
+    "knowledge_worker": {
+      "human_role": "Knowledge Worker",
+      "loaded_hourly_rate": 70,
+      "rate_source": "Illustrative blended internal rate"
+    },
+    "marketing_manager": {
+      "human_role": "Marketing Manager",
+      "loaded_hourly_rate": 75,
+      "rate_source": "Illustrative blended internal rate"
+    },
+    "content_producer": {
+      "human_role": "Content Producer",
+      "loaded_hourly_rate": 65,
+      "rate_source": "Illustrative blended internal rate"
+    }
+  },
+  "task_baselines": {
+    "gatekeeper_pr_triage": {
+      "agent_persona": "engineering/gatekeeper",
+      "task_name": "Triage pull request risk",
+      "business_function": "engineering",
+      "human_role_owner": "engineering_manager",
+      "human_baseline_minutes": 20,
+      "human_review_minutes": 5,
+      "exception_minutes": 2,
+      "evidence_required": "Structured PR report plus trace_id",
+      "approved_for_roi": true
+    },
+    "knowledge_manager_internal_answer": {
+      "agent_persona": "operations/knowledge-manager",
+      "task_name": "Answer internal policy question",
+      "business_function": "operations",
+      "human_role_owner": "knowledge_worker",
+      "human_baseline_minutes": 15,
+      "human_review_minutes": 4,
+      "exception_minutes": 1,
+      "evidence_required": "Knowledge answer output plus source refs",
+      "approved_for_roi": true
+    },
+    "linux_daily_health_check": {
+      "agent_persona": "infrastructure/linux",
+      "task_name": "Run daily health check and summarize",
+      "business_function": "operations",
+      "human_role_owner": "it_ops_engineer",
+      "human_baseline_minutes": 25,
+      "human_review_minutes": 5,
+      "exception_minutes": 2,
+      "evidence_required": "Health summary plus host trace",
+      "approved_for_roi": true
+    },
+    "seo_metadata_generation": {
+      "agent_persona": "marketing/seo-strategist",
+      "task_name": "Draft SEO metadata package",
+      "business_function": "marketing",
+      "human_role_owner": "marketing_manager",
+      "human_baseline_minutes": 30,
+      "human_review_minutes": 8,
+      "exception_minutes": 3,
+      "evidence_required": "Metadata package plus campaign trace",
+      "approved_for_roi": true
+    },
+    "video_content_packaging": {
+      "agent_persona": "marketing/video-content-manager",
+      "task_name": "Package rough cut into publishable asset set",
+      "business_function": "marketing",
+      "human_role_owner": "content_producer",
+      "human_baseline_minutes": 45,
+      "human_review_minutes": 12,
+      "exception_minutes": 5,
+      "evidence_required": "Packaging output plus content trace",
+      "approved_for_roi": true
+    }
+  }
+}

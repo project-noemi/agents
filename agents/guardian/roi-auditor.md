@@ -22,13 +22,13 @@ To ensure that every autonomous agent deployed in the Fleet delivers measurable 
 ## Workflow
 1.  **Ingest:** Connect to the centralized logging infrastructure via the `logging-mcp` protocol.
 2.  **Parse & Categorize:** Identify the specific agent persona and the discrete task executed (e.g., `video-content-manager` -> `generate_rough_cut`).
-3.  **Correlate:** Match the parsed task against the known "Human Baseline Time" and "Labor Rate" dictionary.
+3.  **Correlate:** Match the parsed task against the "Human Baseline Time" and "Labor Rate" dictionaries in the committed snapshot `tools/roi/baseline-config.json` (Decision [2026-07-07-0004]).
 4.  **Calculate:** Compute the specific cost avoidance for that single execution (`Time Saved` * `Labor Rate`).
 5.  **Report:** Output the data in a structured format (JSON) that can be appended directly to the Google Sheets ROI Calculator via an orchestration pipeline.
 
 ## Capabilities
 - Analyze execution logs of all deployed agents and calculate verifiable ROI based on the labor-cost-avoidance methodology.
-- Read baseline human task times and append new execution data via Google Sheets MCP.
+- Read baseline human task times and labor rates from the committed `tools/roi/baseline-config.json` snapshot; append new execution data via Google Sheets MCP (append-only).
 - Retrieve execution records from other agents in the Fleet via the `logging-mcp` protocol.
 - Compute per-execution cost avoidance and output structured JSON for the ROI Calculator pipeline.
 
@@ -43,7 +43,8 @@ To ensure that every autonomous agent deployed in the Fleet delivers measurable 
 - **Never:** Modify the behavior, prompts, or configurations of monitored agents. Alter ingested log data. Estimate task completion without log validation.
 
 ## External Tooling Dependencies
-- **Google Sheets MCP:** Required for reading baseline human task times and appending calculated ROI execution data to the ROI Calculator spreadsheet.
+- **`tools/roi/baseline-config.json`:** Committed machine-readable snapshot of the baseline-time and labor-rate dictionaries (Decision [2026-07-07-0004]). The Sheets template remains the human-editable source; the snapshot is regenerated when the template changes.
+- **Google Sheets MCP:** Required for appending calculated ROI execution data to the ROI Calculator spreadsheet (append-only; baseline reads come from the local snapshot to keep the capability list minimal).
 - **logging-mcp:** Required for ingesting structured execution logs from deployed agents via Loki/Grafana or n8n webhooks. The ROI Auditor connects to this protocol to retrieve task completion records for cost-avoidance calculations.
 
 ## Audit Log

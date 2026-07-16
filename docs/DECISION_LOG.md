@@ -1,5 +1,15 @@
 # Decision Log
 
+## [2026-07-13] Multi-File Technical Drift Audit and Requirements Uplift
+
+- **Decision:** Uplift the precision of `REQUIREMENTS.md` by documenting verified line-level technical drifts and audit script gaps. Record the Phase 0 assessment kit inventory and identify undocumented unauthenticated admin APIs.
+- **Context:** An autonomous holistic scan of the codebase revealed several persistent implementation gaps (sentence-based truncation in `context_helpers.js`, unauthenticated endpoints in `executive-assistant`, and missing 5-key schema validation in `audit-repo.js`) that were under-documented.
+- **Impact:**
+  - `REQUIREMENTS.md` updated with exact line-level references for environmental, structural, and substantive drifts.
+  - Confirmed the presence of all 10 mandated Phase 0 assessment files in `docs/phase-zero-assessment/`.
+  - Identified 5 unauthenticated endpoints in `executive-assistant` providing direct access to internal state.
+  - Recorded 1000% "TBD" placeholder presence in reusable skills.
+
 ## [2026-07-03] Documentation Alignment and Technical Drift Formalization
 
 - **Decision:** Formalize and align `REQUIREMENTS.md` and `AGENTS.md` with the verified codebase state, specifically mandating JSON schema validation for Audit Logs and full first-paragraph extraction for the Agent Index.

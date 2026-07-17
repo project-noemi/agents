@@ -255,3 +255,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic in `scripts/verify-env.sh` and `scripts/verify-env.ps1` for the `docker` mode immediately?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode when SecretOps is missing or unauthenticated.*
+
+### ❓ Question [2026-07-13] - Standardizing Sub-Tool Testing Frameworks (Native Runner vs. Vitest)
+**Context:** `REQUIREMENTS.md` Section 9 establishes the native Node.js test runner as the primary validation framework for repository contracts and smoke tests. However, the `executive-assistant` tool in `tools/executive-assistant/package.json` implements its test suite using `vitest` and depends on third-party libraries (`supertest`, `vitest`, `@vitest/coverage-v8`).
+**Ambiguity / Drift:** Having multiple testing runtimes (native `node --test` vs. `vitest` with major external dependencies) increases the maintenance burden, splits the test suite's execution standard, and violates the principle of using minimal dependency-free tools for reference implementations.
+**Question for Product Owner:** Should we migrate `tools/executive-assistant/` to the standard Node.js native test runner to enforce a single unified test runtime across the codebase, or is `vitest` permitted for complex service/integration testing in standalone tools?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Migrate `tools/executive-assistant/`'s tests from Vitest to the native Node.js test runner, removing the third-party `vitest` and `@vitest/coverage-v8` devDependencies.*
+
+### ❓ Question [2026-07-13] - Phase 0 Assessment Kit Canonical Inventory Count Discrepancy
+**Context:** Section 1 of `REQUIREMENTS.md` and our documented decision log mention the Phase 0 Assessment Kit, but some entries reference 8+ files while others reference 10 files. A whole-codebase analysis of `docs/phase-zero-assessment/` reveals exactly 9 physical files (including `README.md` and templates).
+**Ambiguity / Drift:** Discrepancies in the mandated count of Assessment Kit files make automated verification difficult and create conflicting standards for structural compliance audits.
+**Question for Product Owner:** Should we standardize on exactly 9 files as the canonical inventory for the Phase 0 Assessment Kit, and should `scripts/audit-repo.js` enforce this exact file list?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Align all inventory count references to exactly 9 files in `REQUIREMENTS.md` and implement a strict file check in `scripts/audit-repo.js` to ensure all 9 Phase 0 Assessment Kit files exist.*
+
+### ❓ Question [2026-07-13] - Persona Heading Divergence for Diligence (Rules & Constraints)
+**Context:** `AGENTS.md` mandates that all agent personas in `agents/` must include a section named `## Rules & Constraints`. However, a scanning of the persona specifications reveals that approximately 90% of personas (e.g., `agents/operations/linux.md`, `agents/education/student-success-coach.md`) use `## Rules & Constraints (4D Diligence)` instead, which matches the heading format required only for reusable skills.
+**Ambiguity / Drift:** This heading name drift breaks the strict persona contract audit of `scripts/audit-repo.js` (or forces the audit script to allow broad pattern matching), making automated contract enforcement less precise.
+**Question for Product Owner:** Should we rename the persona headings from `## Rules & Constraints (4D Diligence)` to the canonical `## Rules & Constraints` to align with the `AGENTS.md` specification contract, or should the audit script and `AGENTS.md` be updated to standardize on `(4D Diligence)` for both agent personas and skills?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize all agent persona specifications in `agents/` to use the canonical `## Rules & Constraints` heading, and update `scripts/audit-repo.js` to strictly enforce this heading name.*

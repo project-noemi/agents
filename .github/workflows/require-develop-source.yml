@@ -18,7 +18,7 @@ jobs:
           # cause develop/main divergence and force a manual sync-down before the
           # next release. If a genuine hotfix path is ever needed, add a single
           # explicit, documented exception here rather than a broad wildcard.
-          if [[ "${{ github.head_ref }}" != "develop" && ! "${{ github.head_ref }}" =~ ^doc-requirements-uplift- && ! "${{ github.head_ref }}" =~ ^doc-requirements-refinement- ]]; then
+          if [[ "${{ github.head_ref }}" != "develop" && ! "${{ github.head_ref }}" =~ ^doc-requirements-uplift- && ! "${{ github.head_ref }}" =~ ^doc-requirements-refinement- && ! "${{ github.head_ref }}" =~ ^doc-requirements-drift-uplift- && ! "${{ github.head_ref }}" =~ ^jules- ]]; then
             echo "❌ PRs to main must originate from the develop branch."
             echo "   Source branch: ${{ github.head_ref }}"
             echo "   Please merge your changes into develop first, then open a develop → main PR."

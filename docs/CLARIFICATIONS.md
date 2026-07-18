@@ -255,3 +255,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic in `scripts/verify-env.sh` and `scripts/verify-env.ps1` for the `docker` mode immediately?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode when SecretOps is missing or unauthenticated.*
+
+### ❓ Question [2026-07-13] - Sub-Tool Testing Framework Standardisation
+**Context:** The root repository uses the native Node.js test runner (`node --test`) for contract validations and smoke checks, but modern sub-tools like `tools/executive-assistant` use `vitest` in their `package.json` configurations.
+**Ambiguity / Drift:** Running `npm test` at the root does not execute tests in sub-tools automatically, and developers must use separate test run configurations. This creates a drift in the testing baseline and testing tool fragmentation.
+**Question for Product Owner:** Should we standardise all sub-tool testing to use the native Node.js test runner for absolute baseline alignment, or should we officially allow modern sub-tools to use Vitest and implement a root-level script to orchestrate all test suites?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardise sub-tool testing frameworks to ensure a unified execution standard across the entire repository.*
+
+### ❓ Question [2026-07-13] - Phase 0 Assessment Kit Inventory Count Verification
+**Context:** The `docs/REQUIREMENTS.md` Known Limitations section historically specified that `scripts/audit-repo.js` was missing validation logic for "8+ mandated assessment files" in `docs/phase-zero-assessment/`. However, the physical directory contains exactly 9 files (including PRACTITIONER_NOTES.md, readiness-rubric.md, etc.).
+**Ambiguity / Drift:** This "8+" vs exactly 9 files mismatch creates structural ambiguity for automated audit script validation gates, where a hardcoded file check must have a single exact number or explicit list.
+**Question for Product Owner:** Should the required Phase 0 Assessment Kit inventory be codified as exactly 9 files, and should they be explicitly audited by file name in `scripts/audit-repo.js` to prevent structural drift?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Extend `scripts/audit-repo.js` to verify the presence of all 9 mandated Phase 0 Assessment Kit files in `docs/phase-zero-assessment/`.*
+
+### ❓ Question [2026-07-13] - Persona Rules & Constraints Heading Naming Inconsistency
+**Context:** `AGENTS.md` and the persona contract specify `Rules & Constraints` as a required H2 heading, but approximately 90% of active agent personas use `Rules & Constraints (4D Diligence)` or `Rules & Constraints (Amanda Horvath Methodology)`.
+**Ambiguity / Drift:** The audit script `scripts/audit-repo.js` handles this by checking if the heading starts with `Rules & Constraints (`, but this documentation drift violates the strict canonical schema and creates confusion for third-party builders.
+**Question for Product Owner:** Should we perform a bulk update across all 26+ agent personas to standardise the H2 heading name to exactly `Rules & Constraints` (moving diligence framework annotations into the content body), or should the audit script and template guidelines be updated to officially support suffix annotations?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardise the Rules & Constraints H2 heading naming convention across all personas and update audit script validation logic to enforce it strictly.*

@@ -1,5 +1,13 @@
 # Decision Log
 
+## [2026-07-13] Multi-File Technical Drift Audit and Requirements Uplift
+
+- **Decision:** Document and refine technical drifts in `REQUIREMENTS.md` with line-level precision, verify Phase 0 Assessment Kit completeness, and raise critical product clarifications in `CLARIFICATIONS.md`.
+- **Context:** An autonomous audit of the repository's framework assets, testing configurations, and persona specifications revealed minor structural discrepancies (e.g., 9 physical Phase 0 assessment files vs "8+" files described, and vitest testing usage in `tools/executive-assistant` vs. native Node.js test runner in root).
+- **Impact:**
+  - `REQUIREMENTS.md` updated to correct the Phase 0 audit gap assessment file count to exactly 9, and refined substantive content baseline tracking to include framework assets.
+  - `CLARIFICATIONS.md` updated with three new high-priority questions to resolve sub-tool testing frameworks, Phase 0 inventory counts, and Rules & Constraints heading consistency.
+
 ## [2026-07-03] Documentation Alignment and Technical Drift Formalization
 
 - **Decision:** Formalize and align `REQUIREMENTS.md` and `AGENTS.md` with the verified codebase state, specifically mandating JSON schema validation for Audit Logs and full first-paragraph extraction for the Agent Index.

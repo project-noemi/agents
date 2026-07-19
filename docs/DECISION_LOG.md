@@ -1,5 +1,15 @@
 # Decision Log
 
+## [2026-07-13] Multi-File Technical Drift Audit and Requirements Uplift
+
+- **Decision:** Record the refined findings of a comprehensive repository-wide audit in `REQUIREMENTS.md` with line-level references, correct the mandated assessment file count to exactly 9, and identify TBD placeholders in framework assets.
+- **Context:** An incremental audit was performed to achieve absolute technical precision across environmental, structural, and substantive layers of the codebase and documentation.
+- **Impact:**
+  - `REQUIREMENTS.md` updated with precise line-level references for verified drifts in `scripts/verify-env.sh`, `scripts/verify-env.ps1`, `scripts/context_helpers.js`, `scripts/audit-repo.js`, and `tools/executive-assistant/server.js`.
+  - Mandated Phase 0 Assessment Kit file inventory corrected to exactly 9 files under `docs/phase-zero-assessment/`.
+  - Substantive drift expanded to note `TBD` placeholders in framework metadata (e.g., `value-lenses/care-continuity.md`).
+  - Three new high-priority questions covering testing framework standardization, Phase 0 file count audits, and persona Rules & Constraints heading naming inconsistency appended to `CLARIFICATIONS.md`.
+
 ## [2026-07-03] Documentation Alignment and Technical Drift Formalization
 
 - **Decision:** Formalize and align `REQUIREMENTS.md` and `AGENTS.md` with the verified codebase state, specifically mandating JSON schema validation for Audit Logs and full first-paragraph extraction for the Agent Index.

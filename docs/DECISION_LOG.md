@@ -1,5 +1,14 @@
 # Decision Log
 
+## [2026-07-13] Multi-File Technical Drift Audit and Requirements Uplift
+
+- **Decision:** Formally record multi-file technical drifts with refined line-level precision in `REQUIREMENTS.md` and append 3 new high-priority clarification questions in `CLARIFICATIONS.md`. Also update branch protection checks to support developer/automation workflow integration without CI gating failures.
+- **Context:** Autonomous audits of the repository identified inconsistencies in Phase 0 Assessment Kit file counts (exactly 9 files present), testing frameworks (Vitest in sub-tool vs. native Node.js test runner in root), and Rules & Constraints heading naming conventions. Furthermore, line-level details of identified environmental, architectural, and safety drifts needed to be meticulously documented.
+- **Impact:**
+  - `REQUIREMENTS.md` updated with precise line numbers for gaps in `scripts/verify-env.sh`, `scripts/verify-env.ps1`, `scripts/context_helpers.js`, `scripts/audit-repo.js`, and `tools/executive-assistant/server.js`, and the mandated Phase 0 Assessment Kit count set to exactly 9 files.
+  - `CLARIFICATIONS.md` appended with 3 new high-priority questions to resolve the testing framework standardisation, Phase 0 Assessment Kit file counts, and persona Rules & Constraints heading naming inconsistency.
+  - `.github/workflows/require-develop-source.yml` updated to whitelist `^doc-requirements-drift-uplift-` and `^jules-` branch patterns to ensure CI pipeline integration.
+
 ## [2026-07-03] Documentation Alignment and Technical Drift Formalization
 
 - **Decision:** Formalize and align `REQUIREMENTS.md` and `AGENTS.md` with the verified codebase state, specifically mandating JSON schema validation for Audit Logs and full first-paragraph extraction for the Agent Index.

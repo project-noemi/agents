@@ -255,3 +255,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic in `scripts/verify-env.sh` and `scripts/verify-env.ps1` for the `docker` mode immediately?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode when SecretOps is missing or unauthenticated.*
+
+### ❓ Question [2026-07-13] - GMU Feynman Verification Bot Integration Gap
+**Context:** The Capstone description in `docs/PROJECT_REFERENCE.md` states "Accelerators must teach a concept to Explorers (Feynman Requirement)", but the codebase in `examples/gmu-validation/verification-bot.js` implements a simulation/audit bot for GMU Boot Camp verification that is not referenced in `REQUIREMENTS.md` or validated under `tests/examples-smoke.test.js`.
+**Ambiguity / Drift:** This is an implementation-to-requirements drift where a critical academic validation tool exists in the codebase but remains undocumented in core requirements and skipped by the test suites, creating a risk that changes could silently break the GMU verification logic.
+**Question for Product Owner:** Should the GMU Feynman Verification Bot be formalized in `REQUIREMENTS.md` under Section 8 or 9, and should we integrate `verification-bot.js` into the fast validation test harness (`npm test`)?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Formalize the GMU Verification Bot requirements in `REQUIREMENTS.md` and add a smoke check in `tests/examples-smoke.test.js` to ensure the Feynman Requirement audit remains runnable and accurate.*
+
+### ❓ Question [2026-07-13] - Sub-Package Node.js Baseline "engines" Enforcement
+**Context:** The coding standards in `AGENTS.md` and `REQUIREMENTS.md` state "all repository logic, utilities, and reference Docker images must use Node.js version 24 as the technical baseline", but the sub-package configuration in `tools/executive-assistant/package.json` implements no `"engines"` field to restrict the Node version.
+**Ambiguity / Drift:** Without the `"engines"` configuration in the sub-package, developers or CI runtimes could accidentally install dependencies and run the Executive Assistant on older, unsupported Node.js versions, resulting in subtle runtime syntax or ESM failures.
+**Question for Product Owner:** Should we enforce Node.js baseline verification across all sub-packages (e.g., in `tools/` and `examples/`) by requiring the `"engines"` field in all `package.json` files and adding a check for this in `scripts/audit-repo.js`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update all nested `package.json` files in `tools/` and `examples/` to pin the `"engines": { "node": ">=24" }` baseline, and add a matching check to `scripts/audit-repo.js` or `tests/contracts.test.js`.*
+
+### ❓ Question [2026-07-13] - Non-Markdown Value Lens JSON Asset Audit & Injection Gaps
+**Context:** The rules in `AGENTS.md` and `REQUIREMENTS.md` mandate that framework assets must be audited and injected, but the codebase in `scripts/context_helpers.js` implements strict Markdown filters (`entry.name.endsWith('.md')` in `buildFrameworkSection`) that ignore JSON files like `value-lenses/american-dream.json` and `value-lenses/compassion-lens.json`.
+**Ambiguity / Drift:** Machine-readable JSON companions to Value Lenses are bypassed by the context-generation and audit pipelines. This prevents downstream LLMs from reading JSON-formatted lenses and allows invalid or drifted JSON structures to go undetected.
+**Question for Product Owner:** Should the JSON companions in `value-lenses/` be integrated into the audit and generation pipeline, or should they be excluded from the context templates and validated only via a lightweight schema-specific test case?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Extend `scripts/audit-repo.js` to validate the JSON schema of Value Lens JSON files and update `scripts/context_helpers.js` to handle their injection or validation cleanly.*

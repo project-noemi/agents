@@ -255,3 +255,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic in `scripts/verify-env.sh` and `scripts/verify-env.ps1` for the `docker` mode immediately?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode when SecretOps is missing or unauthenticated.*
+
+### ❓ Question [2026-07-13] - Sub-Tool Testing Framework Standardization
+**Context:** The root repository utilizes the native Node.js test runner as its primary validation framework, but `tools/executive-assistant/package.json` utilizes `vitest` for tests, introducing a testing framework drift.
+**Ambiguity / Drift:** Utilizing divergent testing frameworks (Vitest vs. native Node.js test runner) across tools introduces maintenance split and deviates from the project's standardized, zero-dependency validation baseline.
+**Question for Product Owner:** Should the `executive-assistant` tool test suite be migrated to use the native Node.js test runner for absolute baseline consistency, or is Vitest permitted for complex modular packages?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Migrate the `tools/executive-assistant/` test suite to the native Node.js test runner to satisfy the repository's unified validation framework baseline.*
+
+### ❓ Question [2026-07-13] - Phase 0 Assessment Kit Mandated File Count
+**Context:** Section 1 of `REQUIREMENTS.md` mandates a reusable Phase 0 Assessment Kit with "8+" files, but the `docs/phase-zero-assessment/` directory contains exactly 9 files (including `README.md` and templates).
+**Ambiguity / Drift:** The vague "8+" count creates ambiguity for automated audits trying to verify the exact inventory of files required for AI readiness baseline documentation.
+**Question for Product Owner:** Can we officially codify the mandated count to exactly 9 files, including `README.md` and templates, to enable absolute referential auditing?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` and `scripts/audit-repo.js` to enforce an exact mandated inventory check of 9 files under `docs/phase-zero-assessment/`.*
+
+### ❓ Question [2026-07-13] - Rules & Constraints Heading Naming Inconsistency
+**Context:** `AGENTS.md` mandates that specialized agent personas must include a `## Rules & Constraints` section, but 90% of the active personas in the codebase utilize `## Rules & Constraints (4D Diligence)` or `## Rules & Constraints (Amanda Horvath Methodology)`.
+**Ambiguity / Drift:** The inconsistency in heading names complicates automated schema auditing and creates a documentation drift from the core persona contract.
+**Question for Product Owner:** Should the persona contract in `AGENTS.md` and `REQUIREMENTS.md` be updated to officially require or permit these heading suffix variations, or should we align all persona files to exactly `## Rules & Constraints`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Align the `Rules & Constraints` heading naming standard across all agent personas, skills, and the automated audit script to eliminate contract variance.*

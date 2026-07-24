@@ -1,5 +1,13 @@
 # Decision Log
 
+## [2026-07-13] Multi-File Technical Drift Audit and Requirements Uplift
+
+- **Decision:** Record and formalize technical drifts and requirements updates based on a whole-codebase reality check, specifically around sub-tool testing framework drift, exact Phase 0 Assessment Kit file counts, and persona Rules & Constraints heading naming inconsistency.
+- **Context:** An autonomous audit of the codebase identified several documentation and runtime alignments needed to match implementation truth, including the exact list of 9 files under `docs/phase-zero-assessment/` and checking for sub-tool test tooling configuration.
+- **Impact:**
+  - `docs/REQUIREMENTS.md` updated with the exact 9-file inventory of the Phase 0 Assessment Kit, and corrected the "Phase 0 Audit Gap" file count requirement.
+  - `docs/CLARIFICATIONS.md` updated with 3 new high-priority questions to resolve the testing framework standardization of sub-tools, Phase 0 inventory completeness, and persona heading naming consistency.
+
 ## [2026-07-03] Documentation Alignment and Technical Drift Formalization
 
 - **Decision:** Formalize and align `REQUIREMENTS.md` and `AGENTS.md` with the verified codebase state, specifically mandating JSON schema validation for Audit Logs and full first-paragraph extraction for the Agent Index.

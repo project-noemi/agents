@@ -21,13 +21,16 @@ It is not a runtime or execution engine. External orchestrators such as Gemini C
 
 - The repository must present **Phase 0 security** as the prerequisite for serious AI adoption.
 - Client and buyer navigation must reach [`PHASE_ZERO_SECURITY_BASELINE.md`](PHASE_ZERO_SECURITY_BASELINE.md) directly from the top-level experience.
-- The public documentation must include a reusable **Phase 0 Assessment Kit** with:
-  - separate security and AI readiness assessment guides
-  - `network-security-assessment.md` and `PRACTITIONER_NOTES.md`
-  - consent template
-  - report-of-findings template
-  - 30/60/90-day roadmap template
-  - readiness rubric covering security readiness, AI readiness, and the overall recommendation
+- The public documentation must include a reusable **Phase 0 Assessment Kit** containing exactly 9 files under `docs/phase-zero-assessment/`:
+  - `README.md` (introductory landing)
+  - `security-assessment.md` (organizational security readiness guide)
+  - `ai-readiness-assessment.md` (AI and process maturity guide)
+  - `network-security-assessment.md` (technical perimeter security guide)
+  - `PRACTITIONER_NOTES.md` (practitioner companion notes)
+  - `consent-template.md` (consent form template)
+  - `report-template.md` (report-of-findings template)
+  - `roadmap-template.md` (30/60/90-day roadmap template)
+  - `readiness-rubric.md` (scoring readiness rubric covering security readiness, AI readiness, and the overall recommendation)
 
 ### 2. Persona and Skill Contracts are Mandatory
 
@@ -170,7 +173,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 
 ### 2. Structural & Architectural Drift
 - **Audit Script Coverage Blind Spot**: `scripts/audit-repo.js` entirely skips the `mcp-protocols/`, `value-lenses/`, and `operating-profiles/` directories, leaving critical framework assets ungoverned.
-- **Phase 0 Audit Gap**: `scripts/audit-repo.js` lacks logic to verify the presence of the 8+ mandated assessment files in `docs/phase-zero-assessment/` (e.g., `network-security-assessment.md`, `readiness-rubric.md`, `PRACTITIONER_NOTES.md`), violating Requirement §1.
+- **Phase 0 Audit Gap**: `scripts/audit-repo.js` lacks logic to verify the presence of the exactly 9 mandated assessment files in `docs/phase-zero-assessment/` (e.g., `network-security-assessment.md`, `readiness-rubric.md`, `PRACTITIONER_NOTES.md`), violating Requirement §1.
 - **Agent Index Descriptive Truncation (Sentence Regex Failure)**: `scripts/context_helpers.js` extracts only the first sentence of the `Role` section using the regex `/^[^.!?]+[.!?]/` at line 190, violating the "paragraph extraction" mandate in `AGENTS.md`. This regex fails to capture full technology names containing dots (e.g., "Next.js" is truncated to "Next."), leading to inaccurate role summaries in the Agent Index.
 - **Generator "Silent Success" on Missing Framework Assets**: `scripts/generate_all.js` (lines 53-73) returns HTML comments (e.g., `<!-- Framework directory not found... -->`) when `value-lenses/` or `operating-profiles/` are missing or empty, rather than failing the build. This violates the "Fail Fast" mandate for generator drift (Requirement 3).
 - **Sovereign JSON Asset Layer Governance Gap**: Commit `64f5a09` ("The Great AI Pivot") added agent personas, skills, and protocols as JSON files (e.g., `agents/guardian/jailbreak-monitor-agent.json`). The Markdown-only pipeline (`scripts/audit-repo.js`, `scripts/context_helpers.js` filtering `.endsWith('.md')`) neither audits, indexes, nor injects them, so these assets exist outside every structural contract.

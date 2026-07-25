@@ -1,5 +1,13 @@
 # Decision Log
 
+## [2026-07-13] Multi-File Technical Drift Audit and Requirements Uplift
+
+- **Decision:** Record the line-level technical drifts, Phase 0 Assessment Kit file counts, testing framework drift, and persona heading inconsistencies to maintain an absolute baseline of truth.
+- **Context:** An autonomous audit of the codebase and requirements by the "Doc" agent identified several technical drifts and inconsistencies, including the use of `vitest` in `tools/executive-assistant/` and the heading naming discrepancies for the `Rules & Constraints` section in 90% of the agent personas.
+- **Impact:**
+  - `REQUIREMENTS.md` updated with precise line-level references for verified technical drifts, and corrected mandated assessment file count to exactly 9.
+  - `CLARIFICATIONS.md` updated with 3 new high-priority questions to resolve testing frameworks, heading naming standards, and Phase 0 auditing.
+
 ## [2026-07-03] Documentation Alignment and Technical Drift Formalization
 
 - **Decision:** Formalize and align `REQUIREMENTS.md` and `AGENTS.md` with the verified codebase state, specifically mandating JSON schema validation for Audit Logs and full first-paragraph extraction for the Agent Index.

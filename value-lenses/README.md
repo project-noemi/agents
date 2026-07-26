@@ -40,8 +40,11 @@ value-lenses/
 ├── performance-efficiency.md
 ├── care-continuity.md
 ├── balanced-enterprise.md
-└── american-dream.md
+├── american-dream.md
+└── compassion-lens.md
 ```
+
+Contributed lenses may ship a machine-readable JSON companion next to the canonical Markdown contract (`american-dream.json`, `compassion-lens.json`); the Markdown file is always the source of truth (Decision [2026-07-10-0003]).
 
 ## Authoring Rules
 

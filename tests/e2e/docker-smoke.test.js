@@ -135,6 +135,22 @@ function stack(name, relativeDir, env, expectedServices) {
 }
 
 const dockerAvailable = dockerIsAvailable();
+
+// Optional mandatory mode per Decision [2026-07-05-0006]: the clean skip remains the
+// default for local development, but when FORCE_DOCKER_SMOKE=true a missing Docker
+// binary is promoted from "skip" to "fail" so a misconfigured CI runner fails loudly
+// instead of producing a false green.
+const forceDockerSmoke = /^(1|true|yes)$/i.test(process.env.FORCE_DOCKER_SMOKE || '');
+
+if (forceDockerSmoke && !dockerAvailable) {
+    test('FORCE_DOCKER_SMOKE mandatory mode requires a working Docker runtime', () => {
+        assert.fail(
+            'FORCE_DOCKER_SMOKE is set but the Docker CLI or Docker Compose is unavailable. ' +
+            'Install Docker on this runner or unset FORCE_DOCKER_SMOKE to allow the clean skip.'
+        );
+    });
+}
+
 const dockerTestOptions = dockerAvailable
     ? { timeout: dockerTimeoutMs + 30000 }
     : { skip: 'Docker CLI or Docker Compose is not available in this environment.' };

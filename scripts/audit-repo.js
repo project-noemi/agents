@@ -24,6 +24,21 @@ function fail(message) {
     console.error(`AUDIT FAIL: ${message}`);
 }
 
+// Mandatory Audit Log JSON schema keys per Requirement §3 (Decision [2026-05-20]).
+const REQUIRED_AUDIT_LOG_KEYS = ['task', 'inputs', 'actions', 'risks', 'result'];
+
+// Phase 0 Assessment Kit inventory mandated by Requirement §1 (Decision [2026-07-05-0011]).
+const PHASE_ZERO_KIT_FILES = [
+    'security-assessment.md',
+    'ai-readiness-assessment.md',
+    'network-security-assessment.md',
+    'PRACTITIONER_NOTES.md',
+    'consent-template.md',
+    'report-template.md',
+    'roadmap-template.md',
+    'readiness-rubric.md'
+];
+
 const templates = [
     path.join(repoRoot, 'templates/context/GEMINI.template.md'),
     path.join(repoRoot, 'templates/context/CLAUDE.template.md')
@@ -89,7 +104,14 @@ function auditFile(filePath, requiredSections) {
         if (jsonMatch) {
             const jsonStr = jsonMatch[1];
             try {
-                JSON.parse(jsonStr);
+                const auditLog = JSON.parse(jsonStr);
+                // Mandatory JSON schema validation per Requirement §3 and Decision [2026-05-20]
+                // (Audit Script Coverage Expansion): every Audit Log must carry the five
+                // canonical keys so orchestrators can consume records uniformly.
+                const missingKeys = REQUIRED_AUDIT_LOG_KEYS.filter((key) => !(key in auditLog));
+                if (missingKeys.length > 0) {
+                    fail(`${relativePath} Audit Log JSON is missing mandatory keys: ${missingKeys.join(', ')}`);
+                }
             } catch (error) {
                 fail(`${relativePath} contains invalid JSON in Audit Log: ${error.message}`);
             }
@@ -225,12 +247,30 @@ function checkLicensingPosture() {
     }
 }
 
+// Phase 0 Assessment Kit presence check — resolves the "Phase 0 Audit Gap" limitation
+// (Decision [2026-07-05-0011]). Requirement §1 enumerates the kit's contents; a missing
+// file breaks the buyer's first-contact experience and fails the audit as a fatal error.
+function checkPhaseZeroKit() {
+    console.log('Auditing Phase 0 Assessment Kit inventory...');
+    const kitDir = path.join(repoRoot, 'docs/phase-zero-assessment');
+    if (!fs.existsSync(kitDir)) {
+        fail('docs/phase-zero-assessment/ directory is missing; Requirement §1 mandates the Phase 0 Assessment Kit.');
+        return;
+    }
+    for (const fileName of PHASE_ZERO_KIT_FILES) {
+        if (!fs.existsSync(path.join(kitDir, fileName))) {
+            fail(`docs/phase-zero-assessment/${fileName} is missing; Requirement §1 mandates it as part of the Phase 0 Assessment Kit.`);
+        }
+    }
+}
+
 function main() {
     checkTemplates();
     checkPersonas();
     checkSkills();
     checkGeneratedOutputs();
     checkLicensingPosture();
+    checkPhaseZeroKit();
 
     if (failed) {
         process.exit(1);

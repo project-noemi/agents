@@ -255,3 +255,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic in `scripts/verify-env.sh` and `scripts/verify-env.ps1` for the `docker` mode immediately?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode when SecretOps is missing or unauthenticated.*
+
+### ❓ Question [2026-07-13] - Sub-Tool Testing Framework Standardization
+**Context:** The requirements in `REQUIREMENTS.md` state "The built-in Node test runner is the primary validation framework for repository contracts and smoke tests," but the codebase in `tools/executive-assistant/package.json` implements `vitest` as its testing framework.
+**Ambiguity / Drift:** Utilizing divergent testing frameworks (`vitest` vs. native `node --test`) across different modules within the same repository introduces toolchain drift, increases developer cognitive load, complicates CI configuration, and fragments coverage reporting formats.
+**Question for Product Owner:** Should we standardize all sub-tools in the `tools/` directory on the native Node.js test runner to ensure a zero-dependency, unified testing model across the entire repository, or is the use of third-party frameworks like `vitest` acceptable for specialized tools?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Migrate the `tools/executive-assistant/` test suite to the native Node.js test runner, standardizing it with the root-level testing baseline and removing the `vitest` dependency.*
+
+### ❓ Question [2026-07-13] - Phase 0 Assessment Kit Exact File Count Standardization
+**Context:** Section 1 of `REQUIREMENTS.md` mandates that "The public documentation must include a reusable Phase 0 Assessment Kit with [a list of items]," and `docs/phase-zero-assessment/` contains exactly 9 files (including templates and practitioner notes) satisfying this kit's completeness.
+**Ambiguity / Drift:** The current requirements and some associated checklists vaguely describe the kit as containing "8+ files," which lacks the strict specificity required for deterministic, line-level automated inventory audits. Standardizing on an exact count of 9 files prevents ambiguity.
+**Question for Product Owner:** Should we formalize in `REQUIREMENTS.md` that the Phase 0 Assessment Kit consists of exactly 9 mandated files to enable deterministic automated inventory audits and prevent silent asset omissions?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` and the repository audit script `scripts/audit-repo.js` to strictly audit and enforce a file count of exactly 9 mandated assessment files in the Phase 0 Assessment Kit.*
+
+### ❓ Question [2026-07-13] - Agent Persona Rules & Constraints Heading Naming Inconsistency
+**Context:** `AGENTS.md` and `scripts/audit-repo.js` mandate that agent personas must expose a `## Rules & Constraints` heading, but approximately 90% of active agent personas (such as `agents/operations/linux.md` and `agents/education/student-success-coach.md`) currently implement a `## Rules & Constraints (4D Diligence)` heading instead.
+**Ambiguity / Drift:** This heading naming inconsistency creates documentation drift and complicates automated parsing and validation logic in `scripts/audit-repo.js` and `scripts/context_helpers.js`. It violates structural symmetry between the agent personas and the reusable skills contract.
+**Question for Product Owner:** Should we standardize on `## Rules & Constraints (4D Diligence)` as the mandatory heading name for both agent personas and reusable skills to ensure framework alignment and simplify auditing logic?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Perform a fleet-wide update of all agent personas in `agents/` to standardize the "Rules & Constraints" heading to `## Rules & Constraints (4D Diligence)`, and update the audit validation checks accordingly.*

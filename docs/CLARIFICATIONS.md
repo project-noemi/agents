@@ -255,3 +255,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic in `scripts/verify-env.sh` and `scripts/verify-env.ps1` for the `docker` mode immediately?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode when SecretOps is missing or unauthenticated.*
+
+### ❓ Question [2026-07-13] - Sub-Tool Testing Toolchain Standardization (Vitest vs. Native Node Runner)
+**Context:** The `Runtime and Tooling Requirements` in `REQUIREMENTS.md` state that the native Node.js test runner is the primary validation framework, but the sub-tool `tools/executive-assistant/package.json` uses `vitest` for its tests.
+**Ambiguity / Drift:** This is a testing framework drift. Multiple testing libraries increase complexity and make global pipeline standardisation harder to maintain.
+**Question for Product Owner:** Should sub-tools like `tools/executive-assistant` migrate their tests to the canonical native Node.js test runner for absolute toolchain consistency, or should `vitest` be formally permitted as an exception for modern sub-tool components?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Migrate `tools/executive-assistant`'s unit tests to use the canonical native Node.js test runner to align with the core project validation standard.*
+
+### ❓ Question [2026-07-13] - Phase 0 Assessment Kit Mandated File Count Validation
+**Context:** Requirement §1 and the `Phase 0 Audit Gap` current known limitation state that `docs/phase-zero-assessment/` contains a specific inventory of 8+ files. A manual verification reveals there are exactly 9 active assessment files.
+**Ambiguity / Drift:** Automated validations in `scripts/audit-repo.js` cannot be strictly codified without an agreed-upon, exact count of mandated files.
+**Question for Product Owner:** Should the Phase 0 audit check strictly enforce the presence of exactly 9 mandated assessment files, and should we list these files explicitly in `REQUIREMENTS.md`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Configure `scripts/audit-repo.js` to strictly audit the presence of all 9 mandated files under `docs/phase-zero-assessment/` and fail if any are missing.*
+
+### ❓ Question [2026-07-13] - Persona Rules & Constraints Heading Naming Inconsistency
+**Context:** `AGENTS.md` and the structural contract require `Rules & Constraints` for agent personas, but approximately 90% of active agent personas (such as `linux.md`, `student-success-coach.md`) use `## Rules & Constraints (4D Diligence)` instead.
+**Ambiguity / Drift:** This documentation drift weakens the authority of the `AGENTS.md` specifications and complicates heading parsing and validation.
+**Question for Product Owner:** Should we update the persona contract in `AGENTS.md` and `REQUIREMENTS.md` to officially adopt `Rules & Constraints (4D Diligence)` for both agents and skills, or should we update the 90% of personas back to `Rules & Constraints`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize the required agent persona heading across all of `AGENTS.md`, `REQUIREMENTS.md`, and the agent files to be consistent.*

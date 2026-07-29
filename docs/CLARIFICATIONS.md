@@ -255,3 +255,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic in `scripts/verify-env.sh` and `scripts/verify-env.ps1` for the `docker` mode immediately?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode when SecretOps is missing or unauthenticated.*
+
+### ❓ Question [2026-07-13] - Testing Toolchain Standardization (Vitest vs. Native Node.js Test Runner)
+**Context:** The requirements state that "The built-in Node test runner is the primary validation framework for repository contracts and smoke tests" (under Runtime and Tooling Requirements), but the test suite / codebase in `tools/executive-assistant/package.json` implements unit/integration tests running via `vitest`.
+**Ambiguity / Drift:** Utilizing two different testing frameworks (native Node.js test runner for the root repository and `vitest` for specialized tools) introduces toolchain drift, increases developer cognitive overhead, and complicates CI/CD integration.
+**Question for Product Owner:** Should the `executive-assistant` tests be migrated to use the native Node.js test runner for absolute toolchain consistency across the repository, or should `vitest` be formalized as an approved testing framework for advanced sub-services?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Migrate the `executive-assistant` unit/integration tests to the native Node.js test runner, removing the `vitest` and `@vitest/coverage-v8` devDependencies from `tools/executive-assistant/package.json`.*
+
+### ❓ Question [2026-07-13] - Phase 0 Assessment Kit Verification Count
+**Context:** The requirements state that the Phase 0 Assessment Kit contains assessment assets, but the "Phase 0 Audit Gap" in the limitations mentions "8+ mandated assessment files" while the physical directory `docs/phase-zero-assessment/` implements exactly 9 files.
+**Ambiguity / Drift:** Specifying "8+" rather than the exact count of 9 files introduces structural vagueness. If future automated audit checks in `scripts/audit-repo.js` only verify 8 files, some mandatory security or AI readiness files could be deleted or omitted without failing the audit.
+**Question for Product Owner:** Should the mandatory audit logic in `scripts/audit-repo.js` verify exactly 9 specific files under `docs/phase-zero-assessment/`, and should this 9-file inventory be formalized in `REQUIREMENTS.md`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Update `REQUIREMENTS.md` to specify exactly 9 files in the Phase 0 Assessment Kit inventory and add an automated audit check to `scripts/audit-repo.js` verifying their presence.*
+
+### ❓ Question [2026-07-13] - Rules & Constraints Heading Naming Inconsistency
+**Context:** The requirements and `AGENTS.md` state that specialized agent personas must include `Rules & Constraints` (with a mandatory `### Refusal Criteria` subsection), but the codebase in `scripts/audit-repo.js` / `tests/contracts.test.js` implements a case-insensitive check for `Rules & Constraints (4D Diligence)` for reusable skills, and many personas inconsistently use `Rules & Constraints` or `Rules & Constraints (4D Diligence)`.
+**Ambiguity / Drift:** This heading inconsistency complicates the automated audit/test logic, causes minor compliance warnings, and confuses builders when authoring new agent personas vs reusable skills.
+**Question for Product Owner:** Should we standardize on a single, unified heading name (e.g., `## Rules & Constraints (4D Diligence)`) for both agent personas and reusable skills to ensure perfect structural consistency across the repository?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Standardize all agent personas and reusable skills to use a single unified `## Rules & Constraints (4D Diligence)` heading, and update the validation scripts/tests to enforce this standardized name.*

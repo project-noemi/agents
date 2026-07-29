@@ -1,5 +1,15 @@
 # Decision Log
 
+## [2026-07-13] Multi-File Technical Drift Audit and Requirements Uplift
+
+- **Decision:** Perform a precise technical drift audit across the entire repository to document precise line-level references for environmental, structural, and internal tool observability drifts in `REQUIREMENTS.md`, and raise three high-priority clarifications in `CLARIFICATIONS.md`.
+- **Context:** An autonomous reality check by the "Doc" agent identified critical implementation line numbers, sub-tool testing framework divergences (`vitest`), Phase 0 Assessment Kit file counts, and heading inconsistency drifts that require clear tracking and product-owner feedback.
+- **Impact:**
+  - `REQUIREMENTS.md` updated with precise line numbers for `verify-env.sh` (lines 140-164), `verify-env.ps1` (lines 99-125), `context_helpers.js` (line 190), `audit-repo.js` (line 92), and `tools/executive-assistant/server.js` (lines 19, 44, 49, 103, 107, 121, 125, 150, 156, 161).
+  - `REQUIREMENTS.md` updated to specify exactly 9 files in the Phase 0 Assessment Kit inventory to match verified physical file counts.
+  - `CLARIFICATIONS.md` appended with three high-priority questions regarding specialized sub-tool testing frameworks (`vitest` vs native runner), Phase 0 Assessment Kit file count audits, and Rules & Constraints heading naming inconsistency.
+  - No new rules were added to `AGENTS.md` pending human responses to the raised clarifications.
+
 ## [2026-07-03] Documentation Alignment and Technical Drift Formalization
 
 - **Decision:** Formalize and align `REQUIREMENTS.md` and `AGENTS.md` with the verified codebase state, specifically mandating JSON schema validation for Audit Logs and full first-paragraph extraction for the Agent Index.

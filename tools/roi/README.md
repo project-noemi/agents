@@ -27,6 +27,7 @@ The official ROI calculator is published as a public Google Sheet so anyone can 
 - **Public Sheet Link**: [Project NoeMI ROI Calculator Template](https://docs.google.com/spreadsheets/d/1BFMzZFs9oXAdgccjq5y1A6xba-m4nVXC)
 - **Local Workbook Artifact**: [`project-noemi-roi-calculator-template.xlsx`](./project-noemi-roi-calculator-template.xlsx)
 - **Generator Script**: [`generate_roi_template.py`](./generate_roi_template.py)
+- **Machine-Readable Baseline Snapshot**: [`baseline-config.json`](./baseline-config.json) — the committed baseline-time and labor-rate dictionaries the `ROI Auditor` persona reads instead of a live Sheets range (Decision [2026-07-07-0004]). The Sheets template stays the human-editable source; regenerate the snapshot whenever assumptions or the task catalog change.
 - **Key Features**:
   - Per-agent line items.
   - Automated ROI summation across the fleet.

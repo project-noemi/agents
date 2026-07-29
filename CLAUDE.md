@@ -37,8 +37,17 @@ infisical run --env=dev -- [command]
 - `docs/` — Documentation mirroring `agents/` structure, plus framework docs (REQUIREMENTS.md, METHODOLOGY.md, GOVERNANCE.md)
 - `skills/` — Reusable task definitions that agents compose into their workflows
 - `mcp-protocols/` — One `.md` file per MCP integration (Slack, Gmail, Google Suite, n8n, etc.)
-- `scripts/` — Build utilities (context generation, environment verification)
+- `value-lenses/` — Value Lens framework specs consulted for trade-off decisions (injected into generated context)
+- `operating-profiles/` — Operating Profile specs adapting agent tone/cadence to organizational contexts (injected into generated context)
+- `scripts/` — Build utilities (context generation, environment verification, repository audit)
+- `templates/` — Canonical templates: context generation sources (`templates/context/`) and client service tiers (`templates/tiers/`)
+- `tests/` — Node test-runner suites for persona contracts, generator determinism, golden fixtures, and example smoke checks
+- `tools/` — Node.js reference tools (`executive-assistant/`, `roi/`)
 - `examples/` — Deployment examples (Docker sandbox, fleet deployment, video automation pod, red team gauntlet)
+- `n8n-templates/` — Importable n8n workflow templates for the Layer B (Dynamic Labs) curriculum
+- `guardian-layer/` — Guardian-layer security evaluation reference (currently Python; runtime choice under review)
+- `infrastructure/` — Phase 0 SecretOps baseline boilerplate (`secret-ops/`)
+- `clients/` — Client onboarding workspace (gitignored placeholder)
 
 ### Context Generation Pipeline
 

@@ -63,6 +63,7 @@ It answers:
 - [roadmap-template.md](roadmap-template.md) — a 30/60/90-day remediation and enablement plan, selected from a client archetype baseline and then tailored
 - [recommendation-library.md](recommendation-library.md) — a mapping from each assessment area's common failure modes to standard remediation items, so the roadmap can be assembled from findings
 - [readiness-rubric.md](readiness-rubric.md) — the gate used to classify security readiness, AI readiness, and the overall recommendation
+- [weighted-assessment-spec.md](weighted-assessment-spec.md) — design spec for a self-scored, weighted variant with per-track banding and a critical-gap override (for delivery as a classman LMS class)
 - [PRACTITIONER_NOTES.md](PRACTITIONER_NOTES.md) — positioning and delivery guidance for MSPs, MSSPs, and NoéMI program participants
 
 ## Recommended Use

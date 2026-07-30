@@ -255,3 +255,17 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should Jules implement the fatal error (exit 1) logic in `scripts/verify-env.sh` and `scripts/verify-env.ps1` for the `docker` mode immediately?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Update `scripts/verify-env.sh` and `scripts/verify-env.ps1` to enforce a fatal error (exit 1) in `docker` mode when SecretOps is missing or unauthenticated.*
+
+### ❓ Question [2026-07-13] - Compassion Value Lens Markdown Specification Asset Gap
+**Context:** The repository contains a machine-readable JSON companion `value-lenses/compassion-lens.json` which specifies adjustments and refusal criteria for the Compassion Lens, and `value-lenses/README.md` references the "Project NoéMI Anti-Replacement rule." However, the corresponding human-readable Markdown specification `value-lenses/compassion-lens.md` is completely absent from the filesystem.
+**Ambiguity / Drift:** Because the file `value-lenses/compassion-lens.md` is missing, the Markdown-only context generation and structural audit pipelines are blind to this lens. Furthermore, it is not registered as an active baseline lens in `value-lenses/README.md`.
+**Question for Product Owner:** Should Jules restore or author the canonical `value-lenses/compassion-lens.md` specification file (defining its Purpose, Success Criteria, Preferred Evidence, and Tradeoffs) and register it in `value-lenses/README.md` to bring the Compassion Lens under full Markdown/JSON governance?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement the missing `value-lenses/compassion-lens.md` specification file to align with its JSON companion and register it under the active baseline lenses in `value-lenses/README.md`.*
+
+### ❓ Question [2026-07-13] - Casdoor Validation Skill and Middleware Reference Implementation Gap
+**Context:** Decision `[2026-06-12-0011]` specifies that a `skills/security/casdoor-validate.md` skill specification will document JWT validation against a Casdoor instance, and `examples/gatekeeper-deployment/dashboard-ingest.js` will gain an optional middleware sample that demonstrates the validation flow, off by default (gated on `CASDOOR_VALIDATE_TOKENS=true`).
+**Ambiguity / Drift:** Neither the Markdown specification file `skills/security/casdoor-validate.md` exists, nor does the optional token-validation middleware sample exist in `dashboard-ingest.js`, leaving the reference integration completely unimplemented.
+**Question for Product Owner:** Should Jules create the `skills/security/casdoor-validate.md` skill specification and implement the corresponding optional Casdoor JWT-validation middleware sample in `examples/gatekeeper-deployment/dashboard-ingest.js` to satisfy Decision `[2026-06-12-0011]`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Create `skills/security/casdoor-validate.md` and implement the corresponding optional Casdoor JWT validation middleware sample in `examples/gatekeeper-deployment/dashboard-ingest.js`.*

@@ -5,6 +5,42 @@ Use this roadmap to keep the two workstreams visible:
 - **Security track** — what must be stabilized or governed
 - **AI readiness track** — what must be clarified, measured, and piloted to produce value
 
+Do not author the roadmap from a blank page each time. Start from the archetype baseline below, then assemble the specific items from the assessment findings using the [recommendation-library.md](recommendation-library.md), and finally tailor for the client. Pick the baseline first, adjust second.
+
+## Pick A Client Archetype First
+
+Client organizations cluster into a small number of shapes. Selecting the closest archetype gives you a sensible default pace, sequencing, and emphasis before you tailor. Choose by best fit on sector, size, and digital maturity — not an exact match — and note where the client deviates.
+
+### A. Lean SMB / Owner-Led
+
+- **Looks like:** under ~50 staff, few or no dedicated IT, owner or a single manager is the sponsor, tooling is mostly SaaS.
+- **Roadmap emphasis:** move fast on one narrow pilot; keep security remediation to the few controls that actually block (MFA, backups, secrets). Do not over-engineer governance the org cannot staff.
+- **Common risk:** the sponsor is also the process owner and the reviewer — capacity, not ambition, is the constraint.
+
+### B. Mid-Market / Scaling
+
+- **Looks like:** ~50–500 staff, some internal IT or an MSP, defined departments, mixed digital maturity across teams.
+- **Roadmap emphasis:** standard 30/60/90 pacing; invest in process clarity and cross-team handoffs; formalize approval boundaries and measurement before widening scope.
+- **Common risk:** enthusiasm outrunning process stability; pilots spreading across teams before one proves value.
+
+### C. Regulated / High-Assurance
+
+- **Looks like:** finance, healthcare, legal, public sector; compliance obligations; change control and audit expectations already exist.
+- **Roadmap emphasis:** front-load the security track and refusal boundaries; extend timelines to fit change-control and sign-off; treat logging, audit, and human approval gates as launch blockers, not enhancements.
+- **Common risk:** treating compliance sign-off as a formality; underestimating review cycles.
+
+### D. Digitally Mature / Tech-Forward
+
+- **Looks like:** strong engineering culture, existing automation, may already run Shadow AI, sponsor is technically fluent.
+- **Roadmap emphasis:** compress the stabilize phase; focus on governance, measurement discipline, and consolidating ungoverned usage into a governed path rather than proving basic feasibility.
+- **Common risk:** capability mistaken for readiness — measurement, approval boundaries, and role redesign lag the tooling.
+
+### How To Use The Archetype
+
+1. Select the closest archetype and adopt its pacing and emphasis as the starting shape of the roadmap.
+2. Overlay the specific findings from the report, mapping each gap to a remediation item via [recommendation-library.md](recommendation-library.md).
+3. Tailor: adjust dates, owners, and scope to the client, and record where they deviate from the archetype and why.
+
 ## 0-30 Days: Stabilize And Scope
 
 ### Security Track

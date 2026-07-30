@@ -88,6 +88,7 @@ For each finding:
 | Tooling and integration practicality | | |
 | Change readiness and sponsorship | | |
 | Metrics and ROI baseline | | |
+| Individual adoption readiness | | |
 
 ## 8. Role Uplift And Operating Model Recommendation
 

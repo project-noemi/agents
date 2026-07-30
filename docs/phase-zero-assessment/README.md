@@ -46,6 +46,7 @@ This track evaluates:
 - integration practicality
 - sponsorship and change readiness
 - value measurement and ROI baseline
+- individual adoption readiness across the workforce
 
 It answers:
 
@@ -53,17 +54,20 @@ It answers:
 
 ## What This Kit Contains
 
+- [self-assessment.md](self-assessment.md) — a short, self-scored intake questionnaire an SME completes before the full engagement, used to pre-qualify and focus the assessor-led work
 - [security-assessment.md](security-assessment.md) — the cybersecurity half of the initial assessment
 - [ai-readiness-assessment.md](ai-readiness-assessment.md) — the business and operating-model half of the initial assessment
 - [network-security-assessment.md](network-security-assessment.md) — the technical validation procedure and scan deployment guide (reference workflow using Network Detective Pro as an example)
 - [consent-template.md](consent-template.md) — language for authorizing a non-invasive two-track review
 - [report-template.md](report-template.md) — the structure for a written report of findings across both tracks
-- [roadmap-template.md](roadmap-template.md) — a 30/60/90-day remediation and enablement plan
+- [roadmap-template.md](roadmap-template.md) — a 30/60/90-day remediation and enablement plan, selected from a client archetype baseline and then tailored
+- [recommendation-library.md](recommendation-library.md) — a mapping from each assessment area's common failure modes to standard remediation items, so the roadmap can be assembled from findings
 - [readiness-rubric.md](readiness-rubric.md) — the gate used to classify security readiness, AI readiness, and the overall recommendation
 - [PRACTITIONER_NOTES.md](PRACTITIONER_NOTES.md) — positioning and delivery guidance for MSPs, MSSPs, and NoéMI program participants
 
 ## Recommended Use
 
+0. (Optional pre-step) Have the SME complete [self-assessment.md](self-assessment.md) to pre-qualify and focus where the assessor-led work should concentrate.
 1. Confirm the business problem, target workflow, and systems the AI initiative will touch.
 2. Use the consent template to document scope and expectations.
 3. Perform the **security assessment** using [../PHASE_ZERO_SECURITY_BASELINE.md](../PHASE_ZERO_SECURITY_BASELINE.md) and [security-assessment.md](security-assessment.md). For the technical scan procedure and client deployment guide, see [network-security-assessment.md](network-security-assessment.md).

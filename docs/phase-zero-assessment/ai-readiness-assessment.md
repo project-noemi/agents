@@ -95,6 +95,18 @@ Typical measures include:
 - human hours redirected
 - lower unit cost per completed item
 
+### 9. Individual Adoption Readiness
+
+Areas 1 through 8 measure whether the organization is ready. This area measures whether the actual workforce is ready. Org-level sponsorship and process clarity can be strong while the people who must use AI every day remain unsure, undertrained, or quietly resistant — and that gap is where pilots stall. Sample beyond the sponsor: talk to the people who will do the work.
+
+- individual AI literacy: participants understand what AI can and cannot reliably do
+- confidence: participants believe they can use AI in their own work without feeling exposed
+- current usage: whether staff already use AI (sanctioned or Shadow AI) and how
+- resistance and concern: fear of replacement, distrust of output, or workload skepticism is surfaced rather than hidden
+- willingness: participants are open to changing how they work, not just to a faster version of the old way
+- uplift need: the literacy and confidence gap that training must close before the pilot
+- breadth: readiness is checked across the workforce doing the task, not inferred from the sponsor alone
+
 ## Why This Assessment Matters
 
 The AI readiness assessment goes beyond whether the technology works. It determines whether the organization is positioned to get real business value from it.

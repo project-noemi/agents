@@ -171,6 +171,10 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Resilience Helper Integration Gap**: `scripts/resilience_helpers.js` exists but is not utilized by any agent personas or network-bound tools, despite the mandate for resilience.
 - **Resilience Helper Module Mismatch**: `tools/executive-assistant/` uses ESM (`"type": "module"`), preventing direct import of the CommonJS `scripts/resilience_helpers.js`.
 - **Testing Framework Drift**: The sub-tool `tools/executive-assistant/` uses `vitest` for running tests (configured at `tools/executive-assistant/package.json`), representing a toolchain drift from the root-level native Node.js test runner.
+- **Casdoor Token Validation Middleware Gap**: While Casdoor is established as the reference identity layer, `examples/gatekeeper-deployment/dashboard-ingest.js` lacks token verification or JWT validation middleware, leaving the endpoint unauthenticated and violating the security baseline for reference services (Decision [2026-06-12-0011]).
+- **Missing Sovereign Validation Specifications**:
+  - `skills/security/casdoor-validate.md` specification is missing despite Casdoor being established as the reference identity provider.
+  - `value-lenses/compassion-lens.md` is missing from the repository, leaving `value-lenses/compassion-lens.json` without its markdown spec companion.
 
 ### 2. Structural & Architectural Drift
 - **Audit Script Coverage Blind Spot**: `scripts/audit-repo.js` entirely skips the `mcp-protocols/`, `value-lenses/`, and `operating-profiles/` directories, leaving critical framework assets ungoverned.

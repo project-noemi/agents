@@ -12,12 +12,15 @@ jobs:
       - name: Verify PR source is develop branch
         run: |
           # Canonical flow: feature/* → develop → main. The ONLY valid PR source
-          # into main is `develop` (Decision [2026-07-03-0001]). Doc-uplift and
-          # other automation must merge into develop first, then release via a
-          # develop → main PR — never straight to main. Direct-to-main branches
-          # cause develop/main divergence and force a manual sync-down before the
-          # next release. If a genuine hotfix path is ever needed, add a single
-          # explicit, documented exception here rather than a broad wildcard.
+          # into main is `develop` (Decision [2026-07-03-0001]; made absolute by
+          # Decision [2026-08-01-0002]). There are NO exceptions of any kind:
+          # hotfixes, dependency updates, doc uplifts, and all automation merge
+          # into develop first and reach main only through a develop → main
+          # release PR after checks pass on develop. Do NOT add wildcard or
+          # branch-name exceptions here — scripts/audit-repo.js
+          # (checkMergeGateInvariant) fails CI on any condition beyond the
+          # literal develop comparison, and .github/CODEOWNERS requires human
+          # review for every change to this file.
           if [[ "${{ github.head_ref }}" != "develop" ]]; then
             echo "❌ PRs to main must originate from the develop branch."
             echo "   Source branch: ${{ github.head_ref }}"

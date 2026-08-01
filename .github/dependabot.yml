@@ -1,0 +1,13 @@
+# Dependabot follows the same absolute develop-only flow as all other automation
+# (Requirement §7, Decision [2026-08-01-0002]): updates target `develop` and reach
+# `main` only through the develop → main release PR after checks pass on develop.
+# Without this file Dependabot targets the repository default branch (`main`),
+# which is how PRs #322/#323 merged over a failing check-source-branch gate on
+# 2026-07-29 and broke the develop-superset invariant.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/tools/executive-assistant"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"

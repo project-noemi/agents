@@ -264,6 +264,42 @@ function checkPhaseZeroKit() {
     }
 }
 
+// Merge-gate invariant check — resolves Clarification [2026-07-14] Merge-Gate Invariant
+// Audit Guard (Decision [2026-08-01-0002]). Requirement §7 makes `develop` the ONLY valid
+// PR source into `main` with no exceptions of any kind, so the gate workflow's source-branch
+// condition must be the single literal `develop` comparison. Any regex/wildcard exception
+// (`=~`) or extra branch clause is a fatal failure: this is the control that direct-to-main
+// automation repeatedly edited to unblock itself during 2026-07, so drift here is a
+// governance incident, not a style choice.
+const MERGE_GATE_PATH = '.github/workflows/require-develop-source.yml';
+const CANONICAL_GATE_CONDITION = 'if [[ "${{ github.head_ref }}" != "develop" ]]; then';
+
+function checkMergeGateInvariant() {
+    console.log('Auditing merge-gate invariant (develop is the only PR source into main)...');
+    const gatePath = path.join(repoRoot, MERGE_GATE_PATH);
+    if (!fs.existsSync(gatePath)) {
+        fail(`${MERGE_GATE_PATH} is missing; Requirement §7 mandates the develop-only merge gate.`);
+        return;
+    }
+    const content = fs.readFileSync(gatePath, 'utf8');
+    if (content.includes('=~')) {
+        fail(`${MERGE_GATE_PATH} contains a regex/wildcard branch exception ("=~"); Requirement §7 forbids ALL bypasses of the develop-only rule (Decision [2026-08-01-0002]).`);
+    }
+    const conditionLines = content
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.startsWith('if ') && line.includes('github.head_ref'));
+    if (conditionLines.length === 0) {
+        fail(`${MERGE_GATE_PATH} no longer tests github.head_ref; the develop-only source check appears to have been removed.`);
+        return;
+    }
+    for (const line of conditionLines) {
+        if (line !== CANONICAL_GATE_CONDITION) {
+            fail(`${MERGE_GATE_PATH} source-branch condition drifted from the canonical develop-only check. Found: ${line}`);
+        }
+    }
+}
+
 function main() {
     checkTemplates();
     checkPersonas();
@@ -271,6 +307,7 @@ function main() {
     checkGeneratedOutputs();
     checkLicensingPosture();
     checkPhaseZeroKit();
+    checkMergeGateInvariant();
 
     if (failed) {
         process.exit(1);

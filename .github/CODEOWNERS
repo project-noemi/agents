@@ -1,0 +1,6 @@
+# Governance-critical control surfaces require human review (Decision [2026-08-01-0002]).
+# The merge gate enforces the absolute develop-only rule (Requirement §7) and was
+# repeatedly edited by automation during 2026-07 to unblock its own direct-to-main PRs;
+# changes to it (and to this file) must be approved by the repository owner.
+/.github/workflows/require-develop-source.yml @WSwarm
+/.github/CODEOWNERS @WSwarm

@@ -151,6 +151,13 @@ Add new questions below this line using the required format.
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Standardize the "Rules & Constraints" heading name across all personas, skills, and audit scripts to use the `(4D Diligence)` suffix.*
 
+### ❓ Question [2026-07-13] - Missing Sovereign Validation Specifications (compassion-lens.md & casdoor-validate.md)
+**Context:** The `Sovereign LLM Guidelines` and `value-lenses/` directory define a `compassion-lens.json`, but the repository lacks its Markdown specification companion `value-lenses/compassion-lens.md`. Similarly, the reference to `casdoor-validate` has `definition.json` or placeholders, but no physical markdown contract at `skills/security/casdoor-validate.md`.
+**Ambiguity / Drift:** This leaves sovereign-path assets ungoverned and untested by the contract checking test suite, violating Requirement §2 and §3.
+**Question for Product Owner:** Should Jules implement canonical Markdown specification files for `value-lenses/compassion-lens.md` and `skills/security/casdoor-validate.md` to ensure they are fully governed and structurally audited?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Implement the canonical Markdown specifications `value-lenses/compassion-lens.md` and `skills/security/casdoor-validate.md` aligned with their respective templates.*
+
 ### ❓ Question [2026-06-20] - Phase 0 Assessment Kit Audit Coverage
 **Context:** Requirement §1 mandates a specific inventory of 8+ files for the Phase 0 Assessment Kit, but `scripts/audit-repo.js` currently provides no verification for this critical business asset.
 **Ambiguity / Drift:** As the "front door" for buyers, the Assessment Kit's completeness is paramount. Without automated auditing, files can be accidentally moved or renamed, breaking the buyer's first-contact experience and violating Requirement §1.

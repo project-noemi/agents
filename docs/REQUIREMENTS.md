@@ -175,6 +175,8 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 - **Missing Sovereign Validation Specifications**:
   - `skills/security/casdoor-validate.md` specification is missing despite Casdoor being established as the reference identity provider.
   - `value-lenses/compassion-lens.md` is missing from the repository, leaving `value-lenses/compassion-lens.json` without its markdown spec companion.
+- **GMU Feynman Audit Implementation Gap**: `examples/gmu-validation/verification-bot.js` is implemented to simulate the "Feynman Requirement" audit for George Mason University (GMU), but this validation bot and GMU certification standards are undocumented in `REQUIREMENTS.md`.
+- **Sovereign LLM Guidelines Integration Gap**: While `docs/SOVEREIGN_LLM_GUIDELINES.md` outlines the architecture for the "Great AI Pivot" (local operating profiles, model fusion consensus, jailbreak monitor guardian), this guidance is not formally established as a core standard or referenced in the core requirements sections of `REQUIREMENTS.md`.
 
 ### 2. Structural & Architectural Drift
 - **Audit Script Coverage Blind Spot**: `scripts/audit-repo.js` entirely skips the `mcp-protocols/`, `value-lenses/`, and `operating-profiles/` directories, leaving critical framework assets ungoverned.
@@ -195,6 +197,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 ### 4. Referential & Link Integrity Drift
 - **Internal Referential Integrity Gap**: The repository lacks automated verification for internal markdown links and `**Skill:**` path references within agent workflows.
 - **Audit Script File Verification Gap**: `scripts/audit-repo.js` does not verify that skills or MCPs referenced in `mcp.config.json` exist as physical files.
+- **Workflow JSON Validation Gap**: The `examples/workflows/` directory contains several production-like n8n workflow JSON schemas (e.g., `rfp-responder.json`, `roi-tracking-pipeline.json`, `video-automation-pod.json`). However, these JSON definitions are not programmatically validated for schema structure, nor is there a core requirement enforcing specific model pins or linting rules for packaged workflows.
 
 ### 5. Remediated Limitations (Archive)
 - **Sync Script Identity Drift** (Remediated: 2026-06-19, verified 2026-07-05): `scripts/sync-upstream.sh` now reads `NOEMI_UPSTREAM_REMOTE`, `NOEMI_UPSTREAM_URL`, and related values from the environment with upstream-preserving defaults; the hardcoded `MY_ORGANIZATION` placeholder is gone (Decision [2026-06-19-0002]).

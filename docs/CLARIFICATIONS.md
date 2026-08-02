@@ -283,3 +283,24 @@ Add new questions below this line using the required format.
 **Question for Product Owner:** Should we standardize on a single heading name (e.g., `Rules & Constraints (4D Diligence)`) for both agent personas and skills to ensure consistency across the repository?
 **Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
 **🤖 Jules Action Prompt:** *Standardize the "Rules & Constraints" heading name across all personas, skills, and audit scripts to use the `(4D Diligence)` suffix.*
+
+### ❓ Question [2026-08-02] - George Mason University (GMU) Feynman Audit Integration
+**Context:** The codebase implements `examples/gmu-validation/verification-bot.js` simulating the "Feynman Requirement" audit for George Mason University (GMU).
+**Ambiguity / Drift:** This GMU Verification Bot and its certification audit standard are undocumented in `REQUIREMENTS.md`, representing an implementation-truth gap.
+**Question for Product Owner:** Should the GMU Feynman Audit requirement and its verification-bot simulation be formalized in `REQUIREMENTS.md` as an approved validation benchmark?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Formalize the GMU Feynman Audit requirement and the verification-bot simulation in Section 9 or as a dedicated benchmark in `REQUIREMENTS.md`.*
+
+### ❓ Question [2026-08-02] - Sovereign LLM Guidelines Integration
+**Context:** The repository contains `docs/SOVEREIGN_LLM_GUIDELINES.md` documenting the "Great AI Pivot", but this framework is not formally defined or referenced in the core sections of `REQUIREMENTS.md`.
+**Ambiguity / Drift:** The guidelines and the sovereign operating profiles / skills exist in the repo but are not integrated into the main requirements document, creating a governance gap for sovereign deployment paths.
+**Question for Product Owner:** Should we formalize the Sovereign LLM Guidelines and the "Great AI Pivot" layers (Sovereign Operating Profiles, Model Fusion Consensus, and Jailbreak Monitor Guardian) as standard alternative paths under `REQUIREMENTS.md`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Integrate `docs/SOVEREIGN_LLM_GUIDELINES.md` as an approved alternative sovereign pathway under `REQUIREMENTS.md`.*
+
+### ❓ Question [2026-08-02] - Workflow JSON Validation Gap
+**Context:** The `examples/workflows/` directory contains several production-like n8n workflow JSON schemas (e.g., `rfp-responder.json`, `roi-tracking-pipeline.json`, `video-automation-pod.json`).
+**Ambiguity / Drift:** These JSON workflow definitions are not programmatically validated for schema structure or model pins by the test suite, nor are they formally documented in the requirements as reference architectures.
+**Question for Product Owner:** Should we implement automated schema validation and model pin checking for the `examples/workflows/` JSON files and formalize them in `REQUIREMENTS.md`?
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Jules Action Prompt:** *Extend the test suite in `tests/examples-smoke.test.js` or `scripts/audit-repo.js` to perform general schema validation and check model pins for all n8n workflows in `examples/workflows/`.*

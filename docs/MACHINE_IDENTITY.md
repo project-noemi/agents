@@ -48,6 +48,83 @@ identities have named owners (`docs/phase-zero-assessment/weighted-assessment-sp
 | **May approve PRs?** | **No.** Approval is a human-only act |
 | **May merge PRs?** | **No.** Merge follows human approval |
 
+### Reviewer identity — `noemi-reviewer`
+
+Separation of duties needs two identities, not one. `noemi-agent` produces;
+`noemi-reviewer` reviews. A shared account fails mechanically (GitHub blocks
+self-approval) and destroys attribution even where it does not fail.
+
+| Field | Value |
+|---|---|
+| **Identity** | `noemi-reviewer` (GitHub user, machine account) |
+| **Status** | **Not yet provisioned** — steps 1–3 below are human-only |
+| **Purpose** | Post three-gate review findings on agent-authored PRs |
+| **Model family** | Gemini — deliberately *not* Claude (see below) |
+| **Named owner** | `@WSwarm` (Balazs Nagy) |
+| **Credential store** | Infisical — secret `REVIEWER_GH_TOKEN` |
+| **Repo permission** | `read` (pull) + `Pull requests: write` |
+| **Rotation** | 90 days, or immediately on suspected exposure |
+| **May author code?** | **No.** `Contents: read` only — enforced by token |
+| **May approve PRs?** | **No** in phase 1 — enforced by CODEOWNERS, not by token |
+
+Cross-model is the point: two instances of one model share training and blind
+spots, so a misreading made while writing is likely repeated while reviewing.
+See `docs/AI_REVIEW_GOVERNANCE.md`.
+
+#### Least-privilege scoping
+
+| Permission | Level | Why |
+|---|---|---|
+| Contents | **Read** | Read the diff. Not write — a reviewer that can push can fix what it reviews, collapsing the separation |
+| Pull requests | Read and write | Post review comments |
+| Metadata | Read | Mandatory for fine-grained tokens |
+
+`Contents: read` is a real, token-enforced boundary: this identity is
+structurally incapable of authoring code.
+
+#### The comment-vs-approve gap
+
+GitHub has **no permission distinguishing "may comment on a PR" from "may
+approve a PR."** Both are `Pull requests: write`. So the phase-1 rule that the
+reviewer posts findings but never approves cannot be enforced by token scoping.
+
+It is enforced structurally instead, by `.github/CODEOWNERS` plus
+`require_code_owner_reviews`: a reviewer approval never satisfies a code-owner
+requirement, because the reviewer is not an owner. Without that, a
+`noemi-reviewer` approval would satisfy `required_approving_review_count: 1` on
+its own and phase 1 would silently behave as phase 2.
+
+#### Provisioning
+
+Same shape as `noemi-agent` above — register the account with 2FA, mint a
+fine-grained PAT **while signed in as `noemi-reviewer`** scoped to
+`project-noemi/agents` with exactly the three permissions above, then:
+
+```bash
+infisical secrets set REVIEWER_GH_TOKEN="<paste-in-your-terminal>" --env=dev
+
+gh api --method PUT repos/project-noemi/agents/collaborators/noemi-reviewer \
+  -f permission=pull
+```
+
+Watch for the org approval hold that delayed `noemi-agent`: a fine-grained token
+against an org resource owner stays read-only until an owner approves it at
+Settings → Third-party Access → Personal access tokens.
+
+Verify without provisioning a new wrapper — `scripts/agent-gh.sh` is already
+parameterized:
+
+```bash
+AGENT_GH_TOKEN_SECRET=REVIEWER_GH_TOKEN \
+AGENT_GH_EXPECTED_LOGIN=noemi-reviewer \
+bash scripts/agent-gh.sh whoami        # expect: noemi-reviewer (User)
+```
+
+⚠ `$AGENT_GH_TOKEN` takes precedence over `AGENT_GH_TOKEN_SECRET` in the
+resolver, so a producer token already in the environment wins silently. The
+`AGENT_GH_EXPECTED_LOGIN` guard catches this and refuses rather than acting
+under the wrong identity — always set it.
+
 ### Effective-permission caveat
 
 The direct collaborator grant is `push` (write), but GitHub resolves a user's

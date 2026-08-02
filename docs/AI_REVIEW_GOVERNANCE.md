@@ -204,6 +204,41 @@ Every review records:
 Overrides are the highest-value records in the system. They are where human
 judgment enters, and the only place the framework can be observed adapting.
 
+## Rollout status
+
+Current as of 2026-08-02. Update this table when an item changes — it is the
+handoff point for anyone picking the work up.
+
+| Item | State | Blocked on |
+|---|---|---|
+| `noemi-agent` producer identity | ✅ provisioned, verified | — |
+| Bot-authored PR loop (author → human approve → merge, no bypass) | ✅ proven on #340, #341 | — |
+| `scripts/agent-gh.sh` wrapper + identity guard | ✅ working | — |
+| `scripts/resolve-gemini-model.js` | ✅ working, tested offline | live API call unverified |
+| Reviewer persona + governance framework | ✅ merged (#341) | — |
+| `.github/workflows/ai-review.yml` | ⚠️ skips cleanly; runner not implemented | `GEMINI_API_KEY` + runner |
+| `noemi-reviewer` identity | ❌ not provisioned | human: account, PAT, vault |
+| `GEMINI_API_KEY` repo secret | ❌ not set | human |
+| CODEOWNERS + `require_code_owner_reviews` | ⚠️ in repo, **not applied** | run `scripts/setup-branch-protection.sh` |
+| Three-gate review runner | ❌ not written | follow-up PR |
+| `enforce_admins: true` | ❌ still `false` on both branches | phase 1 operating cleanly |
+| `noemi-agent` effective permission | ⚠️ `maintain`, not `push` | remove from `developers` team |
+
+### Applying the code-owner gate
+
+The CODEOWNERS file and the `require_code_owner_reviews: true` payload in
+`scripts/setup-branch-protection.sh` are **inert until the script is run**:
+
+```bash
+bash scripts/setup-branch-protection.sh
+```
+
+Before running it, decide the co-owner question. With a single owner and
+`require_code_owner_reviews` enabled, a PR authored by that owner cannot be
+approved by them — GitHub blocks self-approval — and will need a second owner or
+an admin bypass. Bot-authored PRs are unaffected. See the comments in
+`.github/CODEOWNERS`.
+
 ## Audit Log
 
 ```json

@@ -12,7 +12,8 @@
 #     re-run the moment the plan is upgraded.
 #
 # Usage:
-#   REPO=owner/repo bash scripts/setup-branch-protection.sh
+#   bash scripts/setup-branch-protection.sh              # auto-detects the repo
+#   REPO=owner/repo bash scripts/setup-branch-protection.sh   # explicit override
 #
 # The status-check `contexts` below must match the check-run names GitHub
 # surfaces for each workflow job. If a check name changes, update the
@@ -20,7 +21,15 @@
 
 set -euo pipefail
 
-REPO="${REPO:-owner/repo}"
+# Resolve the target repo. Prefer an explicit REPO override, otherwise derive it
+# from the checkout so the script is frictionless in forks (no hardcoded org).
+REPO="${REPO:-$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || true)}"
+
+if [[ -z "$REPO" ]]; then
+  echo "✖ Could not determine the target repository." >&2
+  echo "  Run inside a GitHub checkout with 'gh' authenticated, or set REPO=owner/repo." >&2
+  exit 1
+fi
 
 apply_protection() {
   local branch="$1"

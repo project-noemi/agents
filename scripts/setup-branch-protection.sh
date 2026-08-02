@@ -63,7 +63,7 @@ MAIN_PAYLOAD=$(cat <<'JSON'
   "required_pull_request_reviews": {
     "required_approving_review_count": 1,
     "dismiss_stale_reviews": true,
-    "require_code_owner_reviews": false
+    "require_code_owner_reviews": true
   },
   "restrictions": null,
   "allow_force_pushes": false,
@@ -86,7 +86,7 @@ DEVELOP_PAYLOAD=$(cat <<'JSON'
   "required_pull_request_reviews": {
     "required_approving_review_count": 1,
     "dismiss_stale_reviews": true,
-    "require_code_owner_reviews": false
+    "require_code_owner_reviews": true
   },
   "restrictions": null,
   "allow_force_pushes": false,

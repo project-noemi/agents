@@ -36,14 +36,39 @@ identities have named owners (`docs/phase-zero-assessment/weighted-assessment-sp
 | Field | Value |
 |---|---|
 | **Identity** | `noemi-agent` (GitHub user, machine account) |
+| **GitHub user ID** | `311935378` |
+| **Status** | **Provisioned** 2026-08-02 |
 | **Purpose** | Open branches and pull requests on behalf of AI agents |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
 | **Credential type** | Fine-grained personal access token |
 | **Credential store** | Infisical — secret `AGENT_GH_TOKEN` |
 | **Repo permission** | `write` on `project-noemi/agents` |
 | **Rotation** | 90 days, or immediately on suspected exposure |
+| **First rotation due** | 2026-10-31 |
 | **May approve PRs?** | **No.** Approval is a human-only act |
 | **May merge PRs?** | **No.** Merge follows human approval |
+
+### Effective-permission caveat
+
+The direct collaborator grant is `push` (write), but GitHub resolves a user's
+access as the **highest** of all grants. `noemi-agent` is an organization member
+of the `developers` team, which holds `maintain` on this repository, so its
+effective permission is `maintain` — broader than this register intends.
+
+`maintain` cannot change branch protection, manage secrets, or add
+collaborators (`admin: false`), so it cannot bypass the review gate. It can,
+however, adjust repository settings and delete branches.
+
+To hold the identity at true least privilege, remove it from the `developers`
+team and rely on the direct `push` grant:
+
+```bash
+gh api --method DELETE orgs/project-noemi/teams/developers/memberships/noemi-agent
+gh api repos/project-noemi/agents/collaborators/noemi-agent/permission --jq .permission
+```
+
+Verify effective access after any org or team change — a team grant added later
+will silently widen this identity again.
 
 A machine *user* consumes a paid seat on the Enterprise plan. This is the
 accepted cost of having a bot identity that can be a PR author.

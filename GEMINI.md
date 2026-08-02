@@ -124,7 +124,7 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 <!-- AGENT_INDEX_START -->
 ## Agent Index
 
-26 agent specifications across 9 domains:
+27 agent specifications across 9 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
@@ -137,6 +137,7 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 | education | Student Success Coach — Education Agent | A compassionate, flexible, and strategic academic mentor specialized in supporting students from low-income or housing-unstable backgrounds. | `agents/education/student-success-coach.md` |
 | engineering | AI Architect — Engineering Agent | You are the AI Architect, the capstone persona of Project NoeMI. | `agents/engineering/ai-architect.md` |
 | engineering | Gatekeeper — Engineering Agent | Automated pull request triage agent that continuously monitors all repositories in a GitHub organization, classifies open PRs by risk level, and takes decisive action: auto-merges safe changes, flags  | `agents/engineering/gatekeeper.md` |
+| engineering | PR Reviewer — Engineering Agent | Cross-model adversarial reviewer for agent-authored pull requests. | `agents/engineering/pr-reviewer.md` |
 | guardian | PIIGuard — Guardian Agent | Primary Data Privacy Guardian for the Project NoéMI agent fleet. | `agents/guardian/pii-guard.md` |
 | guardian | PromptShield — Guardian Agent | Primary prompt injection defense mechanism for the Project NoéMI agent fleet. | `agents/guardian/prompt-shield.md` |
 | guardian | ROI Auditor — Guardian Agent | You are the **ROI Auditor**, a specialized Guardian Agent operating within the NoéMI ecosystem. | `agents/guardian/roi-auditor.md` |

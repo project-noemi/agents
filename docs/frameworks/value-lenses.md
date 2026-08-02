@@ -132,6 +132,21 @@ Default rule:
 
 - the repository default remains `balanced-enterprise`
 
+### 5. Compassion Lens
+
+A contributed lens (owner: Project NoéMI, status: `draft`), not a baseline lens. The fleet-level home of the **Project NoéMI Anti-Replacement rule** (defined in `value-lenses/README.md`).
+
+Optimizes for:
+
+- human well-being under precarity: automation, scoring, and routing decisions must not amplify existing vulnerability
+- a manual, multi-tiered human-review gate before any terminal outcome affecting livelihood (employment, housing, credit, service access, academic standing)
+- workforce uplift over replacement: reduced human workload must show a transition path, not a headcount reduction
+- contextual forgiveness: historical, non-contextual signals (old debt, minor infractions) do not trigger present-day penalties
+
+Default rule:
+
+- select it when the decision touches livelihood, terminal outcomes, or precarity-signal cohorts; the repository default remains `balanced-enterprise`
+
 ## What Belongs In A Value Lens
 
 - success criteria
@@ -161,7 +176,8 @@ value-lenses/
 ├── performance-efficiency.md
 ├── care-continuity.md
 ├── balanced-enterprise.md
-└── american-dream.md
+├── american-dream.md
+└── compassion-lens.md
 ```
 
 ## Activation Model

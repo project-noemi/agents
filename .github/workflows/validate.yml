@@ -68,6 +68,23 @@ jobs:
             exit 1
           fi
 
+  sync-upstream-regression:
+    name: Sync-Upstream Regression Harness
+    needs: validate-fast
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Run sync-upstream offline harness
+        # Offline harness for scripts/sync-upstream.sh — stubs `gh`, verifies override
+        # surfacing, --continue resume, dry-run, and the duplicate guard. Wiring the
+        # harness into CI closes the gap raised by Clarification [2026-07-11]
+        # Sync-Upstream Test Harness Outside the Validation Gate (Decision [2026-07-13-0003]).
+        run: npm run test:sync
+
   docker-smoke:
     name: Docker Smoke Validation
     needs: validate-fast
@@ -89,6 +106,10 @@ jobs:
           docker compose version
 
       - name: Run Docker smoke suite
+        # FORCE_DOCKER_SMOKE promotes a missing Docker binary from "skip" to "fail" so a
+        # misconfigured runner cannot produce a false green (Decision [2026-07-05-0006]).
+        env:
+          FORCE_DOCKER_SMOKE: "true"
         run: npm run test:e2e
 
       - name: Upload Docker smoke diagnostics

@@ -1,0 +1,117 @@
+# Phase 1 of docs/AI_REVIEW_GOVERNANCE.md — cross-model review of
+# agent-authored pull requests.
+#
+# The reviewer POSTS FINDINGS ONLY. It does not approve, merge, or close.
+# Approval stays with a human until phase 2 is authorised by the evidence
+# described in the governance doc.
+#
+# This workflow is intentionally NOT a required status check. A review that can
+# block a merge is a gate; phase 1 is an advisory signal being calibrated. Do
+# not add it to branch protection contexts before phase 2.
+name: AI Review (advisory)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Cross-Model PR Review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out base repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # Phase 1 is being introduced before its credential exists. Skip cleanly
+      # rather than failing red on every PR, which would train people to ignore
+      # this workflow before it has ever run usefully.
+      - name: Check reviewer configuration
+        id: config
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [[ -z "${GEMINI_API_KEY}" ]]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=AI review skipped::GEMINI_API_KEY is not configured. See docs/AI_REVIEW_GOVERNANCE.md."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The carve-out is enforced here, before any model runs, so that a
+      # governance-critical diff cannot be reviewed by an agent even by
+      # accident. See docs/AI_REVIEW_GOVERNANCE.md.
+      - name: Enforce governance carve-out
+        if: steps.config.outputs.configured == 'true'
+        id: carveout
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed=$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+          printf 'Changed files:\n%s\n' "$changed"
+          protected=$(printf '%s\n' "$changed" | grep -E \
+            '^(\.github/CODEOWNERS|\.github/workflows/require-develop-source\.yml|docs/MACHINE_IDENTITY\.md|docs/AI_REVIEW_GOVERNANCE\.md)$' || true)
+          if [[ -n "$protected" ]]; then
+            echo "carved_out=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "### AI review halted — governance carve-out"
+              echo
+              echo "This pull request touches controls that constrain agents:"
+              echo
+              printf '%s\n' "$protected" | sed 's/^/- `/; s/$/`/'
+              echo
+              echo "An agent evaluating changes to its own constraints is circular regardless of capability, so this review escalates to human review by design."
+            } > carveout.md
+          else
+            echo "carved_out=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Post carve-out notice
+        if: steps.carveout.outputs.carved_out == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.REVIEWER_GH_TOKEN || github.token }}
+        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file carveout.md
+
+      - name: Resolve review model
+        if: steps.config.outputs.configured == 'true' && steps.carveout.outputs.carved_out == 'false'
+        id: model
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_REVIEW_FLOOR: ${{ vars.GEMINI_REVIEW_FLOOR || 'flash' }}
+        run: |
+          # Fails loudly if nothing meets the floor — see the script header for
+          # why an under-capability review is worse than none.
+          model=$(node scripts/resolve-gemini-model.js)
+          echo "model=${model}" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Review model::${model}"
+
+      # The review runner itself lands in a follow-up PR. Until then this step
+      # reports what WOULD run rather than failing: a workflow that goes red on
+      # every pull request teaches people to ignore it before it has ever been
+      # useful, and an advisory signal nobody reads is worse than none.
+      - name: Run three-gate review
+        if: steps.config.outputs.configured == 'true' && steps.carveout.outputs.carved_out == 'false'
+        env:
+          REVIEW_MODEL: ${{ steps.model.outputs.model }}
+        run: |
+          echo "::warning title=Review runner pending::Model resolution and the carve-out gate are active; the three-gate runner is not yet implemented."
+          echo "Resolved model : ${REVIEW_MODEL}"
+          echo "Persona        : agents/engineering/pr-reviewer.md"
+          echo "Gate order     : premise -> framing -> code"
+          echo "Rubric         : docs/AI_REVIEW_GOVERNANCE.md"

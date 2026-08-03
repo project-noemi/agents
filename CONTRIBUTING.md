@@ -40,6 +40,15 @@ bash scripts/verify-env.sh --mode=builder
 powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode builder
 ```
 
+If you use Infisical for secret injection, link the clone to your own workspace once:
+
+```bash
+infisical login   # if not already authenticated
+infisical init    # writes .infisical.json (untracked, per-clone)
+```
+
+`.infisical.json` holds a workspace ID and local environment mapping — no credential material — but it is org-specific, so it is gitignored rather than shared. Forks link their own vault; without it, `infisical run` cannot resolve a project.
+
 Then run:
 
 ```bash

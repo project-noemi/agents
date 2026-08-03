@@ -222,7 +222,7 @@ handoff point for anyone picking the work up.
 | CODEOWNERS + `require_code_owner_reviews` | ⚠️ in repo, **not applied** | run `scripts/setup-branch-protection.sh` |
 | Three-gate review runner | ❌ not written | follow-up PR |
 | `enforce_admins: true` | ❌ still `false` on both branches | phase 1 operating cleanly |
-| Both bot identities' effective permission | ⚠️ `maintain` via `developers` team | decide whether bots leave human teams |
+| Both bot identities' effective permission | ✅ `maintain` accepted by decision 2026-08-03 — token scoping is the boundary | — |
 
 ### Applying the code-owner gate
 

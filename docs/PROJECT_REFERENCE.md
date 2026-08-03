@@ -225,6 +225,26 @@ Programming AI agents and workflows using natural language rather than tradition
 
 The risk of infinite loops in autonomous multi-agent systems, where agents trigger each other indefinitely without human intervention. When Agent A's output triggers Agent B, whose output triggers Agent A again, you get a runaway loop that burns tokens, produces garbage, and potentially takes actions nobody authorized. A core governance challenge that Accelerators must learn to manage.
 
+### Cross-Model Review
+
+The practice of having one model family produce work and a **different** model family review it. Two instances of the same model share training data and therefore share blind spots: a misreading made while writing is likely repeated while reviewing. "A second AI checked it" is only a real control if the second AI can fail differently from the first. In NoéMI, Claude produces and Gemini reviews.
+
+### Producer–Reviewer Separation
+
+The rule that the identity which creates work cannot be the identity which approves it. Enforced technically rather than by policy: separate machine accounts, and a reviewer credential that cannot write code at all. The reviewer is not *asked* to refrain from editing — it is *unable* to.
+
+### The Carve-Out
+
+The set of files that AI agents may never review or modify, because they are the controls that constrain agents: branch protection, code ownership, the merge gate, the identity register, and the governance framework itself. Not a judgement about capability. An agent approving changes to its own constraints is grading its own homework, and adding a second agent does not fix it — it adds another party with the same interest.
+
+### Convergence by Erosion
+
+The failure mode where an AI loop reaches "no problems found" by weakening the checks rather than improving the code — deleting the failing test, loosening the assertion, narrowing the rule. In CI it is indistinguishable from genuine success, which is exactly why it needs an explicit prohibition rather than a hope.
+
+### Machine Identity
+
+A non-human account with its own credentials, used by an agent instead of borrowing a person's login. Without it, an agent's work appears to be authored by whoever's token it used — so that person cannot review it, and the audit trail attributes machine decisions to a human who never saw them.
+
 ---
 
 ## Chapter 6: The 4 Ds of AI Fluency
@@ -515,6 +535,38 @@ For the client-oriented guide, see [`docs/PHASE_ZERO_SECURITY_BASELINE.md`](PHAS
 For reusable assessment templates, see [`docs/phase-zero-assessment/`](phase-zero-assessment/).
 For implementation details, see [`docs/tool-usages/secure-secret-management.md`](tool-usages/secure-secret-management.md) and [`docs/GOVERNANCE.md`](GOVERNANCE.md).
 
+### Who Approves the Machines?
+
+Once agents write real code, one question decides whether your governance is real or decorative: **who approves their work, and can they?**
+
+The intuitive answer — "a human reviews it" — quietly fails in practice. If an agent submits work using an engineer's credentials, that engineer becomes the *author*, and no platform lets an author approve their own submission. Teams then reach for an administrative override, and the review that governance depended on never happens. The audit trail still looks clean, which is the dangerous part.
+
+NoéMI treats this as an identity problem rather than a policy problem. Four principles, at the executive level:
+
+**1. The control is independence, not humanity.** What makes review meaningful is judgement from a party that did not produce the work. "A human looked at it" was always a proxy for that — and a weak one, since a human approving without reading provides less assurance than a reviewer that actually reads. This matters commercially: it is what lets review scale as agent output grows, instead of turning senior engineers into a rubber-stamp queue.
+
+**2. Different reviewer means different model.** Two instances of one model share blind spots. Cross-model review — one family writes, another reviews — is how "independent" becomes true rather than nominal.
+
+**3. Separation is enforced by credentials, not instructions.** Producing and reviewing agents hold distinct machine identities, and the reviewer's credential **cannot write code at all**. It is not asked to refrain; it is unable. Rules an agent is told to follow are only as strong as the next prompt; permissions hold regardless.
+
+**4. Agents never govern agents.** The files that constrain AI — approval rules, code ownership, the identity register, the governance framework — are permanently outside agent authority. A second AI does not resolve this circularity; it adds another party with the same interest.
+
+**Where the human belongs.** Reviewing every line does not scale and is not where human judgement is scarce. The leverage is *before* the work: deciding what should be attempted, and shaping the instruction when a review finds problems. NoéMI pauses at exactly that point — findings and a drafted fix-request go to a person, who edits the instruction before anything is dispatched. Oversight becomes specification rather than inspection.
+
+**Order of precedence.** Reviews ask three questions in sequence, and stop at the first failure:
+
+1. **Should this change exist at all?** *(Delegation)*
+2. **Does the description honestly match the change?** *(Description)*
+3. **Is it correctly and safely built?** *(Diligence)*
+
+Premise first, because the dominant failure of a capable coding agent is not broken code — it is **competent, well-formed, unnecessary work.** A reviewer that starts at the code approves that every time; at the code level it looks like good work, because it is good work aimed at nothing. This is where most AI-assisted engineering quietly loses money.
+
+**Autonomy is earned, not assumed.** Agent-to-agent iteration without a human in the loop is a later stage, gated on evidence from the supervised one — specifically, how often the human overrides the reviewer, and in which direction. Until that override rate is understood, autonomy is a guess.
+
+For the framework, see [`docs/AI_REVIEW_GOVERNANCE.md`](AI_REVIEW_GOVERNANCE.md).
+For identity provisioning, see [`docs/MACHINE_IDENTITY.md`](MACHINE_IDENTITY.md).
+For a step-by-step setup walkthrough, see [`docs/examples/cross-model-review-setup.md`](examples/cross-model-review-setup.md).
+
 ---
 
 ## Chapter 12: The Technology Stack Concept
@@ -680,6 +732,8 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/DECISION_LOG.md`](DECISION_LOG.md) | Architectural decision records |
 | [`docs/CLARIFICATIONS.md`](CLARIFICATIONS.md) | Clarifications and FAQs |
 | [`docs/AGENT_TEMPLATE.md`](AGENT_TEMPLATE.md) | Canonical template for all agent specifications |
+| [`docs/AI_REVIEW_GOVERNANCE.md`](AI_REVIEW_GOVERNANCE.md) | Cross-model review framework: the three gates, severity rubric, carve-out, and phased rollout |
+| [`docs/MACHINE_IDENTITY.md`](MACHINE_IDENTITY.md) | Machine identity register — separating producing and reviewing agents by credential |
 | [`docs/PHASE_ZERO_SECURITY_BASELINE.md`](PHASE_ZERO_SECURITY_BASELINE.md) | Client-side guide to Phase 0 security |
 | [`docs/phase-zero-assessment/`](phase-zero-assessment/) | Assessment kit: consent, findings, roadmap, and readiness rubric |
 | [`docs/visuals/`](visuals/) | Visual system map, audience entry map, runtime flow, and workshop mind map |
@@ -689,7 +743,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | Directory | Description |
 | --- | --- |
 | [`docs/agents/guardian/`](agents/guardian/) | Guardian Agents — AI monitoring AI |
-| [`docs/agents/coding/`](agents/coding/) | Coding agents (Bolt, Sentinel) |
+| [`docs/agents/coding/`](agents/coding/) | Coding agents (Architect, Bolt, Sentinel, Mender) |
 | [`docs/agents/infrastructure/`](agents/infrastructure/) | Infrastructure management agents |
 | [`docs/agents/marketing/`](agents/marketing/) | Marketing automation agents |
 | [`docs/agents/communication/`](agents/communication/) | Communication agents |
@@ -707,6 +761,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/mcp-setup/`](mcp-setup/) | MCP server setup guides (Google Workspace, n8n, Slack, Web Search) |
 | [`docs/tool-usages/`](tool-usages/) | Tool-specific guides and integration patterns |
 | [`docs/examples/`](examples/) | Example implementations (Docker sandbox, RFP Responder, Video Automation) |
+| [`docs/examples/cross-model-review-setup.md`](examples/cross-model-review-setup.md) | Beginner walkthrough: machine identities, Gemini key options, and vault-backed CI for cross-model review |
 
 ---
 

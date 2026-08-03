@@ -1,5 +1,17 @@
 # Decision Log
 
+## [2026-08-02-0001] Coding-Agent Journals Move to the Decision Log; Vendor Sidecar Retired
+
+- **Decision:** The five coding-agent personas record Critical Learnings in the worked repository's `docs/DECISION_LOG.md` and in the PR body, never in a separate sidecar journal file. The `.jules/` convention is retired fleet-wide, and no persona may reference a vendor-specific directory as its journal location.
+- **Context:** All five `agents/coding/**` specs pointed their `## Journal` section at `.jules/<agent>.md`, coupling the persona contract to one specific external coding agent. The sidecar directory was also being committed into worked repositories, where it accumulated an append-only log that every concurrent agent PR had to touch — in `newpush/newpush-mastra-orchestration` this made `.jules/sentinel.md` a guaranteed conflict point that left three security PRs blocked for seven weeks and generated fifteen duplicate issues.
+- **Rationale:** The Standard Operating Profile already mandates documenting decisions "inline with the artifact (audit log, PR body, spec commit) rather than in separate ephemeral channels." A vendor sidecar journal was exactly such a channel. `docs/DECISION_LOG.md` exists in every repository these agents operate on, so the neutral target is universally available.
+- **Impact:**
+  - `agents/coding/{architect/core,bolt/core,bolt/go,bolt/nextjs-16,sentinel/core}.md` journal locations retargeted; no vendor name remains in `agents/`.
+  - `bolt/go.md` gained the `Format:` line the other four already had.
+  - Refusal Criteria in `architect/core`, `bolt/core`, `bolt/nextjs-16`, and `sentinel/core` rewritten to be role-specific. The four previously shared near-identical boilerplate, which `AGENTS.md` classifies as prohibited substantive drift.
+  - `architect/core.md` and `bolt/go.md` gained the audit-log scoping paragraph the other three already had.
+  - Tracked `.jules/` artifacts are removed from worked repositories under separate PRs.
+
 ## [2026-07-03] Documentation Alignment and Technical Drift Formalization
 
 - **Decision:** Formalize and align `REQUIREMENTS.md` and `AGENTS.md` with the verified codebase state, specifically mandating JSON schema validation for Audit Logs and full first-paragraph extraction for the Agent Index.

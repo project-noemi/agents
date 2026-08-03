@@ -39,16 +39,30 @@ OP_REF="${AGENT_GH_TOKEN_REF:-op://noemi/github-agent/token}"
 
 log() { printf '%s\n' "$*" >&2; }
 
+# Whether an Infisical project link is reachable at all. `.infisical.json` is
+# gitignored (org-specific; each clone runs `infisical init`), so a fresh clone
+# has no link and every `infisical secrets get` fails with a message about
+# projects that reads like a provisioning problem. Accept an explicit project ID
+# so CI and fresh clones can resolve secrets without the file.
+INFISICAL_PROJECT="${INFISICAL_PROJECT_ID:-}"
+
+infisical_available() {
+  command -v infisical >/dev/null 2>&1 || return 1
+  [[ -n "$INFISICAL_PROJECT" || -f .infisical.json ]]
+}
+
 resolve_token() {
   if [[ -n "${AGENT_GH_TOKEN:-}" ]]; then
     printf '%s' "$AGENT_GH_TOKEN"
     return 0
   fi
 
-  if command -v infisical >/dev/null 2>&1; then
+  if infisical_available; then
     local val
     if val=$(infisical secrets get "$SECRET_NAME" \
-               --env="$INFISICAL_ENVIRONMENT" --plain 2>/dev/null) \
+               --env="$INFISICAL_ENVIRONMENT" \
+               ${INFISICAL_PROJECT:+--projectId="$INFISICAL_PROJECT"} \
+               --plain 2>/dev/null) \
        && [[ -n "$val" ]]; then
       printf '%s' "$val"
       return 0
@@ -69,7 +83,19 @@ resolve_token() {
 if ! token=$(resolve_token); then
   log "✖ Could not resolve the machine-identity token."
   log "  Tried: \$AGENT_GH_TOKEN, Infisical secret '${SECRET_NAME}' (env=${INFISICAL_ENVIRONMENT}), 1Password '${OP_REF}'."
-  log "  Provision it per docs/MACHINE_IDENTITY.md, then re-run."
+
+  # Distinguish "no project link" from "secret missing". Conflating them sends
+  # people to re-provision a credential that already exists.
+  if command -v infisical >/dev/null 2>&1 && ! infisical_available; then
+    log ""
+    log "  Infisical is installed but no project link was found."
+    log "  '.infisical.json' is gitignored, so a fresh clone has none. Either:"
+    log "    infisical init                       # writes the link locally"
+    log "    export INFISICAL_PROJECT_ID=<id>     # for CI and non-interactive runs"
+  else
+    log "  Provision it per docs/MACHINE_IDENTITY.md, then re-run."
+  fi
+
   log "  Do NOT paste the token into a chat session or commit it to the repo."
   exit 1
 fi

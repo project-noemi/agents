@@ -31,9 +31,12 @@
  *     --title "type(scope): subject" [--body "..." | --body-file path] \
  *     [--draft] [--supersede <pr-number> [--supersede-comment "..."]]
  *
- *   `--supersede N` closes PR N after the new PR is created, posting a
- *   comment that links its replacement. Use it to re-author a PR that was
- *   accidentally opened under a human identity.
+ *   `--supersede N` closes PR N and posts a comment that links its
+ *   replacement. Use it to re-author a PR that was accidentally opened under
+ *   a human identity. Re-authoring normally reuses the predecessor's head
+ *   branch, and GitHub refuses a second open PR on the same head+base — in
+ *   that case PR N is verified to be the colliding PR and closed first;
+ *   otherwise it is closed only after the replacement exists.
  *
  * See docs/MACHINE_IDENTITY.md for provisioning and least-privilege scoping.
  */
@@ -177,30 +180,61 @@ async function cmdCreate(token, args) {
     body = require('fs').readFileSync(args['body-file'], 'utf8');
   }
 
+  const oldNumber = args.supersede ? Number(args.supersede) : null;
+  if (args.supersede && (!Number.isInteger(oldNumber) || oldNumber <= 0)) {
+    fail(`--supersede must be a PR number, got '${args.supersede}'.`);
+  }
+
   auditLog.inputs.push(`repo: ${repo}`, `base: ${base}`, `head: ${head}`, `title: ${title}`);
 
-  const pr = await ghRequest(token, 'POST', `/repos/${repo}/pulls`, {
-    title,
-    head,
-    base,
-    body,
-    draft: Boolean(args.draft),
-  });
+  const createPayload = { title, head, base, body, draft: Boolean(args.draft) };
+  let pr;
+  let closedEarly = false;
+  try {
+    pr = await ghRequest(token, 'POST', `/repos/${repo}/pulls`, createPayload);
+  } catch (err) {
+    // Same-branch supersession: GitHub refuses a second open PR on the same
+    // head+base, so the predecessor must be closed before its replacement can
+    // exist. Only close it after verifying it IS the colliding PR — closing
+    // an unrelated PR on a 422 would be worse than failing.
+    if (!oldNumber || !/pull request already exists/i.test(err.message)) throw err;
+    const owner = repo.split('/')[0];
+    const colliding = await ghRequest(
+      token,
+      'GET',
+      `/repos/${repo}/pulls?state=open&base=${encodeURIComponent(base)}&head=${encodeURIComponent(`${owner}:${head}`)}`
+    );
+    if (!Array.isArray(colliding) || colliding.length !== 1 || colliding[0].number !== oldNumber) {
+      const found = Array.isArray(colliding) ? colliding.map((p) => `#${p.number}`).join(', ') : 'none';
+      fail(
+        `Head '${head}' already has an open PR against '${base}' (${found}), which is not --supersede ${oldNumber}.\n` +
+          '  Refusing to close a PR that was not named for supersession.',
+        { risk: `head+base collision with a PR other than the supersede target (${found})` }
+      );
+    }
+    await ghRequest(token, 'PATCH', `/repos/${repo}/pulls/${oldNumber}`, { state: 'closed' });
+    closedEarly = true;
+    log(`✔ closed superseded PR #${oldNumber} (it held the same head+base as its replacement)`);
+    auditLog.actions.push(`closed superseded PR #${oldNumber} before create (same head+base)`);
+    pr = await ghRequest(token, 'POST', `/repos/${repo}/pulls`, createPayload);
+  }
   log(`✔ opened PR #${pr.number}: ${pr.html_url}`);
   auditLog.actions.push(`opened PR #${pr.number} (${pr.html_url})`);
 
-  if (args.supersede) {
-    const oldNumber = Number(args.supersede);
-    if (!Number.isInteger(oldNumber) || oldNumber <= 0) {
-      fail(`--supersede must be a PR number, got '${args.supersede}'.`);
-    }
+  if (oldNumber) {
     const comment =
       args['supersede-comment'] ||
       `Superseded by #${pr.number}, re-authored under the \`${EXPECTED_LOGIN}\` machine identity so a human reviewer can approve it (see \`docs/MACHINE_IDENTITY.md\`). — ${EXPECTED_LOGIN}`;
     await ghRequest(token, 'POST', `/repos/${repo}/issues/${oldNumber}/comments`, { body: comment });
-    await ghRequest(token, 'PATCH', `/repos/${repo}/pulls/${oldNumber}`, { state: 'closed' });
-    log(`✔ closed superseded PR #${oldNumber}`);
-    auditLog.actions.push(`commented on and closed superseded PR #${oldNumber}`);
+    if (!closedEarly) {
+      await ghRequest(token, 'PATCH', `/repos/${repo}/pulls/${oldNumber}`, { state: 'closed' });
+    }
+    log(`✔ ${closedEarly ? 'commented on' : 'commented on and closed'} superseded PR #${oldNumber}`);
+    auditLog.actions.push(
+      closedEarly
+        ? `commented replacement link on superseded PR #${oldNumber}`
+        : `commented on and closed superseded PR #${oldNumber}`
+    );
   }
 
   auditLog.result = `PR #${pr.number} opened as ${EXPECTED_LOGIN}`;

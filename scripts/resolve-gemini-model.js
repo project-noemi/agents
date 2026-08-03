@@ -202,7 +202,13 @@ async function main() {
   process.stdout.write(args.json ? `${JSON.stringify(result, null, 2)}\n` : `${chosen.id}\n`);
 }
 
-main().catch((err) => {
-  process.stderr.write(`✖ ${err.stack || err.message}\n`);
-  process.exit(2);
-});
+// Importable as a module so the review runner can reuse the ranking logic
+// without shelling out; still runs as a CLI when invoked directly.
+module.exports = { classify, scoreOf, rank, meetsFloor, listModels, TIER_RANK };
+
+if (require.main === module) {
+  main().catch((err) => {
+    process.stderr.write(`✖ ${err.stack || err.message}\n`);
+    process.exit(2);
+  });
+}

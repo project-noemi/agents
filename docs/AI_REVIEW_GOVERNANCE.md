@@ -217,12 +217,12 @@ handoff point for anyone picking the work up.
 | `scripts/resolve-gemini-model.js` | ✅ working, tested offline | live API call unverified |
 | Reviewer persona + governance framework | ✅ merged (#341) | — |
 | `.github/workflows/ai-review.yml` | ⚠️ skips cleanly; runner not implemented | `GEMINI_API_KEY` + runner |
-| `noemi-reviewer` identity | ❌ not provisioned | human: account, PAT, vault |
+| `noemi-reviewer` identity | ✅ provisioned 2026-08-03, capabilities verified | — |
 | `GEMINI_API_KEY` repo secret | ❌ not set | human |
 | CODEOWNERS + `require_code_owner_reviews` | ⚠️ in repo, **not applied** | run `scripts/setup-branch-protection.sh` |
 | Three-gate review runner | ❌ not written | follow-up PR |
 | `enforce_admins: true` | ❌ still `false` on both branches | phase 1 operating cleanly |
-| `noemi-agent` effective permission | ⚠️ `maintain`, not `push` | remove from `developers` team |
+| Both bot identities' effective permission | ✅ `maintain` accepted by decision 2026-08-03 — token scoping is the boundary | — |
 
 ### Applying the code-owner gate
 

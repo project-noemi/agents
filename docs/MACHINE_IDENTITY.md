@@ -57,7 +57,9 @@ self-approval) and destroys attribution even where it does not fail.
 | Field | Value |
 |---|---|
 | **Identity** | `noemi-reviewer` (GitHub user, machine account) |
-| **Status** | **Not yet provisioned** — steps 1–3 below are human-only |
+| **GitHub user ID** | `312384097` |
+| **Status** | **Provisioned** 2026-08-03, capabilities verified |
+| **First rotation due** | 2026-11-01 |
 | **Purpose** | Post three-gate review findings on agent-authored PRs |
 | **Model family** | Gemini — deliberately *not* Claude (see below) |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
@@ -81,6 +83,26 @@ See `docs/AI_REVIEW_GOVERNANCE.md`.
 
 `Contents: read` is a real, token-enforced boundary: this identity is
 structurally incapable of authoring code.
+
+#### Verified capabilities (2026-08-03)
+
+Probed at provisioning. Re-run these after any token rotation — a rotation is
+the most likely moment for scoping to drift wider than intended.
+
+| Probe | Expected | Observed |
+|---|---|---|
+| Read repository metadata | succeeds | ✅ succeeded |
+| Create a git ref (Contents: write) | **denied** | 🔒 `403 Resource not accessible` |
+| Create a PR review (Pull requests: write) | permitted | `404` on a nonexistent PR — permission present |
+
+The `403` on ref creation is the boundary that matters: it is enforced by token
+scoping, not by persona instruction, so it holds regardless of what the
+reviewing model is told or persuaded to do.
+
+On the third probe, `403` would mean the permission is missing and `404` means
+it is present but the pull request does not exist — a nonexistent PR number is
+therefore a non-destructive way to confirm write capability without posting
+anything.
 
 #### The comment-vs-approve gap
 
@@ -125,27 +147,51 @@ resolver, so a producer token already in the environment wins silently. The
 `AGENT_GH_EXPECTED_LOGIN` guard catches this and refuses rather than acting
 under the wrong identity — always set it.
 
-### Effective-permission caveat
+### Effective-permission posture — the token is the boundary
 
-The direct collaborator grant is `push` (write), but GitHub resolves a user's
-access as the **highest** of all grants. `noemi-agent` is an organization member
-of the `developers` team, which holds `maintain` on this repository, so its
-effective permission is `maintain` — broader than this register intends.
+GitHub resolves a user's access as the **highest** of all grants. Both bot
+identities are organization members of the `developers` team, which holds
+`maintain` on this repository, so both resolve to `maintain` regardless of the
+direct collaborator grants recorded above (`push` for the producer, `pull` for
+the reviewer).
 
-`maintain` cannot change branch protection, manage secrets, or add
-collaborators (`admin: false`), so it cannot bypass the review gate. It can,
-however, adjust repository settings and delete branches.
+**Decision (2026-08-03, repository owner): the bots remain in `developers` and
+`coders`.** The team memberships are accepted as-is and the account-level
+permission is not narrowed.
 
-To hold the identity at true least privilege, remove it from the `developers`
-team and rely on the direct `push` grant:
+`maintain` cannot change branch protection, manage secrets, or add collaborators
+(`admin: false`), so it cannot bypass the review gate. It can adjust repository
+settings and delete branches.
+
+#### What this decision means
+
+Account-level permission is **not** a limiting factor for these identities.
+Every constraint in this register is therefore enforced by **token scoping
+alone** — it is the boundary, not a second layer behind one. The reviewer's
+inability to author code is real (verified `403`) precisely and only because its
+token lacks `Contents: write`.
+
+Three rules follow, and they are load-bearing rather than advisory:
+
+1. **Fine-grained tokens only. Never a classic PAT.** A classic token with
+   `repo` scope on either account inherits the full `maintain` grant and
+   silently voids every scoping decision in this document. Classic tokens have
+   no per-permission granularity, so there is no safe way to issue one here.
+2. **Re-probe capabilities after every rotation.** Rotation is when scoping
+   drifts wider than intended. See the reviewer's verified-capabilities table
+   for the probe set.
+3. **Never widen a token to clear a failure.** A `403` from one of these
+   identities is the control functioning. Diagnose what asked for the
+   permission before granting it.
+
+An organization or team change can still widen these identities without touching
+this repository. Re-verify effective access after any such change:
 
 ```bash
-gh api --method DELETE orgs/project-noemi/teams/developers/memberships/noemi-agent
-gh api repos/project-noemi/agents/collaborators/noemi-agent/permission --jq .permission
+for u in noemi-agent noemi-reviewer; do
+  gh api "repos/project-noemi/agents/collaborators/$u/permission" --jq '"\(.user.login): \(.role_name)"'
+done
 ```
-
-Verify effective access after any org or team change — a team grant added later
-will silently widen this identity again.
 
 A machine *user* consumes a paid seat on the Enterprise plan. This is the
 accepted cost of having a bot identity that can be a PR author.

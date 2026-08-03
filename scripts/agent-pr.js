@@ -119,7 +119,15 @@ async function ghRequest(token, method, path, body) {
     const text = await res.text();
     const json = text ? JSON.parse(text) : null;
     if (!res.ok) {
-      const detail = json && json.message ? json.message : text.slice(0, 200);
+      // 422s carry their actionable detail in the errors array, not message
+      // (e.g. "A pull request already exists for owner:branch.").
+      let detail = json && json.message ? json.message : text.slice(0, 200);
+      if (json && Array.isArray(json.errors) && json.errors.length) {
+        const extra = json.errors
+          .map((e) => (typeof e === 'string' ? e : e.message || JSON.stringify(e)))
+          .join('; ');
+        detail += ` — ${extra}`;
+      }
       const err = new Error(`GitHub API ${res.status} on ${method} ${path}: ${detail}`);
       err.retryable = false;
       throw err;

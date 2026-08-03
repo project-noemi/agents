@@ -415,7 +415,8 @@ editing the merge gate to unblock its own pull requests.
 |---|---|---|
 | `403 Resource not accessible` on writes | Org approval pending, or permission not set to Read **and write** | Check the org PAT-requests page (Part 3) |
 | `Token resolves to 'yourname', expected 'noemi-agent'` | Your own token is in the environment | The guard is working — unset `AGENT_GH_TOKEN` |
-| `Could not resolve the machine-identity token` | Secret missing, or repo not linked to Infisical | Run `infisical init`, then re-store the secret |
+| `Could not resolve the machine-identity token` | Secret missing from the vault | Re-store it (Part 2 / Part 3) |
+| `Infisical is installed but no project link was found` | `.infisical.json` is gitignored, so a fresh clone has none | `infisical init`, or set `INFISICAL_PROJECT_ID` for CI |
 | Workflow skips with a notice | `GEMINI_API_KEY` not reachable | Complete Part 4 |
 | `No available model meets the floor` | Your key lacks access to strong models | Check your tier; the failure is intentional |
 | Reviewer's write probe **succeeds** | Token over-scoped | Set Contents to Read-only and re-probe |

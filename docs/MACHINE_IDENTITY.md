@@ -258,6 +258,18 @@ Verify it resolves without printing it:
 bash scripts/agent-gh.sh whoami     # expect: noemi-agent (User)
 ```
 
+`.infisical.json` is gitignored (org-specific — each clone runs `infisical
+init`), so a fresh clone or a CI job has no project link and secret lookup fails.
+Set the project ID explicitly where running `init` is not practical:
+
+```bash
+export INFISICAL_PROJECT_ID=<your-workspace-id>
+```
+
+A project ID is not a secret. In GitHub Actions it belongs in **Variables**, not
+Secrets — putting non-secrets in Secrets makes it harder to see what genuinely
+needs protecting.
+
 ### 4. Grant repository access
 
 Run as a repo admin:

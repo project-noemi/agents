@@ -92,7 +92,7 @@ Use `infisical run` or `op run` to dynamically pull the specified environment an
 When running on a local host, the system uses human SSO or Desktop App integration for authentication.
 
 
-- Infisical: If execution fails, ensure you are logged in via `infisical login`.
+- Infisical: If execution fails, ensure you are logged in via `infisical login`, and that the clone is linked to a workspace via `infisical init`. The generated `.infisical.json` is a per-clone project link (workspace ID only, no credential material) and is deliberately untracked so forks resolve their own vault (Decision [2026-08-02-0002]).
 - 1Password: If execution fails, ensure you are logged in via `op signin`.
 - **Pre-flight Checks**: Environment verification scripts (`scripts/verify-env.sh`, `scripts/verify-env.ps1`) must perform active authentication checks (e.g., `infisical whoami` or `op get user`). Missing or invalid SecretOps authentication in `docker` mode MUST be a fatal error (exit 1), while remaining a warning in `builder` mode to support local exploration.
 
@@ -1726,4 +1726,13 @@ Request only the scopes and data fields necessary for the current operation. Use
 
 #### 5. Audit Trail
 Log every mutating API call (merge, close, comment, label) with the full request and response status for traceability. Include the agent identifier in all comments and commit messages.
+
+#### 6. PR Authorship (Machine Identity)
+Agent-initiated pull requests MUST be opened under the `noemi-agent` machine identity, never with a human's credentials. GitHub blocks a pull request's author from approving it, so an agent PR opened with the reviewing human's token is unreviewable by that human and collapses the human-reviews-AI gate into an admin bypass (see `docs/MACHINE_IDENTITY.md` — the token that opens the PR is what determines authorship; commit metadata does not).
+
+- Where the `gh` CLI is available, open PRs via `bash scripts/agent-gh.sh pr create ...`.
+- In containerized or remote sessions without `gh` (e.g., cloud sandbox containers), use `node scripts/agent-pr.js` — it resolves `AGENT_GH_TOKEN` from process memory and speaks to the REST API directly.
+- Both paths verify the token against `AGENT_GH_EXPECTED_LOGIN` and refuse to act if it resolves to any other account, including a human's.
+- If no machine-identity token is resolvable, stop and surface the gap to the human. Do **not** fall back to opening the PR with human credentials — a mis-authored PR re-creates the exact failure this rule exists to prevent.
+- Approving and merging remain human-only acts. The machine identity may do neither (identity register, `docs/MACHINE_IDENTITY.md`).
 <!-- MCP_INJECTIONS_END -->

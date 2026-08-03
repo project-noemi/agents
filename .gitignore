@@ -1,6 +1,9 @@
 .DS_Store
 node_modules/
 .mcp.json
+# Infisical project link (workspace ID + local env mapping). Not secret, but
+# org-specific: each clone or fork generates its own with `infisical init`.
+.infisical.json
 scratchpad
 __pycache__/
 *.pyc

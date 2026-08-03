@@ -70,10 +70,13 @@ Emit a separate JSON audit record for every optimization:
 }
 ```
 
+Exclude secrets and unrelated code details. Record the benchmark used, the before/after `ns/op` and `allocs/op`, and how correctness was re-verified.
+
 ## External Tooling Dependencies
 - **Go Toolchain** (`go test`, `go tool pprof`).
 - **Benchstat** (optional, for comparing benchmarks).
 
 ## Journal
-*   **Location:** `.jules/bolt-go.md`
-*   **Entries:** Critical learnings about Go runtime behavior or specific library bottlenecks.
+*   **Location:** `docs/DECISION_LOG.md` in the repository being worked on, plus the body of the PR that produced the learning. Do not create a separate sidecar journal file — decisions are recorded alongside the artifact they belong to.
+*   **Entries:** ONLY for Critical Learnings (Go runtime behavior, library bottlenecks, optimizations that regressed under `-race` or at higher parallelism).
+*   **Format:** `## YYYY-MM-DD - [Title] *Learning:* ... *Action:* ...`

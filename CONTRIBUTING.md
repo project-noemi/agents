@@ -143,14 +143,33 @@ npm run validate
 
 This repository uses a two-branch flow:
 
-- **`develop`** — integration branch. All feature, fix, and docs PRs target `develop`.
-- **`main`** — release branch. Only `develop` is promoted into `main`, gated by the `Require develop source` CI check.
+- **`develop`** — integration branch. All feature, fix, and docs PRs target `develop`. Reviews land here.
+- **`main`** — release branch. Only `develop` is promoted into `main`. Branch protection:
+  - **PR required** — no direct pushes to `main` for anyone (including admins and bots; `enforce_admins` is on).
+  - **`check-source-branch` required** — the `Require develop source` workflow must pass; the promotion PR head must be `develop` (never weaken this gate).
+  - **Approvals on main optional** — default is zero (work was already reviewed on `develop`). Operators may set `MAIN_REQUIRE_APPROVALS=1` when applying protection if they want one review on the release PR.
+  - **Allow auto-merge** is enabled so maintainers can arm `gh pr merge --auto` on the promotion PR once checks pass.
 
 When opening a pull request:
 
 1. Branch from `develop` and keep your branch current with `develop` to avoid conflicts on generated files (`CLAUDE.md`, `GEMINI.md`, golden fixtures).
 2. Set the PR base branch to `develop` — not `main`. PRs to `main` from any source other than `develop` are blocked by CI.
-3. Maintainers handle periodic `develop` → `main` promotion separately.
+3. Maintainers promote with a `develop` → `main` PR (not a direct push), for example:
+
+```bash
+gh pr create --base main --head develop --title "Release: promote develop to main"
+gh pr merge --auto --merge   # arms auto-merge once required checks are green
+```
+
+`PROMOTE_TOKEN` (a PAT or the `noemi-agent` app token) is only needed if you later require privileged status-check re-runs on the promotion PR that `GITHUB_TOKEN` cannot perform. With the default main rules (PR + `check-source-branch` + validate suite, all of which fire on `pull_request`), no extra secret is required.
+
+Apply or refresh protection (admin credentials):
+
+```bash
+bash scripts/setup-branch-protection.sh
+# optional: also require one approval on main PRs
+MAIN_REQUIRE_APPROVALS=1 bash scripts/setup-branch-protection.sh
+```
 
 If you accidentally open a PR against `main`, retarget it via the GitHub UI (Edit → Base branch) or:
 

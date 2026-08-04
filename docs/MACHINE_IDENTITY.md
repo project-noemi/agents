@@ -306,20 +306,28 @@ merge with their own credentials — the separation is the point.
 
 ## Re-tightening after rollout
 
-Branch protection currently runs with `enforce_admins: false` on `main` and
-`develop`, which is what permits an admin bypass merge. That was the only way to
-land a human-authored agent PR while this gap existed.
+`main` is configured with `enforce_admins: true` and empty PR bypass allowances
+via `scripts/setup-branch-protection.sh`: no direct pushes and no admin/bot
+bypass of the promotion PR path. That is intentional — promotion is only through
+a `develop` → `main` PR with required `check-source-branch` (and validate)
+checks. Approvals on main default to zero (`MAIN_REQUIRE_APPROVALS=0`) because
+review already happened on `develop`.
 
-Once agent PRs are reliably bot-authored, close the bypass:
+`develop` still runs with `enforce_admins: false` so humans can land exceptional
+integration fixes if needed; day-to-day agent work still goes through bot-authored
+PRs into `develop` with a human approval.
+
+To re-apply the full policy (including enabling repository auto-merge):
 
 ```bash
-gh api --method PATCH repos/project-noemi/agents/branches/develop/protection/enforce_admins
-gh api --method PATCH repos/project-noemi/agents/branches/main/protection/enforce_admins
+bash scripts/setup-branch-protection.sh
+# optional one-approval gate on the release PR only:
+MAIN_REQUIRE_APPROVALS=1 bash scripts/setup-branch-protection.sh
 ```
 
-Do **not** enable this before the machine identity is working. With
-`enforce_admins: true` and no bot identity, every agent PR becomes unmergeable
-and admins have no escape hatch.
+Do **not** turn `enforce_admins: true` on `develop` until agent PRs are reliably
+bot-authored. With that flag and no bot identity, every agent PR into `develop`
+becomes unmergeable and admins have no escape hatch.
 
 ## Rotation and revocation
 
@@ -344,7 +352,7 @@ and admins have no escape hatch.
   "risks": [
     "machine user consumes a paid Enterprise seat",
     "Workflows:write would let agents edit the merge gate — left ungranted",
-    "enforce_admins remains false until bot authorship is verified"
+    "main enforce_admins is true (no direct push/bypass); develop remains false until bot path is the only integration path"
   ],
   "result": "Producer and reviewer identities separated; approval gate enforceable"
 }

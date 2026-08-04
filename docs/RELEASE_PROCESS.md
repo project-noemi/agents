@@ -3,127 +3,198 @@
 This document explains how releases work in this repository, why the process is
 set up the way it is, and what it gives the teams building on the NoéMI Agent
 framework. You should be able to read this without prior context and understand
-both *what* happens when we cut a release and *why it matters*.
+both *what* happens on each release and *why it matters*.
 
 ## The short version
 
-You write [Conventional Commits](https://www.conventionalcommits.org/) as you
-normally would. When it is time to release, a maintainer runs one workflow. From
-there everything is automatic:
+There is no "cut a release" ceremony and no version number to argue about. The
+framework runs on a **continuous, date-versioned governance cycle**:
 
-- the next version number is **derived** from the commits since the last release,
-- the **CHANGELOG** is written for you,
-- an annotated **git tag** (`v<version>`) is created,
-- a **GitHub Release** is published with notes taken from the changelog.
+- Work merges into `develop` the normal way (feature branch → `develop`).
+- On a regular cadence, `develop` is **promoted into `main`** automatically.
+- Each promotion is **stamped with a CalVer version** — `YYYY.0M`, e.g.
+  `2026.08` — and gets a CHANGELOG entry and a GitHub Release.
 
-Nobody hand-edits a version number, and nobody hand-writes a changelog. The
-commit history *is* the source of truth.
+The version *is* the calendar month of the governance cycle. Nobody hand-writes
+a changelog and nobody decides a version number. The date and the commit history
+are the source of truth.
 
-## How the version number is decided
+## Why CalVer instead of SemVer
 
-Because commits follow Conventional Commits, the release tool can read intent
-directly from the history:
+The earlier version of this process used SemVer (`0.2.0`, `1.0.0`) with a manual
+release. We deliberately moved away from that, because for a **governance and
+reference framework** SemVer sends the wrong signal:
 
-| Commit type in the range | Effect on the version |
-|--------------------------|-----------------------|
-| `fix:` (and user-visible patches) | patch bump — `0.2.0` → `0.2.1` |
-| `feat:` | minor bump — `0.2.0` → `0.3.0` |
-| any commit with a `BREAKING CHANGE:` footer or `!` | major bump — `0.2.0` → `1.0.0` |
-| `chore:`, `ci:`, `test:`, `docs:`, `refactor:` only | no release-worthy change |
+- **SemVer invites pinning and sitting still.** "We're on 1.4.0 and it works" is
+  a perfectly rational thing to say about a library — and exactly the wrong thing
+  to say about a *governance baseline*. A team pinned to an old minor is a team
+  running on last season's guardrails, deprecated patterns, and stale threat
+  assumptions, while believing they are "stable."
+- **A date is an honest currency signal.** `2026.08` tells you, at a glance, how
+  current your governance posture is. `1.4.0` tells you nothing about *when* that
+  posture was last refreshed.
+- **The framework is time-sensitive by nature.** Guardrails, provenance sources,
+  and recommended patterns change with the outside world (new regulation, new
+  attack classes, new analyst guidance). A calendar version matches the thing
+  being versioned.
 
-This is why the commit convention is enforced across the repo: it is not
-bureaucracy, it is the input that makes automated versioning and changelogs
-possible.
+So the scheme is **CalVer `YYYY.0M`** (four-digit year, dot, zero-padded month).
+One cycle per month is the default granularity; the promotion cadence (below) can
+run more often, but the version reflects the governance cycle.
+
+## The currency / freshness model
+
+The point of dated cycles is to make **currency** — how fresh your governance
+posture is — a first-class, partner-facing signal.
+
+### A simple traffic-light signal
+
+Anyone building on the framework can see, and publish, a currency status:
+
+| Signal | Meaning |
+|--------|---------|
+| 🟢 **Green** | On the current cycle (this month's `YYYY.0M`). |
+| 🟡 **Amber** | 1–2 cycles behind. Time to look at the upgrade path. |
+| 🔴 **Red** | 3+ cycles behind. Running on materially stale governance. |
+
+This is intended to be shown to partners and clients: "our agent governance is
+🟢 current as of `2026.08`" is a claim a buyer can trust, and a claim a vendor
+can be held to.
+
+### "Behind" is measured in cycles *and* substance — not lines of code
+
+A dated version alone could become theatre (a tag a month with nothing behind
+it). So currency is judged on **cycles plus substance**. Being "behind" means you
+have missed cycles that actually carried:
+
+- **New guardrails** — added safety gates, refusal criteria, boundary rules.
+- **Deprecated patterns** — approaches the framework has since moved away from.
+- **New capabilities** — new agents, skills, MCP protocols, or lenses.
+- **Governance provenance** — where the cycle's guidance came from: academic
+  research, analyst-firm guidance (e.g., Gartner AI TRiSM), and MSP field input.
+  A cycle's authority is part of its substance.
+
+Currency is explicitly **NOT** measured in lines of code, number of commits, or
+raw diff size. A small cycle that adds one important guardrail can matter more
+than a large cycle that only shuffles files. The changelog and the release notes
+exist to make that substance legible, so a team can tell *what* they are behind
+on, not just *how many* cycles.
+
+### Near-zero-friction upgrading is the real incentive
+
+A currency signal only changes behavior if acting on it is easy. The freshness
+model is therefore paired with a **near-zero-friction upgrade path**: each cycle
+ships with a diff/upgrade path — what changed, what was deprecated, and what (if
+anything) an adopter must do to move onto the current cycle. The incentive to
+stay 🟢 is not fear; it is that upgrading is cheap and the diff tells you exactly
+what you gain. Low friction is what turns "you're behind" into "so let's not be."
 
 ## What actually runs
 
 The moving parts:
 
-- **`.release-it.json`** — the configuration. It tells the tool to commit the
-  version bump with a Conventional message (`chore(release): v${version}`),
-  create the annotated `v${version}` tag, push, and publish a GitHub Release.
-  `npm.publish` is `false` because this is a private repository — we tag and
-  release, we do not publish a package. The `@release-it/conventional-changelog`
-  plugin (with the `conventionalcommits` preset) is what reads the commits,
-  computes the bump, and maintains `CHANGELOG.md`.
-- **`.github/workflows/release.yml`** — the trigger. It is a **manual**
-  (`workflow_dispatch`) workflow. It checks out the full history and tags, sets
-  up Node 24, and runs release-it via `npx` so that nothing needs to be added to
-  the intentionally dependency-free root `package.json`. It supports a
-  `dry_run` input so you can preview a release without changing anything.
+- **`.release-it.json`** — the configuration. It sets the tag/commit/release
+  naming to plain CalVer (`${version}` → `YYYY.0M`, no `v` prefix), disables npm
+  entirely (`"npm": false`), and keeps the `@release-it/conventional-changelog`
+  plugin **only** to maintain `CHANGELOG.md`. That plugin runs with
+  `ignoreRecommendedBump: true`, so it does **not** compute a SemVer bump — CalVer
+  owns the version. An `after:release` hook stubs (echo only) the release-herald
+  seam — no real poster.
+- **`scripts/release-it-calver.mjs`** — a tiny local release-it plugin that
+  supplies the version as `YYYY.0M`. This exists because release-it is
+  SemVer-centric and cannot natively emit a zero-padded calendar month:
+  `semver.valid('2026.08')` is `null` (leading-zero month, two segments), which
+  is the exact failure recorded in [release-it#754](https://github.com/release-it/release-it/issues/754).
+  Supplying the version from a plugin sidesteps the SemVer increment path
+  entirely; disabling the npm plugin (`"npm": false`) means the non-SemVer
+  version is never written into `package.json` (npm would reject it). The tag,
+  the GitHub Release, and the changelog header all end up carrying a clean
+  `YYYY.0M`.
+- **`.github/workflows/release.yml`** — the trigger and the promotion. It runs on
+  a **daily `schedule:` cron** and also supports **manual `workflow_dispatch`**
+  with a `dry_run` input. Each run **promotes `develop` into `main`** (fast-forward
+  when possible, otherwise a merge commit) and then runs release-it **on `main`**
+  to stamp the CalVer tag, update the changelog, and publish the GitHub Release.
+  release-it and its plugins are installed on demand (`npm install --no-save`) so
+  the root `package.json` stays dependency-free and the working tree stays clean.
 
-A release is therefore a deliberate act: someone opens the Actions tab, picks
-the release workflow, and runs it. It never fires on a push or a schedule.
-
-## Fit with the `develop → main` model
+## The promotion cadence (and the open reviewable decision)
 
 This repository uses a two-branch flow: feature branches merge into `develop`,
 and only `develop` is promoted into `main` (enforced by
 `require-develop-source.yml`; see
-[CONTRIBUTING.md](../CONTRIBUTING.md#branching-model)).
+[CONTRIBUTING.md](../CONTRIBUTING.md#branching-model)). Promotion **from
+`develop`** is exactly the move that policy exists to allow.
 
-The release workflow is deliberately **conservative** so it does not fight that
-policy: it operates on the branch it is dispatched *from* and pushes the bump
-commit and tag back to that same branch. It does **not** push into `main`. The
-`develop → main` promotion stays a separate, maintainer-owned step.
+The release workflow performs that promotion **automatically** on its cadence.
+Because auto-merging into `main` is a significant action, two aspects are
+deliberately left open for review:
 
-> **Open decision.** Exactly which branch a release should be cut from under
-> this model — tag on `develop`, tag on `main` after promotion, or use a
-> short-lived `release/*` branch — is still open. The workflow is intentionally
-> written to avoid guessing; resolve this before treating releases as routine.
+> **Reviewable decision.** (1) **Cadence** — is once daily right, or should the
+> governance cycle promote more/less often? (2) **Auto-merge vs. promotion PR** —
+> should the workflow **push** `develop` into `main` directly (as it does now), or
+> should it instead **open a `develop → main` promotion PR** for a human to merge?
+> If branch protection on `main` requires pull requests, the direct push will
+> (correctly) fail and the promotion-PR variant is the right choice. Decide this
+> before treating the cadence as routine; do not weaken branch protection to make
+> the push succeed.
 
-## First run: reconciling the version
-
-The root `package.json` version is currently `0.0.0`, while the repository
-already has a `v0.1.0` git tag. **Do not hand-edit `package.json` to fix this.**
-The first release-it run reconciles it automatically: release-it treats the
-existing `v0.1.0` tag as the last released version, computes the next version
-from the commits made since it, and writes that number into `package.json` as
-part of the release commit. The `0.0.0` placeholder is expected to disappear on
-the first real release, not before.
+The workflow is written so this decision is easy to flip: the promotion is a
+clearly marked, self-contained step.
 
 ## Why this helps teams building on the NoéMI Agent framework
 
 Releases are not just an internal chore — they are a signal to everyone building
-on top of this framework. A disciplined release process pays off for consumers
-in concrete ways:
+on top of this framework. A continuous, dated governance cycle pays off for
+consumers in concrete ways:
 
-- **Predictable, frequent cadence is a trust signal.** A project that releases
-  regularly, in small increments, tells adopters it is alive and maintained.
-  Automation removes the friction that makes teams batch up scary "big bang"
-  releases, so cadence stays steady and consumers can plan around it.
-- **A readable changelog tells consumers what changed — and whether to adopt.**
-  Because the changelog is derived from Conventional Commits, every release
-  ships with an honest, structured list of features and fixes. A team can read
-  it in seconds and decide whether a given release is relevant to them, rather
-  than diffing tags by hand or asking in a channel.
-- **Semantic versions make upgrade risk legible.** A patch bump says "safe to
-  take"; a minor bump says "new capabilities, still compatible"; a major bump
-  says "read before you upgrade." That shared vocabulary lets downstream teams
-  automate their own dependency decisions.
-- **Feature discovery.** Highlights surfaced from each release help adopters
-  notice capabilities they would otherwise miss buried in the diff — which means
-  the work actually gets used.
-- **Each release becomes user-facing communication.** The `after:release` hook
-  in `.release-it.json` is the seam where the
+- **Currency you can see and trust.** A dated version and a green/amber/red
+  signal let an adopter — or their client — know at a glance how fresh their
+  governance posture is. "🟢 current as of `2026.08`" is a claim a buyer can rely
+  on, which a SemVer number can never make.
+- **No incentive to sit still.** SemVer quietly rewards pinning to an old
+  "stable" version. A dated cycle makes staleness visible instead of comfortable,
+  so teams stay on current guardrails rather than last season's.
+- **A changelog that tells you *what* you're behind on.** Because the changelog
+  is derived from Conventional Commits, every cycle ships an honest, structured
+  list of new guardrails, deprecations, and capabilities. A team can read it in
+  seconds and decide whether this cycle matters to them.
+- **Substance over volume.** Currency is judged on real change — guardrails,
+  deprecated patterns, new capabilities, and the governance provenance behind
+  them (academia + analyst firms + MSP field input) — not on lines of code. Small
+  cycles that add one important guardrail are treated as important.
+- **Upgrading is cheap.** Each cycle ships a diff/upgrade path, so moving onto the
+  current cycle is near-zero-friction. Low friction is the real incentive to stay
+  current.
+- **Each cycle becomes user-facing communication.** The `after:release` hook in
+  `.release-it.json` is the seam where the
   [release-herald skill](../skills/reporting/release-herald.md) takes over: it
-  consumes the changelog (or, for continuously-deployed apps, a weekly commit
-  range), filters out the internal plumbing, and drafts benefit-language
-  highlights plus a LinkedIn/social post — always as a **draft for human
-  approval**, never auto-posted. That turns raw release notes into something an
-  adopting team, or a prospective one, actually reads.
+  consumes the cycle's changelog delta, filters out internal plumbing, and drafts
+  a **currency digest** — benefit-language highlights, the governance provenance,
+  and a LinkedIn/social post — always as a **draft for human approval**, never
+  auto-posted. That turns raw release notes into something an adopting team, or a
+  prospective one, actually reads.
 
-In short: the automation keeps the mechanics honest and effortless, and the
-communication layer turns each release into a reason for teams to keep building
-on the framework with confidence.
+In short: dated cycles keep the mechanics honest and effortless, the currency
+signal keeps adopters on fresh governance, and the communication layer turns each
+cycle into a reason for teams to keep building on the framework with confidence.
 
-## Doing a release (checklist)
+## How a cycle flows (walkthrough)
 
-1. Make sure the changes you want to release are merged and the branch is green.
-2. Open the **Actions** tab and run the **Release (manual)** workflow from the
-   intended branch. Run it once with `dry_run` enabled to preview the version
-   bump and changelog.
-3. Re-run with `dry_run` off to cut the release: the bump commit, the tag, and
-   the GitHub Release are created automatically.
-4. Review the draft highlights and social post produced via the release-herald
-   seam, then publish them through the normal human-approved channel.
+1. Contributors merge their work into `develop` as usual (Conventional Commits).
+2. On cadence (daily by default, or a manual `workflow_dispatch` run), the release
+   workflow promotes `develop` into `main`.
+3. On `main`, release-it computes the CalVer version for the current governance
+   cycle (`YYYY.0M`), updates `CHANGELOG.md`, creates the annotated `YYYY.0M`
+   tag, pushes, and publishes the GitHub Release.
+4. The release-herald seam drafts the cycle's currency digest (highlights +
+   governance provenance + a social post) for a human to review and publish
+   through the normal approved channel.
+
+## Previewing a cycle (dry run)
+
+Run the **Release (CalVer promotion)** workflow from the **Actions** tab with
+`dry_run` enabled to see the promotion plan, the computed CalVer version, and the
+changelog delta **without** pushing to `main`, tagging, or publishing anything.
+Use it whenever you want to confirm what the next cycle would do before it runs
+for real.

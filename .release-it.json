@@ -1,0 +1,34 @@
+{
+  "$schema": "https://unpkg.com/release-it/schema/release-it.json",
+  "npm": false,
+  "git": {
+    "commit": true,
+    "commitMessage": "chore(release): ${version}",
+    "tag": true,
+    "tagName": "${version}",
+    "tagAnnotation": "NoéMI ${version}",
+    "push": true,
+    "requireBranch": "main",
+    "requireCleanWorkingDir": true
+  },
+  "github": {
+    "release": true,
+    "releaseName": "${version}",
+    "autoGenerate": false,
+    "web": false
+  },
+  "hooks": {
+    "before:init": "echo \"[calver] release date target = $(date -u +'%Y.%m.%d') — scheme: calendar-date CalVer YYYY.MM.DD, UTC, with a .N suffix for same-day releases (see docs/RELEASE_PROCESS.md and scripts/release-it-calver.mjs). CalVer owns the version; conventional-changelog only writes CHANGELOG.md.\"",
+    "after:release": "echo '[release-herald] Release ${version} stamped. Tag cadence is per content-bearing promotion; the user-facing digest is a SEPARATE, WEEKLY, human-approved job — this release job never drafts or posts social. See skills/reporting/release-herald.md and the weekly-digest job in .github/workflows/release.yml. This echo is a deliberate stub, not a poster.'"
+  },
+  "plugins": {
+    "./scripts/release-it-calver.mjs": {},
+    "@release-it/conventional-changelog": {
+      "preset": {
+        "name": "conventionalcommits"
+      },
+      "infile": "CHANGELOG.md",
+      "ignoreRecommendedBump": true
+    }
+  }
+}

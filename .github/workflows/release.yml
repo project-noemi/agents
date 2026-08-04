@@ -1,0 +1,399 @@
+# Release automation — two clearly separated cadences.
+#
+# This workflow implements the finalized release model (see
+# docs/RELEASE_PROCESS.md for the full narrative). It carries TWO independent
+# jobs on TWO independent cadences that must not be conflated:
+#
+#   1. promote-and-release  (DAILY + manual)
+#      A CONTENT-GATED auto-promotion. It only acts when `develop` carries an
+#      unreleased USER-FACING change vs `main` (≥1 Conventional Commit of type
+#      feat or fix in the main..develop range). If it does, and CI on develop is
+#      green, it AUTO-MERGES develop -> main and runs release-it to stamp a
+#      calendar-date CalVer tag (YYYY.MM.DD) + GitHub Release + changelog.
+#      TAG CADENCE = per content-bearing promotion (frequent). This job NEVER
+#      drafts or posts social content.
+#
+#   2. weekly-digest  (WEEKLY, Monday + manual)
+#      A DECOUPLED, DRAFT-ONLY release-communication job. It collects the week's
+#      changes + governance provenance and produces the release-herald digest
+#      (feature highlights + a LinkedIn/social post) as a DRAFT — emitted as a
+#      workflow artifact AND an auto-created GitHub issue — then STOPS. A human
+#      reviews and approves before anything is ever posted. SOCIAL CADENCE =
+#      weekly (curated). This job never tags, never releases, never posts.
+#
+# WHY THE TWO ARE SEPARATE (do not merge them):
+#   * Versions are minted whenever real change lands (could be several times a
+#     week, or not at all on quiet weeks). Social communication is curated once
+#     a week so followers get a single, coherent digest rather than a stream of
+#     per-tag noise. Tag cadence != social cadence, by design.
+#
+# DESIGN NOTES WORTH KNOWING BEFORE YOU EDIT:
+#
+#   * DATE-VERSIONED. The version is the UTC calendar date of the promotion
+#     (YYYY.MM.DD), not a SemVer bump and not a monthly YYYY.0M cycle. release-it
+#     is SemVer-centric and cannot natively emit a zero-padded date (see
+#     release-it#754), so the version is supplied by scripts/release-it-calver.mjs
+#     and package.json is left untouched (`"npm": false`). Same-day releases get
+#     a `.N` suffix. Nothing here derives a version from commit COUNT.
+#
+#   * CONTENT-GATE, NOT COUNT-GATE. The old model had a "promote after N PRs"
+#     threshold. That is gone. The gate is SUBSTANCE: is there ≥1 feat/fix
+#     unreleased on develop? Quiet days are quiet — no tag, no release, no post,
+#     clean no-op exit. The heuristic is a Conventional-Commit scan of the
+#     main..develop range (see the "Content gate" step).
+#
+#   * AUTO-PROMOTE ON GREEN — SAFE BECAUSE DEVELOP IS ALREADY REVIEWED.
+#     develop is the canonical, human-reviewed integration line; every change
+#     reaches it via a reviewed feature-branch PR. Promotion is therefore a
+#     fast-forward of already-reviewed work, NOT a new review surface — so there
+#     is no promotion PR. The job pushes develop -> main directly, which is
+#     exactly the move require-develop-source.yml exists to permit (develop is
+#     the ONLY allowed source into main; this promotes FROM develop and
+#     introduces no other source). The human-approval gate in this model sits on
+#     the WEEKLY DIGEST (job 2), not on the merge. If branch protection on main
+#     ever requires PRs, this direct push will (correctly) fail — do NOT weaken
+#     protection; adopt a promotion-PR variant instead.
+#
+#   * NO NEW ROOT DEPENDENCIES. The repo root is intentionally dependency-free.
+#     release-it and its plugins are installed on demand with
+#     `npm install --no-save` (into gitignored node_modules, so package.json and
+#     the working tree stay clean). A local install — not `npx -p` — is used so
+#     the local CalVer plugin's `import { Plugin } from 'release-it'` resolves.
+name: Release (CalVer date-versioned)
+
+on:
+  schedule:
+    # DAILY promotion gate at 06:00 UTC (content-gated; often a no-op).
+    - cron: "0 6 * * *"
+    # WEEKLY digest, Mondays at 13:00 UTC (draft-only, human-approved).
+    - cron: "0 13 * * 1"
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Which job to run manually."
+        type: choice
+        required: true
+        default: promote
+        options:
+          - promote
+          - digest
+      dry_run:
+        description: "promote only: preview the gate + promotion + release without pushing, tagging, or publishing."
+        type: boolean
+        required: false
+        default: false
+
+# Never let two promotion/release runs race each other into main.
+concurrency:
+  group: release-automation
+  cancel-in-progress: false
+
+jobs:
+  # =====================================================================
+  # JOB 1 — CONTENT-GATED DAILY AUTO-PROMOTION (develop -> main + CalVer)
+  # =====================================================================
+  promote-and-release:
+    name: Content-gated promote develop -> main and stamp CalVer date
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Run on the DAILY cron, or on a manual dispatch that selected "promote".
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '0 6 * * *') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'promote')
+    permissions:
+      # Push the promotion to main, push the changelog commit + CalVer tag, and
+      # create the GitHub Release.
+      contents: write
+      # Read commit statuses / check runs for the CI-green gate.
+      checks: read
+      statuses: read
+
+    steps:
+      # Full history + all tags: the content gate diffs main..develop, the
+      # promotion needs both branch tips, and release-it reads existing tags for
+      # same-day `.N` disambiguation.
+      - name: Check out repository (full history + tags)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Show Node toolchain versions
+        run: |
+          node --version
+          npm --version
+
+      # release-it authors the changelog commit and the annotated tag, and the
+      # promotion may author a merge commit — both need a git identity. Use the
+      # GitHub Actions bot identity, never a human's.
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # ---------------------------------------------------------------------
+      # STEP 1 — CONTENT GATE (the heart of this model)
+      # ---------------------------------------------------------------------
+      # Decide whether there is anything USER-FACING to release. The heuristic:
+      # scan the Conventional Commit subjects in the main..develop range (the
+      # commits on develop not yet on main — i.e. everything since the last
+      # promotion) and count those of type `feat` or `fix`, including scoped and
+      # breaking (`!`) forms: e.g. `feat: ...`, `fix(x): ...`, `feat(x)!: ...`.
+      #
+      #   * ≥1 feat/fix  -> there is user-facing substance; proceed.
+      #   * 0 feat/fix   -> nothing to release; clean no-op exit (quiet days are
+      #                     fine). No tag, no release, no post.
+      #
+      # This is CONTENT, not COUNT: one feat is enough; a hundred chore/docs/ci
+      # commits are not. `docs`, `chore`, `refactor`, `test`, `ci`, `build`,
+      # `style`, and merge commits are intentionally NOT release triggers.
+      - name: Content gate — any unreleased feat/fix on develop?
+        id: gate
+        run: |
+          set -euo pipefail
+          git fetch origin develop main --tags
+
+          echo "::group::Unreleased commit subjects (main..develop)"
+          git log --no-merges --pretty=format:'%s' origin/main..origin/develop || true
+          echo ""
+          echo "::endgroup::"
+
+          # Count Conventional-Commit feat/fix subjects (scoped/breaking allowed).
+          FEATFIX=$(git log --no-merges --pretty=format:'%s' origin/main..origin/develop \
+            | grep -E '^(feat|fix)(\([^)]+\))?!?:' | wc -l | tr -d ' ')
+
+          echo "Unreleased feat/fix commits: ${FEATFIX}"
+          if [ "${FEATFIX}" -eq 0 ]; then
+            echo "Nothing to release: no unreleased user-facing (feat/fix) change on develop."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ---------------------------------------------------------------------
+      # STEP 2 — CI-GREEN GATE
+      # ---------------------------------------------------------------------
+      # Only auto-merge already-reviewed develop if its head is CI-green. We read
+      # the combined commit status AND the check-runs conclusion for develop's
+      # head via the REST API; if either reports a failure, we stop rather than
+      # promote a red integration line.
+      - name: CI-green gate — is develop's head green?
+        id: ci
+        if: ${{ steps.gate.outputs.release == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          SHA=$(git rev-parse origin/develop)
+          echo "Checking CI for develop @ ${SHA}"
+
+          # (a) Combined legacy commit status (e.g. required status checks).
+          STATE=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${SHA}/status" --jq '.state')
+          echo "Combined status state: ${STATE}"
+
+          # (b) Check-runs (GitHub Actions et al.). Any non-success/neutral/
+          #     skipped conclusion on a COMPLETED run counts as not-green.
+          BAD=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${SHA}/check-runs" \
+            --jq '[.check_runs[] | select(.status=="completed") | select(.conclusion|IN("success","neutral","skipped")|not)] | length')
+          echo "Non-green completed check-runs: ${BAD}"
+
+          # 'pending' combined status with no check-runs happens when no legacy
+          # status contexts exist; treat only explicit failure/error as red.
+          if [ "${STATE}" = "failure" ] || [ "${STATE}" = "error" ] || [ "${BAD}" -ne 0 ]; then
+            echo "develop is NOT green — refusing to promote."
+            echo "green=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "develop is green."
+            echo "green=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ---------------------------------------------------------------------
+      # STEP 3 — AUTO-MERGE develop -> main (only when gated + green)
+      # ---------------------------------------------------------------------
+      # develop is already the reviewed integration line, so this is a promotion
+      # of reviewed work, not a new review surface — no promotion PR. Fast-forward
+      # when history allows (main == develop, no merge noise); otherwise a merge
+      # commit. In dry-run we compute + print the plan but never push.
+      - name: Auto-merge develop into main (on green)
+        id: promote
+        if: ${{ steps.gate.outputs.release == 'true' && steps.ci.outputs.green == 'true' }}
+        env:
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          git checkout main
+
+          BEHIND=$(git rev-list --count main..origin/develop)
+          echo "main is ${BEHIND} commit(s) behind develop."
+          if [ "${BEHIND}" = "0" ]; then
+            echo "main already up to date with develop — nothing to promote."
+            echo "promoted=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git merge-base --is-ancestor main origin/develop; then
+            echo ">>> Fast-forwarding main to origin/develop."
+            git merge --ff-only origin/develop
+          else
+            echo ">>> Histories diverged; creating a merge commit (develop -> main)."
+            git merge --no-ff origin/develop -m "chore(release): promote develop into main"
+          fi
+
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo ">>> DRY RUN: not pushing main."
+          else
+            git push origin main
+          fi
+          echo "promoted=true" >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------------
+      # STEP 4 — Install release tooling on demand (kept out of package.json)
+      # ---------------------------------------------------------------------
+      # --no-save installs into gitignored node_modules without touching
+      # package.json, so the root stays dependency-free and the working tree
+      # stays clean (release-it requires a clean tree). A real install (not
+      # `npx -p`) is required so the local CalVer plugin can
+      # `import { Plugin } from 'release-it'`.
+      - name: Install release-it and plugins (on demand, --no-save)
+        if: ${{ steps.promote.outputs.promoted == 'true' }}
+        run: |
+          npm install --no-save --no-package-lock \
+            release-it @release-it/conventional-changelog
+
+      # ---------------------------------------------------------------------
+      # STEP 5 — RELEASE: stamp the CalVer date on main
+      # ---------------------------------------------------------------------
+      # --ci makes release-it non-interactive. The CalVer plugin supplies the
+      # YYYY.MM.DD version (with .N same-day disambiguation);
+      # conventional-changelog only writes CHANGELOG.md. NO social posting here —
+      # that is the weekly-digest job's concern.
+      - name: Run release-it (CalVer tag + changelog + GitHub Release)
+        if: ${{ steps.promote.outputs.promoted == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx release-it --ci ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
+
+  # =====================================================================
+  # JOB 2 — WEEKLY, HUMAN-APPROVED DRAFT DIGEST (decoupled from tags)
+  # =====================================================================
+  # This job is intentionally SEPARATE from promotion. It runs weekly, collects
+  # the week's user-facing changes + governance provenance, and produces the
+  # release-herald digest as a DRAFT (artifact + auto-created issue), then STOPS.
+  # A human reviews and approves before anything is posted anywhere. Real social
+  # posting is NOT built here — the human approves, then posts.
+  weekly-digest:
+    name: Draft weekly release-herald digest (human-approved before posting)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Run on the WEEKLY cron, or on a manual dispatch that selected "digest".
+    if: >-
+      (github.event_name == 'schedule' && github.event.schedule == '0 13 * * 1') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'digest')
+    permissions:
+      contents: read
+      # Open the draft-digest issue for human approval.
+      issues: write
+
+    steps:
+      - name: Check out repository (full history + tags)
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+          fetch-tags: true
+
+      # ---------------------------------------------------------------------
+      # STEP 1 — Collect the week's material for the digest
+      # ---------------------------------------------------------------------
+      # Gather the user-facing (feat/fix) and documentation-as-deliverable (docs)
+      # commit subjects from the last 7 days on develop. This is raw INPUT to the
+      # release-herald skill (skills/reporting/release-herald.md), which a human
+      # or an agent turns into benefit-language highlights + a social post. The
+      # skill filters non-user-facing entries; here we pre-filter to keep the
+      # draft focused.
+      - name: Collect this week's changes
+        id: collect
+        run: |
+          set -euo pipefail
+          SINCE="7 days ago"
+          {
+            echo "## Feature highlights (feat) — last 7 days"
+            git log --no-merges --since="${SINCE}" --pretty=format:'- %s (%h)' origin/develop \
+              | grep -E '^\- feat(\([^)]+\))?!?:' || echo "- (none this week)"
+            echo ""
+            echo "## Fixes (fix) — last 7 days"
+            git log --no-merges --since="${SINCE}" --pretty=format:'- %s (%h)' origin/develop \
+              | grep -E '^\- fix(\([^)]+\))?!?:' || echo "- (none this week)"
+            echo ""
+            echo "## Docs-as-deliverable (docs) — last 7 days"
+            git log --no-merges --since="${SINCE}" --pretty=format:'- %s (%h)' origin/develop \
+              | grep -E '^\- docs(\([^)]+\))?!?:' || echo "- (none this week)"
+          } > week-changes.md
+          echo "Collected:"
+          cat week-changes.md
+
+      # ---------------------------------------------------------------------
+      # STEP 2 — Assemble the DRAFT digest (draft-only; never posts)
+      # ---------------------------------------------------------------------
+      # Wrap the collected material in the release-herald framing. This is a DRAFT
+      # for HUMAN APPROVAL — it is not a finished post and nothing is sent to any
+      # channel. Governance provenance and benefit-language rewriting are done by
+      # a human/agent applying skills/reporting/release-herald.md to this input.
+      - name: Assemble draft digest
+        id: draft
+        run: |
+          set -euo pipefail
+          WEEK=$(date -u +'%G-W%V')
+          {
+            echo "# DRAFT — Weekly release digest ${WEEK}"
+            echo ""
+            echo "> **STATUS: DRAFT — human approves, then posts.** This is produced"
+            echo "> by the weekly-digest job as raw input for the release-herald skill"
+            echo "> (\`skills/reporting/release-herald.md\`). Nothing here is posted."
+            echo "> A human reviews it, rewrites highlights in benefit language, attaches"
+            echo "> governance provenance (academia + analyst firms + MSP field input),"
+            echo "> approves, and only THEN posts through the normal approved channel."
+            echo ""
+            cat week-changes.md
+            echo ""
+            echo "## LinkedIn / social post (DRAFT — fill in from highlights above)"
+            echo ""
+            echo "> Draft one benefit-led post per skills/reporting/release-herald.md."
+            echo "> Reference the latest CalVer tag and a \`<release-link>\` placeholder."
+            echo "> Do NOT post until a human has approved."
+          } > digest-draft.md
+          echo "Draft assembled."
+          cat digest-draft.md
+
+      # Emit the draft as a workflow artifact (one delivery surface).
+      - name: Upload draft digest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-release-digest-draft
+          path: |
+            digest-draft.md
+            week-changes.md
+
+      # ---------------------------------------------------------------------
+      # STEP 3 — Open an auto-created issue holding the draft (approval gate)
+      # ---------------------------------------------------------------------
+      # The issue is the human-approval gate: it holds the draft text and asks a
+      # human to review/approve before posting. It is NOT a post; it never sends
+      # anything to a social channel.
+      - name: Open draft-digest issue for human approval
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          WEEK=$(date -u +'%G-W%V')
+          gh issue create \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "DRAFT weekly release digest ${WEEK} — needs human approval before posting" \
+            --body-file digest-draft.md

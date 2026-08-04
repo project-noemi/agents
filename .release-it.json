@@ -1,33 +1,34 @@
 {
   "$schema": "https://unpkg.com/release-it/schema/release-it.json",
+  "npm": false,
   "git": {
     "commit": true,
-    "commitMessage": "chore(release): v${version}",
+    "commitMessage": "chore(release): ${version}",
     "tag": true,
-    "tagName": "v${version}",
-    "tagAnnotation": "Release v${version}",
+    "tagName": "${version}",
+    "tagAnnotation": "Governance cycle ${version}",
     "push": true,
-    "requireBranch": ["develop", "release/*"],
+    "requireBranch": "main",
     "requireCleanWorkingDir": true
   },
   "github": {
     "release": true,
-    "releaseName": "v${version}",
+    "releaseName": "${version}",
     "autoGenerate": false,
     "web": false
   },
-  "npm": {
-    "publish": false
-  },
   "hooks": {
-    "after:release": "echo '[release-herald] Release ${version} published. This is the seam for the release-communication step: hand CHANGELOG.md + the GitHub release notes to skills/reporting/release-herald.md to draft user-facing highlights and a social post for HUMAN APPROVAL. No auto-posting happens here — this echo is a deliberate stub, not a real poster.'"
+    "before:init": "echo \"[calver] governance cycle target = $(date -u +'%Y.%m') — scheme: CalVer YYYY.0M (see docs/RELEASE_PROCESS.md and scripts/release-it-calver.mjs). CalVer owns the version; conventional-changelog only writes CHANGELOG.md.\"",
+    "after:release": "echo '[release-herald] Cycle ${version} stamped. This is the seam for the release-communication step: hand CHANGELOG.md + the GitHub release notes to skills/reporting/release-herald.md to draft a per-cycle currency digest (feature highlights + governance provenance + a LinkedIn/social post) for HUMAN APPROVAL. No auto-posting happens here — this echo is a deliberate stub, not a real poster.'"
   },
   "plugins": {
+    "./scripts/release-it-calver.mjs": {},
     "@release-it/conventional-changelog": {
       "preset": {
         "name": "conventionalcommits"
       },
-      "infile": "CHANGELOG.md"
+      "infile": "CHANGELOG.md",
+      "ignoreRecommendedBump": true
     }
   }
 }

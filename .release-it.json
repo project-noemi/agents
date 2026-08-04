@@ -1,0 +1,33 @@
+{
+  "$schema": "https://unpkg.com/release-it/schema/release-it.json",
+  "git": {
+    "commit": true,
+    "commitMessage": "chore(release): v${version}",
+    "tag": true,
+    "tagName": "v${version}",
+    "tagAnnotation": "Release v${version}",
+    "push": true,
+    "requireBranch": ["develop", "release/*"],
+    "requireCleanWorkingDir": true
+  },
+  "github": {
+    "release": true,
+    "releaseName": "v${version}",
+    "autoGenerate": false,
+    "web": false
+  },
+  "npm": {
+    "publish": false
+  },
+  "hooks": {
+    "after:release": "echo '[release-herald] Release ${version} published. This is the seam for the release-communication step: hand CHANGELOG.md + the GitHub release notes to skills/reporting/release-herald.md to draft user-facing highlights and a social post for HUMAN APPROVAL. No auto-posting happens here — this echo is a deliberate stub, not a real poster.'"
+  },
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": {
+        "name": "conventionalcommits"
+      },
+      "infile": "CHANGELOG.md"
+    }
+  }
+}

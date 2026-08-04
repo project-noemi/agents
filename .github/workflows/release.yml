@@ -1,0 +1,80 @@
+# Manual release workflow — cuts a versioned release with release-it.
+#
+# What it does (see docs/RELEASE_PROCESS.md for the full narrative):
+#   Conventional Commits  ->  release-it derives the version bump
+#                         ->  updates CHANGELOG.md (conventional-changelog plugin)
+#                         ->  commits the bump, creates an annotated v<version> tag
+#                         ->  pushes, and publishes a GitHub Release.
+#
+# Design decisions worth knowing before you change this file:
+#   * MANUAL ONLY. It is workflow_dispatch, never push/schedule. A release is a
+#     deliberate human act; nothing here fires on its own.
+#   * CONSERVATIVE BY BRANCH. It operates on the branch it is dispatched FROM and
+#     pushes back to that same branch. It intentionally does NOT push into `main`.
+#     The develop -> main promotion is gated by require-develop-source.yml and is
+#     handled separately by maintainers. The exact branch a release should be cut
+#     from under the develop/main model is an OPEN QUESTION flagged in the PR that
+#     introduces this workflow — do not wire this into `main` without resolving it.
+#   * NO NEW DEPENDENCIES. The repo root is intentionally dependency-free, so
+#     release-it and its plugin are fetched on demand via `npx -y -p ...` rather
+#     than added to package.json.
+name: Release (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview the release without committing, tagging, or publishing."
+        type: boolean
+        required: false
+        default: false
+
+# release-it needs to push the bump commit + tag and create a GitHub Release.
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Cut Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      # Full history + tags are required: release-it reads the last tag and the
+      # commits since it to compute the next version and the changelog delta.
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Show Node toolchain versions
+        run: |
+          node --version
+          npm --version
+
+      # release-it authors a commit and an annotated tag, so it needs a git
+      # identity. Use the GitHub Actions bot identity rather than a human's.
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # Fetched on demand (-p) so nothing lands in the dependency-free root
+      # package.json. --ci makes release-it non-interactive and take versions
+      # from the Conventional Commit history instead of prompting.
+      - name: Run release-it
+        env:
+          # release-it uses GITHUB_TOKEN to create the GitHub Release and to push.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx -y -p release-it -p @release-it/conventional-changelog release-it --ci ${{ inputs.dry_run && '--dry-run' || '' }}

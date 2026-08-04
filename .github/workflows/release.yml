@@ -1,54 +1,90 @@
-# Manual release workflow — cuts a versioned release with release-it.
+# Continuous develop -> main promotion + CalVer governance-cycle release.
 #
-# What it does (see docs/RELEASE_PROCESS.md for the full narrative):
-#   Conventional Commits  ->  release-it derives the version bump
-#                         ->  updates CHANGELOG.md (conventional-changelog plugin)
-#                         ->  commits the bump, creates an annotated v<version> tag
-#                         ->  pushes, and publishes a GitHub Release.
+# WHAT THIS WORKFLOW DOES (see docs/RELEASE_PROCESS.md for the full narrative):
+#   1. PROMOTE  develop -> main  (fast-forward when possible, else a merge commit)
+#   2. RELEASE  run release-it ON main to:
+#                 - compute the CalVer version (YYYY.0M, e.g. 2026.08) via the
+#                   local plugin scripts/release-it-calver.mjs,
+#                 - update CHANGELOG.md (@release-it/conventional-changelog, which
+#                   ONLY writes the changelog — CalVer owns the version),
+#                 - commit the changelog, create the annotated `YYYY.0M` tag,
+#                   push, and publish a GitHub Release.
+#   3. HERALD   invoke the release-communication seam (currently a stub) so a
+#               human can turn the cycle's changes into a currency digest.
 #
-# Design decisions worth knowing before you change this file:
-#   * MANUAL ONLY. It is workflow_dispatch, never push/schedule. A release is a
-#     deliberate human act; nothing here fires on its own.
-#   * CONSERVATIVE BY BRANCH. It operates on the branch it is dispatched FROM and
-#     pushes back to that same branch. It intentionally does NOT push into `main`.
-#     The develop -> main promotion is gated by require-develop-source.yml and is
-#     handled separately by maintainers. The exact branch a release should be cut
-#     from under the develop/main model is an OPEN QUESTION flagged in the PR that
-#     introduces this workflow — do not wire this into `main` without resolving it.
-#   * NO NEW DEPENDENCIES. The repo root is intentionally dependency-free, so
-#     release-it and its plugin are fetched on demand via `npx -y -p ...` rather
-#     than added to package.json.
-name: Release (manual)
+# DESIGN DECISIONS WORTH KNOWING BEFORE YOU CHANGE THIS FILE:
+#
+#   * CONTINUOUS, DATE-VERSIONED. The version is the governance cycle (the
+#     calendar month), not a SemVer bump. release-it is SemVer-centric and cannot
+#     natively emit a zero-padded month (see release-it#754), so the version is
+#     supplied by a tiny local plugin and package.json is left untouched
+#     (`"npm": false`). Nothing here derives a bump from commit types.
+#
+#   * SCHEDULED + MANUAL. A `schedule:` cron runs it once daily; a
+#     `workflow_dispatch` keeps a manual trigger with a `dry_run` input for
+#     previewing without pushing/tagging/releasing. The daily cadence is a
+#     STARTING POINT — see the reviewable decision below.
+#
+#   * >>> THE PROMOTION STEP AUTO-MERGES INTO `main`. <<<
+#     This is the significant, security-relevant part of this workflow. It moves
+#     develop into main automatically. Two things make that safe/legible:
+#       - It only promotes FROM `develop` (the canonical, and only permitted,
+#         source into main under require-develop-source.yml / Decision
+#         [2026-08-01-0002]). That rule governs PRs into main; this job performs a
+#         direct fast-forward/merge push from develop, which is the promotion the
+#         rule exists to allow — it never introduces a non-develop source.
+#       - It fast-forwards when possible so main == develop with no divergence.
+#
+#     REVIEWABLE DECISION (see the PR body): the cadence (daily?) AND whether
+#     promotion should AUTO-MERGE (as implemented here) or instead OPEN A
+#     develop -> main PROMOTION PR for a human to merge are deliberately left for
+#     review. If branch protection on `main` requires pull requests, the
+#     auto-merge push below will (correctly) fail, and the promotion-PR variant
+#     should be adopted instead. Do not weaken branch protection to make the push
+#     succeed without an explicit decision.
+#
+#   * NO NEW ROOT DEPENDENCIES. The repo root is intentionally dependency-free.
+#     release-it and its plugins are installed on demand with `npm install
+#     --no-save` (into the gitignored node_modules, so package.json and the git
+#     working tree stay clean). A local install — rather than `npx -p` — is used
+#     so the local plugin's `import { Plugin } from 'release-it'` resolves.
+name: Release (CalVer promotion)
 
 on:
+  schedule:
+    # Once daily at 06:00 UTC. Cadence is a reviewable decision (see header).
+    - cron: "0 6 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Preview the release without committing, tagging, or publishing."
+        description: "Preview promotion + release without pushing, tagging, or publishing."
         type: boolean
         required: false
         default: false
 
-# release-it needs to push the bump commit + tag and create a GitHub Release.
+# The job pushes the promotion to main, pushes the changelog commit + CalVer tag,
+# and creates a GitHub Release — all of which need write access to contents.
 permissions:
   contents: write
 
+# Never let two promotion/release runs race each other into main.
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-promotion
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Cut Release
+  promote-and-release:
+    name: Promote develop -> main and stamp CalVer cycle
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
-      # Full history + tags are required: release-it reads the last tag and the
-      # commits since it to compute the next version and the changelog delta.
-      - name: Check out repository
+      # Full history + all tags: release-it reads existing tags, and the
+      # promotion step needs both branch tips to fast-forward/merge.
+      - name: Check out repository (full history + tags)
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           fetch-tags: true
 
@@ -62,19 +98,96 @@ jobs:
           node --version
           npm --version
 
-      # release-it authors a commit and an annotated tag, so it needs a git
-      # identity. Use the GitHub Actions bot identity rather than a human's.
+      # release-it authors the changelog commit and the annotated tag, and the
+      # promotion step may author a merge commit — both need a git identity.
+      # Use the GitHub Actions bot identity, never a human's.
       - name: Configure git identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # Fetched on demand (-p) so nothing lands in the dependency-free root
-      # package.json. --ci makes release-it non-interactive and take versions
-      # from the Conventional Commit history instead of prompting.
-      - name: Run release-it
+      # ---------------------------------------------------------------------
+      # STEP 1 — PROMOTE develop -> main  (THE SIGNIFICANT STEP; see header)
+      # ---------------------------------------------------------------------
+      # Fast-forward main to develop when history allows (leaves main == develop
+      # with no merge noise). If the branches have diverged, fall back to a
+      # no-fast-forward merge commit. In dry-run we compute and print the plan
+      # but never push.
+      - name: Promote develop into main
+        id: promote
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          git fetch origin develop main --tags
+
+          echo "::group::Promotion plan"
+          echo ">>> Promoting origin/develop INTO main (auto-merge)."
+          BEHIND=$(git rev-list --count main..origin/develop)
+          AHEAD=$(git rev-list --count origin/develop..main)
+          echo "develop is ${BEHIND} commit(s) ahead of main; main has ${AHEAD} commit(s) not on develop."
+          echo "::endgroup::"
+
+          if [ "${BEHIND}" = "0" ]; then
+            echo "main is already up to date with develop — nothing to promote."
+            echo "promoted=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Ensure we are on main.
+          git checkout main
+
+          if git merge-base --is-ancestor main origin/develop; then
+            echo ">>> Fast-forwarding main to origin/develop."
+            git merge --ff-only origin/develop
+          else
+            echo ">>> Histories diverged; creating a merge commit (develop -> main)."
+            git merge --no-ff origin/develop -m "chore(release): promote develop into main"
+          fi
+
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo ">>> DRY RUN: not pushing main."
+          else
+            git push origin main
+          fi
+          echo "promoted=true" >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------------
+      # STEP 2 — Install release tooling on demand (kept out of package.json)
+      # ---------------------------------------------------------------------
+      # --no-save installs into the gitignored node_modules without touching
+      # package.json, so the root stays dependency-free and the working tree
+      # stays clean (release-it requires a clean tree). A real install (not
+      # `npx -p`) is required so the local CalVer plugin can
+      # `import { Plugin } from 'release-it'`.
+      - name: Install release-it and plugins (on demand, --no-save)
+        run: |
+          npm install --no-save --no-package-lock \
+            release-it @release-it/conventional-changelog
+
+      # ---------------------------------------------------------------------
+      # STEP 3 — RELEASE: stamp the CalVer cycle on main
+      # ---------------------------------------------------------------------
+      # --ci makes release-it non-interactive. The CalVer plugin supplies the
+      # YYYY.0M version; conventional-changelog only writes CHANGELOG.md.
+      - name: Run release-it (CalVer tag + changelog + GitHub Release)
         env:
           # release-it uses GITHUB_TOKEN to create the GitHub Release and to push.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx -y -p release-it -p @release-it/conventional-changelog release-it --ci ${{ inputs.dry_run && '--dry-run' || '' }}
+          npx release-it --ci ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      # ---------------------------------------------------------------------
+      # STEP 4 — HERALD: release-communication seam (stub)
+      # ---------------------------------------------------------------------
+      # Deliberate stub. The real step hands CHANGELOG.md + the GitHub release
+      # notes to skills/reporting/release-herald.md to draft a per-cycle currency
+      # digest (highlights + governance provenance + a social post) for HUMAN
+      # APPROVAL. Nothing is ever auto-posted here.
+      - name: Release herald (currency digest seam — stub)
+        if: ${{ !inputs.dry_run }}
+        run: |
+          echo "[release-herald] Cycle stamped. Seam for skills/reporting/release-herald.md:"
+          echo "  draft per-cycle highlights + governance provenance + a LinkedIn/social post"
+          echo "  from this cycle's CHANGELOG delta, as a DRAFT for human approval."
+          echo "  No auto-posting happens here — this is a deliberate stub."

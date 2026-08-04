@@ -6,7 +6,7 @@
     "commitMessage": "chore(release): ${version}",
     "tag": true,
     "tagName": "${version}",
-    "tagAnnotation": "Governance cycle ${version}",
+    "tagAnnotation": "NoéMI ${version}",
     "push": true,
     "requireBranch": "main",
     "requireCleanWorkingDir": true
@@ -18,8 +18,8 @@
     "web": false
   },
   "hooks": {
-    "before:init": "echo \"[calver] governance cycle target = $(date -u +'%Y.%m') — scheme: CalVer YYYY.0M (see docs/RELEASE_PROCESS.md and scripts/release-it-calver.mjs). CalVer owns the version; conventional-changelog only writes CHANGELOG.md.\"",
-    "after:release": "echo '[release-herald] Cycle ${version} stamped. This is the seam for the release-communication step: hand CHANGELOG.md + the GitHub release notes to skills/reporting/release-herald.md to draft a per-cycle currency digest (feature highlights + governance provenance + a LinkedIn/social post) for HUMAN APPROVAL. No auto-posting happens here — this echo is a deliberate stub, not a real poster.'"
+    "before:init": "echo \"[calver] release date target = $(date -u +'%Y.%m.%d') — scheme: calendar-date CalVer YYYY.MM.DD, UTC, with a .N suffix for same-day releases (see docs/RELEASE_PROCESS.md and scripts/release-it-calver.mjs). CalVer owns the version; conventional-changelog only writes CHANGELOG.md.\"",
+    "after:release": "echo '[release-herald] Release ${version} stamped. Tag cadence is per content-bearing promotion; the user-facing digest is a SEPARATE, WEEKLY, human-approved job — this release job never drafts or posts social. See skills/reporting/release-herald.md and the weekly-digest job in .github/workflows/release.yml. This echo is a deliberate stub, not a poster.'"
   },
   "plugins": {
     "./scripts/release-it-calver.mjs": {},

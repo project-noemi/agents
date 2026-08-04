@@ -23,6 +23,7 @@
     "verification/cross-reference",
     "reporting/structured-report",
     "reporting/alert-notify",
+    "reporting/release-herald",
     "security/hmac-sign-submit",
     "security/pii-scan",
     "orchestration/dispatch-coordinate"

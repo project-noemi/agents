@@ -76,7 +76,7 @@ It does not, because promotion is **content-gated**:
 So a date on a tag always means *something user-facing actually shipped that
 day* — the currency signal stays honest.
 
-## Auto-promote on green — because develop is already reviewed
+## Auto-promote on green — via an auto-merged `develop → main` PR
 
 This repository runs a two-branch flow: feature branches merge into `develop`,
 and only `develop` may reach `main` (enforced by `require-develop-source.yml`;
@@ -84,17 +84,55 @@ see [CONTRIBUTING.md](../CONTRIBUTING.md#branching-model)).
 
 `develop` **is the reviewed integration line** — every change reaches it through
 a human-reviewed feature-branch PR. So promoting `develop → main` is not a new
-review surface; it is a fast-forward of work that has *already* been reviewed.
-For that reason the promotion job **auto-merges `develop → main` directly** when
-the content gate opens and **CI on develop is green** — there is **no promotion
-PR**, because there is nothing new to review at the promotion step.
+review surface; it is a promotion of work that has *already* been reviewed. For
+that reason **no second human approval is required at the promotion step by
+default** (it can be added — see below).
 
-This is a direct fast-forward/merge push from `develop`, which is exactly the
-move `require-develop-source.yml` exists to permit (it governs *PRs* into `main`
-and restricts them to a `develop` source; this promotes *from* `develop` and
-introduces no other source). If branch protection on `main` ever requires pull
-requests, the direct push will (correctly) fail — the right response is to adopt
-a promotion-PR variant, **not** to weaken protection.
+Promotion happens through an **auto-merged pull request**, not a direct push.
+When the content gate opens and **CI on develop is green**, the promotion job
+opens (or reuses) a `develop → main` PR and enables **GitHub native auto-merge**
+(`gh pr merge --auto --merge`); the PR merges the instant `main`'s required
+checks pass. Only *after* the PR merges does release-it stamp the CalVer date on
+`main`.
+
+Why a PR instead of `git push origin main`? So `main` can stay **fully protected
+against direct pushes** with **no bot bypass**. Promotion is the one thing that
+moves `develop`'s content into `main`, and it now travels the same protected path
+as any other change: through a PR. `require-develop-source.yml` still runs on that
+PR and **guarantees its only possible source is `develop`** — the existing
+develop-source rule is exactly what makes an auto-merged promotion PR safe.
+
+### Why auto-merge (not poll-then-merge)
+
+GitHub's branch protection on `main` is the single source of truth for whether a
+merge is allowed. `--auto` **delegates the gate to protection** and merges as
+soon as required checks pass, rather than re-implementing that logic in the
+workflow. It is also **durable**: it is not bound by the promotion job's timeout,
+so a slow check does not abandon a green PR. The job polls afterward only to learn
+*when* the merge landed, so it can stamp the release on the freshly-merged `main`
+in the same run. (If auto-merge cannot be enabled — the repo's "Allow auto-merge"
+setting is off, or `main` has no required checks to wait on — the job falls back
+to an immediate merge, which succeeds when `main` only requires "must be a PR".)
+
+### The `GITHUB_TOKEN` nuance (and when `PROMOTE_TOKEN` is required)
+
+A pull request opened with the default `GITHUB_TOKEN` **does not trigger
+`on: pull_request` workflows** — GitHub suppresses that to avoid recursive runs.
+This matters for the promotion PR:
+
+- **If `main` requires status-check *re-runs* on the PR:** a GITHUB_TOKEN-opened
+  PR would never get those checks, so auto-merge would stall forever. In this
+  configuration you **must** provide a **`PROMOTE_TOKEN`** secret — a PAT or the
+  `noemi-agent` app token — and the job opens the PR with it so the checks run.
+- **If `main` requires only "must be a PR"** (relying on the checks develop
+  *already* passed, not a re-run): **no secret is needed.** The PR is immediately
+  mergeable and auto-merge completes at once with `GITHUB_TOKEN`.
+
+The job prefers `PROMOTE_TOKEN` when the secret is present and falls back to
+`GITHUB_TOKEN` otherwise. If the PR does not merge within the polling window
+(the usual cause being "re-runs required but `PROMOTE_TOKEN` not set"), the job
+stamps **nothing** — a safe no-op — and the next scheduled run re-checks the
+still-open PR.
 
 ### Where the human gate actually sits
 
@@ -102,6 +140,45 @@ The human-approval gate in this model is **not** on the merge — develop was
 already reviewed. It sits on the **weekly digest**: nothing is communicated to
 the outside world until a human has read and approved it (see below). Merging
 reviewed work forward is automatic; *speaking on the framework's behalf* is not.
+An admin **may** additionally require one approval on the promotion PR (see the
+branch-protection section); by default none is required because develop is
+already reviewed.
+
+## `main` branch-protection settings to apply
+
+To make this model safe, a repository admin should configure branch protection
+on `main` as follows:
+
+- **Require a pull request before merging** into `main`. This is what forces the
+  promotion to travel through the auto-merged PR instead of a direct push.
+- **Block / disallow direct pushes to `main`** for everyone, and **do not grant
+  the automation a bypass** ("no bot bypass"). Promotion goes through the PR like
+  any other change.
+- **Keep the `require-develop-source` status check** required on `main` PRs. It
+  guarantees the promotion PR (and any PR into `main`) can only originate from
+  `develop`. Never weaken or add exceptions to it.
+- **Optionally require 1 approval** on PRs into `main`. Not required by default —
+  develop is already reviewed — but supported if a second sign-off on the
+  promotion is desired. (If you require approvals, ensure the automation can still
+  satisfy them, e.g. via a reviewer or an approval step.)
+- **Only if you require status-check *re-runs* on the promotion PR:** add a
+  **`PROMOTE_TOKEN`** repository secret (a PAT or the `noemi-agent` app token) so
+  the PR is opened with a non-default token and its `on: pull_request` checks
+  actually run. If `main` requires only "must be a PR", **no secret is needed**.
+- **Enable "Allow auto-merge"** in the repository's General settings so
+  `gh pr merge --auto` can arm the merge. (Without it, the job falls back to an
+  immediate merge, which works only in the "must be a PR" configuration.)
+
+### A note on release-it's changelog commit
+
+After the promotion PR merges, release-it stamps the release on `main`. The
+annotated tag and the GitHub Release are **tag/release refs**, which
+branch-protection rules do **not** govern — they land regardless of how
+locked-down `main` is. The one write release-it makes to the `main` *branch* is
+the `chore(release): <version>` **CHANGELOG.md commit**. If your protection is
+strict enough to block even that automation write (consistent with the "no bot
+bypass" posture), move `CHANGELOG.md` generation onto `develop` so it flows
+through the promotion PR — **do not** grant the bot a protection bypass.
 
 ## Decoupled cadences: versions per promotion, social weekly
 
@@ -109,7 +186,7 @@ The two rhythms are deliberately separate:
 
 | | Cadence | What it does | Human gate |
 |---|---|---|---|
-| **Tagging / release** | Per content-bearing promotion (daily check; fires only when there's a feat/fix) | Auto-merge `develop → main`, stamp `YYYY.MM.DD` tag + CHANGELOG + GitHub Release | On develop review (upstream); green-CI gate |
+| **Tagging / release** | Per content-bearing promotion (daily check; fires only when there's a feat/fix) | Auto-merge a `develop → main` PR, then stamp `YYYY.MM.DD` tag + CHANGELOG + GitHub Release on main | On develop review (upstream); green-CI gate |
 | **Digest / social** | Weekly (Monday) | Draft the week's feature highlights + LinkedIn/social post | **Yes — human approves before any post** |
 
 Why decouple them? Versions should track *reality*: mint one whenever real change
@@ -144,10 +221,12 @@ The moving parts:
 - **`.github/workflows/release.yml`** — the two jobs:
   - **`promote-and-release`** runs on a **daily `schedule:` cron** and on manual
     `workflow_dispatch` (with a `dry_run` input). It applies the **content gate**
-    (≥1 unreleased feat/fix), checks develop's CI is **green**, **auto-merges
-    `develop → main`**, and runs release-it **on `main`** to stamp the CalVer
-    tag, update the changelog, and publish the GitHub Release. It **never** drafts
-    or posts social content.
+    (≥1 unreleased feat/fix), checks develop's CI is **green**, opens (or reuses)
+    an **auto-merged `develop → main` PR**, and — once that PR merges — runs
+    release-it **on `main`** to stamp the CalVer tag, update the changelog, and
+    publish the GitHub Release. The PR is opened with `PROMOTE_TOKEN` when that
+    secret is present (so `on: pull_request` checks run), falling back to
+    `GITHUB_TOKEN`. It **never** drafts or posts social content.
   - **`weekly-digest`** runs on a **weekly `schedule:` cron (Monday)** and on
     manual `workflow_dispatch`. It collects the week's user-facing changes and
     produces the release-herald digest **as a draft** — a workflow artifact **and**
@@ -200,10 +279,11 @@ into communication teams can trust.
    content gate. If there is **no** unreleased `feat`/`fix`, it exits as a no-op —
    nothing happens, and that is fine.
 3. If there **is** unreleased user-facing change and develop's CI is green, the
-   job auto-merges `develop → main` (fast-forward when possible) and runs
-   release-it on `main`: it computes the CalVer date (`YYYY.MM.DD`, with `.N` if
-   the date is already taken), updates `CHANGELOG.md`, creates the annotated tag,
-   pushes, and publishes the GitHub Release.
+   job opens (or reuses) a `develop → main` pull request and enables auto-merge;
+   once `main`'s required checks pass, the PR merges. release-it then runs on the
+   merged `main`: it computes the CalVer date (`YYYY.MM.DD`, with `.N` if the date
+   is already taken), updates `CHANGELOG.md`, creates the annotated tag, pushes,
+   and publishes the GitHub Release.
 4. **Weekly** (Monday, or via manual dispatch), the separate digest job collects
    the week's changes and drafts the release-herald digest (highlights + a social
    post) as an artifact and an issue — for a human to review, approve, and post.
@@ -211,7 +291,7 @@ into communication teams can trust.
 ## Previewing a promotion (dry run)
 
 Run the **Release (CalVer date-versioned)** workflow from the **Actions** tab,
-choose the `promote` job, and enable `dry_run` to see the content-gate decision,
-the promotion plan, the computed CalVer date, and the changelog delta **without**
-pushing to `main`, tagging, or publishing anything. Use it whenever you want to
-confirm what the next promotion would do before it runs for real.
+choose the `promote` job, and enable `dry_run` to see the content-gate decision
+and the promotion plan **without** opening a PR, merging into `main`, tagging, or
+publishing anything. Use it whenever you want to confirm what the next promotion
+would do before it runs for real.

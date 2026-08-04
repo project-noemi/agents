@@ -8,10 +8,13 @@
 #      A CONTENT-GATED auto-promotion. It only acts when `develop` carries an
 #      unreleased USER-FACING change vs `main` (≥1 Conventional Commit of type
 #      feat or fix in the main..develop range). If it does, and CI on develop is
-#      green, it AUTO-MERGES develop -> main and runs release-it to stamp a
-#      calendar-date CalVer tag (YYYY.MM.DD) + GitHub Release + changelog.
-#      TAG CADENCE = per content-bearing promotion (frequent). This job NEVER
-#      drafts or posts social content.
+#      green, it opens (or reuses) a `develop -> main` PULL REQUEST and lets it
+#      AUTO-MERGE once required checks pass, then runs release-it on main to stamp
+#      a calendar-date CalVer tag (YYYY.MM.DD) + GitHub Release + changelog.
+#      Promotion is PR-BASED (not a direct `git push origin main`) so `main` can
+#      stay fully protected against direct pushes. TAG CADENCE = per
+#      content-bearing promotion (frequent). This job NEVER drafts or posts
+#      social content.
 #
 #   2. weekly-digest  (WEEKLY, Monday + manual)
 #      A DECOUPLED, DRAFT-ONLY release-communication job. It collects the week's
@@ -45,14 +48,31 @@
 #   * AUTO-PROMOTE ON GREEN — SAFE BECAUSE DEVELOP IS ALREADY REVIEWED.
 #     develop is the canonical, human-reviewed integration line; every change
 #     reaches it via a reviewed feature-branch PR. Promotion is therefore a
-#     fast-forward of already-reviewed work, NOT a new review surface — so there
-#     is no promotion PR. The job pushes develop -> main directly, which is
-#     exactly the move require-develop-source.yml exists to permit (develop is
-#     the ONLY allowed source into main; this promotes FROM develop and
-#     introduces no other source). The human-approval gate in this model sits on
-#     the WEEKLY DIGEST (job 2), not on the merge. If branch protection on main
-#     ever requires PRs, this direct push will (correctly) fail — do NOT weaken
-#     protection; adopt a promotion-PR variant instead.
+#     fast-forward of already-reviewed work, so no SECOND human review is needed
+#     at the promotion step by default. But promotion now happens through a
+#     `develop -> main` PULL REQUEST that AUTO-MERGES on green, NOT a direct
+#     `git push origin main`. That lets `main` be fully protected against direct
+#     pushes (require-a-PR-before-merging) with NO bot bypass, while
+#     require-develop-source.yml still guarantees the ONLY possible source of
+#     that PR is `develop`. The human-approval gate in this model sits on the
+#     WEEKLY DIGEST (job 2), not on the merge.
+#
+#   * GITHUB_TOKEN + on: pull_request NUANCE (read before you touch STEP 3).
+#     A PR opened with the default `GITHUB_TOKEN` does NOT trigger
+#     `on: pull_request` workflows (GitHub suppresses recursive workflow runs).
+#     So if `main`'s protection REQUIRES status-check RE-RUNS on the promotion
+#     PR, those checks never start and the auto-merge stalls forever. STEP 3
+#     therefore opens the PR with an OPTIONAL `PROMOTE_TOKEN` secret (a PAT or
+#     the noemi-agent app token) when present, falling back to `GITHUB_TOKEN`.
+#       - If `main` requires status-check re-runs on the PR  -> PROMOTE_TOKEN is
+#         REQUIRED (a GITHUB_TOKEN-opened PR would never get its checks and would
+#         hang). The poll below times out and NO release is stamped — a safe
+#         no-op, retried next run — rather than a half-done promotion.
+#       - If `main` requires only "must be a PR" (relying on develop's
+#         already-passed checks, not a re-run) -> NO secret is needed; the PR is
+#         immediately mergeable and auto-merge completes at once.
+#     See docs/RELEASE_PROCESS.md for the branch-protection settings an admin
+#     applies and exactly when PROMOTE_TOKEN is needed.
 #
 #   * NO NEW ROOT DEPENDENCIES. The repo root is intentionally dependency-free.
 #     release-it and its plugins are installed on demand with
@@ -101,9 +121,11 @@ jobs:
       (github.event_name == 'schedule' && github.event.schedule == '0 6 * * *') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'promote')
     permissions:
-      # Push the promotion to main, push the changelog commit + CalVer tag, and
-      # create the GitHub Release.
+      # Push the post-merge changelog commit + CalVer tag, and create the GitHub
+      # Release. (The develop -> main promotion itself goes through a PR, below.)
       contents: write
+      # Open / reuse / auto-merge the develop -> main promotion PR.
+      pull-requests: write
       # Read commit statuses / check runs for the CI-green gate.
       checks: read
       statuses: read
@@ -214,22 +236,51 @@ jobs:
           fi
 
       # ---------------------------------------------------------------------
-      # STEP 3 — AUTO-MERGE develop -> main (only when gated + green)
+      # STEP 3 — PROMOTE develop -> main VIA AN AUTO-MERGED PULL REQUEST
       # ---------------------------------------------------------------------
       # develop is already the reviewed integration line, so this is a promotion
-      # of reviewed work, not a new review surface — no promotion PR. Fast-forward
-      # when history allows (main == develop, no merge noise); otherwise a merge
-      # commit. In dry-run we compute + print the plan but never push.
-      - name: Auto-merge develop into main (on green)
+      # of reviewed work — no SECOND review is required by default. But we no
+      # longer `git push origin main` directly: we open (or reuse) a
+      # `develop -> main` PR and let it AUTO-MERGE once main's required checks
+      # pass. That keeps `main` fully protected against direct pushes while
+      # require-develop-source.yml still guarantees the PR can only come from
+      # develop.
+      #
+      # MERGE APPROACH — GitHub native auto-merge (`gh pr merge --auto --merge`),
+      # NOT hand-rolled poll-then-merge-via-API. Rationale:
+      #   * Branch protection on `main` is the single source of truth for whether
+      #     a merge is allowed; `--auto` DELEGATES the gate to protection and
+      #     merges the instant required checks pass. Poll-then-merge would
+      #     re-implement (and could drift from) that gate.
+      #   * Auto-merge is DURABLE: it is not bound by this job's 15-minute
+      #     timeout. If checks are slow, GitHub still merges later; a poll loop
+      #     would just time out and abandon a green PR.
+      #   * We choose `--merge` (a merge commit) over squash/rebase so the
+      #     promotion is a faithful record of the reviewed develop history.
+      # We still poll AFTERWARD, but only to learn WHEN the merge landed, so
+      # STEP 5 can stamp the release on the freshly-merged `main` in the same run.
+      # (If auto-merge cannot be enabled — the repo's "Allow auto-merge" setting
+      # is off, or main has no required checks so there is nothing to wait on — we
+      # fall back to an immediate `gh pr merge --merge`, which succeeds when main
+      # only requires "must be a PR" and develop's checks already passed.)
+      #
+      # TOKEN: open/merge the PR with PROMOTE_TOKEN when present so `on:
+      # pull_request` checks actually run on it (a GITHUB_TOKEN-opened PR does not
+      # trigger them); fall back to GITHUB_TOKEN otherwise. See the file header.
+      - name: Open promotion PR (develop -> main) and auto-merge on green
         id: promote
         if: ${{ steps.gate.outputs.release == 'true' && steps.ci.outputs.green == 'true' }}
         env:
+          # Prefer a PAT / app token so the promotion PR triggers on: pull_request
+          # required checks; fall back to the default token.
+          GH_TOKEN: ${{ secrets.PROMOTE_TOKEN || secrets.GITHUB_TOKEN }}
+          HAS_PROMOTE_TOKEN: ${{ secrets.PROMOTE_TOKEN != '' }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           set -euo pipefail
-          git checkout main
+          git fetch origin develop main --tags
 
-          BEHIND=$(git rev-list --count main..origin/develop)
+          BEHIND=$(git rev-list --count origin/main..origin/develop)
           echo "main is ${BEHIND} commit(s) behind develop."
           if [ "${BEHIND}" = "0" ]; then
             echo "main already up to date with develop — nothing to promote."
@@ -237,20 +288,93 @@ jobs:
             exit 0
           fi
 
-          if git merge-base --is-ancestor main origin/develop; then
-            echo ">>> Fast-forwarding main to origin/develop."
-            git merge --ff-only origin/develop
-          else
-            echo ">>> Histories diverged; creating a merge commit (develop -> main)."
-            git merge --no-ff origin/develop -m "chore(release): promote develop into main"
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo ">>> DRY RUN: would open (or reuse) a develop -> main PR, enable"
+            echo "    auto-merge (--merge), and after it merges run release-it on"
+            echo "    main. No PR is opened, nothing is merged, nothing is stamped."
+            echo "promoted=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
-          if [ "${DRY_RUN}" = "true" ]; then
-            echo ">>> DRY RUN: not pushing main."
+          if [ "${HAS_PROMOTE_TOKEN}" = "true" ]; then
+            echo "PROMOTE_TOKEN present: PR opened with it, so on: pull_request checks will run."
           else
-            git push origin main
+            echo "PROMOTE_TOKEN NOT set: PR opened with GITHUB_TOKEN."
+            echo "  -> on: pull_request checks will NOT run on this PR. That is fine ONLY IF"
+            echo "     main requires just 'must be a PR' (develop's already-passed checks stand)."
+            echo "     If main requires status-check RE-RUNS, this PR will hang — set PROMOTE_TOKEN."
           fi
+
+          # Reuse an already-open develop -> main PR if one exists (idempotent
+          # across retries), otherwise create it.
+          PR_NUM=$(gh pr list --repo "$GITHUB_REPOSITORY" --base main --head develop \
+            --state open --json number --jq '.[0].number // empty')
+          if [ -z "$PR_NUM" ]; then
+            printf '%s\n\n%s\n' \
+              'Automated content-gated promotion of `develop` into `main`.' \
+              "There is at least one unreleased \`feat\`/\`fix\` on develop and develop's CI is green. develop is the reviewed integration line, so no second review is required by default; this PR exists so \`main\` can stay protected against direct pushes. It auto-merges once main's required checks pass; release-it then stamps the CalVer \`YYYY.MM.DD\` tag + GitHub Release + changelog on main. See docs/RELEASE_PROCESS.md." \
+              > /tmp/promotion-pr-body.md
+            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head develop \
+              --title "chore(release): promote develop into main" \
+              --body-file /tmp/promotion-pr-body.md
+            PR_NUM=$(gh pr list --repo "$GITHUB_REPOSITORY" --base main --head develop \
+              --state open --json number --jq '.[0].number')
+            echo "Opened promotion PR #${PR_NUM}."
+          else
+            echo "Reusing already-open promotion PR #${PR_NUM}."
+          fi
+
+          # Enable GitHub native auto-merge; fall back to an immediate merge when
+          # auto-merge is unavailable (setting off, or no required checks to wait
+          # on).
+          if gh pr merge "$PR_NUM" --repo "$GITHUB_REPOSITORY" --merge --auto; then
+            echo "Auto-merge enabled on PR #${PR_NUM} (will merge when required checks pass)."
+          else
+            echo "Could not enable auto-merge; attempting an immediate merge."
+            gh pr merge "$PR_NUM" --repo "$GITHUB_REPOSITORY" --merge || true
+          fi
+
+          # Poll only to learn WHEN the merge landed (auto-merge itself is durable
+          # and not bound by this timeout). ~10 min budget within the job's 15.
+          MERGED=false
+          for i in $(seq 1 30); do
+            STATE=$(gh pr view "$PR_NUM" --repo "$GITHUB_REPOSITORY" --json state --jq '.state')
+            echo "poll ${i}/30: PR #${PR_NUM} state = ${STATE}"
+            if [ "$STATE" = "MERGED" ]; then MERGED=true; break; fi
+            if [ "$STATE" = "CLOSED" ]; then
+              echo "PR #${PR_NUM} was closed without merging — aborting promotion."
+              break
+            fi
+            sleep 20
+          done
+
+          if [ "$MERGED" != "true" ]; then
+            echo "Promotion PR #${PR_NUM} did not merge within the polling window."
+            echo "Most likely main requires status-check RE-RUNS on the PR but PROMOTE_TOKEN"
+            echo "is not set, so no checks started (GITHUB_TOKEN-opened PRs do not trigger"
+            echo "on: pull_request). The PR stays open; auto-merge (if enabled) may still"
+            echo "complete later, and the next scheduled run will re-check it. NO release is"
+            echo "stamped this run — a safe no-op rather than a half-done promotion."
+            echo "promoted=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Promotion PR #${PR_NUM} merged. Proceeding to stamp the release on main."
           echo "promoted=true" >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------------
+      # STEP 3b — SYNC local main to the merged promotion
+      # ---------------------------------------------------------------------
+      # The merge happened server-side (via the PR), so the local `main` checked
+      # out at job start is stale. Re-sync it to the merged origin/main before
+      # release-it stamps the tag/changelog on it.
+      - name: Sync local main to merged origin/main
+        if: ${{ steps.promote.outputs.promoted == 'true' }}
+        run: |
+          set -euo pipefail
+          git fetch origin main --tags
+          git checkout main
+          git reset --hard origin/main
 
       # ---------------------------------------------------------------------
       # STEP 4 — Install release tooling on demand (kept out of package.json)
@@ -273,6 +397,17 @@ jobs:
       # YYYY.MM.DD version (with .N same-day disambiguation);
       # conventional-changelog only writes CHANGELOG.md. NO social posting here —
       # that is the weekly-digest job's concern.
+      #
+      # BRANCH-PROTECTION NOTE: this stamping runs AFTER the promotion PR merged.
+      # The annotated tag and the GitHub Release are tag/release refs and are NOT
+      # governed by branch-protection rules, so they land regardless of how
+      # locked-down `main` is. The one write release-it makes to the `main`
+      # BRANCH is the `chore(release): ${version}` CHANGELOG commit (git.push).
+      # If main's protection is configured to block ALL direct branch writes
+      # including this automation (the "no bot bypass" posture in
+      # docs/RELEASE_PROCESS.md), that commit push will be rejected; the fix is to
+      # generate CHANGELOG.md on develop so it flows through the promotion PR —
+      # do NOT grant the bot a protection bypass. See docs/RELEASE_PROCESS.md.
       - name: Run release-it (CalVer tag + changelog + GitHub Release)
         if: ${{ steps.promote.outputs.promoted == 'true' }}
         env:

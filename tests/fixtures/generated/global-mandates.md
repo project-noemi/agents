@@ -41,7 +41,7 @@ Use `infisical run` or `op run` to dynamically pull the specified environment an
 When running on a local host, the system uses human SSO or Desktop App integration for authentication.
 
 
-- Infisical: If execution fails, ensure you are logged in via `infisical login`.
+- Infisical: If execution fails, ensure you are logged in via `infisical login`, and that the clone is linked to a workspace via `infisical init`. The generated `.infisical.json` is a per-clone project link (workspace ID only, no credential material) and is deliberately untracked so forks resolve their own vault (Decision [2026-08-02-0002]).
 - 1Password: If execution fails, ensure you are logged in via `op signin`.
 - **Pre-flight Checks**: Environment verification scripts (`scripts/verify-env.sh`, `scripts/verify-env.ps1`) must perform active authentication checks (e.g., `infisical whoami` or `op get user`). Missing or invalid SecretOps authentication in `docker` mode MUST be a fatal error (exit 1), while remaining a warning in `builder` mode to support local exploration.
 

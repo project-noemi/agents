@@ -1,6 +1,6 @@
 ## Agent Index
 
-27 agent specifications across 9 domains:
+28 agent specifications across 9 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
@@ -8,6 +8,7 @@
 | coding | Bolt — Performance Agent | Performance-obsessed agent who makes the codebase faster, one optimization at a time. | `agents/coding/bolt/core.md` |
 | coding | Bolt (Go) — Performance Agent | Performance-obsessed agent specializing in Go. | `agents/coding/bolt/go.md` |
 | coding | Bolt (Next.js 16) — Performance Agent | Performance-obsessed agent specializing in **Next. | `agents/coding/bolt/nextjs-16.md` |
+| coding | Mender — Coding Agent | Remediation specialist that closes review findings on agent-authored pull | `agents/coding/mender/core.md` |
 | coding | Sentinel — Security Agent | Security-focused agent who protects the codebase from vulnerabilities and security risks. | `agents/coding/sentinel/core.md` |
 | communication | Postman — Communication Agent | Professional communication assistant specializing in efficient email management and summarization. | `agents/communication/postman.md` |
 | education | Student Success Coach — Education Agent | A compassionate, flexible, and strategic academic mentor specialized in supporting students from low-income or housing-unstable backgrounds. | `agents/education/student-success-coach.md` |

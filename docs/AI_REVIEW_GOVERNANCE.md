@@ -204,6 +204,48 @@ Every review records:
 Overrides are the highest-value records in the system. They are where human
 judgment enters, and the only place the framework can be observed adapting.
 
+## Rollout status
+
+Current as of 2026-08-02. Update this table when an item changes — it is the
+handoff point for anyone picking the work up.
+
+| Item | State | Blocked on |
+|---|---|---|
+| `noemi-agent` producer identity | ✅ provisioned, verified | — |
+| Bot-authored PR loop (author → human approve → merge, no bypass) | ✅ proven on #340, #341 | — |
+| `scripts/agent-gh.sh` wrapper + identity guard | ✅ working | — |
+| `scripts/resolve-gemini-model.js` | ✅ working, tested offline | live API call unverified |
+| Reviewer persona + governance framework | ✅ merged (#341) | — |
+| `.github/workflows/ai-review.yml` | ⚠️ skips cleanly; runner not implemented | `GEMINI_API_KEY` + runner |
+| `noemi-reviewer` identity | ✅ provisioned 2026-08-03, capabilities verified | — |
+| `GEMINI_API_KEY` repo secret | ❌ not set | human |
+| CODEOWNERS + `require_code_owner_reviews` | ✅ on `develop` via `setup-branch-protection.sh` (main leaves code-owner reviews off) | re-run script after policy changes |
+| Three-gate review runner | ❌ not written | follow-up PR |
+| `enforce_admins: true` on `main` | ✅ required by promotion policy (no direct push / no bot bypass) | — |
+| `enforce_admins: true` on `develop` | ❌ still `false` (escape hatch for integration) | bot-only integration path |
+| Both bot identities' effective permission | ✅ `maintain` accepted by decision 2026-08-03 — token scoping is the boundary | — |
+
+### Applying branch protection
+
+`scripts/setup-branch-protection.sh` is the source of truth for classic branch
+protection. It:
+
+- requires a PR into `main` with `enforce_admins: true` and empty bypass lists
+- always registers `check-source-branch` as a required check on `main` (do not weaken)
+- defaults main approvals to 0 (`MAIN_REQUIRE_APPROVALS=1` to require one)
+- enables repository **Allow auto-merge** for `gh pr merge --auto`
+- applies CODEOWNERS + 1 review on `develop`
+
+```bash
+bash scripts/setup-branch-protection.sh
+```
+
+Before requiring code-owner reviews on `develop`, decide the co-owner question.
+With a single owner and `require_code_owner_reviews` enabled, a PR authored by
+that owner cannot be approved by them — GitHub blocks self-approval — and will
+need a second owner. Bot-authored PRs are unaffected. See the comments in
+`.github/CODEOWNERS`.
+
 ## Audit Log
 
 ```json

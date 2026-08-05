@@ -48,27 +48,150 @@ identities have named owners (`docs/phase-zero-assessment/weighted-assessment-sp
 | **May approve PRs?** | **No.** Approval is a human-only act |
 | **May merge PRs?** | **No.** Merge follows human approval |
 
-### Effective-permission caveat
+### Reviewer identity — `noemi-reviewer`
 
-The direct collaborator grant is `push` (write), but GitHub resolves a user's
-access as the **highest** of all grants. `noemi-agent` is an organization member
-of the `developers` team, which holds `maintain` on this repository, so its
-effective permission is `maintain` — broader than this register intends.
+Separation of duties needs two identities, not one. `noemi-agent` produces;
+`noemi-reviewer` reviews. A shared account fails mechanically (GitHub blocks
+self-approval) and destroys attribution even where it does not fail.
 
-`maintain` cannot change branch protection, manage secrets, or add
-collaborators (`admin: false`), so it cannot bypass the review gate. It can,
-however, adjust repository settings and delete branches.
+| Field | Value |
+|---|---|
+| **Identity** | `noemi-reviewer` (GitHub user, machine account) |
+| **GitHub user ID** | `312384097` |
+| **Status** | **Provisioned** 2026-08-03, capabilities verified |
+| **First rotation due** | 2026-11-01 |
+| **Purpose** | Post three-gate review findings on agent-authored PRs |
+| **Model family** | Gemini — deliberately *not* Claude (see below) |
+| **Named owner** | `@WSwarm` (Balazs Nagy) |
+| **Credential store** | Infisical — secret `REVIEWER_GH_TOKEN` |
+| **Repo permission** | `read` (pull) + `Pull requests: write` |
+| **Rotation** | 90 days, or immediately on suspected exposure |
+| **May author code?** | **No.** `Contents: read` only — enforced by token |
+| **May approve PRs?** | **No** in phase 1 — enforced by CODEOWNERS, not by token |
 
-To hold the identity at true least privilege, remove it from the `developers`
-team and rely on the direct `push` grant:
+Cross-model is the point: two instances of one model share training and blind
+spots, so a misreading made while writing is likely repeated while reviewing.
+See `docs/AI_REVIEW_GOVERNANCE.md`.
+
+#### Least-privilege scoping
+
+| Permission | Level | Why |
+|---|---|---|
+| Contents | **Read** | Read the diff. Not write — a reviewer that can push can fix what it reviews, collapsing the separation |
+| Pull requests | Read and write | Post review comments |
+| Metadata | Read | Mandatory for fine-grained tokens |
+
+`Contents: read` is a real, token-enforced boundary: this identity is
+structurally incapable of authoring code.
+
+#### Verified capabilities (2026-08-03)
+
+Probed at provisioning. Re-run these after any token rotation — a rotation is
+the most likely moment for scoping to drift wider than intended.
+
+| Probe | Expected | Observed |
+|---|---|---|
+| Read repository metadata | succeeds | ✅ succeeded |
+| Create a git ref (Contents: write) | **denied** | 🔒 `403 Resource not accessible` |
+| Create a PR review (Pull requests: write) | permitted | `404` on a nonexistent PR — permission present |
+
+The `403` on ref creation is the boundary that matters: it is enforced by token
+scoping, not by persona instruction, so it holds regardless of what the
+reviewing model is told or persuaded to do.
+
+On the third probe, `403` would mean the permission is missing and `404` means
+it is present but the pull request does not exist — a nonexistent PR number is
+therefore a non-destructive way to confirm write capability without posting
+anything.
+
+#### The comment-vs-approve gap
+
+GitHub has **no permission distinguishing "may comment on a PR" from "may
+approve a PR."** Both are `Pull requests: write`. So the phase-1 rule that the
+reviewer posts findings but never approves cannot be enforced by token scoping.
+
+It is enforced structurally instead, by `.github/CODEOWNERS` plus
+`require_code_owner_reviews`: a reviewer approval never satisfies a code-owner
+requirement, because the reviewer is not an owner. Without that, a
+`noemi-reviewer` approval would satisfy `required_approving_review_count: 1` on
+its own and phase 1 would silently behave as phase 2.
+
+#### Provisioning
+
+Same shape as `noemi-agent` above — register the account with 2FA, mint a
+fine-grained PAT **while signed in as `noemi-reviewer`** scoped to
+`project-noemi/agents` with exactly the three permissions above, then:
 
 ```bash
-gh api --method DELETE orgs/project-noemi/teams/developers/memberships/noemi-agent
-gh api repos/project-noemi/agents/collaborators/noemi-agent/permission --jq .permission
+infisical secrets set REVIEWER_GH_TOKEN="<paste-in-your-terminal>" --env=dev
+
+gh api --method PUT repos/project-noemi/agents/collaborators/noemi-reviewer \
+  -f permission=pull
 ```
 
-Verify effective access after any org or team change — a team grant added later
-will silently widen this identity again.
+Watch for the org approval hold that delayed `noemi-agent`: a fine-grained token
+against an org resource owner stays read-only until an owner approves it at
+Settings → Third-party Access → Personal access tokens.
+
+Verify without provisioning a new wrapper — `scripts/agent-gh.sh` is already
+parameterized:
+
+```bash
+AGENT_GH_TOKEN_SECRET=REVIEWER_GH_TOKEN \
+AGENT_GH_EXPECTED_LOGIN=noemi-reviewer \
+bash scripts/agent-gh.sh whoami        # expect: noemi-reviewer (User)
+```
+
+⚠ `$AGENT_GH_TOKEN` takes precedence over `AGENT_GH_TOKEN_SECRET` in the
+resolver, so a producer token already in the environment wins silently. The
+`AGENT_GH_EXPECTED_LOGIN` guard catches this and refuses rather than acting
+under the wrong identity — always set it.
+
+### Effective-permission posture — the token is the boundary
+
+GitHub resolves a user's access as the **highest** of all grants. Both bot
+identities are organization members of the `developers` team, which holds
+`maintain` on this repository, so both resolve to `maintain` regardless of the
+direct collaborator grants recorded above (`push` for the producer, `pull` for
+the reviewer).
+
+**Decision (2026-08-03, repository owner): the bots remain in `developers` and
+`coders`.** The team memberships are accepted as-is and the account-level
+permission is not narrowed.
+
+`maintain` cannot change branch protection, manage secrets, or add collaborators
+(`admin: false`), so it cannot bypass the review gate. It can adjust repository
+settings and delete branches.
+
+#### What this decision means
+
+Account-level permission is **not** a limiting factor for these identities.
+Every constraint in this register is therefore enforced by **token scoping
+alone** — it is the boundary, not a second layer behind one. The reviewer's
+inability to author code is real (verified `403`) precisely and only because its
+token lacks `Contents: write`.
+
+Three rules follow, and they are load-bearing rather than advisory:
+
+1. **Fine-grained tokens only. Never a classic PAT.** A classic token with
+   `repo` scope on either account inherits the full `maintain` grant and
+   silently voids every scoping decision in this document. Classic tokens have
+   no per-permission granularity, so there is no safe way to issue one here.
+2. **Re-probe capabilities after every rotation.** Rotation is when scoping
+   drifts wider than intended. See the reviewer's verified-capabilities table
+   for the probe set.
+3. **Never widen a token to clear a failure.** A `403` from one of these
+   identities is the control functioning. Diagnose what asked for the
+   permission before granting it.
+
+An organization or team change can still widen these identities without touching
+this repository. Re-verify effective access after any such change:
+
+```bash
+for u in noemi-agent noemi-reviewer; do
+  gh api "repos/project-noemi/agents/collaborators/$u/permission" --jq '"\(.user.login): \(.role_name)"'
+done
+```
 
 A machine *user* consumes a paid seat on the Enterprise plan. This is the
 accepted cost of having a bot identity that can be a PR author.
@@ -135,6 +258,18 @@ Verify it resolves without printing it:
 bash scripts/agent-gh.sh whoami     # expect: noemi-agent (User)
 ```
 
+`.infisical.json` is gitignored (org-specific — each clone runs `infisical
+init`), so a fresh clone or a CI job has no project link and secret lookup fails.
+Set the project ID explicitly where running `init` is not practical:
+
+```bash
+export INFISICAL_PROJECT_ID=<your-workspace-id>
+```
+
+A project ID is not a secret. In GitHub Actions it belongs in **Variables**, not
+Secrets — putting non-secrets in Secrets makes it harder to see what genuinely
+needs protecting.
+
 ### 4. Grant repository access
 
 Run as a repo admin:
@@ -171,20 +306,28 @@ merge with their own credentials — the separation is the point.
 
 ## Re-tightening after rollout
 
-Branch protection currently runs with `enforce_admins: false` on `main` and
-`develop`, which is what permits an admin bypass merge. That was the only way to
-land a human-authored agent PR while this gap existed.
+`main` is configured with `enforce_admins: true` and empty PR bypass allowances
+via `scripts/setup-branch-protection.sh`: no direct pushes and no admin/bot
+bypass of the promotion PR path. That is intentional — promotion is only through
+a `develop` → `main` PR with required `check-source-branch` (and validate)
+checks. Approvals on main default to zero (`MAIN_REQUIRE_APPROVALS=0`) because
+review already happened on `develop`.
 
-Once agent PRs are reliably bot-authored, close the bypass:
+`develop` still runs with `enforce_admins: false` so humans can land exceptional
+integration fixes if needed; day-to-day agent work still goes through bot-authored
+PRs into `develop` with a human approval.
+
+To re-apply the full policy (including enabling repository auto-merge):
 
 ```bash
-gh api --method PATCH repos/project-noemi/agents/branches/develop/protection/enforce_admins
-gh api --method PATCH repos/project-noemi/agents/branches/main/protection/enforce_admins
+bash scripts/setup-branch-protection.sh
+# optional one-approval gate on the release PR only:
+MAIN_REQUIRE_APPROVALS=1 bash scripts/setup-branch-protection.sh
 ```
 
-Do **not** enable this before the machine identity is working. With
-`enforce_admins: true` and no bot identity, every agent PR becomes unmergeable
-and admins have no escape hatch.
+Do **not** turn `enforce_admins: true` on `develop` until agent PRs are reliably
+bot-authored. With that flag and no bot identity, every agent PR into `develop`
+becomes unmergeable and admins have no escape hatch.
 
 ## Rotation and revocation
 
@@ -209,7 +352,7 @@ and admins have no escape hatch.
   "risks": [
     "machine user consumes a paid Enterprise seat",
     "Workflows:write would let agents edit the merge gate — left ungranted",
-    "enforce_admins remains false until bot authorship is verified"
+    "main enforce_admins is true (no direct push/bypass); develop remains false until bot path is the only integration path"
   ],
   "result": "Producer and reviewer identities separated; approval gate enforceable"
 }

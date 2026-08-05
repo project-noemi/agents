@@ -62,9 +62,14 @@ A date-based scheme could become theatre — a tag a day with nothing behind it.
 It does not, because promotion is **content-gated**:
 
 - A release happens **only when `develop` carries an unreleased user-facing
-  change** vs `main` — concretely, **at least one Conventional Commit of type
-  `feat` or `fix`** in the `main..develop` range (everything since the last
-  promotion). One is enough.
+  change** — concretely, **at least one Conventional Commit of type `feat` or
+  `fix`** in the `<last-release-tag>..develop` range (everything not yet covered
+  by a tag). One is enough.
+- The baseline is the **last release tag, not `main`.** "Unreleased" means "not
+  covered by a tag", which is what makes the job resumable: if a run promotes
+  `develop` into `main` and then dies before tagging, the next run still sees the
+  untagged content and finishes the job. A `main..develop` baseline would read
+  that half-done state as "nothing to do" and strand the release permanently.
 - If there is none, the promotion job **exits cleanly as a no-op** — it logs
   "nothing to release" and does not tag, release, or post. **Quiet days are
   quiet.** No noise, no empty tag.
@@ -214,16 +219,40 @@ short-lived (per run, auto-expiring — nothing to rotate); the only stored
 material is the private key. If either secret is missing, the promotion step is
 skipped and the job no-ops cleanly rather than failing.
 
-### A note on release-it's changelog commit
+### Where the changelog lives: the GitHub Release, not a committed file
 
-After the promotion PR merges, release-it stamps the release on `main`. The
-annotated tag and the GitHub Release are **tag/release refs**, which
-branch-protection rules do **not** govern — they land regardless of how
-locked-down `main` is. The one write release-it makes to the `main` *branch* is
-the `chore(release): <version>` **CHANGELOG.md commit**. If your protection is
-strict enough to block even that automation write (consistent with the "no bot
-bypass" posture), move `CHANGELOG.md` generation onto `develop` so it flows
-through the promotion PR — **do not** grant the bot a protection bypass.
+**The release never writes to a branch.** There is no `CHANGELOG.md` in this
+repository and no `chore(release): <version>` commit. The generated
+conventional-changelog output becomes the **body of the GitHub Release**, and
+the tag plus that Release are the changelog of record.
+
+That is a consequence of taking "no bot bypass" seriously. `main` is protected
+with `enforce_admins: true` and no bypass allowance, so any branch push from the
+release job is rejected with `GH006: Protected branch update failed`. Because
+`git push --follow-tags` pushes the branch and the tag together, a rejected
+changelog commit also **takes the tag down with it** — release-it rolls the tag
+back and the whole job fails. That is exactly what happened on 2026-08-05:
+promotion PR #360 merged, then stamping failed and no `2026.08.05` tag existed.
+
+The fix is to make the release genuinely branch-write-free:
+
+- `.release-it.json` sets **`git.commit: false`** — nothing is committed, so the
+  local branch stays byte-identical to `origin/main` and `git push --follow-tags`
+  sends **no branch update at all**, only the annotated tag. Tags and releases
+  are not governed by branch protection, so they land on a fully locked `main`.
+- The `@release-it/conventional-changelog` plugin runs with **`infile: false`**,
+  so it renders the changelog into the Release body instead of writing a file.
+- The workflow's sync step (`git reset --hard origin/main`) is what guarantees
+  the branch cannot diverge, and `requireCleanWorkingDir: true` is the backstop
+  that aborts the release if anything unexpectedly dirties the tree.
+
+**Why not generate `CHANGELOG.md` on `develop`** so it rides the promotion PR
+(an earlier revision of this document suggested exactly that)? Because `develop`
+requires a pull request plus **one approving code-owner review**. The release App
+can neither push to `develop` directly nor approve its own PR, so that route puts
+a human review gate in front of every tag — it turns an automated release into a
+manual one. **Do not** "solve" this by granting the automation a protection
+bypass on either branch.
 
 ## Decoupled cadences: versions per promotion, social weekly
 
@@ -231,7 +260,7 @@ The two rhythms are deliberately separate:
 
 | | Cadence | What it does | Human gate |
 |---|---|---|---|
-| **Tagging / release** | Per content-bearing promotion (daily check; fires only when there's a feat/fix) | Auto-merge a `develop → main` PR, then stamp `YYYY.MM.DD` tag + CHANGELOG + GitHub Release on main | On develop review (upstream); green-CI gate |
+| **Tagging / release** | Per content-bearing promotion (daily check; fires only when there's a feat/fix) | Auto-merge a `develop → main` PR, then stamp a `YYYY.MM.DD` tag + a GitHub Release (changelog as its body) on main | On develop review (upstream); green-CI gate |
 | **Digest / social** | Weekly (Monday) | Draft the week's feature highlights + LinkedIn/social post | **Yes — human approves before any post** |
 
 Why decouple them? Versions should track *reality*: mint one whenever real change
@@ -245,14 +274,17 @@ each run at its natural rhythm.
 
 The moving parts:
 
-- **`.release-it.json`** — the release configuration. It sets the
-  tag/commit/release naming to plain date CalVer (`${version}` → `YYYY.MM.DD`,
-  no `v` prefix), disables npm entirely (`"npm": false`), and keeps the
-  `@release-it/conventional-changelog` plugin **only** to maintain `CHANGELOG.md`.
-  That plugin runs with `ignoreRecommendedBump: true`, so it does **not** compute
-  a SemVer bump — CalVer owns the version. The `after:release` hook is an `echo`
-  stub for the release-herald seam — no real poster, and it re-states that social
-  is the weekly job's job, never the release job's.
+- **`.release-it.json`** — the release configuration. It sets the tag/release
+  naming to plain date CalVer (`${version}` → `YYYY.MM.DD`, no `v` prefix),
+  disables npm entirely (`"npm": false`), and keeps the
+  `@release-it/conventional-changelog` plugin **only** to render the GitHub
+  Release body (`infile: false` — no committed changelog file). That plugin runs
+  with `ignoreRecommendedBump: true`, so it does **not** compute a SemVer bump —
+  CalVer owns the version. `git.commit: false` is load-bearing: it is what keeps
+  the release from writing to the protected `main` branch (see the changelog note
+  above). The `after:release` hook is an `echo` stub for the release-herald seam —
+  no real poster, and it re-states that social is the weekly job's job, never the
+  release job's.
 - **`scripts/release-it-calver.mjs`** — a tiny local release-it plugin that
   supplies the version as `YYYY.MM.DD` (UTC), checking existing tags to add a
   `.N` suffix for same-day releases. It exists because release-it is
@@ -262,14 +294,19 @@ The moving parts:
   Supplying the version from a plugin sidesteps the SemVer increment path
   entirely; `"npm": false` means the non-SemVer version is never written into
   `package.json` (npm would reject it). The tag, the GitHub Release, and the
-  changelog header all end up carrying a clean `YYYY.MM.DD`.
+  changelog heading in its body all end up carrying a clean `YYYY.MM.DD`.
+  (release-it's console preview prints the changelog heading as `[null]` before
+  the plugin's `bump()` re-renders it — a cosmetic log artifact; the published
+  Release body carries the real version.)
 - **`.github/workflows/release.yml`** — the two jobs:
   - **`promote-and-release`** runs on a **daily `schedule:` cron** and on manual
     `workflow_dispatch` (with a `dry_run` input). It applies the **content gate**
-    (≥1 unreleased feat/fix), checks develop's CI is **green**, opens (or reuses)
-    an **auto-merged `develop → main` PR**, and — once that PR merges — runs
-    release-it **on `main`** to stamp the CalVer tag, update the changelog, and
-    publish the GitHub Release. The PR is opened with a **GitHub App token minted
+    (≥1 unreleased feat/fix since the last tag), checks develop's CI is
+    **green**, opens (or reuses) an **auto-merged `develop → main` PR**, and —
+    once that PR merges — runs release-it **on `main`** to stamp the CalVer tag
+    and publish the GitHub Release. If `main` already carries the unreleased
+    content (a previous run promoted but failed to stamp), it skips the PR and
+    resumes at the stamping step. The PR is opened with a **GitHub App token minted
     at runtime** (from `RELEASE_APP_ID` + `RELEASE_APP_PRIVATE_KEY`) so its
     `on: pull_request` checks run; if the App is not configured the job no-ops
     cleanly. release-it itself keeps using `GITHUB_TOKEN`. It **never** drafts or
@@ -327,10 +364,16 @@ into communication teams can trust.
    nothing happens, and that is fine.
 3. If there **is** unreleased user-facing change and develop's CI is green, the
    job opens (or reuses) a `develop → main` pull request and enables auto-merge;
-   once `main`'s required checks pass, the PR merges. release-it then runs on the
+   once `main`'s required checks pass, the PR merges. (If `main` already carries
+   that content, this step is skipped — see step 3b.) release-it then runs on the
    merged `main`: it computes the CalVer date (`YYYY.MM.DD`, with `.N` if the date
-   is already taken), updates `CHANGELOG.md`, creates the annotated tag, pushes,
-   and publishes the GitHub Release.
+   is already taken), creates and pushes the annotated tag, and publishes the
+   GitHub Release with the generated changelog as its body. No commit is pushed
+   to `main`.
+   - **3b — resume.** If a previous run merged the promotion PR but failed before
+     tagging, `main` already equals `develop` while the content is still
+     untagged. Because the content gate measures against the last **tag**, the
+     next run still fires, skips the promotion, and stamps the missing release.
 4. **Weekly** (Monday, or via manual dispatch), the separate digest job collects
    the week's changes and drafts the release-herald digest (highlights + a social
    post) as an artifact and an issue — for a human to review, approve, and post.
@@ -342,3 +385,11 @@ choose the `promote` job, and enable `dry_run` to see the content-gate decision
 and the promotion plan **without** opening a PR, merging into `main`, tagging, or
 publishing anything. Use it whenever you want to confirm what the next promotion
 would do before it runs for real.
+
+A dry run **also runs `release-it --dry-run`** against the current `main`, so the
+version resolution, changelog rendering, tag, and Release steps are genuinely
+exercised. This matters: the original dry run exited before release-it ever ran,
+so it reported success while the real run failed on a code path the dry run had
+never touched. A dry run that skips the risky step is not a rehearsal. Note that
+when `main` is still behind `develop`, the dry run's changelog preview reflects
+`main` as it stands today, not the post-promotion state.

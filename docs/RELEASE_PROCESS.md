@@ -114,25 +114,41 @@ in the same run. (If auto-merge cannot be enabled — the repo's "Allow auto-mer
 setting is off, or `main` has no required checks to wait on — the job falls back
 to an immediate merge, which succeeds when `main` only requires "must be a PR".)
 
-### The `GITHUB_TOKEN` nuance (and when `PROMOTE_TOKEN` is required)
+### The `GITHUB_TOKEN` nuance (and why the PR is opened with a GitHub App token)
 
 A pull request opened with the default `GITHUB_TOKEN` **does not trigger
 `on: pull_request` workflows** — GitHub suppresses that to avoid recursive runs.
-This matters for the promotion PR:
+That is fatal for the promotion PR: `main`'s protection requires the
+`require-develop-source` / `check-source-branch` check to run on the PR, and a
+`GITHUB_TOKEN`-opened PR never gets it, so auto-merge stalls forever.
 
-- **If `main` requires status-check *re-runs* on the PR:** a GITHUB_TOKEN-opened
-  PR would never get those checks, so auto-merge would stall forever. In this
-  configuration you **must** provide a **`PROMOTE_TOKEN`** secret — a PAT or the
-  `noemi-agent` app token — and the job opens the PR with it so the checks run.
-- **If `main` requires only "must be a PR"** (relying on the checks develop
-  *already* passed, not a re-run): **no secret is needed.** The PR is immediately
-  mergeable and auto-merge completes at once with `GITHUB_TOKEN`.
+The job therefore opens (and merges) the promotion PR with a **GitHub App token
+minted at runtime**, using the official
+[`actions/create-github-app-token`](https://github.com/actions/create-github-app-token)
+action. An App installation token is a **distinct actor** (not `GITHUB_TOKEN`),
+so a PR it opens **does** trigger `on: pull_request` — `check-source-branch` runs
+and auto-merge can complete. That is the whole point.
 
-The job prefers `PROMOTE_TOKEN` when the secret is present and falls back to
-`GITHUB_TOKEN` otherwise. If the PR does not merge within the polling window
-(the usual cause being "re-runs required but `PROMOTE_TOKEN` not set"), the job
-stamps **nothing** — a safe no-op — and the next scheduled run re-checks the
-still-open PR.
+Properties worth knowing:
+
+- **Short-lived, no rotation.** The token is minted per run and expires
+  automatically (roughly an hour). There is no long-lived PAT sitting in a secret
+  to rotate, revoke, or leak — the only stored material is the App's private key.
+- **Graceful degradation.** If the App is not configured (the
+  `RELEASE_APP_ID` / `RELEASE_APP_PRIVATE_KEY` secrets are not set), the mint step
+  is **skipped** and the PR-open/merge step is gated on the token being present,
+  so the job logs "App secrets missing, no promotion will happen" and exits
+  **cleanly as a no-op** — it does **not** hard-error. The content gate and the
+  CI-green gate still run ahead of it. Once an admin wires up the App, the next
+  scheduled run promotes normally.
+- **Safe no-op on a stalled PR.** If the PR does not merge within the polling
+  window (e.g. a required check is slow), the job stamps **nothing** and the next
+  scheduled run re-checks the still-open PR.
+
+`release-it` (the tag + GitHub Release + changelog commit on `main`) continues to
+use the default `GITHUB_TOKEN`: those are tag/release refs and a plain branch
+push, none of which need the App token's `on: pull_request`-triggering property,
+so the App token's blast radius stays limited to the promotion PR.
 
 ### Where the human gate actually sits
 
@@ -161,13 +177,42 @@ on `main` as follows:
   develop is already reviewed — but supported if a second sign-off on the
   promotion is desired. (If you require approvals, ensure the automation can still
   satisfy them, e.g. via a reviewer or an approval step.)
-- **Only if you require status-check *re-runs* on the promotion PR:** add a
-  **`PROMOTE_TOKEN`** repository secret (a PAT or the `noemi-agent` app token) so
-  the PR is opened with a non-default token and its `on: pull_request` checks
-  actually run. If `main` requires only "must be a PR", **no secret is needed**.
+- **Set up the release GitHub App and its two secrets** (see the next section).
+  The promotion PR is opened with an App-minted token so its `on: pull_request`
+  checks actually run — without the App configured, the job cleanly no-ops and no
+  promotion happens.
 - **Enable "Allow auto-merge"** in the repository's General settings so
   `gh pr merge --auto` can arm the merge. (Without it, the job falls back to an
   immediate merge, which works only in the "must be a PR" configuration.)
+
+### The release GitHub App (replaces the old `PROMOTE_TOKEN` PAT)
+
+The promotion PR needs to be opened by an actor that triggers `on: pull_request`
+(see the token nuance above). Instead of a personal access token, this repo uses
+a **GitHub App** whose installation token is minted per run. A repository admin
+sets it up once:
+
+1. **Create a GitHub App** (org-owned: *Settings → Developer settings → GitHub
+   Apps → New GitHub App*). It needs no webhook and no user-facing callback.
+   Grant it these **repository permissions** and nothing more:
+   - **Contents: Read and write** (release-it's changelog commit / promotion).
+   - **Pull requests: Read and write** (open and auto-merge the promotion PR).
+2. **Generate a private key** for the App (*Private keys → Generate a private
+   key*) and download the `.pem`.
+3. **Install the App on the organization, scoped to the `agents` repository
+   only** (*Install App → Only select repositories → `agents`*). Do not install
+   it org-wide.
+4. **Store two repository Actions secrets** on `agents`
+   (*Settings → Secrets and variables → Actions*):
+   - **`RELEASE_APP_ID`** — the App's numeric App ID (shown on the App's
+     settings page).
+   - **`RELEASE_APP_PRIVATE_KEY`** — the full contents of the downloaded `.pem`
+     private key.
+
+The workflow reads exactly these two secret names. The minted token is
+short-lived (per run, auto-expiring — nothing to rotate); the only stored
+material is the private key. If either secret is missing, the promotion step is
+skipped and the job no-ops cleanly rather than failing.
 
 ### A note on release-it's changelog commit
 
@@ -224,9 +269,11 @@ The moving parts:
     (≥1 unreleased feat/fix), checks develop's CI is **green**, opens (or reuses)
     an **auto-merged `develop → main` PR**, and — once that PR merges — runs
     release-it **on `main`** to stamp the CalVer tag, update the changelog, and
-    publish the GitHub Release. The PR is opened with `PROMOTE_TOKEN` when that
-    secret is present (so `on: pull_request` checks run), falling back to
-    `GITHUB_TOKEN`. It **never** drafts or posts social content.
+    publish the GitHub Release. The PR is opened with a **GitHub App token minted
+    at runtime** (from `RELEASE_APP_ID` + `RELEASE_APP_PRIVATE_KEY`) so its
+    `on: pull_request` checks run; if the App is not configured the job no-ops
+    cleanly. release-it itself keeps using `GITHUB_TOKEN`. It **never** drafts or
+    posts social content.
   - **`weekly-digest`** runs on a **weekly `schedule:` cron (Monday)** and on
     manual `workflow_dispatch`. It collects the week's user-facing changes and
     produces the release-herald digest **as a draft** — a workflow artifact **and**

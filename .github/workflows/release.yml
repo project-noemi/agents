@@ -62,17 +62,23 @@
 #     `on: pull_request` workflows (GitHub suppresses recursive workflow runs).
 #     So if `main`'s protection REQUIRES status-check RE-RUNS on the promotion
 #     PR, those checks never start and the auto-merge stalls forever. STEP 3
-#     therefore opens the PR with an OPTIONAL `PROMOTE_TOKEN` secret (a PAT or
-#     the noemi-agent app token) when present, falling back to `GITHUB_TOKEN`.
-#       - If `main` requires status-check re-runs on the PR  -> PROMOTE_TOKEN is
-#         REQUIRED (a GITHUB_TOKEN-opened PR would never get its checks and would
-#         hang). The poll below times out and NO release is stamped — a safe
-#         no-op, retried next run — rather than a half-done promotion.
-#       - If `main` requires only "must be a PR" (relying on develop's
-#         already-passed checks, not a re-run) -> NO secret is needed; the PR is
-#         immediately mergeable and auto-merge completes at once.
-#     See docs/RELEASE_PROCESS.md for the branch-protection settings an admin
-#     applies and exactly when PROMOTE_TOKEN is needed.
+#     therefore opens/merges the PR with a **GitHub App token minted at runtime**
+#     (via actions/create-github-app-token) instead of `GITHUB_TOKEN`. An
+#     App-minted token is a first-class actor, so a PR it opens DOES trigger
+#     `on: pull_request` — `check-source-branch`/`require-develop-source` run and
+#     auto-merge can actually complete. The token is short-lived (minted per run,
+#     auto-expires, nothing to rotate) and needs no PAT owned by a human.
+#       - The App is installed on the org, scoped to THIS repo, with Contents
+#         read/write + Pull requests read/write. STEP 3a mints the token from
+#         `secrets.RELEASE_APP_ID` + `secrets.RELEASE_APP_PRIVATE_KEY`.
+#       - GRACEFUL DEGRADATION: if those two secrets are NOT set, the mint step
+#         is SKIPPED (its `if:` checks `secrets.RELEASE_APP_ID != ''`) and the
+#         PR-open/merge step is gated on the token being present, so the job logs
+#         "App secrets missing, skipping promotion" and exits cleanly — it does
+#         NOT hard-error. The content gate and CI-green gate still run ahead of
+#         all this. No promotion happens until an admin configures the App.
+#     See docs/RELEASE_PROCESS.md for the App setup an admin applies and the two
+#     secret names required.
 #
 #   * NO NEW ROOT DEPENDENCIES. The repo root is intentionally dependency-free.
 #     release-it and its plugins are installed on demand with
@@ -129,6 +135,15 @@ jobs:
       # Read commit statuses / check runs for the CI-green gate.
       checks: read
       statuses: read
+
+    # The `secrets` context CANNOT be referenced from a step `if:` (GitHub only
+    # allows it in `env`, `with`, and `run`). So we derive a plain boolean here at
+    # the JOB level — where `secrets` IS allowed — and the mint step's `if:` reads
+    # this env instead. This is what makes graceful degradation possible: when the
+    # release App secrets are absent, HAS_APP_SECRETS is 'false' and the mint step
+    # is skipped rather than the workflow erroring on an illegal secrets reference.
+    env:
+      HAS_APP_SECRETS: ${{ secrets.RELEASE_APP_ID != '' && secrets.RELEASE_APP_PRIVATE_KEY != '' }}
 
     steps:
       # Full history + all tags: the content gate diffs main..develop, the
@@ -264,17 +279,63 @@ jobs:
       # fall back to an immediate `gh pr merge --merge`, which succeeds when main
       # only requires "must be a PR" and develop's checks already passed.)
       #
-      # TOKEN: open/merge the PR with PROMOTE_TOKEN when present so `on:
-      # pull_request` checks actually run on it (a GITHUB_TOKEN-opened PR does not
-      # trigger them); fall back to GITHUB_TOKEN otherwise. See the file header.
+      # TOKEN: open/merge the PR with the GitHub App token minted in STEP 3a so
+      # `on: pull_request` checks actually run on it (a GITHUB_TOKEN-opened PR does
+      # not trigger them). See the file header and docs/RELEASE_PROCESS.md.
+
+      # ---------------------------------------------------------------------
+      # STEP 3a — MINT A GITHUB APP TOKEN (short-lived, per-run)
+      # ---------------------------------------------------------------------
+      # Mint an installation access token for the release GitHub App. Because it
+      # is a distinct actor (not GITHUB_TOKEN), the promotion PR it opens DOES
+      # trigger `on: pull_request` required checks, so check-source-branch runs
+      # and auto-merge can complete. The token is short-lived and auto-expires —
+      # nothing to rotate.
+      #
+      # GRACEFUL DEGRADATION: only run when BOTH App secrets are present. The
+      # `secrets` context cannot be used in a step `if:`, so we read the
+      # job-level `env.HAS_APP_SECRETS` boolean derived above instead. When the
+      # secrets are absent this step is SKIPPED (not failed), its token output is
+      # empty, and the PR step below is gated on that output being non-empty — so
+      # the job cleanly no-ops instead of crashing.
+      - name: Mint GitHub App token for promotion PR
+        id: app-token
+        if: >-
+          ${{ steps.gate.outputs.release == 'true' && steps.ci.outputs.green == 'true' &&
+              env.HAS_APP_SECRETS == 'true' }}
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      # GRACEFUL DEGRADATION: if the content gate and CI-green gate both passed
+      # but no App token was minted (the App secrets are not configured), say so
+      # loudly and exit the job cleanly. This is a no-op, NOT a failure — the
+      # release infrastructure is simply not wired up yet.
+      - name: Note skipped promotion when App secrets are absent
+        if: >-
+          ${{ steps.gate.outputs.release == 'true' && steps.ci.outputs.green == 'true' &&
+              env.HAS_APP_SECRETS != 'true' }}
+        run: |
+          echo "::warning::RELEASE_APP_ID / RELEASE_APP_PRIVATE_KEY are not set."
+          echo "There is unreleased user-facing change and develop is green, but the"
+          echo "release GitHub App is not configured, so no promotion PR can be opened."
+          echo "No promotion will happen and NO release is stamped this run (clean no-op)."
+          echo "An admin must create/install the release App and set the two secrets —"
+          echo "see docs/RELEASE_PROCESS.md."
+
       - name: Open promotion PR (develop -> main) and auto-merge on green
         id: promote
-        if: ${{ steps.gate.outputs.release == 'true' && steps.ci.outputs.green == 'true' }}
+        # Gate on the App token being present too: if STEP 3a was skipped (App
+        # secrets not set) its token output is empty, so this whole step is
+        # skipped and the job cleanly no-ops instead of erroring.
+        if: >-
+          ${{ steps.gate.outputs.release == 'true' && steps.ci.outputs.green == 'true' &&
+              steps.app-token.outputs.token != '' }}
         env:
-          # Prefer a PAT / app token so the promotion PR triggers on: pull_request
-          # required checks; fall back to the default token.
-          GH_TOKEN: ${{ secrets.PROMOTE_TOKEN || secrets.GITHUB_TOKEN }}
-          HAS_PROMOTE_TOKEN: ${{ secrets.PROMOTE_TOKEN != '' }}
+          # Use the App-minted token so the promotion PR triggers on: pull_request
+          # required checks (a GITHUB_TOKEN-opened PR does not trigger them).
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           set -euo pipefail
@@ -296,14 +357,8 @@ jobs:
             exit 0
           fi
 
-          if [ "${HAS_PROMOTE_TOKEN}" = "true" ]; then
-            echo "PROMOTE_TOKEN present: PR opened with it, so on: pull_request checks will run."
-          else
-            echo "PROMOTE_TOKEN NOT set: PR opened with GITHUB_TOKEN."
-            echo "  -> on: pull_request checks will NOT run on this PR. That is fine ONLY IF"
-            echo "     main requires just 'must be a PR' (develop's already-passed checks stand)."
-            echo "     If main requires status-check RE-RUNS, this PR will hang — set PROMOTE_TOKEN."
-          fi
+          echo "PR opened with the GitHub App token: on: pull_request checks will run on it,"
+          echo "so check-source-branch runs and auto-merge can complete."
 
           # Reuse an already-open develop -> main PR if one exists (idempotent
           # across retries), otherwise create it.
@@ -350,11 +405,11 @@ jobs:
 
           if [ "$MERGED" != "true" ]; then
             echo "Promotion PR #${PR_NUM} did not merge within the polling window."
-            echo "Most likely main requires status-check RE-RUNS on the PR but PROMOTE_TOKEN"
-            echo "is not set, so no checks started (GITHUB_TOKEN-opened PRs do not trigger"
-            echo "on: pull_request). The PR stays open; auto-merge (if enabled) may still"
-            echo "complete later, and the next scheduled run will re-check it. NO release is"
-            echo "stamped this run — a safe no-op rather than a half-done promotion."
+            echo "The PR was opened with the App token, so its on: pull_request checks should"
+            echo "run; a slow or still-pending required check is the likely cause. The PR stays"
+            echo "open; auto-merge (if enabled) may still complete later, and the next scheduled"
+            echo "run will re-check it. NO release is stamped this run — a safe no-op rather than"
+            echo "a half-done promotion."
             echo "promoted=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -408,6 +463,13 @@ jobs:
       # docs/RELEASE_PROCESS.md), that commit push will be rejected; the fix is to
       # generate CHANGELOG.md on develop so it flows through the promotion PR —
       # do NOT grant the bot a protection bypass. See docs/RELEASE_PROCESS.md.
+      # TOKEN CHOICE: release-it keeps using the default GITHUB_TOKEN. The tag and
+      # GitHub Release are tag/release refs (not governed by branch protection) and
+      # the changelog commit is a plain push to main — none of this needs the App
+      # token's on: pull_request-triggering property (that only mattered for the
+      # promotion PR). Keeping GITHUB_TOKEN here avoids widening the App token's
+      # blast radius and works even in the App-not-configured path (it never
+      # reaches this step, but the default token is always available regardless).
       - name: Run release-it (CalVer tag + changelog + GitHub Release)
         if: ${{ steps.promote.outputs.promoted == 'true' }}
         env:

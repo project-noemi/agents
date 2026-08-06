@@ -165,3 +165,12 @@ Per Decisions [2026-07-03-0001] and [2026-07-07-0002] in `docs/DECISION_LOG.md`,
 - `main` is reached exclusively through a periodic `develop → main` release PR (scheduled routine responsibility, weekly by default).
 - The `require-develop-source` CI gate (`.github/workflows/require-develop-source.yml`) will fail any PR into `main` whose head is not `develop`; PR #266 was superseded (see Decision [2026-07-05-0012]) because automation building from `main` produced unmergeable work.
 - If you run `gh pr create` from an automation session, pass `--base develop`. Never `--base main`.
+
+### Machine-Identity PR Authorship (MANDATORY)
+
+Per the Product Owner directive of 2026-08-03 (Decision [2026-08-03-0002], Requirement §7; canonical runbook `docs/MACHINE_IDENTITY.md`), agent-initiated PRs MUST be authored by the `noemi-agent` machine identity — never with a human's credentials, which would make the PR unreviewable by that human (GitHub blocks author self-approval):
+
+- Where `gh` and a vault CLI are available, open PRs via `bash scripts/agent-gh.sh pr create ...`.
+- In containerized or remote sessions without `gh`, use `node scripts/agent-pr.js` (resolves `AGENT_GH_TOKEN` from process memory and speaks to the REST API directly).
+- Both paths verify the token against `AGENT_GH_EXPECTED_LOGIN` and refuse to act as any other account. If no machine-identity token resolves, STOP and surface the gap to the human — never fall back to opening the PR with human credentials.
+- Approving and merging remain human-only acts; the machine identity may do neither.

@@ -6,11 +6,12 @@
 #
 #   1. promote-and-release  (DAILY + manual)
 #      A CONTENT-GATED auto-promotion. It only acts when `develop` carries an
-#      unreleased USER-FACING change vs `main` (≥1 Conventional Commit of type
-#      feat or fix in the main..develop range). If it does, and CI on develop is
-#      green, it opens (or reuses) a `develop -> main` PULL REQUEST and lets it
-#      AUTO-MERGE once required checks pass, then runs release-it on main to stamp
-#      a calendar-date CalVer tag (YYYY.MM.DD) + GitHub Release + changelog.
+#      unreleased USER-FACING change since the LAST RELEASE TAG (≥1 Conventional
+#      Commit of type feat or fix in the <last-tag>..develop range). If it does,
+#      and CI on develop is green, it opens (or reuses) a `develop -> main` PULL
+#      REQUEST and lets it AUTO-MERGE once required checks pass, then runs
+#      release-it on main to stamp a calendar-date CalVer tag (YYYY.MM.DD) + a
+#      GitHub Release whose body is the generated changelog.
 #      Promotion is PR-BASED (not a direct `git push origin main`) so `main` can
 #      stay fully protected against direct pushes. TAG CADENCE = per
 #      content-bearing promotion (frequent). This job NEVER drafts or posts
@@ -43,7 +44,19 @@
 #     threshold. That is gone. The gate is SUBSTANCE: is there ≥1 feat/fix
 #     unreleased on develop? Quiet days are quiet — no tag, no release, no post,
 #     clean no-op exit. The heuristic is a Conventional-Commit scan of the
-#     main..develop range (see the "Content gate" step).
+#     <last-release-tag>..develop range (see the "Content gate" step).
+#
+#   * THE GATE IS TAG-RELATIVE, NOT main-RELATIVE — THIS IS LOAD-BEARING.
+#     "Unreleased" means "not covered by a release tag", NOT "not on main".
+#     Promotion and stamping are two separate remote operations, so a run can
+#     legitimately die in between: the promotion PR merges, then release-it
+#     fails, and `main` now equals `develop` with nothing tagged. If the gate
+#     asked "is main behind develop?" that half-done state would read as "nothing
+#     to do" and the release would be silently stranded forever — a real incident
+#     that happened on 2026-08-05. Comparing against the last tag instead makes
+#     the job RESUMABLE: the next run sees the untagged content, skips the
+#     already-done promotion, and stamps the release. Do not "simplify" this back
+#     to a main..develop diff.
 #
 #   * AUTO-PROMOTE ON GREEN — SAFE BECAUSE DEVELOP IS ALREADY REVIEWED.
 #     develop is the canonical, human-reviewed integration line; every change
@@ -62,17 +75,38 @@
 #     `on: pull_request` workflows (GitHub suppresses recursive workflow runs).
 #     So if `main`'s protection REQUIRES status-check RE-RUNS on the promotion
 #     PR, those checks never start and the auto-merge stalls forever. STEP 3
-#     therefore opens the PR with an OPTIONAL `PROMOTE_TOKEN` secret (a PAT or
-#     the noemi-agent app token) when present, falling back to `GITHUB_TOKEN`.
-#       - If `main` requires status-check re-runs on the PR  -> PROMOTE_TOKEN is
-#         REQUIRED (a GITHUB_TOKEN-opened PR would never get its checks and would
-#         hang). The poll below times out and NO release is stamped — a safe
-#         no-op, retried next run — rather than a half-done promotion.
-#       - If `main` requires only "must be a PR" (relying on develop's
-#         already-passed checks, not a re-run) -> NO secret is needed; the PR is
-#         immediately mergeable and auto-merge completes at once.
-#     See docs/RELEASE_PROCESS.md for the branch-protection settings an admin
-#     applies and exactly when PROMOTE_TOKEN is needed.
+#     therefore opens/merges the PR with a **GitHub App token minted at runtime**
+#     (via actions/create-github-app-token) instead of `GITHUB_TOKEN`. An
+#     App-minted token is a first-class actor, so a PR it opens DOES trigger
+#     `on: pull_request` — `check-source-branch`/`require-develop-source` run and
+#     auto-merge can actually complete. The token is short-lived (minted per run,
+#     auto-expires, nothing to rotate) and needs no PAT owned by a human.
+#       - The App is installed on the org, scoped to THIS repo, with Contents
+#         read/write + Pull requests read/write. STEP 3a mints the token from
+#         `secrets.RELEASE_APP_ID` + `secrets.RELEASE_APP_PRIVATE_KEY`.
+#       - GRACEFUL DEGRADATION: if those two secrets are NOT set, the mint step
+#         is SKIPPED (its `if:` checks `secrets.RELEASE_APP_ID != ''`) and the
+#         PR-open/merge step is gated on the token being present, so the job logs
+#         "App secrets missing, skipping promotion" and exits cleanly — it does
+#         NOT hard-error. The content gate and CI-green gate still run ahead of
+#         all this. No promotion happens until an admin configures the App.
+#     See docs/RELEASE_PROCESS.md for the App setup an admin applies and the two
+#     secret names required.
+#
+#   * NO CHANGELOG.md COMMIT — THE RELEASE NEVER WRITES TO A BRANCH.
+#     `main` is protected with `enforce_admins: true` and no bot bypass, so any
+#     branch push from this job is rejected (GH006). release-it therefore runs
+#     with `git.commit: false` and the conventional-changelog plugin with
+#     `infile: false`: the generated changelog becomes the GITHUB RELEASE BODY
+#     and no `chore(release): <version>` commit is ever created. Because there is
+#     no local commit, release-it's `git push --follow-tags` sends no branch
+#     update at all — only the annotated tag, which branch protection does not
+#     govern. Tags and releases are the changelog of record.
+#     The alternative (generate CHANGELOG.md on `develop` so it rides the
+#     promotion PR) is NOT viable here: `develop` requires a PR plus one
+#     approving code-owner review, so the release App can neither push to it nor
+#     self-approve — it would put a human gate in front of every tag. Do NOT
+#     "fix" this by granting the automation a protection bypass.
 #
 #   * NO NEW ROOT DEPENDENCIES. The repo root is intentionally dependency-free.
 #     release-it and its plugins are installed on demand with
@@ -98,7 +132,7 @@ on:
           - promote
           - digest
       dry_run:
-        description: "promote only: preview the gate + promotion + release without pushing, tagging, or publishing."
+        description: "promote only: run the gates, skip opening/merging the promotion PR, and run release-it with --dry-run so the version/changelog/tag path is exercised without tagging or publishing."
         type: boolean
         required: false
         default: false
@@ -121,14 +155,24 @@ jobs:
       (github.event_name == 'schedule' && github.event.schedule == '0 6 * * *') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'promote')
     permissions:
-      # Push the post-merge changelog commit + CalVer tag, and create the GitHub
-      # Release. (The develop -> main promotion itself goes through a PR, below.)
+      # Push the CalVer tag and create the GitHub Release. No branch write is
+      # made — see the "NO CHANGELOG.md COMMIT" note in the file header. (The
+      # develop -> main promotion itself goes through a PR, below.)
       contents: write
       # Open / reuse / auto-merge the develop -> main promotion PR.
       pull-requests: write
       # Read commit statuses / check runs for the CI-green gate.
       checks: read
       statuses: read
+
+    # The `secrets` context CANNOT be referenced from a step `if:` (GitHub only
+    # allows it in `env`, `with`, and `run`). So we derive a plain boolean here at
+    # the JOB level — where `secrets` IS allowed — and the mint step's `if:` reads
+    # this env instead. This is what makes graceful degradation possible: when the
+    # release App secrets are absent, HAS_APP_SECRETS is 'false' and the mint step
+    # is skipped rather than the workflow erroring on an illegal secrets reference.
+    env:
+      HAS_APP_SECRETS: ${{ secrets.RELEASE_APP_ID != '' && secrets.RELEASE_APP_PRIVATE_KEY != '' }}
 
     steps:
       # Full history + all tags: the content gate diffs main..develop, the
@@ -151,9 +195,9 @@ jobs:
           node --version
           npm --version
 
-      # release-it authors the changelog commit and the annotated tag, and the
-      # promotion may author a merge commit — both need a git identity. Use the
-      # GitHub Actions bot identity, never a human's.
+      # release-it authors the annotated CalVer tag, and the promotion may author
+      # a merge commit — both need a git identity. Use the GitHub Actions bot
+      # identity, never a human's.
       - name: Configure git identity
         run: |
           git config user.name "github-actions[bot]"
@@ -163,10 +207,10 @@ jobs:
       # STEP 1 — CONTENT GATE (the heart of this model)
       # ---------------------------------------------------------------------
       # Decide whether there is anything USER-FACING to release. The heuristic:
-      # scan the Conventional Commit subjects in the main..develop range (the
-      # commits on develop not yet on main — i.e. everything since the last
-      # promotion) and count those of type `feat` or `fix`, including scoped and
-      # breaking (`!`) forms: e.g. `feat: ...`, `fix(x): ...`, `feat(x)!: ...`.
+      # scan the Conventional Commit subjects in the <last-release-tag>..develop
+      # range (everything on develop not covered by the last tag) and count those
+      # of type `feat` or `fix`, including scoped and breaking (`!`) forms: e.g.
+      # `feat: ...`, `fix(x): ...`, `feat(x)!: ...`.
       #
       #   * ≥1 feat/fix  -> there is user-facing substance; proceed.
       #   * 0 feat/fix   -> nothing to release; clean no-op exit (quiet days are
@@ -175,20 +219,45 @@ jobs:
       # This is CONTENT, not COUNT: one feat is enough; a hundred chore/docs/ci
       # commits are not. `docs`, `chore`, `refactor`, `test`, `ci`, `build`,
       # `style`, and merge commits are intentionally NOT release triggers.
+      #
+      # The baseline is the LAST RELEASE TAG, not `main` — see the "TAG-RELATIVE"
+      # design note in the file header. That is what lets a run whose promotion
+      # merged but whose stamping failed be picked up and finished by the next
+      # run instead of being stranded. Tags are ordered by creation date rather
+      # than name because CalVer `YYYY.MM.DD[.N]` is not SemVer-sortable.
       - name: Content gate — any unreleased feat/fix on develop?
         id: gate
         run: |
           set -euo pipefail
           git fetch origin develop main --tags
 
-          echo "::group::Unreleased commit subjects (main..develop)"
-          git log --no-merges --pretty=format:'%s' origin/main..origin/develop || true
+          # Only CalVer-shaped tags (YYYY.MM.DD[.N]) count as releases, so an
+          # unrelated tag someone pushes by hand cannot silently redefine "the
+          # last release" and swallow a release window. `|| true` absorbs both a
+          # no-match grep and a SIGPIPE from `head` closing the pipe early.
+          LAST_TAG=$(git tag --list --sort=-creatordate \
+            | grep -E '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$' \
+            | head -n1 || true)
+          if [ -z "${LAST_TAG}" ]; then
+            echo "No release tag yet — treating all of develop as unreleased."
+            RANGE="origin/develop"
+          else
+            echo "Last release tag: ${LAST_TAG}"
+            RANGE="${LAST_TAG}..origin/develop"
+          fi
+          echo "last_tag=${LAST_TAG}" >> "$GITHUB_OUTPUT"
+
+          echo "::group::Unreleased commit subjects (${RANGE})"
+          git log --no-merges --pretty=format:'%s' "${RANGE}" || true
           echo ""
           echo "::endgroup::"
 
           # Count Conventional-Commit feat/fix subjects (scoped/breaking allowed).
-          FEATFIX=$(git log --no-merges --pretty=format:'%s' origin/main..origin/develop \
-            | grep -E '^(feat|fix)(\([^)]+\))?!?:' | wc -l | tr -d ' ')
+          # `grep -c` exits 1 on no match, which `set -e` would treat as fatal, so
+          # the count is forced to 0 rather than failing the gate.
+          FEATFIX=$(git log --no-merges --pretty=format:'%s' "${RANGE}" \
+            | grep -cE '^(feat|fix)(\([^)]+\))?!?:' || true)
+          FEATFIX=${FEATFIX:-0}
 
           echo "Unreleased feat/fix commits: ${FEATFIX}"
           if [ "${FEATFIX}" -eq 0 ]; then
@@ -236,6 +305,33 @@ jobs:
           fi
 
       # ---------------------------------------------------------------------
+      # STEP 2b — IS A PROMOTION ACTUALLY NEEDED?
+      # ---------------------------------------------------------------------
+      # Separate "does main need develop's content?" from "is there something to
+      # release?" (STEP 1 already answered the latter). They are NOT the same
+      # question, and conflating them is what stranded the 2026-08-05 release:
+      # `main` had already been promoted, so a main..develop check said "nothing
+      # to do" even though the content was still untagged.
+      #
+      #   behind > 0  -> main is missing develop's content; open the promotion PR.
+      #   behind = 0  -> main already carries it (either promoted earlier in this
+      #                  run's history, or by a previous run that then failed to
+      #                  stamp). Skip straight to stamping the release.
+      - name: Is main behind develop?
+        id: behind
+        if: ${{ steps.gate.outputs.release == 'true' && steps.ci.outputs.green == 'true' }}
+        run: |
+          set -euo pipefail
+          BEHIND=$(git rev-list --count origin/main..origin/develop)
+          echo "main is ${BEHIND} commit(s) behind develop."
+          if [ "${BEHIND}" = "0" ]; then
+            echo "main already carries develop's content — no promotion PR needed."
+            echo "Unreleased content exists but is untagged, so this run resumes at the"
+            echo "release-stamping step (see the TAG-RELATIVE note in the file header)."
+          fi
+          echo "count=${BEHIND}" >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------------
       # STEP 3 — PROMOTE develop -> main VIA AN AUTO-MERGED PULL REQUEST
       # ---------------------------------------------------------------------
       # develop is already the reviewed integration line, so this is a promotion
@@ -264,46 +360,84 @@ jobs:
       # fall back to an immediate `gh pr merge --merge`, which succeeds when main
       # only requires "must be a PR" and develop's checks already passed.)
       #
-      # TOKEN: open/merge the PR with PROMOTE_TOKEN when present so `on:
-      # pull_request` checks actually run on it (a GITHUB_TOKEN-opened PR does not
-      # trigger them); fall back to GITHUB_TOKEN otherwise. See the file header.
+      # TOKEN: open/merge the PR with the GitHub App token minted in STEP 3a so
+      # `on: pull_request` checks actually run on it (a GITHUB_TOKEN-opened PR does
+      # not trigger them). See the file header and docs/RELEASE_PROCESS.md.
+
+      # ---------------------------------------------------------------------
+      # STEP 3a — MINT A GITHUB APP TOKEN (short-lived, per-run)
+      # ---------------------------------------------------------------------
+      # Mint an installation access token for the release GitHub App. Because it
+      # is a distinct actor (not GITHUB_TOKEN), the promotion PR it opens DOES
+      # trigger `on: pull_request` required checks, so check-source-branch runs
+      # and auto-merge can complete. The token is short-lived and auto-expires —
+      # nothing to rotate.
+      #
+      # GRACEFUL DEGRADATION: only run when BOTH App secrets are present. The
+      # `secrets` context cannot be used in a step `if:`, so we read the
+      # job-level `env.HAS_APP_SECRETS` boolean derived above instead. When the
+      # secrets are absent this step is SKIPPED (not failed), its token output is
+      # empty, and the PR step below is gated on that output being non-empty — so
+      # the job cleanly no-ops instead of crashing.
+      #
+      # Only minted when a promotion is actually needed (`behind.count != 0`). A
+      # resume run that only has to stamp an already-promoted main never opens a
+      # PR, so it needs no App token and works even before the App is configured.
+      - name: Mint GitHub App token for promotion PR
+        id: app-token
+        if: >-
+          ${{ steps.gate.outputs.release == 'true' && steps.ci.outputs.green == 'true' &&
+              steps.behind.outputs.count != '0' && env.HAS_APP_SECRETS == 'true' }}
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      # GRACEFUL DEGRADATION: if a promotion is needed but no App token was minted
+      # (the App secrets are not configured), say so loudly and exit the job
+      # cleanly. This is a no-op, NOT a failure — the release infrastructure is
+      # simply not wired up yet.
+      - name: Note skipped promotion when App secrets are absent
+        if: >-
+          ${{ steps.gate.outputs.release == 'true' && steps.ci.outputs.green == 'true' &&
+              steps.behind.outputs.count != '0' && env.HAS_APP_SECRETS != 'true' }}
+        run: |
+          echo "::warning::RELEASE_APP_ID / RELEASE_APP_PRIVATE_KEY are not set."
+          echo "There is unreleased user-facing change and develop is green, but the"
+          echo "release GitHub App is not configured, so no promotion PR can be opened."
+          echo "No promotion will happen and NO release is stamped this run (clean no-op)."
+          echo "An admin must create/install the release App and set the two secrets —"
+          echo "see docs/RELEASE_PROCESS.md."
+
       - name: Open promotion PR (develop -> main) and auto-merge on green
         id: promote
-        if: ${{ steps.gate.outputs.release == 'true' && steps.ci.outputs.green == 'true' }}
+        # Gate on the App token being present too: if STEP 3a was skipped (App
+        # secrets not set) its token output is empty, so this whole step is
+        # skipped and the job cleanly no-ops instead of erroring. Also skipped
+        # when main already carries develop's content — nothing to promote.
+        if: >-
+          ${{ steps.gate.outputs.release == 'true' && steps.ci.outputs.green == 'true' &&
+              steps.behind.outputs.count != '0' && steps.app-token.outputs.token != '' }}
         env:
-          # Prefer a PAT / app token so the promotion PR triggers on: pull_request
-          # required checks; fall back to the default token.
-          GH_TOKEN: ${{ secrets.PROMOTE_TOKEN || secrets.GITHUB_TOKEN }}
-          HAS_PROMOTE_TOKEN: ${{ secrets.PROMOTE_TOKEN != '' }}
+          # Use the App-minted token so the promotion PR triggers on: pull_request
+          # required checks (a GITHUB_TOKEN-opened PR does not trigger them).
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           set -euo pipefail
           git fetch origin develop main --tags
 
-          BEHIND=$(git rev-list --count origin/main..origin/develop)
-          echo "main is ${BEHIND} commit(s) behind develop."
-          if [ "${BEHIND}" = "0" ]; then
-            echo "main already up to date with develop — nothing to promote."
-            echo "promoted=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
           if [ "${DRY_RUN}" = "true" ]; then
-            echo ">>> DRY RUN: would open (or reuse) a develop -> main PR, enable"
-            echo "    auto-merge (--merge), and after it merges run release-it on"
-            echo "    main. No PR is opened, nothing is merged, nothing is stamped."
-            echo "promoted=false" >> "$GITHUB_OUTPUT"
+            echo ">>> DRY RUN: would open (or reuse) a develop -> main PR and enable"
+            echo "    auto-merge (--merge). No PR is opened and nothing is merged."
+            echo "    The release-it step still runs below with --dry-run so the"
+            echo "    version/changelog/tag path is genuinely exercised."
+            echo "merged=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if [ "${HAS_PROMOTE_TOKEN}" = "true" ]; then
-            echo "PROMOTE_TOKEN present: PR opened with it, so on: pull_request checks will run."
-          else
-            echo "PROMOTE_TOKEN NOT set: PR opened with GITHUB_TOKEN."
-            echo "  -> on: pull_request checks will NOT run on this PR. That is fine ONLY IF"
-            echo "     main requires just 'must be a PR' (develop's already-passed checks stand)."
-            echo "     If main requires status-check RE-RUNS, this PR will hang — set PROMOTE_TOKEN."
-          fi
+          echo "PR opened with the GitHub App token: on: pull_request checks will run on it,"
+          echo "so check-source-branch runs and auto-merge can complete."
 
           # Reuse an already-open develop -> main PR if one exists (idempotent
           # across retries), otherwise create it.
@@ -312,7 +446,7 @@ jobs:
           if [ -z "$PR_NUM" ]; then
             printf '%s\n\n%s\n' \
               'Automated content-gated promotion of `develop` into `main`.' \
-              "There is at least one unreleased \`feat\`/\`fix\` on develop and develop's CI is green. develop is the reviewed integration line, so no second review is required by default; this PR exists so \`main\` can stay protected against direct pushes. It auto-merges once main's required checks pass; release-it then stamps the CalVer \`YYYY.MM.DD\` tag + GitHub Release + changelog on main. See docs/RELEASE_PROCESS.md." \
+              "There is at least one unreleased \`feat\`/\`fix\` on develop and develop's CI is green. develop is the reviewed integration line, so no second review is required by default; this PR exists so \`main\` can stay protected against direct pushes. It auto-merges once main's required checks pass; release-it then stamps the CalVer \`YYYY.MM.DD\` tag and a GitHub Release (whose body is the generated changelog) on main — no commit is ever pushed to \`main\`. See docs/RELEASE_PROCESS.md." \
               > /tmp/promotion-pr-body.md
             gh pr create --repo "$GITHUB_REPOSITORY" --base main --head develop \
               --title "chore(release): promote develop into main" \
@@ -350,26 +484,65 @@ jobs:
 
           if [ "$MERGED" != "true" ]; then
             echo "Promotion PR #${PR_NUM} did not merge within the polling window."
-            echo "Most likely main requires status-check RE-RUNS on the PR but PROMOTE_TOKEN"
-            echo "is not set, so no checks started (GITHUB_TOKEN-opened PRs do not trigger"
-            echo "on: pull_request). The PR stays open; auto-merge (if enabled) may still"
-            echo "complete later, and the next scheduled run will re-check it. NO release is"
-            echo "stamped this run — a safe no-op rather than a half-done promotion."
-            echo "promoted=false" >> "$GITHUB_OUTPUT"
+            echo "The PR was opened with the App token, so its on: pull_request checks should"
+            echo "run; a slow or still-pending required check is the likely cause. The PR stays"
+            echo "open; auto-merge (if enabled) may still complete later, and the next scheduled"
+            echo "run will re-check it. NO release is stamped this run — a safe no-op rather than"
+            echo "a half-done promotion."
+            echo "merged=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           echo "Promotion PR #${PR_NUM} merged. Proceeding to stamp the release on main."
-          echo "promoted=true" >> "$GITHUB_OUTPUT"
+          echo "merged=true" >> "$GITHUB_OUTPUT"
 
       # ---------------------------------------------------------------------
-      # STEP 3b — SYNC local main to the merged promotion
+      # STEP 3b — DECIDE WHETHER TO STAMP
       # ---------------------------------------------------------------------
-      # The merge happened server-side (via the PR), so the local `main` checked
-      # out at job start is stale. Re-sync it to the merged origin/main before
-      # release-it stamps the tag/changelog on it.
-      - name: Sync local main to merged origin/main
-        if: ${{ steps.promote.outputs.promoted == 'true' }}
+      # Stamping is warranted when there is unreleased content (STEP 1) AND main
+      # now carries it. Two ways that second condition is met:
+      #
+      #   * this run merged the promotion PR (`promote.merged == true`), or
+      #   * main already carried it (`behind.count == 0`) — the RESUME path for a
+      #     previous run that promoted but died before tagging.
+      #
+      # A dry run always stamps (with --dry-run) so the release tooling path is
+      # genuinely exercised rather than skipped. Before this step existed, a dry
+      # run exited at the promote step and proved nothing about release-it — which
+      # is exactly why the 2026-08-05 real run failed on a path a "successful" dry
+      # run had never touched.
+      - name: Decide whether to stamp a release
+        id: stamp
+        if: ${{ steps.gate.outputs.release == 'true' && steps.ci.outputs.green == 'true' }}
+        env:
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "DRY RUN: exercising the release path against the current main."
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.promote.outputs.merged }}" = "true" ]; then
+            echo "Promotion merged in this run — stamping the release."
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.behind.outputs.count }}" = "0" ]; then
+            echo "main already carries the unreleased content — resuming and stamping it."
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No promotion landed this run — not stamping (safe no-op)."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ---------------------------------------------------------------------
+      # STEP 3c — SYNC local main to origin/main
+      # ---------------------------------------------------------------------
+      # Any merge happened server-side (via the PR), so the local `main` checked
+      # out at job start may be stale. Re-sync before release-it tags it.
+      #
+      # `reset --hard` is also what guarantees the local branch is IDENTICAL to
+      # the remote, which is what makes release-it's `git push --follow-tags`
+      # push the tag ONLY — see the "NO CHANGELOG.md COMMIT" header note.
+      - name: Sync local main to origin/main
+        if: ${{ steps.stamp.outputs.go == 'true' }}
         run: |
           set -euo pipefail
           git fetch origin main --tags
@@ -385,7 +558,7 @@ jobs:
       # `npx -p`) is required so the local CalVer plugin can
       # `import { Plugin } from 'release-it'`.
       - name: Install release-it and plugins (on demand, --no-save)
-        if: ${{ steps.promote.outputs.promoted == 'true' }}
+        if: ${{ steps.stamp.outputs.go == 'true' }}
         run: |
           npm install --no-save --no-package-lock \
             release-it @release-it/conventional-changelog
@@ -394,22 +567,28 @@ jobs:
       # STEP 5 — RELEASE: stamp the CalVer date on main
       # ---------------------------------------------------------------------
       # --ci makes release-it non-interactive. The CalVer plugin supplies the
-      # YYYY.MM.DD version (with .N same-day disambiguation);
-      # conventional-changelog only writes CHANGELOG.md. NO social posting here —
-      # that is the weekly-digest job's concern.
+      # YYYY.MM.DD version (with .N same-day disambiguation); the
+      # conventional-changelog plugin renders the changelog straight into the
+      # GitHub Release body. NO social posting here — that is the weekly-digest
+      # job's concern.
       #
-      # BRANCH-PROTECTION NOTE: this stamping runs AFTER the promotion PR merged.
-      # The annotated tag and the GitHub Release are tag/release refs and are NOT
-      # governed by branch-protection rules, so they land regardless of how
-      # locked-down `main` is. The one write release-it makes to the `main`
-      # BRANCH is the `chore(release): ${version}` CHANGELOG commit (git.push).
-      # If main's protection is configured to block ALL direct branch writes
-      # including this automation (the "no bot bypass" posture in
-      # docs/RELEASE_PROCESS.md), that commit push will be rejected; the fix is to
-      # generate CHANGELOG.md on develop so it flows through the promotion PR —
-      # do NOT grant the bot a protection bypass. See docs/RELEASE_PROCESS.md.
-      - name: Run release-it (CalVer tag + changelog + GitHub Release)
-        if: ${{ steps.promote.outputs.promoted == 'true' }}
+      # BRANCH-PROTECTION: this step writes NOTHING to the `main` branch. With
+      # `git.commit: false` and `infile: false` there is no `chore(release):`
+      # commit and no CHANGELOG.md, so `git push --follow-tags` carries only the
+      # annotated tag — and tags/releases are not governed by branch protection.
+      # This is the fix for the GH006 failure on 2026-08-05, where the changelog
+      # commit was rejected by main's protection and took the tag down with it.
+      # Do NOT re-enable `git.commit` without also granting a protection bypass,
+      # which this repository deliberately refuses to do.
+      #
+      # TOKEN CHOICE: release-it uses the default GITHUB_TOKEN. Creating a tag and
+      # a Release needs no App token — the App token's only special property is
+      # triggering `on: pull_request` checks, which mattered solely for the
+      # promotion PR. Keeping GITHUB_TOKEN here avoids widening the App token's
+      # blast radius, and lets the resume path stamp a release even when the App
+      # is not configured at all.
+      - name: Run release-it (CalVer tag + GitHub Release)
+        if: ${{ steps.stamp.outputs.go == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

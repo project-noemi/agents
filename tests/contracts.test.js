@@ -187,3 +187,36 @@ test('repo pins the Node baseline consistently across CI, package metadata, and 
     assert.equal(nvmrc, '24');
     assert.equal(nodeVersion, '24');
 });
+
+test('clarification action-prompt label is canonical and vendor-neutral', () => {
+    const clarifications = read('docs/CLARIFICATIONS.md');
+    const label = '**🤖 Agent Action Prompt:**';
+
+    assert.ok(
+        clarifications.includes(label),
+        'docs/CLARIFICATIONS.md must keep the canonical action-prompt label in its question template'
+    );
+
+    // The label is the trailing context line of every appended-question diff hunk, so a
+    // vendor-specific variant conflicts every in-flight doc PR at once (Issue #355).
+    const variants = [...clarifications.matchAll(/\*\*(?:🤖\s*)?[A-Za-z][\w .-]*?\s*Action Prompt:\*\*/g)]
+        .map((match) => match[0])
+        .filter((found) => found !== label);
+    assert.deepEqual(variants, [], `Non-canonical action-prompt labels found: ${variants.join(', ')}`);
+});
+
+test('Doc persona output format mirrors the clarification question template', () => {
+    const docPersona = read('agents/product/doc.md');
+    const label = '**🤖 Agent Action Prompt:**';
+
+    assert.ok(
+        docPersona.includes(label),
+        'agents/product/doc.md must emit the canonical action-prompt label so doc automation writes it verbatim'
+    );
+    // Rule 4 names the retired label as a negative example, so only emitted labels
+    // (the bolded `**...Action Prompt:**` form) are checked here.
+    const variants = [...docPersona.matchAll(/\*\*(?:🤖\s*)?[A-Za-z][\w .-]*?\s*Action Prompt:\*\*/g)]
+        .map((match) => match[0])
+        .filter((found) => found !== label);
+    assert.deepEqual(variants, [], `Non-canonical action-prompt labels found: ${variants.join(', ')}`);
+});

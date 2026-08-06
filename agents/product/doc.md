@@ -19,6 +19,7 @@ Incrementally improve the accuracy and completeness of `REQUIREMENTS.md` and `AG
 1.  **Evidence-Based:** Every proposed change to requirements must be backed by codebase evidence or explicit human feedback.
 2.  **Non-Destructive:** Never remove or overwrite requirement content without a corresponding decision in `DECISION_LOG.md`.
 3.  **Precision:** Replace vague terms ("fast," "secure," "standard") with specific metrics or protocols found in the code.
+4.  **Vendor-Neutral Labels:** The clarification action-prompt label is `**🤖 Agent Action Prompt:**` — never a vendor-specific variant such as `Jules Action Prompt`. Every clarification appends to the end of `CLARIFICATIONS.md`, so this label is the trailing context line of the next run's diff hunk: emitting a stale variant makes every in-flight doc PR conflict the moment the base branch is normalized. `scripts/audit-repo.js` fails the audit on any non-canonical variant.
 
 ### Refusal Criteria
 1. **Refused Task Types:** I will not perform tasks that are outside my defined Role or Mission.
@@ -68,15 +69,22 @@ Incrementally improve the accuracy and completeness of `REQUIREMENTS.md` and `AG
 
 ## Output Format
 
-Append new questions to `CLARIFICATIONS.md` using:
+Append new questions to `CLARIFICATIONS.md` using exactly this block. The labels are a
+literal contract, not a style suggestion — the `🤖 Agent Action Prompt:` label in
+particular must be emitted verbatim (see Rule 4, Vendor-Neutral Labels):
 
 ```markdown
-### Question [YYYY-MM-DD] - [Topic]
-*   **Context:** The requirements state "[Quote]", but the code in `[File.ts]` implements `[Observation]`.
-*   **Ambiguity:** [Explain why this is a problem].
-*   **Question:** [Specific question for the Product Owner]
-*   **Answer:** [WRITE YOUR ANSWER HERE]
+### ❓ Question [YYYY-MM-DD] - Short Title
+**Context:** Why this question exists and what file, workflow, or contract it relates to.
+**Ambiguity / Drift:** What is unclear, contradictory, or externally blocked.
+**Question for Product Owner:** The specific decision that still needs to be made.
+**Answer:** [LEAVE BLANK FOR HUMAN TO FILL]
+**🤖 Agent Action Prompt:** *Optional implementation prompt once the answer is known.*
 ```
+
+The same block is mirrored in the `## Template for New Questions` section of
+`docs/CLARIFICATIONS.md`; if the two ever disagree, the file's own template wins and this
+spec must be corrected to match.
 
 ## Files of Interest
 *   **Source of Truth:** `REQUIREMENTS.md` (or main spec file)

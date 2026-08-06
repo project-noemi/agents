@@ -300,6 +300,46 @@ function checkMergeGateInvariant() {
     }
 }
 
+// Clarification action-prompt label check — closes the "Jules Action Prompt" conflict
+// cascade (Issue #355). New clarifications are appended to the end of CLARIFICATIONS.md, so
+// the previous question's action-prompt line is the trailing context of every new diff hunk.
+// When the label wording drifts between the base branch and the agent that writes the
+// questions, every in-flight doc PR across the fleet flips to CONFLICTING at once. The label
+// is therefore a literal contract: `🤖 Agent Action Prompt:` and nothing else. This also
+// bars vendor-specific wording from re-entering the doc pipeline.
+const CLARIFICATIONS_PATH = 'docs/CLARIFICATIONS.md';
+const CANONICAL_ACTION_PROMPT_LABEL = '**🤖 Agent Action Prompt:**';
+const ACTION_PROMPT_LABEL_RE = /\*\*(?:🤖\s*)?([A-Za-z][\w .-]*?)\s*Action Prompt:\*\*/g;
+
+function checkClarificationLabels() {
+    console.log('Auditing clarification action-prompt labels...');
+    const clarificationsPath = path.join(repoRoot, CLARIFICATIONS_PATH);
+    if (!fs.existsSync(clarificationsPath)) {
+        fail(`${CLARIFICATIONS_PATH} is missing; the Doc persona's feedback channel must exist.`);
+        return;
+    }
+    const content = fs.readFileSync(clarificationsPath, 'utf8');
+    const lines = content.split('\n');
+
+    lines.forEach((line, index) => {
+        for (const match of line.matchAll(ACTION_PROMPT_LABEL_RE)) {
+            if (match[0] !== CANONICAL_ACTION_PROMPT_LABEL) {
+                fail(
+                    `${CLARIFICATIONS_PATH}:${index + 1} uses a non-canonical action-prompt label "${match[0]}". ` +
+                    `Use ${CANONICAL_ACTION_PROMPT_LABEL} verbatim — a drifted label conflicts every in-flight doc PR (Issue #355).`
+                );
+            }
+        }
+    });
+
+    if (!content.includes(CANONICAL_ACTION_PROMPT_LABEL)) {
+        fail(
+            `${CLARIFICATIONS_PATH} no longer contains the canonical ${CANONICAL_ACTION_PROMPT_LABEL} label; ` +
+            'the "Template for New Questions" block must keep it so appended questions stay consistent.'
+        );
+    }
+}
+
 function main() {
     checkTemplates();
     checkPersonas();
@@ -308,6 +348,7 @@ function main() {
     checkLicensingPosture();
     checkPhaseZeroKit();
     checkMergeGateInvariant();
+    checkClarificationLabels();
 
     if (failed) {
         process.exit(1);

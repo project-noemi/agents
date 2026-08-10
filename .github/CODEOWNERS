@@ -15,21 +15,23 @@
 #
 # See docs/AI_REVIEW_GOVERNANCE.md.
 #
-# ⚠ CONSEQUENCE: with `require_code_owner_reviews` enabled, a PR authored by the
-# sole owner below cannot be approved by that owner (GitHub blocks
-# self-approval) and will need either a second owner or an admin bypass. Since
-# the fleet direction is bot-authored PRs, that case should be rare — but if
-# human-authored PRs remain common, add co-owners here:
+# Any ONE listed owner satisfies the requirement. Co-owners therefore remove the
+# self-approval deadlock — a PR authored by one owner can be approved by another,
+# since GitHub blocks only self-approval — without weakening the gate against
+# agent approvals, because no agent identity appears on this list.
 #
-#     * @WSwarm @second-admin @third-admin
-#
-# Any ONE listed owner satisfies the requirement, so co-owners remove the
-# self-approval deadlock without weakening the gate against agent approvals.
-* @WSwarm
+# All listed accounts hold write access or above (admin or maintain), which
+# CODEOWNERS requires; an entry without it is silently ignored, which would make
+# the gate look enforced while satisfying nothing.
+* @WSwarm @thakivagyok @maxalbanese @viktorjavor @beresb98 @to-eszti
 
 # --- Carve-out: repository owner only ----------------------------------------
-# These paths stay restricted to the owner even if co-owners are added above.
-# Later rules win in CODEOWNERS, so these override the default.
+# These paths stay restricted to the owner despite the co-owners above. Later
+# rules win in CODEOWNERS, so these override the default line entirely — a
+# change here needs @WSwarm specifically, not any one of the six.
+#
+# These are the files that constrain the agents. Widening who can approve
+# changes to them would widen who can loosen the constraints themselves.
 /.github/workflows/require-develop-source.yml @WSwarm
 /.github/CODEOWNERS @WSwarm
 /docs/MACHINE_IDENTITY.md @WSwarm

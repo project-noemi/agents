@@ -234,3 +234,82 @@ test('model floor: a flash model does not satisfy a pro floor', () => {
     assert.equal(meetsFloor(flash, 'pro'), false);
     assert.equal(meetsFloor(flash, 'flash'), true);
 });
+
+// --- backend + ADC auth ----------------------------------------------------
+// The organization disallows API keys AND service-account keys, so ADC is the
+// only mechanism. These cover the config and URL shaping that depends on it.
+
+const { backendConfig, generateUrl } = require('../scripts/resolve-gemini-model.js');
+const { tokenSource, resetTokenCache } = require('../scripts/gcp-token.js');
+
+function withEnv(vars, fn) {
+    const saved = {};
+    for (const [k, v] of Object.entries(vars)) {
+        saved[k] = process.env[k];
+        if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    }
+    try { return fn(); } finally {
+        for (const [k, v] of Object.entries(saved)) {
+            if (v === undefined) delete process.env[k]; else process.env[k] = v;
+        }
+    }
+}
+
+test('backend defaults to vertex, since ADC is its native auth path', () => {
+    withEnv({ GEMINI_BACKEND: undefined, GOOGLE_CLOUD_PROJECT: 'project-noemi', GCP_PROJECT: undefined }, () => {
+        const cfg = backendConfig();
+        assert.equal(cfg.backend, 'vertex');
+        assert.equal(cfg.project, 'project-noemi');
+        assert.equal(cfg.location, 'us-central1');
+    });
+});
+
+test('backend: vertex requires a project rather than guessing one', () => {
+    withEnv({ GEMINI_BACKEND: 'vertex', GOOGLE_CLOUD_PROJECT: undefined, GCP_PROJECT: undefined }, () => {
+        assert.throws(() => backendConfig(), /GOOGLE_CLOUD_PROJECT is required/);
+    });
+});
+
+test('backend: an unknown value fails loudly instead of defaulting', () => {
+    withEnv({ GEMINI_BACKEND: 'openai' }, () => {
+        assert.throws(() => backendConfig(), /Unknown GEMINI_BACKEND/);
+    });
+});
+
+test('generateUrl: vertex uses the regional endpoint and strips the publisher prefix', () => {
+    const url = generateUrl('publishers/google/models/gemini-3.6-pro', {
+        backend: 'vertex', project: 'project-noemi', location: 'europe-west4',
+    });
+    assert.equal(
+        url,
+        'https://europe-west4-aiplatform.googleapis.com/v1/projects/project-noemi'
+        + '/locations/europe-west4/publishers/google/models/gemini-3.6-pro:generateContent',
+    );
+});
+
+test('generateUrl: generativelanguage keeps the models/ form', () => {
+    assert.match(
+        generateUrl('models/gemini-3.6-pro', { backend: 'generativelanguage' }),
+        /generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-3\.6-pro:generateContent$/,
+    );
+});
+
+test('classify: Vertex publisher-prefixed ids rank identically to models/ ids', () => {
+    const vertex = classify('publishers/google/models/gemini-3.6-pro-thinking');
+    const gl = classify('models/gemini-3.6-pro-thinking');
+    assert.equal(vertex.tier, gl.tier);
+    assert.equal(vertex.generation, gl.generation);
+    assert.equal(vertex.reasoning, gl.reasoning);
+    assert.equal(vertex.name, 'gemini-3.6-pro-thinking');
+});
+
+test('token source is reported without exposing the token value', () => {
+    resetTokenCache();
+    withEnv({ GCP_ACCESS_TOKEN: 'ya29.fake-token-value' }, () => {
+        assert.equal(tokenSource(), 'GCP_ACCESS_TOKEN');
+    });
+    withEnv({ GCP_ACCESS_TOKEN: undefined }, () => {
+        assert.equal(tokenSource(), 'gcloud-adc');
+    });
+    resetTokenCache();
+});

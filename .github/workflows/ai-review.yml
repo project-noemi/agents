@@ -9,8 +9,10 @@
 # block a merge is a gate; phase 1 is an advisory signal being calibrated. Do
 # not add it to branch protection contexts before phase 2.
 #
-# Secrets come from Infisical at runtime via GitHub's OIDC identity, so no
-# credential is stored in GitHub. Only non-secret IDs live in Variables.
+# No credential is stored in GitHub. The GitHub token comes from Infisical via
+# OIDC, and Google access comes from Workload Identity Federation — required
+# here, since org policy disallows API keys and service-account keys alike.
+# Only non-secret IDs live in Variables.
 #
 # The carve-out, gate ordering, and severity rubric are enforced inside
 # scripts/review-pr.js — deliberately not duplicated here. Two copies of a
@@ -52,13 +54,33 @@ jobs:
         env:
           PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
           IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
+          WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          GCP_SA: ${{ vars.GCP_SERVICE_ACCOUNT }}
         run: |
-          if [[ -z "${PROJECT_ID}" || -z "${IDENTITY_ID}" ]]; then
+          missing=()
+          [[ -z "${PROJECT_ID}"   ]] && missing+=(INFISICAL_PROJECT_ID)
+          [[ -z "${IDENTITY_ID}"  ]] && missing+=(INFISICAL_IDENTITY_ID)
+          [[ -z "${WIF_PROVIDER}" ]] && missing+=(GCP_WIF_PROVIDER)
+          [[ -z "${GCP_SA}"       ]] && missing+=(GCP_SERVICE_ACCOUNT)
+          if (( ${#missing[@]} )); then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=AI review skipped::Set the INFISICAL_PROJECT_ID and INFISICAL_IDENTITY_ID repository variables to enable. See docs/examples/cross-model-review-setup.md."
+            echo "::notice title=AI review skipped::Missing repository variables: ${missing[*]}. See docs/examples/cross-model-review-setup.md."
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
+
+      # Federation, not a key. This organization's policy disallows both API
+      # keys and service-account keys, so a short-lived federated token is the
+      # only available mechanism — and the strongest one: nothing durable to
+      # leak or rotate.
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        if: steps.config.outputs.configured == 'true'
+        id: gcpauth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
 
       - name: Install Infisical CLI
         if: steps.config.outputs.configured == 'true'
@@ -96,6 +118,11 @@ jobs:
           GEMINI_REVIEW_FLOOR: ${{ vars.GEMINI_REVIEW_FLOOR || 'flash' }}
           INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          # Short-lived, federated. Never a stored credential.
+          GCP_ACCESS_TOKEN: ${{ steps.gcpauth.outputs.access_token }}
+          GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT || 'project-noemi' }}
+          GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'us-central1' }}
+          GEMINI_BACKEND: ${{ vars.GEMINI_BACKEND || 'vertex' }}
         run: |
           # Exit 1 means a deliberate halt (carve-out, or no model met the
           # floor). That is a correct outcome, not a failure of the job.

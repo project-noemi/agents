@@ -9,10 +9,18 @@
 # block a merge is a gate; phase 1 is an advisory signal being calibrated. Do
 # not add it to branch protection contexts before phase 2.
 #
+# FLEET DEPLOYMENT: this is a REUSABLE workflow (workflow_call). Other
+# repositories run the reviewer through a thin caller — see
+# templates/ci/ai-review-caller.yml — so the review logic exists in exactly one
+# place. Reviewer scripts are always checked out from the tooling repository at
+# a pinned ref, never from the pull request under review: a PR must not be able
+# to rewrite the reviewer that judges it.
+#
+# Configuration comes from Actions VARIABLES resolved in the caller's context —
+# set them at the ORGANIZATION level so member repos need none of their own.
 # No credential is stored in GitHub. The GitHub token comes from Infisical via
 # OIDC, and Google access comes from Workload Identity Federation — required
 # here, since org policy disallows API keys and service-account keys alike.
-# Only non-secret IDs live in Variables.
 #
 # The carve-out, gate ordering, and severity rubric are enforced inside
 # scripts/review-pr.js — deliberately not duplicated here. Two copies of a
@@ -28,6 +36,17 @@ on:
         description: 'Pull request number to review'
         required: true
         type: string
+  workflow_call:
+    inputs:
+      pr:
+        description: 'Pull request number (defaults to the triggering PR)'
+        required: false
+        type: string
+      tooling-ref:
+        description: 'Ref of project-noemi/agents to take reviewer scripts from'
+        required: false
+        type: string
+        default: develop
 
 permissions:
   contents: read
@@ -35,7 +54,9 @@ permissions:
   id-token: write          # required to mint the OIDC token for Infisical
 
 concurrency:
-  group: ai-review-${{ github.event.pull_request.number || inputs.pr || github.ref }}
+  # Repository-qualified: many repos call this workflow, and PR numbers collide
+  # across them.
+  group: ai-review-${{ github.repository }}-${{ github.event.pull_request.number || inputs.pr || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -43,9 +64,15 @@ jobs:
     name: Cross-Model PR Review
     runs-on: ubuntu-latest
     steps:
+      # ALWAYS the tooling repo at a pinned ref — never the PR head. The runner
+      # fetches the diff over the API, so nothing from the reviewed PR's working
+      # tree is needed or wanted: scripts taken from the PR would let a PR
+      # rewrite its own reviewer. (The caller's thin workflow file remains the
+      # caller's responsibility; the carve-out halts on changes to it.)
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          repository: project-noemi/agents
+          ref: ${{ inputs.tooling-ref || 'develop' }}
 
       - uses: actions/setup-node@v4
         with:
@@ -69,7 +96,7 @@ jobs:
           [[ -z "${GCP_SA}"       ]] && missing+=(GCP_SERVICE_ACCOUNT)
           if (( ${#missing[@]} )); then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=AI review skipped::Missing repository variables: ${missing[*]}. See docs/examples/cross-model-review-setup.md."
+            echo "::notice title=AI review skipped::Missing Actions variables: ${missing[*]}. Set them at the organization level. See docs/examples/cross-model-review-setup.md."
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
@@ -121,18 +148,24 @@ jobs:
 
       # review-pr.js owns the carve-out check and refuses to invoke a model on a
       # governance-critical diff, so no model call happens before that decision.
+      # It also selects the reviewer token for this repository's organization —
+      # fine-grained PATs are scoped to a single resource owner, so each org has
+      # its own (REVIEWER_GH_TOKEN_<ORG>), all resolved from the same vault.
       - name: Run three-gate review
         if: steps.config.outputs.configured == 'true'
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GEMINI_REVIEW_FLOOR: ${{ vars.GEMINI_REVIEW_FLOOR || 'flash' }}
           INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
-          # Resolves on both triggers: the event on pull_request, the input on dispatch.
+          # Resolves on all triggers: the event on pull_request, the input on
+          # dispatch and on workflow_call.
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr }}
           # Short-lived, federated. Never a stored credential.
           GCP_ACCESS_TOKEN: ${{ steps.gcpauth.outputs.access_token }}
           GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT || 'project-noemi' }}
-          GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'us-central1' }}
+          # global, not a region: the publisher catalogue is global and regional
+          # availability lags it (gemini-3.x 404s in us-central1).
+          GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'global' }}
           GEMINI_BACKEND: ${{ vars.GEMINI_BACKEND || 'vertex' }}
           # prefer_pro_tier: opt-in. Off by default so selection follows the
           # newest-stable-generation rule rather than silently regressing a

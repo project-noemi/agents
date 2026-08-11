@@ -81,6 +81,10 @@ const BLOCKING_SEVERITIES = ['critical', 'high'];
 const CARVE_OUT = [
   '.github/CODEOWNERS',
   '.github/workflows/require-develop-source.yml',
+  // The review workflow itself — in the tooling repo AND in every fleet repo,
+  // where the caller lives at the same path. A PR that edits the workflow that
+  // reviews it must be judged by a human, not by the reviewer it is editing.
+  '.github/workflows/ai-review.yml',
   'docs/MACHINE_IDENTITY.md',
   'docs/AI_REVIEW_GOVERNANCE.md',
 ];
@@ -361,7 +365,14 @@ async function main() {
     process.exit(2);
   }
 
-  const ghToken = process.env.REVIEWER_GH_TOKEN;
+  // Fine-grained PATs are scoped to a single resource owner, so the fleet has
+  // one reviewer token per organization: REVIEWER_GH_TOKEN_<ORG> (uppercased,
+  // dashes to underscores — REVIEWER_GH_TOKEN_NEWPUSH_LABS). `infisical run`
+  // injects the whole project's secrets, so selection is just an env lookup.
+  // The bare REVIEWER_GH_TOKEN remains the fallback for the home org.
+  const owner = (repo || '').split('/')[0];
+  const perOrgKey = `REVIEWER_GH_TOKEN_${owner.toUpperCase().replace(/-/g, '_')}`;
+  const ghToken = process.env[perOrgKey] || process.env.REVIEWER_GH_TOKEN;
   // No API-key path exists by design — see scripts/gcp-token.js.
   let token = null;
   let cfg = null;
@@ -377,7 +388,7 @@ async function main() {
   // Needed in every mode: pull-request context is read over the API even on a
   // dry run, so there is no offline path here.
   if (!ghToken) {
-    process.stderr.write('✖ REVIEWER_GH_TOKEN not set. Pull-request context is read over the API in every mode, including --dry-run.\n');
+    process.stderr.write(`✖ Neither ${perOrgKey} nor REVIEWER_GH_TOKEN is set. Pull-request context is read over the API in every mode, including --dry-run.\n`);
     process.exit(2);
   }
 

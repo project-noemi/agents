@@ -213,21 +213,21 @@ jobs:
           # generation to satisfy a tier preference.
           GEMINI_PREFER_PRO: ${{ vars.GEMINI_PREFER_PRO || '' }}
         run: |
-          # ONLY exit 3 means "halted by design" (carve-out, or no model met the
-          # floor). Every other non-zero code is a real failure and must stay
-          # red.
-          #
-          # This previously accepted exit 1, which `infisical run` also returns
-          # on its own auth/permission errors. A broken run therefore reported
-          # success and posted nothing — the exact "looks like success but is
-          # not" outcome this pipeline exists to prevent.
+          # The halt signal is a MARKER FILE, not an exit code. `infisical run`
+          # collapses its child's exit code (a 3 surfaces as 1 — verified live),
+          # so a by-design halt and a wrapper failure are indistinguishable by
+          # code alone. The runner writes REVIEW_HALT_FILE only on an
+          # intentional halt; a wrapper that failed before reaching the runner
+          # cannot have written it.
+          export REVIEW_HALT_FILE="$RUNNER_TEMP/ai-review-halt"
+          rm -f "$REVIEW_HALT_FILE"
           set +e
           infisical run --projectId="$INFISICAL_PROJECT_ID" --env=dev -- \
             node scripts/review-pr.js --pr "$PR_NUMBER"
           code=$?
           set -e
-          if [[ $code -eq 3 ]]; then
-            echo "::notice title=Review halted::Escalated to human review by design. See the PR comment."
+          if [[ -f "$REVIEW_HALT_FILE" ]]; then
+            echo "::notice title=Review halted::$(cat "$REVIEW_HALT_FILE") — escalated to human review by design. See the PR comment."
             exit 0
           fi
           if [[ $code -ne 0 ]]; then

@@ -54,11 +54,15 @@
  *   2 configuration or API error
  *   3 halted BY DESIGN: carve-out, or no model met the floor
  *
- *   Code 3 is deliberately not 1. This process runs wrapped by `infisical run`,
- *   which exits 1 on its own auth and permission failures — so a wrapper failure
- *   and an intentional halt were indistinguishable, and CI treated a broken run
- *   as a successful one. A distinct code cannot be produced by a wrapper that
- *   never reached this script.
+ *   Code 3 is deliberately not 1: `infisical run` exits 1 on its own auth
+ *   failures, so 1 cannot mean "halt". HOWEVER, the wrapper also COLLAPSES the
+ *   child's exit code — a child exiting 3 surfaces as 1 (verified live). Exit
+ *   codes therefore cannot carry the halt signal through the wrapper at all.
+ *
+ *   The authoritative halt signal is the MARKER FILE: when REVIEW_HALT_FILE is
+ *   set, a by-design halt writes its reason there before exiting. CI checks the
+ *   file, not the code. The distinct exit code is kept for direct (unwrapped)
+ *   callers.
  */
 
 'use strict';
@@ -129,6 +133,18 @@ Do not manufacture findings to appear diligent. "No findings" is a valid, expect
 // ---------------------------------------------------------------------------
 // Pure logic (unit-tested)
 // ---------------------------------------------------------------------------
+
+/**
+ * Record a by-design halt where CI can see it. Exit codes do not survive
+ * `infisical run` (a child's 3 surfaces as the wrapper's 1 — verified live),
+ * so when REVIEW_HALT_FILE is set the file, not the code, is the signal.
+ */
+function writeHaltMarker(reason) {
+  const dest = process.env.REVIEW_HALT_FILE;
+  if (!dest) return false;
+  require('fs').writeFileSync(dest, `${reason}\n`);
+  return true;
+}
 
 /** Which changed files fall inside the governance carve-out. */
 function detectCarveOut(files) {
@@ -425,6 +441,7 @@ async function main() {
     if (args.post) await gh(`/repos/${repo}/issues/${args.pr}/comments`, { token: ghToken, method: 'POST', body: { body } });
     process.stderr.write(`${JSON.stringify({ task: 'AI review', result: 'halted: carve-out', carved })}\n`);
     process.stdout.write(`${body}\n`);
+    writeHaltMarker(`carve-out: ${carved.join(', ')}`);
     process.exit(3);
   }
 
@@ -436,6 +453,7 @@ async function main() {
     });
     if (!chosen) {
       process.stderr.write(`✖ No available model meets the '${args.floor}' floor. Refusing to review on an under-capability model.\n`);
+      writeHaltMarker(`no model met the '${args.floor}' floor`);
       process.exit(3);
     }
     // The Pro toggle's cost must be visible, not buried in an audit log.
@@ -498,7 +516,7 @@ async function main() {
 }
 
 module.exports = {
-  detectCarveOut, validateFindings, gateVerdict, recommend,
+  detectCarveOut, validateFindings, gateVerdict, recommend, writeHaltMarker,
   buildGatePrompt, buildRemediationPrompt, renderComment,
   SEVERITIES, BLOCKING_SEVERITIES, CARVE_OUT, GATES,
 };

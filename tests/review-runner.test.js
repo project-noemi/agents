@@ -387,12 +387,30 @@ test('halt uses exit code 3, never 1, so a wrapper failure cannot masquerade as 
     assert.doesNotMatch(src, /process\.exit\(1\)/, 'exit 1 collides with infisical run failures');
 });
 
-test('workflow accepts only exit 3 as a by-design halt', () => {
+test('workflow: the halt signal is the marker file, never an exit code', () => {
+    // `infisical run` collapses its child's exit code (3 surfaces as 1 —
+    // verified live), so any exit-code test of "halted by design" misreads
+    // either a halt as failure or a wrapper failure as a halt.
     const wf = fs.readFileSync(
         path.join(__dirname, '..', '.github', 'workflows', 'ai-review.yml'), 'utf8',
     );
-    assert.match(wf, /code -eq 3/, 'must treat 3 as the halt signal');
-    assert.doesNotMatch(wf, /code -eq 1/, 'must not treat 1 as a halt');
+    assert.match(wf, /REVIEW_HALT_FILE/, 'must use the marker file');
+    assert.match(wf, /-f "\$REVIEW_HALT_FILE"/, 'must test for the file');
+    assert.doesNotMatch(wf, /code -eq [13]/, 'no exit code may be treated as a halt');
+});
+
+test('writeHaltMarker writes the reason when REVIEW_HALT_FILE is set, no-ops otherwise', () => {
+    const os = require('os');
+    const { writeHaltMarker } = require('../scripts/review-pr.js');
+    const tmp = path.join(os.tmpdir(), `halt-test-${process.pid}`);
+    withEnv({ REVIEW_HALT_FILE: tmp }, () => {
+        assert.equal(writeHaltMarker('carve-out: x'), true);
+        assert.match(fs.readFileSync(tmp, 'utf8'), /carve-out: x/);
+    });
+    fs.unlinkSync(tmp);
+    withEnv({ REVIEW_HALT_FILE: undefined }, () => {
+        assert.equal(writeHaltMarker('nope'), false, 'must not write without a destination');
+    });
 });
 
 // --- location handling -----------------------------------------------------

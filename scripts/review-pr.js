@@ -329,7 +329,20 @@ async function callGemini(model, prompt, token, cfg) {
       generationConfig: { responseMimeType: 'application/json', temperature: 0 },
     }),
   });
-  if (!res.ok) throw new Error(`Gemini ${model} → ${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    const body = await res.text();
+    if (res.status === 404 && cfg.backend === 'vertex' && cfg.location !== 'global') {
+      // The publisher catalogue is global; regional availability lags it. A
+      // listed-but-unservable model is the likely cause, so say so instead of
+      // leaving a bare 404. Not auto-retried elsewhere: silently falling back to
+      // an older model would downgrade review depth without telling anyone.
+      throw new Error(
+        `Gemini ${model} → 404 in location '${cfg.location}'. The model is listed globally `
+        + `but may not be served in this region. Set GOOGLE_CLOUD_LOCATION=global.\n${body}`,
+      );
+    }
+    throw new Error(`Gemini ${model} → ${res.status} ${body}`);
+  }
   const body = await res.json();
   const text = body?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
   try {

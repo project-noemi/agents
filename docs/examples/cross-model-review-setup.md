@@ -122,9 +122,45 @@ browser and no user. And you cannot fall back to a service-account key, because
 those are disallowed.
 
 So GitHub proves its own identity to Google and receives a short-lived token.
-One-time setup:
+
+#### Decide the scope first
+
+Federation can be scoped to one repository or to whole organizations. Widening it
+is a real decision: **anyone who can push a workflow file to an included
+repository can mint a token for the service account.** The blast radius is
+bounded by the service account's roles — with `roles/aiplatform.user` the
+realistic worst case is unauthorized Vertex usage billed to your project.
+
+Forks are excluded either way: a fork's `repository_owner` is the forker, and
+fork pull requests do not receive `id-token` permission by default.
+
+Project NoéMI's own deployment covers three organizations:
+
+| Organization | Login | Immutable ID |
+|---|---|---|
+| NewPush | `newpush` | `6222293` |
+| Project NoéMI | `project-noemi` | `271349740` |
+| NewPush Labs | `newpush-labs` | `183727677` |
+
+⚠️ **Bind on the numeric ID, not the name.** Organization logins are mutable: if
+one were renamed or deleted, someone could register the freed name and inherit
+impersonation rights. IDs cannot be reassigned.
+
+⚠️ **Logins are case-normalized and comparison is case-sensitive.** `newpush-Labs`
+is really `newpush-labs`. A condition written with the wrong casing never matches
+and authentication fails with nothing pointing at capitalization as the cause.
+Confirm the canonical login and ID before writing either:
 
 ```bash
+gh api orgs/<org> --jq '"login=\(.login) id=\(.id)"'
+```
+
+#### One-time setup
+
+```bash
+# 0. Prerequisite API. Missing, token exchange fails without mentioning STS.
+gcloud services enable sts.googleapis.com --project=project-noemi
+
 # 1. A pool to hold external identities
 gcloud iam workload-identity-pools create github \
   --location=global --project=project-noemi \
@@ -134,39 +170,71 @@ gcloud iam workload-identity-pools create github \
 gcloud iam workload-identity-pools providers create-oidc github-provider \
   --location=global --workload-identity-pool=github --project=project-noemi \
   --issuer-uri="https://token.actions.githubusercontent.com" \
-  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
-  --attribute-condition="assertion.repository=='project-noemi/agents'"
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner,attribute.repository_owner_id=assertion.repository_owner_id" \
+  --attribute-condition="assertion.repository_owner_id in ['6222293','271349740','183727677']"
 
 # 3. A service account for the workflow to act as
 gcloud iam service-accounts create noemi-reviewer \
   --project=project-noemi --display-name="NoeMI AI reviewer"
 
-# 4. Let Vertex AI be called by it
+# 4. Vertex access, and nothing else. Not aiplatform.admin.
 gcloud projects add-iam-policy-binding project-noemi \
   --member="serviceAccount:noemi-reviewer@project-noemi.iam.gserviceaccount.com" \
   --role="roles/aiplatform.user"
 
-# 5. Let only this repository impersonate it
+# 5. Let each organization impersonate it — one binding per org ID
 PROJECT_NUMBER=$(gcloud projects describe project-noemi --format='value(projectNumber)')
-gcloud iam service-accounts add-iam-policy-binding \
-  noemi-reviewer@project-noemi.iam.gserviceaccount.com --project=project-noemi \
-  --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/attribute.repository/project-noemi/agents"
+for ORG_ID in 6222293 271349740 183727677; do
+  gcloud iam service-accounts add-iam-policy-binding \
+    noemi-reviewer@project-noemi.iam.gserviceaccount.com --project=project-noemi \
+    --role="roles/iam.workloadIdentityUser" \
+    --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/attribute.repository_owner_id/${ORG_ID}"
+done
 ```
 
-⚠️ **Step 2's `--attribute-condition` is the security boundary.** Without it,
-*any* GitHub repository anywhere could request a token for your service account.
-Do not omit it.
+#### The two halves must agree
 
-Then set these repository **Variables** (Settings → Secrets and variables →
-Actions → Variables). None is a secret:
+Step 2's **attribute mapping and condition** and step 5's **bindings** are a
+matched pair, and a mismatch fails closed in a way that is hard to read:
+
+- The condition controls who may enter the pool. Leave it scoped to one
+  repository and no other repo can authenticate, regardless of the bindings.
+- The bindings reference a mapped attribute. Bind on
+  `attribute.repository_owner_id` without mapping it in step 2 and **the
+  attribute does not exist on any token, so no principal matches any binding** —
+  nothing authenticates at all, including the repository you intended to allow.
+
+This exact combination broke the first rollout. Verify both after setup:
+
+```bash
+gcloud iam workload-identity-pools providers describe github-provider \
+  --location=global --workload-identity-pool=github --project=project-noemi \
+  --format='value(attributeCondition,attributeMapping)'
+
+gcloud iam service-accounts get-iam-policy \
+  noemi-reviewer@project-noemi.iam.gserviceaccount.com --project=project-noemi
+```
+
+#### Repository Variables
+
+Settings → Secrets and variables → Actions → **Variables** tab. None is a
+secret, and the tab matters: Secrets are masked and write-only, which makes
+non-secrets harder to audit.
 
 | Variable | Value |
 |---|---|
 | `GCP_WIF_PROVIDER` | `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github-provider` |
 | `GCP_SERVICE_ACCOUNT` | `noemi-reviewer@project-noemi.iam.gserviceaccount.com` |
 | `GOOGLE_CLOUD_PROJECT` | `project-noemi` |
-| `GOOGLE_CLOUD_LOCATION` | `us-central1` (or your region) |
+| `GOOGLE_CLOUD_LOCATION` | `us-central1` |
+| `INFISICAL_PROJECT_ID` | your Infisical workspace ID |
+| `INFISICAL_IDENTITY_ID` | your Infisical machine identity ID |
+
+⚠️ `GCP_WIF_PROVIDER` takes the project **number**, not the project ID. Using the
+ID fails with a message that does not mention which field is wrong.
+
+The workflow requires **all six** and skips with a notice naming the missing
+ones — so a partial rollout is safe, but a green job does not mean a review ran.
 
 ## Enable the API
 

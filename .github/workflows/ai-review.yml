@@ -23,6 +23,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
+    inputs:
+      pr:
+        description: 'Pull request number to review'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -30,7 +35,7 @@ permissions:
   id-token: write          # required to mint the OIDC token for Infisical
 
 concurrency:
-  group: ai-review-${{ github.event.pull_request.number || github.ref }}
+  group: ai-review-${{ github.event.pull_request.number || inputs.pr || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -117,7 +122,8 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GEMINI_REVIEW_FLOOR: ${{ vars.GEMINI_REVIEW_FLOOR || 'flash' }}
           INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          # Resolves on both triggers: the event on pull_request, the input on dispatch.
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr }}
           # Short-lived, federated. Never a stored credential.
           GCP_ACCESS_TOKEN: ${{ steps.gcpauth.outputs.access_token }}
           GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT || 'project-noemi' }}

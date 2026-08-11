@@ -33,7 +33,13 @@
  *   --no-post   run the real review, print the comment instead of posting it.
  *
  * ENVIRONMENT
- *   GEMINI_API_KEY       required unless --dry-run
+ *   ADC                  required unless --dry-run. No API key exists: this
+ *                        organization's policy disallows API keys AND
+ *                        service-account keys, so ADC is the only path.
+ *                        Local: gcloud auth application-default login
+ *                        CI:    google-github-actions/auth (federation)
+ *   GOOGLE_CLOUD_PROJECT required for the vertex backend
+ *   GEMINI_BACKEND       vertex (default) | generativelanguage
  *   REVIEWER_GH_TOKEN    always required — pull-request context is read over
  *                        the API in every mode
  *   GITHUB_REPOSITORY    owner/repo (Actions sets this)
@@ -47,7 +53,10 @@
 
 'use strict';
 
-const { rank, meetsFloor, listModels } = require('./resolve-gemini-model.js');
+const {
+  rank, meetsFloor, listModels, backendConfig, generateUrl,
+} = require('./resolve-gemini-model.js');
+const { getAccessToken, tokenSource } = require('./gcp-token.js');
 
 const GH_API = 'https://api.github.com';
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
@@ -297,10 +306,10 @@ async function gh(path, { token, accept = 'application/vnd.github+json', method 
   return accept.includes('diff') ? res.text() : res.json();
 }
 
-async function callGemini(model, prompt, apiKey) {
-  const res = await fetch(`${GEMINI_API}/${model}:generateContent`, {
+async function callGemini(model, prompt, token, cfg) {
+  const res = await fetch(generateUrl(model, cfg), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { responseMimeType: 'application/json', temperature: 0 },
@@ -326,10 +335,17 @@ async function main() {
   }
 
   const ghToken = process.env.REVIEWER_GH_TOKEN;
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!args.dryRun && !apiKey) {
-    process.stderr.write('✖ GEMINI_API_KEY not set. Use: infisical run --env=dev -- node scripts/review-pr.js --pr N\n');
-    process.exit(2);
+  // No API-key path exists by design — see scripts/gcp-token.js.
+  let token = null;
+  let cfg = null;
+  if (!args.dryRun) {
+    try {
+      cfg = backendConfig();
+      token = await getAccessToken();
+    } catch (err) {
+      process.stderr.write(`✖ ${err.message}\n`);
+      process.exit(2);
+    }
   }
   // Needed in every mode: pull-request context is read over the API even on a
   // dry run, so there is no offline path here.
@@ -365,7 +381,7 @@ async function main() {
   // --- model -------------------------------------------------------------
   let model = 'models/(dry-run)';
   if (!args.dryRun) {
-    const ranked = rank(await listModels(apiKey), { allowPreview: false });
+    const ranked = rank(await listModels(token, cfg), { allowPreview: false });
     const chosen = ranked.find((m) => meetsFloor(m, args.floor));
     if (!chosen) {
       process.stderr.write(`✖ No available model meets the '${args.floor}' floor. Refusing to review on an under-capability model.\n`);
@@ -389,7 +405,7 @@ async function main() {
       continue;
     }
 
-    const reply = await callGemini(model, buildGatePrompt(gate, ctx), apiKey);
+    const reply = await callGemini(model, buildGatePrompt(gate, ctx), token, cfg);
     const gateFindings = validateFindings(reply.findings, gate.id);
     const { verdict } = gateVerdict(gateFindings);
     gates[gate.id] = { verdict, rationale: reply.rationale || '' };
@@ -419,7 +435,7 @@ async function main() {
 
   process.stderr.write(`${JSON.stringify({
     task: 'Three-gate cross-model review',
-    inputs: [`pr=${repo}#${args.pr}`, `files=${files.length}`, `model=${model}`],
+    inputs: [`pr=${repo}#${args.pr}`, `files=${files.length}`, `model=${model}`, `backend=${cfg ? cfg.backend : 'dry-run'}`, `auth=${args.dryRun ? 'none' : tokenSource()}`],
     actions: GATES.map((g) => `${g.id}: ${gates[g.id].verdict}`),
     risks: findings.filter((f) => BLOCKING_SEVERITIES.includes(f.severity)).map((f) => `${f.severity}: ${f.claim}`),
     result: review.recommendation,

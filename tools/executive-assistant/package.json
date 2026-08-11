@@ -9,12 +9,12 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.22.2",
-    "google-auth-library": "^9.10.0",
-    "googleapis": "^134.0.0"
+    "express": "^5.2.1",
+    "google-auth-library": "^11.0.0",
+    "googleapis": "^174.0.0"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.1.4",
+    "@vitest/coverage-v8": "^4.1.10",
     "supertest": "^7.0.0",
     "vitest": "^4.1.4"
   }

@@ -206,24 +206,46 @@ judgment enters, and the only place the framework can be observed adapting.
 
 ## Rollout status
 
-Current as of 2026-08-02. Update this table when an item changes — it is the
+Current as of 2026-08-11. Update this table when an item changes — it is the
 handoff point for anyone picking the work up.
+
+**Phase 1 is operational.** The first fully automated cross-model review ran in
+CI on 2026-08-11 against PR #379: Workload Identity Federation to Google, OIDC
+to Infisical, `gemini-3.6-flash` resolved at runtime, all three gates executed,
+findings posted by `noemi-reviewer`. No static credential is stored in GitHub.
 
 | Item | State | Blocked on |
 |---|---|---|
 | `noemi-agent` producer identity | ✅ provisioned, verified | — |
+| `noemi-reviewer` identity | ✅ provisioned, capabilities verified (cannot write code) | — |
 | Bot-authored PR loop (author → human approve → merge, no bypass) | ✅ proven on #340, #341 | — |
-| `scripts/agent-gh.sh` wrapper + identity guard | ✅ working | — |
-| `scripts/resolve-gemini-model.js` | ✅ working, tested offline | live API call unverified |
-| Reviewer persona + governance framework | ✅ merged (#341) | — |
-| `.github/workflows/ai-review.yml` | ⚠️ skips cleanly; runner not implemented | `GEMINI_API_KEY` + runner |
-| `noemi-reviewer` identity | ✅ provisioned 2026-08-03, capabilities verified | — |
-| `GEMINI_API_KEY` repo secret | ❌ not set | human |
-| CODEOWNERS + `require_code_owner_reviews` | ✅ on `develop` via `setup-branch-protection.sh` (main leaves code-owner reviews off) | re-run script after policy changes |
-| Three-gate review runner | ❌ not written | follow-up PR |
-| `enforce_admins: true` on `main` | ✅ required by promotion policy (no direct push / no bot bypass) | — |
-| `enforce_admins: true` on `develop` | ❌ still `false` (escape hatch for integration) | bot-only integration path |
-| Both bot identities' effective permission | ✅ `maintain` accepted by decision 2026-08-03 — token scoping is the boundary | — |
+| Three-gate review runner (`scripts/review-pr.js`) | ✅ live in CI; first review posted 2026-08-11 | — |
+| Model resolution (`scripts/resolve-gemini-model.js`) | ✅ live; generation-first rule, Pro toggle, modality filter | — |
+| Google auth | ✅ Workload Identity Federation, org-scoped (no API key — org policy disallows them) | — |
+| Infisical auth in CI | ✅ OIDC, no stored secret | — |
+| Exit-code honesty (halt=3, failures stay red) | ✅ after a live run reported success while doing nothing | — |
+| Vertex location | ✅ `global` (regional availability lags the catalogue) | — |
+| CODEOWNERS + `require_code_owner_reviews` | ✅ six owners on `develop`; carve-out stays owner-only | — |
+| `enforce_admins: true` on `main` | ✅ promotion policy | — |
+| `enforce_admins: true` on `develop` | ⚠️ authorized 2026-08-11, application pending | admin runs the protection call |
+| Calibration log | ✅ `docs/reviews/CALIBRATION.md` — deliberately outside the carve-out | humans recording overrides |
+| Phase 2 (reviewer approvals) | ❌ not authorized | override-rate evidence from phase 1 |
+| Multi-repo deployment (all `newpush`, `project-noemi`, `newpush-labs` repos) | 🔄 in progress | reusable workflow + per-org reviewer tokens + org variables |
+
+### Calibration: the evidence phase 2 requires
+
+Every human decision that disagrees with the reviewer — a finding dismissed, a
+severity overridden, a "no findings" verdict contradicted by a later bug — is
+recorded in [`docs/reviews/CALIBRATION.md`](reviews/CALIBRATION.md).
+
+That file lives **outside the governance carve-out on purpose**: appending an
+override record must not require owner review, or the log will silently stop
+being kept. The rules about the log live here (carved out); the data lives
+there (not).
+
+Advancing to phase 2 requires citing the log: the override rate over a stated
+window, and the direction of the overrides. "It feels reliable" does not
+advance a phase.
 
 ### Applying branch protection
 

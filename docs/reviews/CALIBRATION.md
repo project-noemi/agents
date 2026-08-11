@@ -1,0 +1,58 @@
+# AI Review Calibration Log
+
+The override record for the cross-model review loop. Governed by
+`docs/AI_REVIEW_GOVERNANCE.md`; this file deliberately sits **outside** the
+governance carve-out so that recording an override never requires owner review.
+
+## Why this file decides phase 2
+
+Phase 1 posts advisory findings; a human decides. Phase 2 lets the reviewer
+approve clean PRs on its own. The only honest evidence for that promotion is
+**how often, and in which direction, humans disagree with the reviewer** — and
+that evidence only exists if disagreements are written down when they happen.
+
+Record an entry whenever:
+
+- a finding is **dismissed** — the human judged it wrong or not worth fixing
+- a severity is **overridden** in either direction
+- a **premise/framing verdict is rejected** — the reviewer said "stop" and the
+  human proceeded (or vice versa)
+- a **miss surfaces later** — a bug or premise problem in a PR the reviewer
+  passed clean. These are the most valuable entries and the least fun to write.
+
+A review you simply agreed with needs no entry. Silence means agreement, which
+is why the entries that do exist carry weight.
+
+## Entry format
+
+One row per disagreement. Keep reasons short and concrete.
+
+| Date | PR | Model | Gate | Reviewer said | Human did | Direction | Reason |
+|---|---|---|---|---|---|---|---|
+| _example:_ 2026-08-12 | #385 | gemini-3.6-flash | code | high: missing test on new logic | dismissed | reviewer too strict | covered by integration suite the reviewer cannot see |
+
+**Direction** is one of:
+
+- `reviewer too strict` — finding dismissed or severity lowered
+- `reviewer too lenient` — severity raised, or a miss found later
+- `reviewer wrong domain` — finding factually incorrect about the code
+
+## Log
+
+| Date | PR | Model | Gate | Reviewer said | Human did | Direction | Reason |
+|---|---|---|---|---|---|---|---|
+
+## Reading the log
+
+When considering phase 2, compute over a stated window (e.g. the last 30
+reviewed PRs):
+
+- **Override rate** — entries ÷ reviews. High is not automatically bad; a high
+  rate of `too strict` with zero `too lenient` is a tunable prompt, not an
+  untrustworthy reviewer.
+- **Lenient misses** — any `too lenient` entry on a `critical`/`high` matter is
+  disqualifying for phase 2 until understood, because phase 2 removes the human
+  who caught it.
+- **Model drift** — the model column exists because runtime discovery means the
+  reviewer changes underneath the log. A rate computed across different models
+  is a blended number; say so when citing it.

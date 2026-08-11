@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
+const path = require('path');
 
 const {
     detectCarveOut,
@@ -312,11 +314,15 @@ function withEnv(vars, fn) {
 }
 
 test('backend defaults to vertex, since ADC is its native auth path', () => {
-    withEnv({ GEMINI_BACKEND: undefined, GOOGLE_CLOUD_PROJECT: 'project-noemi', GCP_PROJECT: undefined }, () => {
+    withEnv({
+        GEMINI_BACKEND: undefined, GOOGLE_CLOUD_PROJECT: 'project-noemi',
+        GCP_PROJECT: undefined, GOOGLE_CLOUD_LOCATION: undefined,
+    }, () => {
         const cfg = backendConfig();
         assert.equal(cfg.backend, 'vertex');
         assert.equal(cfg.project, 'project-noemi');
-        assert.equal(cfg.location, 'us-central1');
+        // global, not a region — see the location tests below for why.
+        assert.equal(cfg.location, 'global');
     });
 });
 
@@ -368,4 +374,48 @@ test('token source is reported without exposing the token value', () => {
         assert.equal(tokenSource(), 'gcloud-adc');
     });
     resetTokenCache();
+});
+
+// --- exit-code contract ----------------------------------------------------
+// A deliberate halt must be distinguishable from a wrapper failure. `infisical
+// run` wraps this process and exits 1 on its own auth/permission errors, so
+// reusing 1 for "halted by design" made a broken run report success.
+
+test('halt uses exit code 3, never 1, so a wrapper failure cannot masquerade as a halt', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'review-pr.js'), 'utf8');
+    assert.match(src, /process\.exit\(3\)/, 'deliberate halts must exit 3');
+    assert.doesNotMatch(src, /process\.exit\(1\)/, 'exit 1 collides with infisical run failures');
+});
+
+test('workflow accepts only exit 3 as a by-design halt', () => {
+    const wf = fs.readFileSync(
+        path.join(__dirname, '..', '.github', 'workflows', 'ai-review.yml'), 'utf8',
+    );
+    assert.match(wf, /code -eq 3/, 'must treat 3 as the halt signal');
+    assert.doesNotMatch(wf, /code -eq 1/, 'must not treat 1 as a halt');
+});
+
+// --- location handling -----------------------------------------------------
+// `global` is not a region prefix. The publisher catalogue is global while
+// regional availability lags it, so defaulting to a region made discovery pick
+// models that returned 404.
+
+test('vertexHost: global uses the bare host, regions are prefixed', () => {
+    const { vertexHost } = require('../scripts/resolve-gemini-model.js');
+    assert.equal(vertexHost('global'), 'aiplatform.googleapis.com');
+    assert.equal(vertexHost('us-central1'), 'us-central1-aiplatform.googleapis.com');
+    assert.doesNotMatch(vertexHost('global'), /global-/, 'global-aiplatform does not resolve');
+});
+
+test('backendConfig defaults location to global, not a region', () => {
+    withEnv({ GEMINI_BACKEND: undefined, GOOGLE_CLOUD_PROJECT: 'p', GOOGLE_CLOUD_LOCATION: undefined }, () => {
+        assert.equal(backendConfig().location, 'global');
+    });
+});
+
+test('generateUrl: global omits the region prefix from the host', () => {
+    const url = generateUrl('publishers/google/models/gemini-3.6-flash', {
+        backend: 'vertex', project: 'p', location: 'global',
+    });
+    assert.match(url, /^https:\/\/aiplatform\.googleapis\.com\/v1\/projects\/p\/locations\/global\//);
 });

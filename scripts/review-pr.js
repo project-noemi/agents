@@ -47,8 +47,14 @@
  *
  * EXIT CODES
  *   0 review completed (findings may exist — this is advisory in phase 1)
- *   1 halted: carve-out, or no model met the floor
  *   2 configuration or API error
+ *   3 halted BY DESIGN: carve-out, or no model met the floor
+ *
+ *   Code 3 is deliberately not 1. This process runs wrapped by `infisical run`,
+ *   which exits 1 on its own auth and permission failures — so a wrapper failure
+ *   and an intentional halt were indistinguishable, and CI treated a broken run
+ *   as a successful one. A distinct code cannot be produced by a wrapper that
+ *   never reached this script.
  */
 
 'use strict';
@@ -323,7 +329,20 @@ async function callGemini(model, prompt, token, cfg) {
       generationConfig: { responseMimeType: 'application/json', temperature: 0 },
     }),
   });
-  if (!res.ok) throw new Error(`Gemini ${model} → ${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    const body = await res.text();
+    if (res.status === 404 && cfg.backend === 'vertex' && cfg.location !== 'global') {
+      // The publisher catalogue is global; regional availability lags it. A
+      // listed-but-unservable model is the likely cause, so say so instead of
+      // leaving a bare 404. Not auto-retried elsewhere: silently falling back to
+      // an older model would downgrade review depth without telling anyone.
+      throw new Error(
+        `Gemini ${model} → 404 in location '${cfg.location}'. The model is listed globally `
+        + `but may not be served in this region. Set GOOGLE_CLOUD_LOCATION=global.\n${body}`,
+      );
+    }
+    throw new Error(`Gemini ${model} → ${res.status} ${body}`);
+  }
   const body = await res.json();
   const text = body?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
   try {
@@ -383,7 +402,7 @@ async function main() {
     if (args.post) await gh(`/repos/${repo}/issues/${args.pr}/comments`, { token: ghToken, method: 'POST', body: { body } });
     process.stderr.write(`${JSON.stringify({ task: 'AI review', result: 'halted: carve-out', carved })}\n`);
     process.stdout.write(`${body}\n`);
-    process.exit(1);
+    process.exit(3);
   }
 
   // --- model -------------------------------------------------------------
@@ -394,7 +413,7 @@ async function main() {
     });
     if (!chosen) {
       process.stderr.write(`✖ No available model meets the '${args.floor}' floor. Refusing to review on an under-capability model.\n`);
-      process.exit(1);
+      process.exit(3);
     }
     // The Pro toggle's cost must be visible, not buried in an audit log.
     if (tradeoff) process.stderr.write(`⚠ ${tradeoff}\n`);

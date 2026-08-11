@@ -205,12 +205,28 @@ function meetsFloor(model, floor) {
   return (TIER_RANK[model.tier] || 0) >= floorRank;
 }
 
+/**
+ * Host for a Vertex location. `global` is NOT a region prefix — it is served by
+ * the bare host, so `global-aiplatform.googleapis.com` does not resolve.
+ */
+function vertexHost(location) {
+  return location === 'global'
+    ? 'aiplatform.googleapis.com'
+    : `${location}-aiplatform.googleapis.com`;
+}
+
 /** Backend config. Vertex is the default because ADC is its native auth path
- *  and this organization's policy mandates ADC. See docs. */
+ *  and this organization's policy mandates ADC. See docs.
+ *
+ *  Location defaults to `global` because the publisher catalogue is global while
+ *  regional availability lags it: gemini-3.5 and 3.6 are listed everywhere but
+ *  return 404 in us-central1, where only the 2.5 generation is served. Verified
+ *  empirically. Defaulting to a region therefore made discovery select a model
+ *  that could not answer. */
 function backendConfig() {
   const backend = process.env.GEMINI_BACKEND || 'vertex';
   const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCP_PROJECT || '';
-  const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+  const location = process.env.GOOGLE_CLOUD_LOCATION || 'global';
   if (backend !== 'vertex' && backend !== 'generativelanguage') {
     throw new Error(`Unknown GEMINI_BACKEND '${backend}'. Use 'vertex' or 'generativelanguage'.`);
   }
@@ -224,7 +240,7 @@ function backendConfig() {
 function generateUrl(modelId, cfg) {
   if (cfg.backend === 'generativelanguage') return `${API_BASE}/${modelId}:generateContent`;
   const bare = modelId.replace(/^publishers\/[^/]+\/models\//, '').replace(/^models\//, '');
-  return `https://${cfg.location}-aiplatform.googleapis.com/v1/projects/${cfg.project}`
+  return `https://${vertexHost(cfg.location)}/v1/projects/${cfg.project}`
     + `/locations/${cfg.location}/publishers/google/models/${bare}:generateContent`;
 }
 
@@ -253,7 +269,7 @@ async function listModels(token, cfg = backendConfig()) {
       // v1beta1, not v1 — v1 returns 404 for this collection. Verified against
       // the live API. No name filter: the server-side filter is unreliable
       // here and classify() discards non-Gemini entries anyway.
-      : `https://${cfg.location}-aiplatform.googleapis.com/v1beta1/publishers/google/models`
+      : `https://${vertexHost(cfg.location)}/v1beta1/publishers/google/models`
         + `?pageSize=200${pageToken ? `&pageToken=${pageToken}` : ''}`;
 
     const res = await fetch(url, { headers });
@@ -362,7 +378,7 @@ async function main() {
 // without shelling out; still runs as a CLI when invoked directly.
 module.exports = {
   classify, rank, compareModels, selectModel, meetsFloor, listModels,
-  backendConfig, generateUrl, TIER_RANK, NON_TEXT_MODALITY,
+  backendConfig, generateUrl, vertexHost, TIER_RANK, NON_TEXT_MODALITY,
 };
 
 if (require.main === module) {

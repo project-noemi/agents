@@ -44,6 +44,8 @@
 
 'use strict';
 
+const { getAccessToken, tokenSource } = require('./gcp-token.js');
+
 const TIER_RANK = { pro: 300, flash: 200, 'flash-lite': 100 };
 const DEFAULT_FLOOR = process.env.GEMINI_REVIEW_FLOOR || 'flash';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
@@ -76,7 +78,9 @@ function parseArgs(argv) {
  * this script exists to avoid, silently ignoring any future generation.
  */
 function classify(id) {
-  const name = id.replace(/^models\//, '');
+  // Strip both shapes: `models/x` (Generative Language API) and
+  // `publishers/google/models/x` (Vertex AI).
+  const name = id.replace(/^publishers\/[^/]+\/models\//, '').replace(/^models\//, '');
   if (!/^gemini-/.test(name)) return null;
 
   const versionMatch = name.match(/gemini-(\d+(?:\.\d+)?)/);
@@ -117,23 +121,68 @@ function meetsFloor(model, floor) {
   return (TIER_RANK[model.tier] || 0) >= floorRank;
 }
 
-async function listModels(apiKey) {
+/** Backend config. Vertex is the default because ADC is its native auth path
+ *  and this organization's policy mandates ADC. See docs. */
+function backendConfig() {
+  const backend = process.env.GEMINI_BACKEND || 'vertex';
+  const project = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCP_PROJECT || '';
+  const location = process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+  if (backend !== 'vertex' && backend !== 'generativelanguage') {
+    throw new Error(`Unknown GEMINI_BACKEND '${backend}'. Use 'vertex' or 'generativelanguage'.`);
+  }
+  if (backend === 'vertex' && !project) {
+    throw new Error('GOOGLE_CLOUD_PROJECT is required for the vertex backend.');
+  }
+  return { backend, project, location };
+}
+
+/** Base URL for generateContent against a resolved model id. */
+function generateUrl(modelId, cfg) {
+  if (cfg.backend === 'generativelanguage') return `${API_BASE}/${modelId}:generateContent`;
+  const bare = modelId.replace(/^publishers\/[^/]+\/models\//, '').replace(/^models\//, '');
+  return `https://${cfg.location}-aiplatform.googleapis.com/v1/projects/${cfg.project}`
+    + `/locations/${cfg.location}/publishers/google/models/${bare}:generateContent`;
+}
+
+/**
+ * List models that can serve generateContent.
+ *
+ * Authenticated with an ADC bearer token — never an API key, which this
+ * organization's policy disallows.
+ */
+async function listModels(token, cfg = backendConfig()) {
+  const headers = { Authorization: `Bearer ${token}` };
   const out = [];
   let pageToken = '';
+
   // Paginate: assuming one page is how you silently miss the newest model.
   do {
-    const url = `${API_BASE}/models?pageSize=200${pageToken ? `&pageToken=${pageToken}` : ''}`;
-    const res = await fetch(url, { headers: { 'x-goog-api-key': apiKey } });
+    const url = cfg.backend === 'generativelanguage'
+      ? `${API_BASE}/models?pageSize=200${pageToken ? `&pageToken=${pageToken}` : ''}`
+      : `https://${cfg.location}-aiplatform.googleapis.com/v1/publishers/google/models`
+        + `?pageSize=200&filter=name:gemini*${pageToken ? `&pageToken=${pageToken}` : ''}`;
+
+    const res = await fetch(url, { headers });
     if (!res.ok) {
-      throw new Error(`ListModels failed: HTTP ${res.status} ${await res.text()}`);
+      throw new Error(`ListModels (${cfg.backend}) failed: HTTP ${res.status} ${await res.text()}`);
     }
     const body = await res.json();
-    for (const m of body.models || []) {
-      const methods = m.supportedGenerationMethods || [];
-      if (methods.includes('generateContent')) out.push(m.name);
+
+    if (cfg.backend === 'generativelanguage') {
+      for (const m of body.models || []) {
+        if ((m.supportedGenerationMethods || []).includes('generateContent')) out.push(m.name);
+      }
+    } else {
+      // Vertex publisher models do not advertise supportedGenerationMethods
+      // uniformly; ranking filters non-Gemini entries anyway.
+      for (const m of body.publisherModels || body.models || []) {
+        if (m.name) out.push(m.name);
+      }
     }
+
     pageToken = body.nextPageToken || '';
   } while (pageToken);
+
   return out;
 }
 
@@ -155,16 +204,22 @@ async function main() {
     return;
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    process.stderr.write('✖ GEMINI_API_KEY not present in the environment.\n');
-    process.stderr.write('  Resolve it at runtime: infisical run --env=dev -- node scripts/resolve-gemini-model.js\n');
+  // ADC only. This organization's policy disallows API keys and
+  // service-account keys, so there is no static-credential path to fall back
+  // to — see scripts/gcp-token.js.
+  let token;
+  let cfg;
+  try {
+    cfg = backendConfig();
+    token = await getAccessToken();
+  } catch (err) {
+    process.stderr.write(`✖ ${err.message}\n`);
     process.exit(2);
   }
 
   let available;
   try {
-    available = await listModels(apiKey);
+    available = await listModels(token, cfg);
   } catch (err) {
     process.stderr.write(`✖ Could not list models: ${err.message}\n`);
     process.exit(2);
@@ -187,13 +242,14 @@ async function main() {
     reasoning: chosen.reasoning,
     resolved_at: new Date().toISOString(),
     floor: args.floor,
+    backend: cfg.backend,
     considered: ranked.length,
   };
 
   // Audit log to stderr, payload to stdout, per CLAUDE.md.
   process.stderr.write(`${JSON.stringify({
     task: 'Resolve highest-capability Gemini model for review',
-    inputs: [`floor=${args.floor}`, `allow_preview=${args.allowPreview}`],
+    inputs: [`floor=${args.floor}`, `allow_preview=${args.allowPreview}`, `backend=${cfg.backend}`, `auth=${tokenSource()}`],
     actions: [`listed ${available.length} models`, `ranked ${ranked.length} candidates`, `selected ${chosen.id}`],
     risks: chosen.preview ? ['selected a preview build'] : [],
     result: chosen.id,
@@ -204,7 +260,10 @@ async function main() {
 
 // Importable as a module so the review runner can reuse the ranking logic
 // without shelling out; still runs as a CLI when invoked directly.
-module.exports = { classify, scoreOf, rank, meetsFloor, listModels, TIER_RANK };
+module.exports = {
+  classify, scoreOf, rank, meetsFloor, listModels,
+  backendConfig, generateUrl, TIER_RANK,
+};
 
 if (require.main === module) {
   main().catch((err) => {

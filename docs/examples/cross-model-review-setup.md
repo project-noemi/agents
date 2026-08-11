@@ -35,7 +35,7 @@ So the setup below does three things:
 |---|---|
 | `noemi-agent` | GitHub account the writing AI uses. Can push code, cannot approve |
 | `noemi-reviewer` | GitHub account the reviewing AI uses. **Cannot** push code |
-| A Gemini API key | Lets the reviewing AI actually run |
+| Google Cloud access via ADC | Lets the reviewing AI run. **No API key** — org policy disallows them |
 | Infisical secrets | Where those credentials live. Never in files, never in chat |
 | A GitHub workflow | Runs the review automatically on each pull request |
 
@@ -47,7 +47,7 @@ You need:
 - **An Infisical account** with a project created ([infisical.com](https://infisical.com))
 - **The `gh` CLI** installed and logged in (`gh auth login`)
 - **The `infisical` CLI** installed and logged in (`infisical login`)
-- **A Google account** for the Gemini key
+- **Google Cloud access** to `project-noemi`, and the `gcloud` CLI installed
 
 Check the CLIs are working:
 
@@ -58,120 +58,158 @@ infisical user get
 
 ---
 
-# Part 1 — Choosing your Gemini key
+# Part 1 — Google Cloud access (no API key)
 
-This is the decision most people get wrong, so it comes first.
+If your Google Cloud organization allows API keys, you have choices here. **If it
+does not, this section is not a decision — it is the only path.**
 
-There are three ways to get Gemini access. They differ in setup effort, and — the
-part that matters — in **whether Google may use your code to train their
-models**.
+`project-noemi` is in the second category. The console reports:
 
-| | Setup time | Long-lived key? | Your code used for training? | Code changes needed |
-|---|---|---|---|---|
-| **A. AI Studio, free tier** | 5 minutes | Yes | **Likely yes** | None |
-| **B. Gemini API, billed project** | ~30 minutes | Yes | No | None |
-| **C. Vertex AI + federation** | Half a day | **No** | No | Yes |
+> API Keys are Disallowed — Your organization's security policy disallows API
+> keys. Please use Application Default Credentials (ADC) instead.
 
-## Option A — AI Studio free key
+Service-account **key** creation is disallowed too. So both of the usual
+static-credential mechanisms are unavailable, and every option that begins
+"create a key and store it" is off the table.
 
-**How:** Go to [aistudio.google.com](https://aistudio.google.com) → *Get API
-key* → *Create API key*. Done in about a minute.
+## Why this is good news
 
-**Good:** Fastest possible start. Works immediately with this repository's code.
+The mechanism you are forced onto is the one a security review would have asked
+for anyway:
 
-**Bad:** Free-tier terms have historically allowed Google to use your prompts to
-improve their products. **Your reviewer reads entire code diffs.** For a public
-repository that is tolerable. The moment you point this at a private or client
-repository, it is a data-governance problem. Free quotas are also low, and a
-thorough review uses the expensive models.
+| | Static key in a vault | ADC / federation |
+|---|---|---|
+| Credential lifetime | months | minutes |
+| Can leak in a log | yes | expires before it matters |
+| Rotation burden | yours, forever | none |
+| Audit attribution | "the key" | the identity that used it |
 
-**Use it for:** proving the pipeline works. Not for real operation.
+There is nothing durable to steal, so there is nothing to rotate.
 
-## Option B — Gemini API key on a billed Google Cloud project
+**And it simplifies the vault story.** Infisical stores *nothing* for Gemini,
+because there is no secret to store. That is the correct reading of "use the
+vault wherever possible" — a vault protects static secrets, and federation
+removes them.
 
-**Recommended starting point.**
+## The two authentication paths
 
-**How:**
+They are different, and a common mistake is assuming the first covers the
+second. It does not.
 
-1. Go to [console.cloud.google.com](https://console.cloud.google.com)
-2. Create a new project (name it something like `noemi-ai-review`)
-3. Link a billing account: **Billing** → *Link a billing account*
-4. Enable the API: **APIs & Services** → *Enable APIs* → search
-   "Generative Language API" → **Enable**
-5. Create the key: **APIs & Services** → *Credentials* → *Create Credentials* →
-   *API key*
-6. **Restrict it** — click the new key → *API restrictions* → *Restrict key* →
-   select only **Generative Language API** → *Save*
+### Local development — user ADC
 
-Step 6 matters. An unrestricted key works for every Google API your project can
-reach; a restricted one only does the job you created it for.
+One command, opens a browser:
 
-**Good:** Paid tier means your code is not used for training. Real quotas. Usage
-and cost visible in Cloud Billing, so you can see what review costs per pull
-request. No code changes — the repository already targets this API.
+```bash
+gcloud auth application-default login
+```
 
-**Bad:** Still a long-lived key, so it must live in a vault and be rotated.
+The `setup_adc.sh` helper the console offers is a wrapper around this.
 
-> **Note on IP restrictions:** you may be tempted to lock the key to an IP
-> address. GitHub's hosted runners use changing IPs, so this will break. API
-> restriction is the meaningful control here.
+Confirm it worked without printing the credential:
 
-## Option C — Vertex AI with Workload Identity Federation
+```bash
+node scripts/gcp-token.js        # expect: ADC token obtained via gcloud-adc
+```
 
-**The eventual target, not the starting point.**
+This credential expires and needs re-running periodically. When it lapses, the
+tooling tells you exactly that rather than failing obscurely.
 
-GitHub proves its identity to Google directly, and Google hands back a
-short-lived token. **No key exists anywhere** — nothing to leak, nothing to
-rotate.
+### GitHub Actions — Workload Identity Federation
 
-**Good:** No long-lived credential. Full Google Cloud IAM, audit logs, data
-residency controls, and per-identity attribution of every review call. This is
-what a regulated environment will ask for.
+**`gcloud auth application-default login` cannot work in CI.** There is no
+browser and no user. And you cannot fall back to a service-account key, because
+those are disallowed.
 
-**Bad:** Vertex uses a different API endpoint than options A and B, so
-[`scripts/resolve-gemini-model.js`](../../scripts/resolve-gemini-model.js) needs
-a new code path. Also requires configuring workload identity pools and pinning a
-region.
+So GitHub proves its own identity to Google and receives a short-lived token.
+One-time setup:
 
-> **A note that sounds contradictory but isn't:** this project's rule is "use
-> Infisical wherever possible." With Option C, Infisical stores *nothing* for
-> Gemini — because there is no secret to store. That is the stronger version of
-> the rule, not an exception to it. A vault protects static secrets; federation
-> removes them.
+```bash
+# 1. A pool to hold external identities
+gcloud iam workload-identity-pools create github \
+  --location=global --project=project-noemi \
+  --display-name="GitHub Actions"
 
-## Recommendation
+# 2. A provider that trusts GitHub's OIDC issuer
+gcloud iam workload-identity-pools providers create-oidc github-provider \
+  --location=global --workload-identity-pool=github --project=project-noemi \
+  --issuer-uri="https://token.actions.githubusercontent.com" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+  --attribute-condition="assertion.repository=='project-noemi/agents'"
 
-**Start with B. Move to C before pointing this at any client repository.**
+# 3. A service account for the workflow to act as
+gcloud iam service-accounts create noemi-reviewer \
+  --project=project-noemi --display-name="NoeMI AI reviewer"
 
-⚠️ **Verify the current terms yourself.** Google revises Gemini API tiers and
-data-use policy often, and the free-versus-paid training distinction is the
-single fact this recommendation depends on. Read the current terms before
-choosing A.
+# 4. Let Vertex AI be called by it
+gcloud projects add-iam-policy-binding project-noemi \
+  --member="serviceAccount:noemi-reviewer@project-noemi.iam.gserviceaccount.com" \
+  --role="roles/aiplatform.user"
+
+# 5. Let only this repository impersonate it
+PROJECT_NUMBER=$(gcloud projects describe project-noemi --format='value(projectNumber)')
+gcloud iam service-accounts add-iam-policy-binding \
+  noemi-reviewer@project-noemi.iam.gserviceaccount.com --project=project-noemi \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/attribute.repository/project-noemi/agents"
+```
+
+⚠️ **Step 2's `--attribute-condition` is the security boundary.** Without it,
+*any* GitHub repository anywhere could request a token for your service account.
+Do not omit it.
+
+Then set these repository **Variables** (Settings → Secrets and variables →
+Actions → Variables). None is a secret:
+
+| Variable | Value |
+|---|---|
+| `GCP_WIF_PROVIDER` | `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github-provider` |
+| `GCP_SERVICE_ACCOUNT` | `noemi-reviewer@project-noemi.iam.gserviceaccount.com` |
+| `GOOGLE_CLOUD_PROJECT` | `project-noemi` |
+| `GOOGLE_CLOUD_LOCATION` | `us-central1` (or your region) |
+
+## Enable the API
+
+```bash
+gcloud services enable aiplatform.googleapis.com --project=project-noemi
+```
+
+Vertex AI requires billing to be linked to the project.
+
+## Which backend
+
+`GEMINI_BACKEND` selects between two Google surfaces:
+
+- **`vertex`** (default) — `aiplatform.googleapis.com`, ADC's native home and
+  the surface your org policy points you at
+- **`generativelanguage`** — the Gemini API surface, historically API-key first
+
+The default is `vertex` because ADC is mandated here. If you find the
+Generative Language API accepts an ADC bearer token in your project, either
+works; flip the variable rather than changing code.
 
 ---
 
-# Part 2 — Store the key in Infisical
+# Part 2 — Link the repository to Infisical
 
-Never paste a secret into a chat window, a file, or a commit. Type it in your own
-terminal only.
+Infisical holds the **GitHub** credentials. It holds nothing for Gemini — there
+is no Gemini secret to hold.
 
-Link the repository to your Infisical project (creates `.infisical.json`):
+`.infisical.json` is gitignored because a workspace ID is organization-specific
+and would follow forks that cannot use it. So each clone creates its own:
 
 ```bash
 infisical init
 ```
 
-Store the key:
+For CI and non-interactive runs, where `init` is impractical, set the ID
+directly instead:
 
 ```bash
-infisical secrets set GEMINI_API_KEY="paste-your-key-here" --env=dev
+export INFISICAL_PROJECT_ID=<your-workspace-id>
 ```
 
-Confirm it is retrievable without printing it:
-
-```bash
-infisical secrets get GEMINI_API_KEY --env=dev >/dev/null && echo "stored OK"
-```
+A project ID is not a secret.
 
 ---
 
@@ -417,7 +455,9 @@ editing the merge gate to unblock its own pull requests.
 | `Token resolves to 'yourname', expected 'noemi-agent'` | Your own token is in the environment | The guard is working — unset `AGENT_GH_TOKEN` |
 | `Could not resolve the machine-identity token` | Secret missing from the vault | Re-store it (Part 2 / Part 3) |
 | `Infisical is installed but no project link was found` | `.infisical.json` is gitignored, so a fresh clone has none | `infisical init`, or set `INFISICAL_PROJECT_ID` for CI |
-| Workflow skips with a notice | `GEMINI_API_KEY` not reachable | Complete Part 4 |
+| Workflow skips with a notice | A required repository Variable is unset — the notice names it | Complete Part 1 and Part 4 |
+| `Application Default Credentials are missing or expired` | Local ADC lapsed | `gcloud auth application-default login` |
+| `GOOGLE_CLOUD_PROJECT is required` | Vertex backend without a project set | Set the variable, or use `GEMINI_BACKEND=generativelanguage` |
 | `No available model meets the floor` | Your key lacks access to strong models | Check your tier; the failure is intentional |
 | Reviewer's write probe **succeeds** | Token over-scoped | Set Contents to Read-only and re-probe |
 

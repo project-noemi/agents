@@ -40,8 +40,12 @@
  *                        CI:    google-github-actions/auth (federation)
  *   GOOGLE_CLOUD_PROJECT required for the vertex backend
  *   GEMINI_BACKEND       vertex (default) | generativelanguage
- *   REVIEWER_GH_TOKEN    always required — pull-request context is read over
- *                        the API in every mode
+ *   Reviewer credential  one of, in preference order (always required — PR
+ *                        context is read over the API in every mode):
+ *                          REVIEWER_APP_TOKEN       GitHub App installation
+ *                                                   token, minted per run (fleet)
+ *                          REVIEWER_GH_TOKEN_<ORG>  per-org fine-grained PAT
+ *                          REVIEWER_GH_TOKEN        home-org PAT / local dev
  *   GITHUB_REPOSITORY    owner/repo (Actions sets this)
  *   GEMINI_REVIEW_FLOOR  minimum model tier (default: flash)
  *
@@ -365,14 +369,22 @@ async function main() {
     process.exit(2);
   }
 
-  // Fine-grained PATs are scoped to a single resource owner, so the fleet has
-  // one reviewer token per organization: REVIEWER_GH_TOKEN_<ORG> (uppercased,
-  // dashes to underscores — REVIEWER_GH_TOKEN_NEWPUSH_LABS). `infisical run`
-  // injects the whole project's secrets, so selection is just an env lookup.
-  // The bare REVIEWER_GH_TOKEN remains the fallback for the home org.
+  // Reviewer credential, in preference order:
+  //
+  //   1. REVIEWER_APP_TOKEN — a short-lived GitHub App installation token,
+  //      minted per run by the workflow. The preferred fleet mechanism: one app
+  //      installed on every organization, nothing long-lived, comments post as
+  //      the app's [bot] identity. Checked FIRST and via a distinct name
+  //      because `infisical run` injects the whole vault project into env — a
+  //      stored PAT under the same name would silently shadow the app token.
+  //   2. REVIEWER_GH_TOKEN_<ORG> — per-organization fine-grained PATs
+  //      (single-resource-owner by design), for fleets that cannot use an app.
+  //   3. REVIEWER_GH_TOKEN — the home-org PAT; also local development.
   const owner = (repo || '').split('/')[0];
   const perOrgKey = `REVIEWER_GH_TOKEN_${owner.toUpperCase().replace(/-/g, '_')}`;
-  const ghToken = process.env[perOrgKey] || process.env.REVIEWER_GH_TOKEN;
+  const ghToken = process.env.REVIEWER_APP_TOKEN
+    || process.env[perOrgKey]
+    || process.env.REVIEWER_GH_TOKEN;
   // No API-key path exists by design — see scripts/gcp-token.js.
   let token = null;
   let cfg = null;
@@ -388,7 +400,7 @@ async function main() {
   // Needed in every mode: pull-request context is read over the API even on a
   // dry run, so there is no offline path here.
   if (!ghToken) {
-    process.stderr.write(`✖ Neither ${perOrgKey} nor REVIEWER_GH_TOKEN is set. Pull-request context is read over the API in every mode, including --dry-run.\n`);
+    process.stderr.write(`✖ No reviewer credential: none of REVIEWER_APP_TOKEN, ${perOrgKey}, REVIEWER_GH_TOKEN is set. Pull-request context is read over the API in every mode, including --dry-run.\n`);
     process.exit(2);
   }
 

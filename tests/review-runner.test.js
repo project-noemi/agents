@@ -428,3 +428,15 @@ test('carve-out: the review workflow itself is protected in every repo', () => {
     assert.deepEqual(detectCarveOut(['.github/workflows/ai-review.yml']),
         ['.github/workflows/ai-review.yml']);
 });
+
+test('reviewer credential preference: app token shadows PATs, distinct name', () => {
+    // The app token must be checked FIRST and under a DISTINCT env name:
+    // `infisical run` injects the whole vault project, so a stored PAT named
+    // REVIEWER_GH_TOKEN would silently shadow a minted app token if they shared
+    // a name — and the fallback order would invert without anyone noticing.
+    const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'review-pr.js'), 'utf8');
+    const appIdx = src.indexOf('process.env.REVIEWER_APP_TOKEN');
+    const patIdx = src.indexOf('process.env.REVIEWER_GH_TOKEN');
+    assert.ok(appIdx > -1, 'app token path must exist');
+    assert.ok(appIdx < patIdx, 'app token must be consulted before any PAT');
+});

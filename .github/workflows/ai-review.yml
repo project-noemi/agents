@@ -102,9 +102,14 @@ jobs:
         if: steps.config.outputs.configured == 'true'
         env:
           IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
+          # Must match the audience configured on the Infisical identity's OIDC
+          # auth method. A mismatch fails with 401 "OIDC audience not allowed",
+          # which names the cause but not which side to change — it is this
+          # value, or the identity's allowed-audience field.
+          OIDC_AUDIENCE: ${{ vars.INFISICAL_OIDC_AUDIENCE || 'infisical' }}
         run: |
           JWT=$(curl -sH "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=infisical" | jq -r .value)
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${OIDC_AUDIENCE}" | jq -r .value)
           if [[ -z "$JWT" || "$JWT" == "null" ]]; then
             echo "::error title=OIDC token unavailable::Could not mint a GitHub identity token. Confirm 'id-token: write' permission."
             exit 1

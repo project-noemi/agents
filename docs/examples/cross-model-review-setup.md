@@ -426,10 +426,29 @@ Instead, GitHub proves its identity to Infisical and receives temporary access.
 
 ## Create an Infisical machine identity
 
-In Infisical: **Organization Settings** → *Identities* → *Create identity*. Give
-it OIDC auth configured to trust GitHub Actions, then grant it read access to
-your project. Follow Infisical's current OIDC documentation for the exact trust
-fields — they are specific to your organization and repository.
+In Infisical: **Organization Settings** → *Identities* → *Create identity*, then
+add **OIDC Auth** as its authentication method and grant the identity read access
+to your project.
+
+Verified settings for GitHub Actions:
+
+| Field | Value |
+|---|---|
+| Issuer / Discovery URL | `https://token.actions.githubusercontent.com` |
+| **Audience** | must equal what the workflow requests — `infisical` by default |
+| Subject / claim filter | scope to your repositories, e.g. `repo:project-noemi/agents:*` |
+
+⚠️ **The audience is the field that fails first.** A mismatch produces:
+
+```
+401 Access denied: OIDC audience not allowed.
+```
+
+That names the cause but not which side to change. Either set the identity's
+allowed audience to `infisical`, or set the `INFISICAL_OIDC_AUDIENCE` repository
+variable to whatever the identity expects. They must match exactly.
+
+The identity's ID goes in the `INFISICAL_IDENTITY_ID` variable.
 
 ## In the workflow
 

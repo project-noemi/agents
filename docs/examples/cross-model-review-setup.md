@@ -176,17 +176,56 @@ gcloud services enable aiplatform.googleapis.com --project=project-noemi
 
 Vertex AI requires billing to be linked to the project.
 
+## Which model gets chosen
+
+Not a name in a config file — names go stale. The resolver asks Google what
+exists and applies this rule:
+
+> Prefer the newest **stable** model of the highest available generation. Pro is
+> elevated only when a stable Pro exists in that generation; otherwise take the
+> best stable model of the latest generation.
+
+Generation dominates; tier orders *within* a generation. That matters because a
+hard tier preference looks sensible and quietly does the wrong thing: at the time
+of writing, every 3.x Pro is preview-only, so "always prefer Pro" would select a
+2.5-generation model while a stable 3.6 was available.
+
+Also filtered out: image, speech, embedding, robotics, and computer-use variants.
+Their names still contain "pro" and "flash", so a naive rank will cheerfully
+choose an *image* model to review your code. Most published Gemini models are
+wrong for this job.
+
+### The Pro toggle
+
+If you want Pro regardless, it is an explicit switch rather than a hidden weight:
+
+```bash
+node scripts/resolve-gemini-model.js --prefer-pro
+# or set the GEMINI_PREFER_PRO repository variable to 1
+```
+
+When the toggle costs you a generation, it tells you:
+
+```
+⚠ prefer_pro_tier selected gemini-2.5-pro (gen 2.5); without it the newest
+  stable choice is gemini-3.6-flash (gen 3.6).
+```
+
+Combine with `--allow-preview` to reach a newer Pro that is still in preview —
+accepting an unstable model inside a governance control.
+
 ## Which backend
 
 `GEMINI_BACKEND` selects between two Google surfaces:
 
-- **`vertex`** (default) — `aiplatform.googleapis.com`, ADC's native home and
-  the surface your org policy points you at
-- **`generativelanguage`** — the Gemini API surface, historically API-key first
+- **`vertex`** (default) — `aiplatform.googleapis.com`. **The only one that
+  works here.** Verified: an ADC bearer token against
+  `generativelanguage.googleapis.com` returns
+  `403 ACCESS_TOKEN_SCOPE_INSUFFICIENT`, because that surface expects an API key
+  — which your org policy disallows.
+- **`generativelanguage`** — retained for organizations that permit API keys.
 
-The default is `vertex` because ADC is mandated here. If you find the
-Generative Language API accepts an ADC bearer token in your project, either
-works; flip the variable rather than changing code.
+So on `project-noemi` this is not a choice. Leave it at `vertex`.
 
 ---
 

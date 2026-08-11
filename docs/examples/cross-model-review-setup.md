@@ -573,6 +573,76 @@ editing the merge gate to unblock its own pull requests.
 
 ---
 
+# Fleet deployment — every repository, one reviewer
+
+One repository proves the loop; the fleet is where it pays. The design keeps
+review logic in exactly one place:
+
+- **`.github/workflows/ai-review.yml` in the tooling repo** is a *reusable
+  workflow* (`workflow_call`). All logic, auth, and honesty rules live here.
+- **Every other repo** gets a ~15-line caller
+  (`templates/ci/ai-review-caller.yml`) that delegates to it. Callers should
+  almost never change.
+- **Reviewer scripts are always checked out from the tooling repo at a pinned
+  ref, never from the PR under review.** A pull request must not be able to
+  rewrite the reviewer that judges it. For the same reason,
+  `.github/workflows/ai-review.yml` is itself in the carve-out: a PR editing
+  the review workflow halts and goes to a human, in every repo.
+
+## One-time prerequisites (human)
+
+**1. Organization-level Actions variables** — set once per org so member repos
+need no configuration of their own (Org Settings → Secrets and variables →
+Actions → Variables, or `gh variable set NAME --org ORG --visibility all`,
+which requires `admin:org` scope):
+
+`GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, `GOOGLE_CLOUD_PROJECT`,
+`INFISICAL_PROJECT_ID`, `INFISICAL_IDENTITY_ID` — same values as the
+repository-level ones documented above. (`GOOGLE_CLOUD_LOCATION` defaults to
+`global` and can be omitted.)
+
+**2. Widen the Infisical identity's claim filter.** If its OIDC subject filter
+is scoped to one repository, workflows in other repos will authenticate to
+GitHub fine and then fail Infisical login. Widen it to the organizations, e.g.
+`repo:newpush/*`, `repo:project-noemi/*`, `repo:newpush-labs/*`.
+
+**3. Per-organization reviewer tokens.** A fine-grained PAT is scoped to a
+single resource owner, so one token cannot span three orgs. Signed in as
+`noemi-reviewer`, mint one per org (same scoping as before: Contents read,
+Pull requests read/write, all repositories in that org — the account needs
+access to the org's private repos), then store each in Infisical:
+
+```bash
+infisical secrets set REVIEWER_GH_TOKEN_NEWPUSH="github_pat_..." --env=dev
+infisical secrets set REVIEWER_GH_TOKEN_NEWPUSH_LABS="github_pat_..." --env=dev
+```
+
+The runner selects `REVIEWER_GH_TOKEN_<ORG>` (uppercased, dashes →
+underscores) by the repository's owner, falling back to `REVIEWER_GH_TOKEN`.
+`infisical run` injects the whole project's secrets, so no per-repo secret
+wiring exists anywhere.
+
+## Rolling out
+
+```bash
+bash scripts/deploy-ai-review.sh --dry-run   # preview: who gets a PR, who is skipped
+gh auth refresh -s workflow                  # pushing workflow files needs this scope
+bash scripts/deploy-ai-review.sh             # open one PR per repository
+```
+
+The script is deliberately **PR-based**: it never pushes to a default branch.
+Each repository's maintainers accept the reviewer by merging — the merge is the
+consent step. It is idempotent: re-running skips repos that already have the
+workflow, so partial rollouts recover cleanly.
+
+## Cost note
+
+Every deployed repo sends up to three model calls per PR update to Vertex,
+billed to the shared project. Set a budget alert before, not after, the fleet
+merge wave.
+
+---
+
 # Troubleshooting
 
 | Symptom | Cause | Fix |

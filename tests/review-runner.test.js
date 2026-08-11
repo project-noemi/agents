@@ -419,3 +419,12 @@ test('generateUrl: global omits the region prefix from the host', () => {
     });
     assert.match(url, /^https:\/\/aiplatform\.googleapis\.com\/v1\/projects\/p\/locations\/global\//);
 });
+
+// --- fleet deployment --------------------------------------------------------
+
+test('carve-out: the review workflow itself is protected in every repo', () => {
+    // A PR that edits the workflow that reviews it must be judged by a human,
+    // not by the reviewer it is editing. Same path in tooling and caller repos.
+    assert.deepEqual(detectCarveOut(['.github/workflows/ai-review.yml']),
+        ['.github/workflows/ai-review.yml']);
+});

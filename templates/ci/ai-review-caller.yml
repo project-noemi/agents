@@ -1,0 +1,26 @@
+# Cross-model AI review — fleet caller.
+#
+# This thin workflow delegates to the reusable reviewer in project-noemi/agents,
+# so the review logic lives in exactly one place and this file should almost
+# never change. Deployed by scripts/deploy-ai-review.sh; documented in
+# docs/examples/cross-model-review-setup.md (Fleet deployment).
+#
+# Requires only organization-level Actions VARIABLES (no secrets in this repo):
+#   GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT, GOOGLE_CLOUD_PROJECT,
+#   INFISICAL_PROJECT_ID, INFISICAL_IDENTITY_ID
+#
+# The review is ADVISORY: it posts findings as a comment and never approves,
+# merges, or blocks. Do not add it to required status checks.
+name: AI Review (advisory)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review:
+    uses: project-noemi/agents/.github/workflows/ai-review.yml@develop
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write

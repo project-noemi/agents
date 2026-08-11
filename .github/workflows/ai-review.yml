@@ -123,6 +123,10 @@ jobs:
           GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT || 'project-noemi' }}
           GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'us-central1' }}
           GEMINI_BACKEND: ${{ vars.GEMINI_BACKEND || 'vertex' }}
+          # prefer_pro_tier: opt-in. Off by default so selection follows the
+          # newest-stable-generation rule rather than silently regressing a
+          # generation to satisfy a tier preference.
+          GEMINI_PREFER_PRO: ${{ vars.GEMINI_PREFER_PRO || '' }}
         run: |
           # Exit 1 means a deliberate halt (carve-out, or no model met the
           # floor). That is a correct outcome, not a failure of the job.

@@ -14,7 +14,9 @@ const {
     GATES,
 } = require('../scripts/review-pr.js');
 
-const { classify, rank, meetsFloor } = require('../scripts/resolve-gemini-model.js');
+const {
+    classify, rank, selectModel, meetsFloor,
+} = require('../scripts/resolve-gemini-model.js');
 
 // These tests assert the properties that must hold no matter what the reviewing
 // model returns. The model is untrusted input; anything the review's integrity
@@ -205,21 +207,75 @@ test('comment: states plainly that the review does not approve or block', () => 
 
 // --- model resolution ------------------------------------------------------
 
-test('model ranking: tier dominates, reasoning breaks ties within a tier', () => {
-    const ranked = rank([
-        'models/gemini-2.5-flash',
-        'models/gemini-2.5-pro',
-        'models/gemini-3.6-pro-thinking',
-    ], { allowPreview: false });
-    assert.equal(ranked[0].name, 'gemini-3.6-pro-thinking');
-    assert.equal(ranked[0].tier, 'pro');
-    assert.equal(ranked[0].reasoning, true);
+test('selection: newest stable generation wins, per the owner rule', () => {
+    // Real published names. Every 3.x Pro is preview-only, so a tier-dominant
+    // rule would select gemini-2.5-pro — a full generation behind.
+    const live = [
+        'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-3.5-flash',
+        'gemini-3.6-flash', 'gemini-3.1-pro-preview',
+    ].map((n) => `publishers/google/models/${n}`);
+    const { chosen, tradeoff } = selectModel(live, { floor: 'flash' });
+    assert.equal(chosen.name, 'gemini-3.6-flash');
+    assert.equal(tradeoff, null, 'no trade-off when the toggle is off');
 });
 
-test('model ranking: preview builds are excluded unless allowed', () => {
-    const ids = ['models/gemini-9.9-pro-preview', 'models/gemini-2.5-pro'];
-    assert.equal(rank(ids, { allowPreview: false }).length, 1);
-    assert.equal(rank(ids, { allowPreview: true }).length, 2);
+test('selection: Pro is elevated when a stable Pro exists in the newest generation', () => {
+    const live = ['gemini-3.6-flash', 'gemini-3.6-pro', 'gemini-2.5-pro']
+        .map((n) => `publishers/google/models/${n}`);
+    const { chosen } = selectModel(live, { floor: 'flash' });
+    assert.equal(chosen.name, 'gemini-3.6-pro', 'tier orders within a generation');
+});
+
+test('selection: prefer_pro_tier falls back to an older stable Pro and reports the cost', () => {
+    const live = ['gemini-3.6-flash', 'gemini-2.5-pro']
+        .map((n) => `publishers/google/models/${n}`);
+    const { chosen, tradeoff } = selectModel(live, { floor: 'flash', preferPro: true });
+    assert.equal(chosen.name, 'gemini-2.5-pro');
+    assert.match(tradeoff, /prefer_pro_tier selected gemini-2\.5-pro \(gen 2\.5\)/);
+    assert.match(tradeoff, /gemini-3\.6-flash \(gen 3\.6\)/);
+});
+
+test('selection: prefer_pro_tier plus previews reaches the newest Pro', () => {
+    const live = ['gemini-3.6-flash', 'gemini-2.5-pro', 'gemini-3.1-pro-preview']
+        .map((n) => `publishers/google/models/${n}`);
+    const { chosen } = selectModel(live, { floor: 'flash', preferPro: true, allowPreview: true });
+    assert.equal(chosen.name, 'gemini-3.1-pro-preview');
+});
+
+test('selection: previews stay excluded unless explicitly allowed', () => {
+    const live = ['gemini-9.9-pro-preview', 'gemini-2.5-pro']
+        .map((n) => `publishers/google/models/${n}`);
+    assert.equal(selectModel(live, { floor: 'flash' }).chosen.name, 'gemini-2.5-pro');
+    assert.equal(
+        selectModel(live, { floor: 'flash', allowPreview: true }).chosen.name,
+        'gemini-9.9-pro-preview',
+    );
+});
+
+test('classify: non-text modalities are rejected outright', () => {
+    // Found only by ranking the live catalogue: image/tts/embedding variants
+    // still contain "pro" or "flash", so a tier rank would select them to
+    // review code. 18 of 25 published Gemini models are wrong for this job.
+    for (const n of [
+        'gemini-3-pro-image', 'gemini-2.5-pro-tts', 'gemini-embedding-001',
+        'gemini-live-2.5-flash-native-audio', 'gemini-robotics-er-2-preview-info',
+        'gemini-2.5-computer-use-preview-10-2025', 'gemini-omni-flash-preview',
+        'gemini-3.1-flash-image',
+    ]) {
+        assert.equal(classify(`publishers/google/models/${n}`), null, `${n} must be rejected`);
+    }
+});
+
+test('classify: legitimate text models survive the modality filter', () => {
+    for (const n of ['gemini-3.6-flash', 'gemini-2.5-pro', 'gemini-3.5-flash-lite']) {
+        assert.ok(classify(`publishers/google/models/${n}`), `${n} must be kept`);
+    }
+});
+
+test('selection: an image model never wins even when it is the newest Pro', () => {
+    const live = ['gemini-3-pro-image', 'gemini-2.5-flash']
+        .map((n) => `publishers/google/models/${n}`);
+    assert.equal(selectModel(live, { floor: 'flash' }).chosen.name, 'gemini-2.5-flash');
 });
 
 test('model ranking: non-Gemini models are ignored', () => {

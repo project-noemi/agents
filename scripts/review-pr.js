@@ -54,7 +54,7 @@
 'use strict';
 
 const {
-  rank, meetsFloor, listModels, backendConfig, generateUrl,
+  selectModel, listModels, backendConfig, generateUrl,
 } = require('./resolve-gemini-model.js');
 const { getAccessToken, tokenSource } = require('./gcp-token.js');
 
@@ -280,13 +280,19 @@ function renderComment(review) {
 // ---------------------------------------------------------------------------
 
 function parseArgs(argv) {
-  const args = { pr: null, dryRun: false, post: true, floor: process.env.GEMINI_REVIEW_FLOOR || 'flash' };
+  const args = {
+    pr: null, dryRun: false, post: true,
+    floor: process.env.GEMINI_REVIEW_FLOOR || 'flash',
+    // `prefer_pro_tier` / `force_pro` — explicit toggle, see resolve-gemini-model.js
+    preferPro: /^(1|true|yes)$/i.test(process.env.GEMINI_PREFER_PRO || ''),
+  };
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--pr') args.pr = argv[++i];
     else if (argv[i] === '--dry-run') { args.dryRun = true; args.post = false; }
     else if (argv[i] === '--no-post') args.post = false;
     else if (argv[i] === '--floor') args.floor = argv[++i];
-    else if (argv[i] === '--help') { process.stdout.write('Usage: review-pr.js --pr <number> [--dry-run] [--no-post] [--floor tier]\n'); process.exit(0); }
+    else if (argv[i] === '--prefer-pro' || argv[i] === '--force-pro') args.preferPro = true;
+    else if (argv[i] === '--help') { process.stdout.write('Usage: review-pr.js --pr <number> [--dry-run] [--no-post] [--floor tier] [--prefer-pro]\n'); process.exit(0); }
   }
   return args;
 }
@@ -311,7 +317,9 @@ async function callGemini(model, prompt, token, cfg) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
+      // `role` is mandatory on Vertex ("Please use a valid role: user, model")
+      // even though the Generative Language API tolerates omitting it.
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: { responseMimeType: 'application/json', temperature: 0 },
     }),
   });
@@ -381,12 +389,15 @@ async function main() {
   // --- model -------------------------------------------------------------
   let model = 'models/(dry-run)';
   if (!args.dryRun) {
-    const ranked = rank(await listModels(token, cfg), { allowPreview: false });
-    const chosen = ranked.find((m) => meetsFloor(m, args.floor));
+    const { chosen, tradeoff } = selectModel(await listModels(token, cfg), {
+      allowPreview: false, preferPro: args.preferPro, floor: args.floor,
+    });
     if (!chosen) {
       process.stderr.write(`✖ No available model meets the '${args.floor}' floor. Refusing to review on an under-capability model.\n`);
       process.exit(1);
     }
+    // The Pro toggle's cost must be visible, not buried in an audit log.
+    if (tradeoff) process.stderr.write(`⚠ ${tradeoff}\n`);
     model = chosen.id;
   }
 

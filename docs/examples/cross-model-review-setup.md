@@ -122,9 +122,45 @@ browser and no user. And you cannot fall back to a service-account key, because
 those are disallowed.
 
 So GitHub proves its own identity to Google and receives a short-lived token.
-One-time setup:
+
+#### Decide the scope first
+
+Federation can be scoped to one repository or to whole organizations. Widening it
+is a real decision: **anyone who can push a workflow file to an included
+repository can mint a token for the service account.** The blast radius is
+bounded by the service account's roles — with `roles/aiplatform.user` the
+realistic worst case is unauthorized Vertex usage billed to your project.
+
+Forks are excluded either way: a fork's `repository_owner` is the forker, and
+fork pull requests do not receive `id-token` permission by default.
+
+Project NoéMI's own deployment covers three organizations:
+
+| Organization | Login | Immutable ID |
+|---|---|---|
+| NewPush | `newpush` | `6222293` |
+| Project NoéMI | `project-noemi` | `271349740` |
+| NewPush Labs | `newpush-labs` | `183727677` |
+
+⚠️ **Bind on the numeric ID, not the name.** Organization logins are mutable: if
+one were renamed or deleted, someone could register the freed name and inherit
+impersonation rights. IDs cannot be reassigned.
+
+⚠️ **Logins are case-normalized and comparison is case-sensitive.** `newpush-Labs`
+is really `newpush-labs`. A condition written with the wrong casing never matches
+and authentication fails with nothing pointing at capitalization as the cause.
+Confirm the canonical login and ID before writing either:
 
 ```bash
+gh api orgs/<org> --jq '"login=\(.login) id=\(.id)"'
+```
+
+#### One-time setup
+
+```bash
+# 0. Prerequisite API. Missing, token exchange fails without mentioning STS.
+gcloud services enable sts.googleapis.com --project=project-noemi
+
 # 1. A pool to hold external identities
 gcloud iam workload-identity-pools create github \
   --location=global --project=project-noemi \
@@ -134,39 +170,71 @@ gcloud iam workload-identity-pools create github \
 gcloud iam workload-identity-pools providers create-oidc github-provider \
   --location=global --workload-identity-pool=github --project=project-noemi \
   --issuer-uri="https://token.actions.githubusercontent.com" \
-  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
-  --attribute-condition="assertion.repository=='project-noemi/agents'"
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner,attribute.repository_owner_id=assertion.repository_owner_id" \
+  --attribute-condition="assertion.repository_owner_id in ['6222293','271349740','183727677']"
 
 # 3. A service account for the workflow to act as
 gcloud iam service-accounts create noemi-reviewer \
   --project=project-noemi --display-name="NoeMI AI reviewer"
 
-# 4. Let Vertex AI be called by it
+# 4. Vertex access, and nothing else. Not aiplatform.admin.
 gcloud projects add-iam-policy-binding project-noemi \
   --member="serviceAccount:noemi-reviewer@project-noemi.iam.gserviceaccount.com" \
   --role="roles/aiplatform.user"
 
-# 5. Let only this repository impersonate it
+# 5. Let each organization impersonate it — one binding per org ID
 PROJECT_NUMBER=$(gcloud projects describe project-noemi --format='value(projectNumber)')
-gcloud iam service-accounts add-iam-policy-binding \
-  noemi-reviewer@project-noemi.iam.gserviceaccount.com --project=project-noemi \
-  --role="roles/iam.workloadIdentityUser" \
-  --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/attribute.repository/project-noemi/agents"
+for ORG_ID in 6222293 271349740 183727677; do
+  gcloud iam service-accounts add-iam-policy-binding \
+    noemi-reviewer@project-noemi.iam.gserviceaccount.com --project=project-noemi \
+    --role="roles/iam.workloadIdentityUser" \
+    --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/attribute.repository_owner_id/${ORG_ID}"
+done
 ```
 
-⚠️ **Step 2's `--attribute-condition` is the security boundary.** Without it,
-*any* GitHub repository anywhere could request a token for your service account.
-Do not omit it.
+#### The two halves must agree
 
-Then set these repository **Variables** (Settings → Secrets and variables →
-Actions → Variables). None is a secret:
+Step 2's **attribute mapping and condition** and step 5's **bindings** are a
+matched pair, and a mismatch fails closed in a way that is hard to read:
+
+- The condition controls who may enter the pool. Leave it scoped to one
+  repository and no other repo can authenticate, regardless of the bindings.
+- The bindings reference a mapped attribute. Bind on
+  `attribute.repository_owner_id` without mapping it in step 2 and **the
+  attribute does not exist on any token, so no principal matches any binding** —
+  nothing authenticates at all, including the repository you intended to allow.
+
+This exact combination broke the first rollout. Verify both after setup:
+
+```bash
+gcloud iam workload-identity-pools providers describe github-provider \
+  --location=global --workload-identity-pool=github --project=project-noemi \
+  --format='value(attributeCondition,attributeMapping)'
+
+gcloud iam service-accounts get-iam-policy \
+  noemi-reviewer@project-noemi.iam.gserviceaccount.com --project=project-noemi
+```
+
+#### Repository Variables
+
+Settings → Secrets and variables → Actions → **Variables** tab. None is a
+secret, and the tab matters: Secrets are masked and write-only, which makes
+non-secrets harder to audit.
 
 | Variable | Value |
 |---|---|
 | `GCP_WIF_PROVIDER` | `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github-provider` |
 | `GCP_SERVICE_ACCOUNT` | `noemi-reviewer@project-noemi.iam.gserviceaccount.com` |
 | `GOOGLE_CLOUD_PROJECT` | `project-noemi` |
-| `GOOGLE_CLOUD_LOCATION` | `us-central1` (or your region) |
+| `GOOGLE_CLOUD_LOCATION` | `us-central1` |
+| `INFISICAL_PROJECT_ID` | your Infisical workspace ID |
+| `INFISICAL_IDENTITY_ID` | your Infisical machine identity ID |
+
+⚠️ `GCP_WIF_PROVIDER` takes the project **number**, not the project ID. Using the
+ID fails with a message that does not mention which field is wrong.
+
+The workflow requires **all six** and skips with a notice naming the missing
+ones — so a partial rollout is safe, but a green job does not mean a review ran.
 
 ## Enable the API
 
@@ -176,17 +244,56 @@ gcloud services enable aiplatform.googleapis.com --project=project-noemi
 
 Vertex AI requires billing to be linked to the project.
 
+## Which model gets chosen
+
+Not a name in a config file — names go stale. The resolver asks Google what
+exists and applies this rule:
+
+> Prefer the newest **stable** model of the highest available generation. Pro is
+> elevated only when a stable Pro exists in that generation; otherwise take the
+> best stable model of the latest generation.
+
+Generation dominates; tier orders *within* a generation. That matters because a
+hard tier preference looks sensible and quietly does the wrong thing: at the time
+of writing, every 3.x Pro is preview-only, so "always prefer Pro" would select a
+2.5-generation model while a stable 3.6 was available.
+
+Also filtered out: image, speech, embedding, robotics, and computer-use variants.
+Their names still contain "pro" and "flash", so a naive rank will cheerfully
+choose an *image* model to review your code. Most published Gemini models are
+wrong for this job.
+
+### The Pro toggle
+
+If you want Pro regardless, it is an explicit switch rather than a hidden weight:
+
+```bash
+node scripts/resolve-gemini-model.js --prefer-pro
+# or set the GEMINI_PREFER_PRO repository variable to 1
+```
+
+When the toggle costs you a generation, it tells you:
+
+```
+⚠ prefer_pro_tier selected gemini-2.5-pro (gen 2.5); without it the newest
+  stable choice is gemini-3.6-flash (gen 3.6).
+```
+
+Combine with `--allow-preview` to reach a newer Pro that is still in preview —
+accepting an unstable model inside a governance control.
+
 ## Which backend
 
 `GEMINI_BACKEND` selects between two Google surfaces:
 
-- **`vertex`** (default) — `aiplatform.googleapis.com`, ADC's native home and
-  the surface your org policy points you at
-- **`generativelanguage`** — the Gemini API surface, historically API-key first
+- **`vertex`** (default) — `aiplatform.googleapis.com`. **The only one that
+  works here.** Verified: an ADC bearer token against
+  `generativelanguage.googleapis.com` returns
+  `403 ACCESS_TOKEN_SCOPE_INSUFFICIENT`, because that surface expects an API key
+  — which your org policy disallows.
+- **`generativelanguage`** — retained for organizations that permit API keys.
 
-The default is `vertex` because ADC is mandated here. If you find the
-Generative Language API accepts an ADC bearer token in your project, either
-works; flip the variable rather than changing code.
+So on `project-noemi` this is not a choice. Leave it at `vertex`.
 
 ---
 
@@ -319,10 +426,29 @@ Instead, GitHub proves its identity to Infisical and receives temporary access.
 
 ## Create an Infisical machine identity
 
-In Infisical: **Organization Settings** → *Identities* → *Create identity*. Give
-it OIDC auth configured to trust GitHub Actions, then grant it read access to
-your project. Follow Infisical's current OIDC documentation for the exact trust
-fields — they are specific to your organization and repository.
+In Infisical: **Organization Settings** → *Identities* → *Create identity*, then
+add **OIDC Auth** as its authentication method and grant the identity read access
+to your project.
+
+Verified settings for GitHub Actions:
+
+| Field | Value |
+|---|---|
+| Issuer / Discovery URL | `https://token.actions.githubusercontent.com` |
+| **Audience** | must equal what the workflow requests — `infisical` by default |
+| Subject / claim filter | scope to your repositories, e.g. `repo:project-noemi/agents:*` |
+
+⚠️ **The audience is the field that fails first.** A mismatch produces:
+
+```
+401 Access denied: OIDC audience not allowed.
+```
+
+That names the cause but not which side to change. Either set the identity's
+allowed audience to `infisical`, or set the `INFISICAL_OIDC_AUDIENCE` repository
+variable to whatever the identity expects. They must match exactly.
+
+The identity's ID goes in the `INFISICAL_IDENTITY_ID` variable.
 
 ## In the workflow
 

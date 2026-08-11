@@ -23,6 +23,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
+    inputs:
+      pr:
+        description: 'Pull request number to review'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -30,7 +35,7 @@ permissions:
   id-token: write          # required to mint the OIDC token for Infisical
 
 concurrency:
-  group: ai-review-${{ github.event.pull_request.number || github.ref }}
+  group: ai-review-${{ github.event.pull_request.number || inputs.pr || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -97,9 +102,14 @@ jobs:
         if: steps.config.outputs.configured == 'true'
         env:
           IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
+          # Must match the audience configured on the Infisical identity's OIDC
+          # auth method. A mismatch fails with 401 "OIDC audience not allowed",
+          # which names the cause but not which side to change — it is this
+          # value, or the identity's allowed-audience field.
+          OIDC_AUDIENCE: ${{ vars.INFISICAL_OIDC_AUDIENCE || 'infisical' }}
         run: |
           JWT=$(curl -sH "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=infisical" | jq -r .value)
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${OIDC_AUDIENCE}" | jq -r .value)
           if [[ -z "$JWT" || "$JWT" == "null" ]]; then
             echo "::error title=OIDC token unavailable::Could not mint a GitHub identity token. Confirm 'id-token: write' permission."
             exit 1
@@ -117,12 +127,17 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GEMINI_REVIEW_FLOOR: ${{ vars.GEMINI_REVIEW_FLOOR || 'flash' }}
           INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          # Resolves on both triggers: the event on pull_request, the input on dispatch.
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr }}
           # Short-lived, federated. Never a stored credential.
           GCP_ACCESS_TOKEN: ${{ steps.gcpauth.outputs.access_token }}
           GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT || 'project-noemi' }}
           GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'us-central1' }}
           GEMINI_BACKEND: ${{ vars.GEMINI_BACKEND || 'vertex' }}
+          # prefer_pro_tier: opt-in. Off by default so selection follows the
+          # newest-stable-generation rule rather than silently regressing a
+          # generation to satisfy a tier preference.
+          GEMINI_PREFER_PRO: ${{ vars.GEMINI_PREFER_PRO || '' }}
         run: |
           # Exit 1 means a deliberate halt (carve-out, or no model met the
           # floor). That is a correct outcome, not a failure of the job.

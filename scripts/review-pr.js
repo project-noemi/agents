@@ -47,8 +47,14 @@
  *
  * EXIT CODES
  *   0 review completed (findings may exist — this is advisory in phase 1)
- *   1 halted: carve-out, or no model met the floor
  *   2 configuration or API error
+ *   3 halted BY DESIGN: carve-out, or no model met the floor
+ *
+ *   Code 3 is deliberately not 1. This process runs wrapped by `infisical run`,
+ *   which exits 1 on its own auth and permission failures — so a wrapper failure
+ *   and an intentional halt were indistinguishable, and CI treated a broken run
+ *   as a successful one. A distinct code cannot be produced by a wrapper that
+ *   never reached this script.
  */
 
 'use strict';
@@ -383,7 +389,7 @@ async function main() {
     if (args.post) await gh(`/repos/${repo}/issues/${args.pr}/comments`, { token: ghToken, method: 'POST', body: { body } });
     process.stderr.write(`${JSON.stringify({ task: 'AI review', result: 'halted: carve-out', carved })}\n`);
     process.stdout.write(`${body}\n`);
-    process.exit(1);
+    process.exit(3);
   }
 
   // --- model -------------------------------------------------------------
@@ -394,7 +400,7 @@ async function main() {
     });
     if (!chosen) {
       process.stderr.write(`✖ No available model meets the '${args.floor}' floor. Refusing to review on an under-capability model.\n`);
-      process.exit(1);
+      process.exit(3);
     }
     // The Pro toggle's cost must be visible, not buried in an audit log.
     if (tradeoff) process.stderr.write(`⚠ ${tradeoff}\n`);

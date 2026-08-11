@@ -139,15 +139,24 @@ jobs:
           # generation to satisfy a tier preference.
           GEMINI_PREFER_PRO: ${{ vars.GEMINI_PREFER_PRO || '' }}
         run: |
-          # Exit 1 means a deliberate halt (carve-out, or no model met the
-          # floor). That is a correct outcome, not a failure of the job.
+          # ONLY exit 3 means "halted by design" (carve-out, or no model met the
+          # floor). Every other non-zero code is a real failure and must stay
+          # red.
+          #
+          # This previously accepted exit 1, which `infisical run` also returns
+          # on its own auth/permission errors. A broken run therefore reported
+          # success and posted nothing — the exact "looks like success but is
+          # not" outcome this pipeline exists to prevent.
           set +e
           infisical run --projectId="$INFISICAL_PROJECT_ID" --env=dev -- \
             node scripts/review-pr.js --pr "$PR_NUMBER"
           code=$?
           set -e
-          if [[ $code -eq 1 ]]; then
+          if [[ $code -eq 3 ]]; then
             echo "::notice title=Review halted::Escalated to human review by design. See the PR comment."
             exit 0
+          fi
+          if [[ $code -ne 0 ]]; then
+            echo "::error title=Review failed::review-pr.js or its wrapper exited ${code}. No review was performed."
           fi
           exit $code

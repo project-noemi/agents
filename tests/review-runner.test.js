@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
+const path = require('path');
 
 const {
     detectCarveOut,
@@ -368,4 +370,23 @@ test('token source is reported without exposing the token value', () => {
         assert.equal(tokenSource(), 'gcloud-adc');
     });
     resetTokenCache();
+});
+
+// --- exit-code contract ----------------------------------------------------
+// A deliberate halt must be distinguishable from a wrapper failure. `infisical
+// run` wraps this process and exits 1 on its own auth/permission errors, so
+// reusing 1 for "halted by design" made a broken run report success.
+
+test('halt uses exit code 3, never 1, so a wrapper failure cannot masquerade as a halt', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'review-pr.js'), 'utf8');
+    assert.match(src, /process\.exit\(3\)/, 'deliberate halts must exit 3');
+    assert.doesNotMatch(src, /process\.exit\(1\)/, 'exit 1 collides with infisical run failures');
+});
+
+test('workflow accepts only exit 3 as a by-design halt', () => {
+    const wf = fs.readFileSync(
+        path.join(__dirname, '..', '.github', 'workflows', 'ai-review.yml'), 'utf8',
+    );
+    assert.match(wf, /code -eq 3/, 'must treat 3 as the halt signal');
+    assert.doesNotMatch(wf, /code -eq 1/, 'must not treat 1 as a halt');
 });

@@ -47,14 +47,20 @@
  *
  * EXIT CODES
  *   0 review completed (findings may exist — this is advisory in phase 1)
- *   1 halted: carve-out, or no model met the floor
  *   2 configuration or API error
+ *   3 halted BY DESIGN: carve-out, or no model met the floor
+ *
+ *   Code 3 is deliberately not 1. This process runs wrapped by `infisical run`,
+ *   which exits 1 on its own auth and permission failures — so a wrapper failure
+ *   and an intentional halt were indistinguishable, and CI treated a broken run
+ *   as a successful one. A distinct code cannot be produced by a wrapper that
+ *   never reached this script.
  */
 
 'use strict';
 
 const {
-  rank, meetsFloor, listModels, backendConfig, generateUrl,
+  selectModel, listModels, backendConfig, generateUrl,
 } = require('./resolve-gemini-model.js');
 const { getAccessToken, tokenSource } = require('./gcp-token.js');
 
@@ -75,6 +81,10 @@ const BLOCKING_SEVERITIES = ['critical', 'high'];
 const CARVE_OUT = [
   '.github/CODEOWNERS',
   '.github/workflows/require-develop-source.yml',
+  // The review workflow itself — in the tooling repo AND in every fleet repo,
+  // where the caller lives at the same path. A PR that edits the workflow that
+  // reviews it must be judged by a human, not by the reviewer it is editing.
+  '.github/workflows/ai-review.yml',
   'docs/MACHINE_IDENTITY.md',
   'docs/AI_REVIEW_GOVERNANCE.md',
 ];
@@ -280,13 +290,19 @@ function renderComment(review) {
 // ---------------------------------------------------------------------------
 
 function parseArgs(argv) {
-  const args = { pr: null, dryRun: false, post: true, floor: process.env.GEMINI_REVIEW_FLOOR || 'flash' };
+  const args = {
+    pr: null, dryRun: false, post: true,
+    floor: process.env.GEMINI_REVIEW_FLOOR || 'flash',
+    // `prefer_pro_tier` / `force_pro` — explicit toggle, see resolve-gemini-model.js
+    preferPro: /^(1|true|yes)$/i.test(process.env.GEMINI_PREFER_PRO || ''),
+  };
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--pr') args.pr = argv[++i];
     else if (argv[i] === '--dry-run') { args.dryRun = true; args.post = false; }
     else if (argv[i] === '--no-post') args.post = false;
     else if (argv[i] === '--floor') args.floor = argv[++i];
-    else if (argv[i] === '--help') { process.stdout.write('Usage: review-pr.js --pr <number> [--dry-run] [--no-post] [--floor tier]\n'); process.exit(0); }
+    else if (argv[i] === '--prefer-pro' || argv[i] === '--force-pro') args.preferPro = true;
+    else if (argv[i] === '--help') { process.stdout.write('Usage: review-pr.js --pr <number> [--dry-run] [--no-post] [--floor tier] [--prefer-pro]\n'); process.exit(0); }
   }
   return args;
 }
@@ -311,11 +327,26 @@ async function callGemini(model, prompt, token, cfg) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
+      // `role` is mandatory on Vertex ("Please use a valid role: user, model")
+      // even though the Generative Language API tolerates omitting it.
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: { responseMimeType: 'application/json', temperature: 0 },
     }),
   });
-  if (!res.ok) throw new Error(`Gemini ${model} → ${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    const body = await res.text();
+    if (res.status === 404 && cfg.backend === 'vertex' && cfg.location !== 'global') {
+      // The publisher catalogue is global; regional availability lags it. A
+      // listed-but-unservable model is the likely cause, so say so instead of
+      // leaving a bare 404. Not auto-retried elsewhere: silently falling back to
+      // an older model would downgrade review depth without telling anyone.
+      throw new Error(
+        `Gemini ${model} → 404 in location '${cfg.location}'. The model is listed globally `
+        + `but may not be served in this region. Set GOOGLE_CLOUD_LOCATION=global.\n${body}`,
+      );
+    }
+    throw new Error(`Gemini ${model} → ${res.status} ${body}`);
+  }
   const body = await res.json();
   const text = body?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
   try {
@@ -334,7 +365,14 @@ async function main() {
     process.exit(2);
   }
 
-  const ghToken = process.env.REVIEWER_GH_TOKEN;
+  // Fine-grained PATs are scoped to a single resource owner, so the fleet has
+  // one reviewer token per organization: REVIEWER_GH_TOKEN_<ORG> (uppercased,
+  // dashes to underscores — REVIEWER_GH_TOKEN_NEWPUSH_LABS). `infisical run`
+  // injects the whole project's secrets, so selection is just an env lookup.
+  // The bare REVIEWER_GH_TOKEN remains the fallback for the home org.
+  const owner = (repo || '').split('/')[0];
+  const perOrgKey = `REVIEWER_GH_TOKEN_${owner.toUpperCase().replace(/-/g, '_')}`;
+  const ghToken = process.env[perOrgKey] || process.env.REVIEWER_GH_TOKEN;
   // No API-key path exists by design — see scripts/gcp-token.js.
   let token = null;
   let cfg = null;
@@ -350,7 +388,7 @@ async function main() {
   // Needed in every mode: pull-request context is read over the API even on a
   // dry run, so there is no offline path here.
   if (!ghToken) {
-    process.stderr.write('✖ REVIEWER_GH_TOKEN not set. Pull-request context is read over the API in every mode, including --dry-run.\n');
+    process.stderr.write(`✖ Neither ${perOrgKey} nor REVIEWER_GH_TOKEN is set. Pull-request context is read over the API in every mode, including --dry-run.\n`);
     process.exit(2);
   }
 
@@ -375,18 +413,21 @@ async function main() {
     if (args.post) await gh(`/repos/${repo}/issues/${args.pr}/comments`, { token: ghToken, method: 'POST', body: { body } });
     process.stderr.write(`${JSON.stringify({ task: 'AI review', result: 'halted: carve-out', carved })}\n`);
     process.stdout.write(`${body}\n`);
-    process.exit(1);
+    process.exit(3);
   }
 
   // --- model -------------------------------------------------------------
   let model = 'models/(dry-run)';
   if (!args.dryRun) {
-    const ranked = rank(await listModels(token, cfg), { allowPreview: false });
-    const chosen = ranked.find((m) => meetsFloor(m, args.floor));
+    const { chosen, tradeoff } = selectModel(await listModels(token, cfg), {
+      allowPreview: false, preferPro: args.preferPro, floor: args.floor,
+    });
     if (!chosen) {
       process.stderr.write(`✖ No available model meets the '${args.floor}' floor. Refusing to review on an under-capability model.\n`);
-      process.exit(1);
+      process.exit(3);
     }
+    // The Pro toggle's cost must be visible, not buried in an audit log.
+    if (tradeoff) process.stderr.write(`⚠ ${tradeoff}\n`);
     model = chosen.id;
   }
 

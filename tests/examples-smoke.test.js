@@ -350,3 +350,35 @@ test('RFP responder workflow uses the current Google Gemini node path', () => {
     assert.match(workflowText, /REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID/);
     assert.doesNotMatch(workflowText, /@n8n\/n8n-nodes-langchain\.chainLlm/);
 });
+
+test('Grok companion n8n workflows use the official xAI chat-model path', () => {
+    const rfp = JSON.parse(read('examples/workflows/rfp-responder-grok.json'));
+    const rfpText = read('examples/workflows/rfp-responder-grok.json');
+    const lab = JSON.parse(read('n8n-templates/layer-b-labs/customer-inquiry-router-grok.json'));
+    const labText = read('n8n-templates/layer-b-labs/customer-inquiry-router-grok.json');
+
+    const rfpChain = rfp.nodes.find((node) => node.name === 'Analyze Request (Grok)');
+    const rfpModel = rfp.nodes.find((node) => node.type === '@n8n/n8n-nodes-langchain.lmChatXAiGrok');
+    const labChain = lab.nodes.find((node) => node.name === 'Triage Coworker (Grok)');
+    const labModel = lab.nodes.find((node) => node.type === '@n8n/n8n-nodes-langchain.lmChatXAiGrok');
+
+    assert.ok(rfpChain, 'Expected Analyze Request (Grok) chain node');
+    assert.equal(rfpChain.type, '@n8n/n8n-nodes-langchain.chainLlm');
+    assert.ok(rfpModel, 'Expected xAI Grok Chat Model on the RFP companion');
+    assert.match(rfpText, /REPLACE_WITH_YOUR_XAI_API_CREDENTIAL_ID/);
+    assert.equal(
+        rfp.nodes.some((node) => node.type === '@n8n/n8n-nodes-langchain.googleGemini'),
+        false
+    );
+    assert.doesNotMatch(rfpText, /candidates\[0\]\.content\.parts\[0\]\.text/);
+
+    assert.ok(labChain, 'Expected Triage Coworker (Grok) chain node');
+    assert.equal(labChain.type, '@n8n/n8n-nodes-langchain.chainLlm');
+    assert.ok(labModel, 'Expected xAI Grok Chat Model on the Layer B companion');
+    assert.match(labText, /REPLACE_WITH_YOUR_XAI_API_CREDENTIAL_ID/);
+    assert.equal(
+        lab.nodes.some((node) => node.type === '@n8n/n8n-nodes-langchain.googleGemini'),
+        false
+    );
+    assert.match(labText, /JSON\.parse\(\$json\.text\)\.category/);
+});

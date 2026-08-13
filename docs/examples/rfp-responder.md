@@ -1,6 +1,6 @@
 # End-to-End Example: Autonomous RFP/RFQ Responder
 
-This guide walks you through deploying an end-to-end event-driven agent workflow using **n8n**, **Gmail**, **Google Docs**, and the **Google Gemini node**.
+This guide walks you through deploying an end-to-end event-driven agent workflow using **n8n**, **Gmail**, **Google Docs**, and the **Google Gemini node**. A Grok companion workflow is in [`../../examples/workflows/rfp-responder-grok.json`](../../examples/workflows/rfp-responder-grok.json).
 
 ## The Scenario
 Your organization frequently receives Requests for Proposals (RFPs) and Requests for Quotes (RFQs) via email. Reviewing these, extracting the requirements, and setting up the initial draft documents takes valuable human time. 
@@ -20,7 +20,7 @@ We will deploy an agentic workflow that:
 2.  Google Workspace credentials configured in n8n for:
     *   **Gmail API** (Read and Compose Drafts)
     *   **Google Docs API** (Create Documents)
-3.  A Google Gemini credential configured in n8n.
+3.  A Google Gemini credential configured in n8n (baseline). For the Grok companion, an xAI API credential instead.
 4.  Review the credential split first:
     *   [`n8n-google-workspace-quickstart.md`](n8n-google-workspace-quickstart.md)
     *   [`../mcp-setup/google-n8n-credential-matrix.md`](../mcp-setup/google-n8n-credential-matrix.md)
@@ -32,7 +32,7 @@ We will deploy an agentic workflow that:
 We have provided a pre-configured, exportable n8n JSON file for this exact workflow. 
 
 1. Navigate to the `examples/workflows/` directory in this repository.
-2. Open the file `rfp-responder.json` and copy its entire contents.
+2. Open the file `rfp-responder.json` (Gemini baseline) or `rfp-responder-grok.json` (Grok companion) and copy its entire contents.
 3. Open your n8n interface, navigate to **Workflows**, and click **Add Workflow**.
 4. Click the gear icon in the top right and select **Import from File** (or simply paste the JSON directly onto the canvas if your version supports it).
 
@@ -46,7 +46,10 @@ Once imported, you will see a visual representation of the **Delegation** phase 
 This node acts as the **Event-Driven Trigger**. It polls the authenticated Gmail account every minute for any new, unread emails. When one arrives, it pushes the email payload down the pipeline.
 
 ### 2. Analyze Request (Gemini)
-This is where the synthetic intelligence acts. It uses the current n8n Google Gemini node. 
+
+This is where the synthetic intelligence acts. It uses the current n8n Google Gemini node.
+
+The Grok companion (`rfp-responder-grok.json`) cannot use that root node. n8n exposes Grok as **Basic LLM Chain** + **xAI Grok Chat Model**. Downstream IF / Docs nodes then read `$json.text`, not Gemini's `candidates[0].content.parts[0].text`. 
 *   **The System Prompt:** We inject instructions telling the model to act as a triage agent. It reads the email body and is strictly instructed to return structured JSON containing an `is_rfp_rfq` boolean, a `summary`, `requirements`, and a `deadline`.
 *   *Note: In a production environment, use the repo personas as design input, but keep the node prompt narrowly scoped instead of pasting all of `GEMINI.md` into the workflow.*
 
@@ -67,7 +70,7 @@ Instead, it uses the Gmail API to create a **Draft** reply to the original sende
 
 ## Step 3: Activate and Test
 
-1.  Replace the placeholder credential IDs in [`../../examples/workflows/rfp-responder.json`](../../examples/workflows/rfp-responder.json) and link the Gmail, Google Docs, and Gemini nodes to your authenticated accounts.
+1.  Replace the placeholder credential IDs in [`../../examples/workflows/rfp-responder.json`](../../examples/workflows/rfp-responder.json) (or the Grok companion) and link Gmail, Google Docs, and the Gemini or xAI node to your authenticated accounts.
 2.  Click the **Test Workflow** button in n8n.
 3.  Send an email to your connected Gmail account with a subject like "RFP: Enterprise Software Overhaul" and a body detailing some software requirements and a deadline.
 4.  Watch the workflow execute! Within a minute, you should see a new Google Doc appear in your Drive, and a Draft reply sitting in your Gmail outbox.

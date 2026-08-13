@@ -1,0 +1,408 @@
+{
+  "name": "Layer B Lab — Customer Inquiry Router (Grok variant)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🧪 Layer B Lab — Customer Inquiry Router (Grok)\n### Optional vendor variant of the Gemini lab\n\nSame 4D microburst as `customer-inquiry-router.json`, with the official n8n **xAI Grok** path.\n\nGrok is **not** a drop-in replacement for `@n8n/n8n-nodes-langchain.googleGemini`. n8n exposes Grok as a LangChain **chat-model sub-node** (`lmChatXAiGrok`) that must hang off a **Basic LLM Chain**. Gemini 2.5 Flash remains the repository baseline; this file is the Grok companion.\n\n**How to run this lab**\n1. Import this canvas into your NewPush Labs n8n instance.\n2. Read each coloured **microburst** sticky *before* you configure the node beside it.\n3. Attach your own xAI credential (replace the `REPLACE_WITH_YOUR_…` placeholder). Pick the current Grok chat model in the sub-node if `grok-4` is not listed.\n4. `POST` a test body like `{ \"message\": \"My invoice looks wrong\" }` to `/webhook/customer-inquiry-router-grok`.\n\n> ⚠️ Labs = prototyping only. Use mock / test credentials. Promote to a production cluster only after peer review.",
+        "height": 260,
+        "width": 1120,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, -520],
+      "id": "c1a8e0d2-4b91-4c6e-9f3a-7d2e1b0a9c11",
+      "name": "Lab Overview"
+    },
+    {
+      "parameters": {
+        "content": "## 1 · DELEGATION\n### \"Is this a task worth handing to an AI?\"\n\n**Delegation** (4D #1) is the discipline of deciding *what* to hand off and *how much* autonomy to grant.\n\nDelegate the *task* (classify this message) to the coworker; keep ownership of the *goal* (every customer reaches the right team).\n\n**This node = the Delegation boundary.** The Webhook is the exact moment a human hands a task to the Virtual Coworker.",
+        "height": 320,
+        "width": 340,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, -240],
+      "id": "a91c2f44-0d6b-4e1f-8c77-2b5e9a11d003",
+      "name": "Microburst — Delegation"
+    },
+    {
+      "parameters": {
+        "content": "## 2 · DESCRIPTION\n### \"Say what you want — clearly.\"\n\nThe Basic LLM Chain holds the prompt. The **xAI Grok Chat Model** sub-node is the model. Together they are Description (4D #2).\n\nReturn **only** JSON `{ category, summary, confidence, suggested_reply }` so the Switch can act.",
+        "height": 320,
+        "width": 360,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [360, -240],
+      "id": "b02d3e55-1e7c-4f20-9d88-3c6f0b22e114",
+      "name": "Microburst — Description"
+    },
+    {
+      "parameters": {
+        "content": "## 3 · THE AGENTIC SHIFT\n### From \"chat answer\" → autonomous action\n\nThe Switch reads `JSON.parse($json.text).category` — Basic LLM Chain exposes the completion on `text`, not Gemini's `content.parts[0].text`.",
+        "height": 320,
+        "width": 340,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [760, -240],
+      "id": "c13e4f66-2f8d-4031-ae99-4d701c33f225",
+      "name": "Microburst — Agentic Shift"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "customer-inquiry-router-grok",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 200],
+      "id": "d24f5077-309e-4142-bf00-5e812d440336",
+      "name": "Customer Inquiry Webhook",
+      "webhookId": "a1b2c3d4-e5f6-4789-abcd-ef0123456789"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the front-desk Virtual Coworker for NewPush. Read the customer's message and decide which single team should handle it.\n\nCUSTOMER MESSAGE:\n{{ $json.body.message }}\n\nCATEGORIES (choose exactly one):\n- \"billing\" — invoices, payments, refunds, pricing, subscription changes.\n- \"technical_support\" — bugs, errors, outages, \"it's not working\", how-to questions.\n- \"sales\" — new business, upgrades, demos, quotes, partnership enquiries.\n- \"other\" — anything unclear, mixed, sensitive, or outside the above. When in doubt, choose \"other\" so a human can decide.\n\nTone: warm, concise, professional.\n\nReturn ONLY valid JSON — no markdown, no code fences — in this exact shape:\n{\n  \"category\": \"billing | technical_support | sales | other\",\n  \"summary\": \"one sentence describing the request\",\n  \"confidence\": 0.0,\n  \"suggested_reply\": \"a short, friendly holding reply to the customer\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [360, 200],
+      "id": "e3506188-410f-4253-c011-6f923e551447",
+      "name": "Triage Coworker (Grok)"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "grok-4",
+          "mode": "list",
+          "cachedResultName": "grok-4"
+        },
+        "options": {
+          "responseFormat": "json_object"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
+      "typeVersion": 1,
+      "position": [360, 420],
+      "id": "f4617299-5210-4364-d122-70a34f662558",
+      "name": "xAI Grok Chat Model",
+      "credentials": {
+        "xAiApi": {
+          "id": "REPLACE_WITH_YOUR_XAI_API_CREDENTIAL_ID",
+          "name": "xAI API account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "31a1ef99-44c9-4592-80e9-16d171e94d2b",
+                    "leftValue": "={{ JSON.parse($json.text).category }}",
+                    "rightValue": "billing",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renderType": "regular",
+              "outputKey": "Billing"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "684309ac-a628-45ad-b772-35264275dc7e",
+                    "leftValue": "={{ JSON.parse($json.text).category }}",
+                    "rightValue": "technical_support",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renderType": "regular",
+              "outputKey": "Technical Support"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0772ed8e-045e-492c-9ad3-b900cebd4b43",
+                    "leftValue": "={{ JSON.parse($json.text).category }}",
+                    "rightValue": "sales",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renderType": "regular",
+              "outputKey": "Sales"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [760, 200],
+      "id": "a625c8bd-fcea-4cc2-a36b-67173ca879ac",
+      "name": "Inquiry Router"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "961100cd-f545-428d-978f-03023caa4620",
+              "name": "routed_to",
+              "value": "Billing Team",
+              "type": "string"
+            },
+            {
+              "id": "53176685-0ce9-4856-83b9-9b2205278118",
+              "name": "mock_action",
+              "value": "Create a ticket in the Billing queue (stub — wire to your real system on promotion).",
+              "type": "string"
+            },
+            {
+              "id": "4f04a021-7e0a-4d8a-9c19-2a6fdca51848",
+              "name": "audit_log",
+              "value": "={{ { task: 'route-customer-inquiry', inputs: [$('Customer Inquiry Webhook').item.json.body.message], actions: ['routed_to=Billing Team'], risks: [], result: 'queued_to_billing' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1140, -60],
+      "id": "4f136af0-f684-4eed-9fb9-d459cb78c9da",
+      "name": "Mock: Billing Queue"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7953c3b6-ba3b-475c-ac1c-ce20e817baec",
+              "name": "routed_to",
+              "value": "Technical Support Team",
+              "type": "string"
+            },
+            {
+              "id": "375d6f5e-96e3-427a-bb22-ec6eb2339c77",
+              "name": "mock_action",
+              "value": "Open a support ticket and page on-call if severity is high (stub).",
+              "type": "string"
+            },
+            {
+              "id": "b3bdc9f9-5be4-4b73-977e-fefdf5b29df3",
+              "name": "audit_log",
+              "value": "={{ { task: 'route-customer-inquiry', inputs: [$('Customer Inquiry Webhook').item.json.body.message], actions: ['routed_to=Technical Support'], risks: [], result: 'queued_to_support' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1140, 120],
+      "id": "5bff8f92-406e-412e-894a-8fea842102f8",
+      "name": "Mock: Technical Support Queue"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e16ecd33-35ab-4c9b-bc25-07e6a71f041a",
+              "name": "routed_to",
+              "value": "Sales Team",
+              "type": "string"
+            },
+            {
+              "id": "beae34c5-a3a9-4489-811b-61f922e42779",
+              "name": "mock_action",
+              "value": "Create a lead in the CRM and notify an account executive (stub).",
+              "type": "string"
+            },
+            {
+              "id": "bfb709e8-ec29-4818-bf6a-5a50f0f8ac50",
+              "name": "audit_log",
+              "value": "={{ { task: 'route-customer-inquiry', inputs: [$('Customer Inquiry Webhook').item.json.body.message], actions: ['routed_to=Sales'], risks: [], result: 'queued_to_sales' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1140, 300],
+      "id": "e7e8a5b9-621b-4f6a-a83c-f697802df607",
+      "name": "Mock: Sales Pipeline"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "87bc9b9c-6adf-4117-a6e3-224af6360c31",
+              "name": "routed_to",
+              "value": "Human Escalation",
+              "type": "string"
+            },
+            {
+              "id": "01f0a84e-123b-4050-a603-7b88570624eb",
+              "name": "mock_action",
+              "value": "Low confidence or out-of-scope — hand off to a human and log the escalation (stub).",
+              "type": "string"
+            },
+            {
+              "id": "3974c92e-e73c-409a-ba11-ab45f7a474d6",
+              "name": "audit_log",
+              "value": "={{ { task: 'route-customer-inquiry', inputs: [$('Customer Inquiry Webhook').item.json.body.message], actions: ['routed_to=Human Escalation'], risks: ['low_confidence_or_out_of_scope'], result: 'escalated_to_human' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1140, 480],
+      "id": "aa8178e8-c382-4efd-8c1c-7a990e067b65",
+      "name": "Mock: Human Escalation"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Customer Inquiry Webhook": {
+      "main": [
+        [
+          {
+            "node": "Triage Coworker (Grok)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "xAI Grok Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Triage Coworker (Grok)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triage Coworker (Grok)": {
+      "main": [
+        [
+          {
+            "node": "Inquiry Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inquiry Router": {
+      "main": [
+        [
+          {
+            "node": "Mock: Billing Queue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mock: Technical Support Queue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mock: Sales Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mock: Human Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "b88e3c01-9d2a-4f11-8c44-0a1b2c3d4e5f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "REPLACE_WITH_YOUR_INSTANCE_ID"
+  },
+  "id": "PCn5NTaHC6U-grok",
+  "tags": []
+}

@@ -77,10 +77,17 @@ For Builders, Practitioners, and Accelerators:
 
 That gives you the best of both worlds: a less intimidating daily workspace and a more reliable operating foundation.
 
+## Hosted Personas Are A Different Surface
+
+ChatGPT Custom GPTs, Gemini Gems, and Grok Custom Agents are **hosted** specialist personas. They do not replace the three local stacks above.
+
+If the question is "does Grok have Gems?", start with [`grok-custom-agents.md`](grok-custom-agents.md). That guide maps Custom Agents, Projects, Skills, and Grok Bot onto NoéMI persona specs. Grok Build is the local coding/TUI analogue of Claude Code / Gemini CLI / Codex; it is not the same product as grok.com Custom Agents.
+
 ## Where To Go Next
 
 - [`google-local-workspace.md`](google-local-workspace.md)
 - [`claude-code-local-workspace.md`](claude-code-local-workspace.md)
 - [`openai-codex-local-workspace.md`](openai-codex-local-workspace.md)
+- [`grok-custom-agents.md`](grok-custom-agents.md)
 - [`../mcp-setup/google-workspace-agentic-clients.md`](../mcp-setup/google-workspace-agentic-clients.md)
 - [`../mcp-setup/microsoft-365-agentic-clients.md`](../mcp-setup/microsoft-365-agentic-clients.md)

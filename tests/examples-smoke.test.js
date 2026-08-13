@@ -103,13 +103,22 @@ test('beginner builder docs start with a safe local success before Docker', () =
     assert.match(platformGuide, /macos-linux-kickstart\.md/);
     assert.match(platformGuide, /windows-kickstart\.md/);
     assert.match(platformGuide, /chromeos-kickstart\.md/);
+    assert.match(platformGuide, /curl -fsSL https:\/\/x\.ai\/cli\/install\.sh/);
+    assert.match(platformGuide, /irm https:\/\/x\.ai\/cli\/install\.ps1/);
+    assert.match(platformGuide, /verify-env\.sh --mode=grok/);
+    assert.match(beginnerGuide, /curl -fsSL https:\/\/x\.ai\/cli\/install\.sh/);
+    assert.match(beginnerGuide, /irm https:\/\/x\.ai\/cli\/install\.ps1/);
     assert.match(macGuide, /macOS or Linux/i);
     assert.match(macGuide, /bash scripts\/verify-env\.sh --mode=builder/i);
+    assert.match(macGuide, /curl -fsSL https:\/\/x\.ai\/cli\/install\.sh/);
     assert.match(windowsGuide, /PowerShell/i);
     assert.match(windowsGuide, /powershell -ExecutionPolicy Bypass -File scripts\/verify-env\.ps1 -Mode builder/i);
+    assert.match(windowsGuide, /irm https:\/\/x\.ai\/cli\/install\.ps1/);
     assert.match(windowsGuide, /You do \*\*not\*\* need WSL/i);
     assert.match(chromeOsGuide, /Linux development environment/i);
     assert.match(chromeOsGuide, /bash scripts\/verify-env\.sh --mode=builder/i);
+    assert.match(chromeOsGuide, /curl -fsSL https:\/\/x\.ai\/cli\/install\.sh/);
+    assert.match(chromeOsGuide, /verify-env\.sh --mode=grok/);
     assert.match(chromeOsGuide, /ChromeOS is often \*\*not\*\* the easiest place to start the Docker phase/i);
 });
 

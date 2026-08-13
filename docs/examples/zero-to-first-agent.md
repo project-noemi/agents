@@ -39,7 +39,23 @@ Pick the local AI client you want to learn first:
 - **Gemini CLI** if your team expects Google-heavy workflows or a clean terminal-first path
 - **Claude Code CLI / app** if you want a strong co-work experience around repositories and documents
 - **OpenAI Codex CLI / app** if you want a strong local execution and review workflow
-- **Grok Build (`grok`)** if you want xAI's local TUI / headless CLI — install per platform in [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md)
+- **Grok Build (`grok`)** if you want xAI's local TUI / headless CLI. Install on the platform you actually use, then continue this guide:
+
+  **macOS / Linux** (and ChromeOS Linux terminal):
+
+  ```bash
+  curl -fsSL https://x.ai/cli/install.sh | bash
+  grok --version
+  ```
+
+  **Windows PowerShell**:
+
+  ```powershell
+  irm https://x.ai/cli/install.ps1 | iex
+  grok --version
+  ```
+
+  Open a new terminal after install so `PATH` includes `~/.grok/bin` (Windows: `%USERPROFILE%\.grok\bin`). Full notes: [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md). The same commands are in [`cross-platform-kickstart.md`](cross-platform-kickstart.md) and each workstation guide.
 
 You only need **one** of these to get your first success.
 

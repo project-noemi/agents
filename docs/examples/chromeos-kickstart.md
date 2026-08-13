@@ -46,6 +46,12 @@ cd agents
 bash scripts/verify-env.sh --mode=builder
 ```
 
+Already know you want to start with **Grok Build**? Target it directly:
+
+```bash
+bash scripts/verify-env.sh --mode=grok
+```
+
 This checks:
 
 - Git

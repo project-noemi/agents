@@ -12,6 +12,30 @@ Do not start by copying the first command block you see. Start by matching the r
 | Windows | [`windows-kickstart.md`](windows-kickstart.md) | PowerShell-first path that avoids Bash assumptions |
 | ChromeOS | [`chromeos-kickstart.md`](chromeos-kickstart.md) | Starts inside the Linux development environment, then follows the local-first path |
 
+## Install Grok Build (optional fourth client)
+
+If Grok Build is the local client you want, install it **before** the workstation preflight. Open a new terminal after install so `PATH` includes `~/.grok/bin` (Windows: `%USERPROFILE%\.grok\bin`). Official source: [docs.x.ai/build/overview](https://docs.x.ai/build/overview).
+
+| Platform | Install | Verify |
+|----------|---------|--------|
+| macOS / Linux | `curl -fsSL https://x.ai/cli/install.sh \| bash` | `grok --version` |
+| Windows (PowerShell) | `irm https://x.ai/cli/install.ps1 \| iex` | `grok --version` |
+| ChromeOS | Same bash installer, **inside the Linux development environment** | `grok --version` |
+
+Windows Git Bash can use the macOS/Linux installer. WSL uses the Linux binary via the bash installer. Pin, update, and first-win commands live in the matching workstation guide and in [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md).
+
+Then target the preflight:
+
+```bash
+# macOS / Linux / ChromeOS Linux terminal
+bash scripts/verify-env.sh --mode=grok
+```
+
+```powershell
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode grok
+```
+
 All three guides follow the same logic:
 
 1. verify only the tools you actually need

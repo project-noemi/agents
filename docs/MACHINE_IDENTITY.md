@@ -147,6 +147,32 @@ resolver, so a producer token already in the environment wins silently. The
 `AGENT_GH_EXPECTED_LOGIN` guard catches this and refuses rather than acting
 under the wrong identity — always set it.
 
+### Fleet reviewer app — `noemi-reviewer[bot]`
+
+For the multi-repository fleet, the reviewer credential is a **GitHub App**
+rather than per-org PATs: fine-grained tokens are single-resource-owner, so a
+three-org fleet on PATs means three tokens on three rotation schedules — three
+chances for the rotation discipline this register depends on to slip.
+
+| Field | Value |
+|---|---|
+| **Identity** | `noemi-reviewer` GitHub App (comments as `noemi-reviewer[bot]`) |
+| **Status** | Registered here ahead of provisioning — see setup guide |
+| **Purpose** | Fleet-wide review-finding comments; replaces per-org reviewer PATs |
+| **Named owner** | `@WSwarm` (Balazs Nagy) |
+| **Credential** | App private key — Infisical secret `REVIEWER_APP_PRIVATE_KEY`, the only copy |
+| **Runtime token** | Installation token minted per run, ~1 hour lifetime |
+| **Permissions** | Contents **read-only**, Pull requests read/write, Metadata read |
+| **Installed on** | `newpush`, `project-noemi`, `newpush-labs` — all repositories |
+| **Rotation** | None scheduled; revoke and re-key on suspected exposure |
+| **May author code?** | **No** — same structural boundary as the PAT it replaces |
+| **May approve PRs?** | **No** in phase 1 — CODEOWNERS gate, as before |
+
+The `noemi-reviewer` *user account* remains registered above: its PAT serves
+local development and is the CI fallback while the app is provisioned. Once the
+app is live in all three orgs, revoke the user PATs rather than leaving dormant
+credentials — a fallback nobody exercises is a liability, not a safety net.
+
 ### Effective-permission posture — the token is the boundary
 
 GitHub resolves a user's access as the **highest** of all grants. Both bot

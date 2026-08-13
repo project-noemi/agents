@@ -606,21 +606,35 @@ is scoped to one repository, workflows in other repos will authenticate to
 GitHub fine and then fail Infisical login. Widen it to the organizations, e.g.
 `repo:newpush/*`, `repo:project-noemi/*`, `repo:newpush-labs/*`.
 
-**3. Per-organization reviewer tokens.** A fine-grained PAT is scoped to a
-single resource owner, so one token cannot span three orgs. Signed in as
-`noemi-reviewer`, mint one per org (same scoping as before: Contents read,
-Pull requests read/write, all repositories in that org — the account needs
-access to the org's private repos), then store each in Infisical:
+**3. The reviewer GitHub App.** A fine-grained PAT is scoped to a single
+resource owner, so a multi-org fleet on PATs means one token per org, each on
+its own 90-day rotation. Don't. Create a **GitHub App** instead — one identity,
+installed everywhere, minting its own short-lived token per run:
 
-```bash
-infisical secrets set REVIEWER_GH_TOKEN_NEWPUSH="github_pat_..." --env=dev
-infisical secrets set REVIEWER_GH_TOKEN_NEWPUSH_LABS="github_pat_..." --env=dev
-```
+1. In the tooling org: Settings → Developer settings → GitHub Apps → **New
+   GitHub App**. Name it `noemi-reviewer` (comments will post as
+   `noemi-reviewer[bot]`). Disable webhooks; it needs no URL.
+2. Repository permissions — same least-privilege shape as the PAT:
+   **Contents: Read-only**, **Pull requests: Read and write**, Metadata: read.
+   The reviewer must stay structurally unable to author code.
+3. Generate a **private key** (downloads a `.pem`), store it in Infisical, and
+   record the **App ID**:
 
-The runner selects `REVIEWER_GH_TOKEN_<ORG>` (uppercased, dashes →
-underscores) by the repository's owner, falling back to `REVIEWER_GH_TOKEN`.
-`infisical run` injects the whole project's secrets, so no per-repo secret
-wiring exists anywhere.
+   ```bash
+   infisical secrets set REVIEWER_APP_PRIVATE_KEY="$(cat noemi-reviewer.*.pem)" --env=dev
+   gh variable set REVIEWER_APP_ID --org <each-org> --visibility all --body "<app-id>"
+   ```
+
+   Then delete the downloaded `.pem` — the vault copy is the only one that
+   should exist.
+4. **Install the app** on each organization (App settings → Install App →
+   All repositories), for all three orgs.
+
+The workflow mints a one-hour installation token per run and the runner prefers
+it over any PAT. When `REVIEWER_APP_ID` is unset the whole path no-ops and the
+runner falls back to `REVIEWER_GH_TOKEN_<ORG>` / `REVIEWER_GH_TOKEN` PATs — so
+the app can be provisioned without breaking anything, and once it works the
+PATs should be revoked rather than left as a dormant credential.
 
 ## Rolling out
 

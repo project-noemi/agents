@@ -5,7 +5,7 @@ This is the **beginner-proof machine setup guide** for `gws`, the Google Workspa
 Use this guide when your goal is:
 
 - Google Workspace access on a **real desktop or laptop**
-- one shared Google Workspace command surface that Gemini CLI, Claude Code, and Codex can all use
+- one shared Google Workspace command surface that Gemini CLI, Claude Code, Codex, and Grok Build can all use
 - a safe first setup before you move into background automation or n8n
 
 ## What `gws` Is
@@ -345,6 +345,7 @@ Fix:
 - [`../tool-usages/gemini-workspace-quickstart.md`](../tool-usages/gemini-workspace-quickstart.md)
 - [`../tool-usages/claude-code-local-workspace.md`](../tool-usages/claude-code-local-workspace.md)
 - [`../tool-usages/openai-codex-local-workspace.md`](../tool-usages/openai-codex-local-workspace.md)
+- [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md)
 
 ## Official References
 

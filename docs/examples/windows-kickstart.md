@@ -15,10 +15,19 @@ This is the right starting point if:
 - Git
 - Node.js 24 or newer
   - Install with `winget install OpenJS.NodeJS.LTS`, or use [nvm-windows](https://github.com/coreybutler/nvm-windows) to manage versions. Confirm with `node -v` showing `v24` or higher.
-- one supported local AI client: Gemini CLI, Claude Code, or OpenAI Codex
+- one supported local AI client: Gemini CLI, Claude Code, OpenAI Codex, or Grok Build
 - PowerShell
   - `powershell` works on stock Windows
   - `pwsh` is recommended if you already use PowerShell 7
+
+If you want **Grok Build** and do not have `grok` yet, run this in the same PowerShell you will use for the rest of the guide:
+
+```powershell
+irm https://x.ai/cli/install.ps1 | iex
+grok --version
+```
+
+Open a new PowerShell window after install so `PATH` includes `%USERPROFILE%\.grok\bin`. Git Bash can use the bash installer instead; WSL uses the Linux installer. Full notes: [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md).
 
 ## Step 1: Clone The Repository
 
@@ -51,10 +60,14 @@ This checks:
 - whether Docker is present, without requiring it yet
 - whether Infisical CLI or 1Password CLI is available for later Fetch-on-Demand work
 
-Already know you want to start with **Claude Code**? Target it directly (swap `builder` for `claude`):
+Already know you want to start with **Claude Code** or **Grok Build**? Target it directly (swap `builder` for `claude` or `grok`):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode claude
+```
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/verify-env.ps1 -Mode grok
 ```
 
 ## Step 3: Generate The Current Agent Context
@@ -96,6 +109,14 @@ Open the repository in Codex and ask:
 
 > Inspect this repository and summarize the engineering agents in one sentence each. Then tell me which one would help first with PR review.
 
+### Grok Build
+
+```powershell
+grok -p "Read AGENTS.md and CLAUDE.md, list the engineering agents in this repository, and summarize what each one does in one sentence. Then tell me which one would help first with PR review."
+```
+
+(Prefer the interactive TUI? Run `grok` in the repo and paste the same request.)
+
 ## Step 5: Add Secret Injection Only When You Need Business Systems
 
 Do not start by pasting secrets into files.
@@ -112,7 +133,7 @@ infisical run --env=dev -- gemini
 op run --env-file=.env.template -- gemini
 ```
 
-The same pattern applies to Claude Code and Codex (swap `gemini` for `claude` or `codex`).
+The same pattern applies to Claude Code, Codex, and Grok Build (swap `gemini` for `claude`, `codex`, or `grok`).
 
 ## Step 6: Know What Comes Later
 

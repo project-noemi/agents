@@ -585,8 +585,9 @@ v3.0 of the curriculum leverages the **NewPush Labs open-source stack**. This is
 | **NotebookLM** | Document-based knowledge retrieval and RAG-like interactions |
 | **Google Gemini Gems** | Custom AI personas for specific tasks |
 | **xAI Grok Custom Agents** | Hosted persona / Project / Skill equivalent to Gems and Custom GPTs |
+| **xAI Grok Build** | Local CLI / TUI agentic workspace (`grok`) — fourth stack alongside Gemini CLI, Claude Code, and Codex |
 
-Grok's hosted Custom Agents, Projects, Skills, and (on limited tiers) Grok Bot cover the same job as Gems and Custom GPTs. They are a vendor surface, not a new orchestrator or model baseline. See [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md).
+Grok's hosted Custom Agents, Projects, Skills, and (on limited tiers) Grok Bot cover the same job as Gems and Custom GPTs. They are a vendor surface, not a new model baseline. The **local** Grok path is Grok Build. See [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) and [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md).
 
 Three principles govern the stack:
 
@@ -764,6 +765,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/mcp-setup/`](mcp-setup/) | MCP server setup guides (Google Workspace, n8n, Slack, Web Search) |
 | [`docs/tool-usages/`](tool-usages/) | Tool-specific guides and integration patterns |
 | [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) | Grok Custom Agents, Projects, Skills, and Grok Bot as the Gems / Custom GPT equivalent |
+| [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md) | Grok Build CLI / TUI: per-platform install, first win, and Fetch-on-Demand launch |
 | [`docs/examples/`](examples/) | Example implementations (Docker sandbox, RFP Responder, Video Automation) |
 | [`docs/examples/cross-model-review-setup.md`](examples/cross-model-review-setup.md) | Beginner walkthrough: machine identities, Gemini key options, and vault-backed CI for cross-model review |
 

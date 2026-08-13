@@ -180,7 +180,8 @@ It is designed to work with orchestrators such as:
 * Claude Code
 * OpenAI Codex
 * LangChain
-* Grok (hosted Custom Agents / Projects / Skills — the Gems and Custom GPT equivalent; see [docs/tool-usages/grok-custom-agents.md](docs/tool-usages/grok-custom-agents.md))
+* Grok Build (local CLI / TUI — install per platform in [docs/tool-usages/grok-build-local-workspace.md](docs/tool-usages/grok-build-local-workspace.md))
+* Grok hosted Custom Agents / Projects / Skills (the Gems and Custom GPT equivalent; see [docs/tool-usages/grok-custom-agents.md](docs/tool-usages/grok-custom-agents.md))
 
 All reference tooling and Docker images use **Node.js 24** as the technical baseline for cross-fleet compatibility.
 

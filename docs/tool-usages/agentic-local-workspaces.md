@@ -1,6 +1,6 @@
 # Agentic Local Workspaces
 
-Project NoeMI treats Gemini CLI, Claude Code, and OpenAI Codex as **local agentic workspaces**, not just coding tools.
+Project NoeMI treats Gemini CLI, Claude Code, OpenAI Codex, and Grok Build as **local agentic workspaces**, not just coding tools.
 
 They can absolutely write and review code, but that is only one slice of the job. In practice, Builders, Practitioners, and Accelerators also use them to:
 
@@ -30,13 +30,14 @@ The visual surfaces are valuable, but the CLI is usually the most durable source
 - **Builders / Practitioners** should get comfortable launching the CLI, approving actions, and running a few safe commands.
 - **Accelerators** should be able to standardize local environments, secret-injection patterns, MCP setup, and repeatable workflows across teams.
 
-## The Three Main Stacks
+## The Four Main Stacks
 
 | Stack | CLI | Visual Surface | Best Fit | Main Tradeoff |
 |------|-----|----------------|----------|---------------|
 | Google | Gemini CLI | Antigravity, Google's IDE-style Gemini workspace layer | Google-heavy local work, fast iteration, Workspace-first flows | Google Workspace has a strong first-party path, but not every external business system is equally turnkey |
 | Anthropic | Claude Code CLI | Claude Code app | Co-work, repository understanding, interactive editing, MCP-rich local work | Strong interactive experience, but teams still need discipline around repeatable CLI setup |
 | OpenAI | Codex CLI | Codex app and IDE surfaces | Local agentic execution, reviews, worktrees, governed automation, OpenAI-native workflows | Powerful local/project controls, but setup is clearer for practitioners once the CLI basics click |
+| xAI | Grok Build (`grok`) | Grok Build TUI | Local agentic execution with a first-party TUI, headless `-p` mode, skills, MCP, and worktrees | Browser sign-in is the default; this repo has no generated `GROK.md` (it reads `AGENTS.md` and `CLAUDE.md`) |
 
 ## Advantages Of CLI-First Builders
 
@@ -79,15 +80,16 @@ That gives you the best of both worlds: a less intimidating daily workspace and 
 
 ## Hosted Personas Are A Different Surface
 
-ChatGPT Custom GPTs, Gemini Gems, and Grok Custom Agents are **hosted** specialist personas. They do not replace the three local stacks above.
+ChatGPT Custom GPTs, Gemini Gems, and Grok Custom Agents are **hosted** specialist personas. They do not replace the four local stacks above.
 
-If the question is "does Grok have Gems?", start with [`grok-custom-agents.md`](grok-custom-agents.md). That guide maps Custom Agents, Projects, Skills, and Grok Bot onto NoéMI persona specs. Grok Build is the local coding/TUI analogue of Claude Code / Gemini CLI / Codex; it is not the same product as grok.com Custom Agents.
+If the question is "does Grok have Gems?", start with [`grok-custom-agents.md`](grok-custom-agents.md). If the question is "how do I install the Grok CLI?", start with [`grok-build-local-workspace.md`](grok-build-local-workspace.md). Those are different products.
 
 ## Where To Go Next
 
 - [`google-local-workspace.md`](google-local-workspace.md)
 - [`claude-code-local-workspace.md`](claude-code-local-workspace.md)
 - [`openai-codex-local-workspace.md`](openai-codex-local-workspace.md)
+- [`grok-build-local-workspace.md`](grok-build-local-workspace.md)
 - [`grok-custom-agents.md`](grok-custom-agents.md)
 - [`../mcp-setup/google-workspace-agentic-clients.md`](../mcp-setup/google-workspace-agentic-clients.md)
 - [`../mcp-setup/microsoft-365-agentic-clients.md`](../mcp-setup/microsoft-365-agentic-clients.md)

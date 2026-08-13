@@ -11,7 +11,16 @@ The key idea is simple: on ChromeOS, Project NoeMI starts inside the **Linux dev
 - a ChromeOS device with the Linux development environment enabled
 - Git
 - Node.js 24 or newer inside the Linux environment
-- one supported local AI client: Gemini CLI, Claude Code, or OpenAI Codex
+- one supported local AI client: Gemini CLI, Claude Code, OpenAI Codex, or Grok Build
+
+If you want **Grok Build** and do not have `grok` yet, install it **inside the Linux terminal**:
+
+```bash
+curl -fsSL https://x.ai/cli/install.sh | bash
+grok --version
+```
+
+Open a new Linux terminal after install so `PATH` includes `~/.grok/bin`. Full notes: [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md).
 
 ## Step 1: Turn On The Linux Development Environment
 
@@ -82,6 +91,14 @@ Open the repository in Codex and ask:
 
 > Inspect this repository and summarize the engineering agents in one sentence each. Then tell me which one would help first with PR review.
 
+### Grok Build
+
+```bash
+grok -p "Read AGENTS.md and CLAUDE.md, list the engineering agents in this repository, and summarize what each one does in one sentence. Then tell me which one would help first with PR review."
+```
+
+(Prefer the interactive TUI? Run `grok` in the Linux terminal and paste the same request.)
+
 ## Step 6: Add Secret Injection Only When You Need Business Systems
 
 When you move beyond local read-only work, wrap the client at launch with whichever SecretOps CLI your team uses — **pick one**, don't run both:
@@ -96,7 +113,7 @@ infisical run --env=dev -- gemini
 op run --env-file=.env.template -- gemini
 ```
 
-The same pattern applies to Claude Code and Codex (swap `gemini` for `claude` or `codex`).
+The same pattern applies to Claude Code, Codex, and Grok Build (swap `gemini` for `claude`, `codex`, or `grok`).
 
 ## ChromeOS Notes
 

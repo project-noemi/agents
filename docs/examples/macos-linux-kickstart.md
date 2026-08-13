@@ -14,8 +14,17 @@ If your machine is ChromeOS, use [`chromeos-kickstart.md`](chromeos-kickstart.md
 
 - Git
 - Node.js 24 or newer
-- one supported local AI client: Gemini CLI, Claude Code, or OpenAI Codex
+- one supported local AI client: Gemini CLI, Claude Code, OpenAI Codex, or Grok Build
 - Terminal access with `bash` or `zsh`
+
+If you want **Grok Build** and do not have `grok` yet:
+
+```bash
+curl -fsSL https://x.ai/cli/install.sh | bash
+grok --version
+```
+
+Open a new terminal after install so `PATH` includes `~/.grok/bin`. Full notes: [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md).
 
 ## Step 1: Clone The Repository
 
@@ -40,10 +49,14 @@ This checks:
 - whether Docker is present, without requiring it yet
 - whether Infisical CLI or 1Password CLI is available for later Fetch-on-Demand work
 
-Already know you want to start with **Claude Code**? Target it directly:
+Already know you want to start with **Claude Code** or **Grok Build**? Target it directly:
 
 ```bash
 bash scripts/verify-env.sh --mode=claude
+```
+
+```bash
+bash scripts/verify-env.sh --mode=grok
 ```
 
 ## Step 3: Generate The Current Agent Context
@@ -83,6 +96,14 @@ Open the repository in Codex and ask:
 
 > Inspect this repository and summarize the engineering agents in one sentence each. Then tell me which one would help first with PR review.
 
+### Grok Build
+
+```bash
+grok -p "Read AGENTS.md and CLAUDE.md, list the engineering agents in this repository, and summarize what each one does in one sentence. Then tell me which one would help first with PR review."
+```
+
+(Prefer the interactive TUI? Run `grok` in the repo and paste the same request.)
+
 ## Step 5: Add Secret Injection Only When You Need Business Systems
 
 Do not start by pasting secrets into files.
@@ -99,7 +120,7 @@ infisical run --env=dev -- gemini
 op run --env-file=.env.template -- gemini
 ```
 
-The same pattern applies to Claude Code and Codex (swap `gemini` for `claude` or `codex`).
+The same pattern applies to Claude Code, Codex, and Grok Build (swap `gemini` for `claude`, `codex`, or `grok`).
 
 ## Step 6: Know What Comes Later
 

@@ -14,12 +14,12 @@ This is a **vendor-surface mapping**. It does not add Grok as a required beginne
 
 ## What This Path Is Not
 
-- not a replacement for n8n, Gemini CLI, Claude Code, or Codex as orchestrators
-- not the beginner local-client path in [`../examples/zero-to-first-agent.md`](../examples/zero-to-first-agent.md)
+- not a replacement for n8n, Gemini CLI, Claude Code, Codex, or Grok Build as orchestrators
+- not the beginner local-client path — that is [`grok-build-local-workspace.md`](grok-build-local-workspace.md) and [`../examples/zero-to-first-agent.md`](../examples/zero-to-first-agent.md)
 - not a generated context file and not a public marketplace of one-click NoéMI agents
 - not an excuse to paste vault secrets, OAuth tokens, or tenant data into agent instructions
 
-For local, repository-adjacent Grok work (the analogue of Claude Code / Gemini CLI / Codex), use **Grok Build**. That is a different surface from grok.com Custom Agents. See [Grok Build](https://x.ai/build).
+For local, repository-adjacent Grok work (the analogue of Claude Code / Gemini CLI / Codex), use **Grok Build**. That is a different surface from grok.com Custom Agents. Install and operate it from [`grok-build-local-workspace.md`](grok-build-local-workspace.md).
 
 ## Feature Map
 
@@ -119,7 +119,8 @@ The same options appear in the apps; web is currently the most complete for Proj
 
 ## Related Docs
 
-- [`agentic-local-workspaces.md`](agentic-local-workspaces.md) — Gemini CLI, Claude Code, and Codex as local workspaces
+- [`grok-build-local-workspace.md`](grok-build-local-workspace.md) — Grok Build CLI / TUI install and local workspace
+- [`agentic-local-workspaces.md`](agentic-local-workspaces.md) — Gemini CLI, Claude Code, Codex, and Grok Build as local workspaces
 - [`../AGENT_TEMPLATE.md`](../AGENT_TEMPLATE.md) — canonical persona sections to copy
 - [`../PROJECT_REFERENCE.md`](../PROJECT_REFERENCE.md) — stack table (Gems and this Grok mapping)
 - [`orchestrator-runtime-contract.md`](orchestrator-runtime-contract.md) — what any external executor, including Grok Bot, must enforce

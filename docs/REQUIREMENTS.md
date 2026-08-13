@@ -141,7 +141,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
   - static smoke checks for example stacks and Docker env inventories (including `NOEMI_DOCKER_SMOKE_*` variable validation).
   - local markdown-link resolution for the front-door document set (`README.md`, `docs/PROJECT_REFERENCE.md`, `CONTRIBUTING.md`, `docs/mcp-setup/README.md`, `docs/visuals/README.md`) — `tests/contracts.test.js`.
   - Node 24 baseline consistency across `.github/workflows/validate.yml`, `package.json` engines, `.nvmrc`, and `.node-version` — `tests/contracts.test.js`.
-  - the verify-env mode surface (`builder|gemini|claude|codex|docker|n8n`) in both `verify-env.sh` and `verify-env.ps1` — `tests/contracts.test.js`.
+  - the verify-env mode surface (`builder|gemini|claude|codex|grok|docker|n8n`) in both `verify-env.sh` and `verify-env.ps1` — `tests/contracts.test.js`.
   - the cloud-track AI model pin (`models/gemini-2.5-flash`) and current Gemini node type in the n8n reference workflow — `tests/examples-smoke.test.js`.
 - CI must additionally enforce generated-context freshness: the `validate.yml` workflow regenerates `GEMINI.md`/`CLAUDE.md` and fails on any diff ("Check generated context freshness" step). CI also probes for SecretOps CLIs (`infisical`/`op`) but emits only a warning when neither is present — SecretOps is mandatory for local development, not for the CI runner itself.
 - The repository must expose a Docker-focused smoke entrypoint through `npm run test:e2e`.
@@ -166,7 +166,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 
 - Node.js is the primary runtime for repository utilities and generation scripts.
 - The built-in Node test runner is the primary validation framework for repository contracts and smoke tests.
-- Git, Node.js, and at least one supported local AI client (Gemini CLI, Claude Code CLI, or OpenAI Codex) remain part of the documented beginner toolchain.
+- Git, Node.js, and at least one supported local AI client (Gemini CLI, Claude Code CLI, OpenAI Codex, or Grok Build) remain part of the documented beginner toolchain.
 - The following MCP protocols are formally recognized as baseline requirements: `n8n`, `slack`, `gmail`, `google-*` suite, `web-search`, and `github`.
 - Docker becomes part of the documented toolchain when a builder moves into runtime homes or Docker verification.
 - Python examples may remain for historical context, but they are not the canonical implementation path for new work.

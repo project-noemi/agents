@@ -59,8 +59,8 @@ from enum import Enum
 from typing import Callable, Optional
 
 # AI Model Baseline (CLAUDE.md): reference workflows and smoke tests are pinned
-# to Gemini 2.5 Flash for predictable performance and cost.
-DEFAULT_MODEL = "gemini-2.5-flash"
+# to Gemini 3.6 Flash for predictable performance and cost.
+DEFAULT_MODEL = "gemini-3.6-flash"
 
 # Minimum self-reported confidence the judge must assign for an APPROVED verdict.
 DEFAULT_CONFIDENCE_THRESHOLD = 0.6

@@ -212,6 +212,33 @@ function checkGeneratedOutputs() {
 const CANONICAL_LICENSE_ID = 'FSL-1.1-Apache-2.0';
 const CANONICAL_LICENSE_HEADER = 'Functional Source License, Version 1.1, Apache 2.0 Future License';
 
+// The github protocol carries the machine-identity PR-authorship rules and the
+// develop-only merge flow — the fleet's operational safety contract. Summary
+// injection (Decision [2026-08-13-0001]) keeps it fully inline via
+// INLINE_FULL_PROTOCOLS; this guard fails the audit if that invariant ever
+// silently degrades (e.g. a config or generator change drops the full body).
+function checkInlineSafetyContract() {
+    let config;
+    try {
+        config = JSON.parse(fs.readFileSync(path.join(repoRoot, 'mcp.config.json'), 'utf8'));
+    } catch (error) {
+        fail(`mcp.config.json unreadable: ${error.message}`);
+        return;
+    }
+    if (!Array.isArray(config.active_mcps) || !config.active_mcps.includes('github')) {
+        return;
+    }
+    for (const outputPath of generatedOutputs) {
+        if (!fs.existsSync(outputPath)) {
+            continue;
+        }
+        const content = fs.readFileSync(outputPath, 'utf8');
+        if (!content.includes('PR Authorship (Machine Identity)')) {
+            fail(`${path.basename(outputPath)}: github is an active MCP but its full protocol (PR Authorship / Machine Identity rules) is not inline — the always-loaded safety contract has been lost.`);
+        }
+    }
+}
+
 function checkLicensingPosture() {
     const licensePath = path.join(repoRoot, 'LICENSE');
     const packageJsonPath = path.join(repoRoot, 'package.json');
@@ -302,6 +329,7 @@ function checkMergeGateInvariant() {
 
 function main() {
     checkTemplates();
+    checkInlineSafetyContract();
     checkPersonas();
     checkSkills();
     checkGeneratedOutputs();

@@ -66,7 +66,8 @@ function generate(target, config, agents) {
             buildFrameworkSection(
                 operatingProfilesDir,
                 'Operating Profiles',
-                'The following Operating Profiles describe how agents should adapt their tone, cadence, and escalation behavior to different organizational contexts.'
+                'The following Operating Profiles describe how agents should adapt their tone, cadence, and escalation behavior to different organizational contexts.',
+                true
             )
         );
         finalContent = injectBetween(finalContent, '<!-- SKILLS_INJECTIONS_START -->', '<!-- SKILLS_INJECTIONS_END -->', buildSkillsSection(config.activeSkills, skillsDir));

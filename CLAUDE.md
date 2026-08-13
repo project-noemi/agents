@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Project NoéMI is an **agent specification library** — not a runtime or execution engine. It defines AI agent personas, MCP (Model Context Protocol) integrations, and governance frameworks as Markdown files. External orchestrators (Gemini CLI, n8n, LangChain) consume the generated output.
+Project NoéMI is an **agent specification library** — not a runtime or execution engine. It defines AI agent personas, MCP (Model Context Protocol) integrations, and governance frameworks as Markdown files. External orchestrators (Gemini CLI, Claude Code, Codex, Grok Build, n8n, LangChain) consume the generated output.
 Project NoéMI also serves as the **public reference architecture** for NewPush's governed AI operating model, so code and docs in this repository should remain aligned with that role.
 
 ## Key Commands

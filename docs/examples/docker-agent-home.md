@@ -18,7 +18,7 @@ A practical Docker home for agents usually has four layers:
    - `mcp.config.json`, which decides which MCPs and skills are active
 2. **Runtime Layer**
    - the orchestrator or worker container that actually runs tasks
-   - examples: Gemini CLI wrapper, n8n, a focused worker container
+   - examples: Gemini CLI wrapper, Grok Build (`grok -p`), n8n, a focused worker container
 3. **Support Layer**
    - optional memory stores, databases, queues, or file volumes
    - examples: PostgreSQL with pgvector, workflow state, persistent work dirs
@@ -162,7 +162,7 @@ If the runtime smoke tier fails on a real host, inspect `test-artifacts/docker-s
 ## What This Guide Does Not Claim
 
 - it does not turn this repository into a runtime product
-- it does not replace n8n, Gemini CLI, or another orchestrator
+- it does not replace n8n, Gemini CLI, Grok Build, or another orchestrator
 - it does not eliminate the need for Phase 0 security and environment-specific hardening
 
 It gives builders a cleaner way to think about Docker: not as "running the repo," but as building a governed home around the repo's agent definitions.

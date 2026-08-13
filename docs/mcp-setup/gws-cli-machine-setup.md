@@ -16,7 +16,7 @@ Why it matters in NoeMI:
 
 - it gives you one **machine-level Google Workspace tool**
 - Gemini CLI can use it through the official `gws` Gemini extension
-- Claude Code and Codex can use it through normal shell access on the same machine
+- Claude Code, Codex, and Grok Build can use it through normal shell access on the same machine
 - it is often easier for beginners to debug one shared CLI than three separate Google auth stories
 
 Important honesty note:
@@ -57,6 +57,7 @@ For those cases, keep this guide as the machine baseline and then move to:
   - Gemini CLI
   - Claude Code
   - OpenAI Codex
+  - Grok Build (`grok`)
 
 ### What makes life easier
 
@@ -247,7 +248,21 @@ Example prompt:
 
 This is often the easiest way to get Google Workspace working in Codex without making the user debug a separate Google transport layer first.
 
-## Step 8: Only Then Allow Controlled Writes
+## Step 8: Connect It To Grok Build
+
+Grok Build can use the same local `gws` binary Claude and Codex use. Install the CLI first (`docs/tool-usages/grok-build-local-workspace.md`), then:
+
+1. make sure `gws --help` works in the same terminal where you launch `grok`
+2. launch Grok Build (`grok`)
+3. ask it to use the `gws` CLI for read-only Google Workspace work first
+
+Example prompt:
+
+> Use the `gws` CLI to list my 5 most recent Drive files, then summarize the result. Do not make any write changes.
+
+This works because Grok Build can run local shell commands on the machine. Move to MCP only when you need a shared team transport — see [`google-workspace-agentic-clients.md`](google-workspace-agentic-clients.md).
+
+## Step 9: Only Then Allow Controlled Writes
 
 Once read operations work, test one controlled write.
 
@@ -264,7 +279,7 @@ Avoid starting with:
 - broad mailbox operations
 - admin actions on a production Workspace domain
 
-## Step 9: Keep The Security Rules Straight
+## Step 10: Keep The Security Rules Straight
 
 - do not paste OAuth client secrets into chat
 - do not save raw Google tokens in repo files

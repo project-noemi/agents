@@ -185,6 +185,7 @@ test('Google Workspace docs separate Gemini CLI, generic MCP, and n8n setup path
     assert.match(gwsMachineSetup, /not an officially supported Google product/i);
     assert.match(gwsMachineSetup, /Claude Code/);
     assert.match(gwsMachineSetup, /Codex/);
+    assert.match(gwsMachineSetup, /Grok Build/);
     assert.match(geminiQuickstart, /gemini extensions install https:\/\/github\.com\/gemini-cli-extensions\/workspace/);
     assert.match(geminiQuickstart, /does \*\*not\*\* use the generic `GOOGLE_CLIENT_ID`/);
     assert.match(geminiQuickstart, /gws-cli-machine-setup\.md/);
@@ -198,11 +199,12 @@ test('Google Workspace docs separate Gemini CLI, generic MCP, and n8n setup path
     assert.match(matrix, /n8n Gmail \/ Docs \/ Drive \/ Sheets nodes/);
 });
 
-test('local workspace docs explain CLI-first builder habits across Gemini, Claude, and Codex', () => {
+test('local workspace docs explain CLI-first builder habits across Gemini, Claude, Codex, and Grok', () => {
     const overview = read('docs/tool-usages/agentic-local-workspaces.md');
     const google = read('docs/tool-usages/google-local-workspace.md');
     const claude = read('docs/tool-usages/claude-code-local-workspace.md');
     const codex = read('docs/tool-usages/openai-codex-local-workspace.md');
+    const grok = read('docs/tool-usages/grok-build-local-workspace.md');
     const googleClients = read('docs/mcp-setup/google-workspace-agentic-clients.md');
     const microsoftClients = read('docs/mcp-setup/microsoft-365-agentic-clients.md');
 
@@ -216,15 +218,19 @@ test('local workspace docs explain CLI-first builder habits across Gemini, Claud
     assert.match(claude, /claude mcp add/);
     assert.match(codex, /gws-cli-machine-setup\.md/);
     assert.match(codex, /codex mcp add/);
+    assert.match(grok, /curl -fsSL https:\/\/x\.ai\/cli\/install\.sh/);
+    assert.match(grok, /irm https:\/\/x\.ai\/cli\/install\.ps1/);
     assert.match(googleClients, /Gemini CLI/);
     assert.match(googleClients, /Antigravity/);
     assert.match(googleClients, /OpenAI Codex/);
     assert.match(googleClients, /Claude Code app/);
     assert.match(googleClients, /Claude Code CLI/);
+    assert.match(googleClients, /Grok Build/);
     assert.match(microsoftClients, /Microsoft 365, also commonly called Office 365/i);
     assert.match(microsoftClients, /gemini mcp add microsoft365/);
     assert.match(microsoftClients, /codex mcp add microsoft365/);
     assert.match(microsoftClients, /claude mcp add microsoft365/);
+    assert.match(microsoftClients, /grok mcp add microsoft365/);
 });
 
 test('localized operating profile docs separate culture from translation and guard against stereotypes', () => {

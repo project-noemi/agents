@@ -7,7 +7,7 @@ This repository is both:
 - the **public reference architecture** for Project NoéMI
 - the **agent specification library** and example set that supports that architecture
 
-It is not a runtime or execution engine. External orchestrators such as Gemini CLI, n8n, and LangChain consume the generated context and persona specifications defined here.
+It is not a runtime or execution engine. External orchestrators such as Gemini CLI, Claude Code, Codex, Grok Build, n8n, and LangChain consume the generated context and persona specifications defined here.
 
 ## Canonical Sources of Truth
 

@@ -8,6 +8,8 @@ This document describes the canonical runtime contract expected around the repos
 
 The repository does not verify identity, authorization, secret resolution, observability, and execution control by itself. Those responsibilities belong to the surrounding orchestrator, ingress layer, workflow engine, or runtime platform.
 
+This contract applies equally to n8n, Gemini CLI, Claude Code, Codex, **Grok Build**, and — when used — **Grok Bot**. Grok Bot's shared cloud computer is not a tenant or credential boundary; approval gates still sit in the orchestrator, not in the persona file.
+
 ## 1. Identity and Authorization
 
 ### What the orchestrator owns

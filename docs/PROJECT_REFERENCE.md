@@ -587,7 +587,13 @@ v3.0 of the curriculum leverages the **NewPush Labs open-source stack**. This is
 | **xAI Grok Custom Agents** | Hosted persona / Project / Skill equivalent to Gems and Custom GPTs |
 | **xAI Grok Build** | Local CLI / TUI agentic workspace (`grok`) — fourth stack alongside Gemini CLI, Claude Code, and Codex |
 
-Grok's hosted Custom Agents, Projects, Skills, and (on limited tiers) Grok Bot cover the same job as Gems and Custom GPTs. They are a vendor surface, not a new model baseline. The **local** Grok path is Grok Build. See [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) and [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md).
+Grok now covers both sides of the Gem / GPT job, and a local CLI stack:
+
+- **Custom Agents, Projects, and hosted Skills** on grok.com are the persona + persistent-knowledge surface. Load a NoéMI spec into the agent instruction box; put the rest of the file in a Project.
+- **Grok Build** (`grok`) is the local TUI / headless CLI: plan mode, subagents, worktrees, MCP, repo-local skills (`/skillify`), and `grok -p` for scripts. It reads this repository's `AGENTS.md` and `CLAUDE.md`. There is no generated `GROK.md`.
+- **Grok Bot** (limited tiers) is an always-on teammate on a shared cloud computer. Treat it as a mutating orchestrator, not as a tenant boundary.
+
+They are vendor surfaces, not a new model baseline. See [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) and [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md).
 
 Three principles govern the stack:
 

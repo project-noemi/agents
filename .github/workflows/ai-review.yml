@@ -146,15 +146,56 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
 
+      # PREFERRED fleet credential: a GitHub App installation token, minted
+      # fresh for this run. One app installed on every organization replaces
+      # per-org PATs and their rotation schedule; nothing long-lived exists at
+      # runtime. Both steps no-op when REVIEWER_APP_ID is unset, and the runner
+      # falls back to the PAT chain — so the fleet keeps working while the app
+      # is being provisioned, and afterwards the PATs become dead weight to
+      # retire rather than a dependency.
+      - name: Fetch reviewer app key
+        if: steps.config.outputs.configured == 'true' && vars.REVIEWER_APP_ID != ''
+        env:
+          PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+        run: |
+          KEY=$(infisical secrets get REVIEWER_APP_PRIVATE_KEY \
+            --projectId="$PROJECT_ID" --env=dev --plain)
+          if [[ -z "$KEY" ]]; then
+            echo "::error title=App key missing::REVIEWER_APP_ID is set but REVIEWER_APP_PRIVATE_KEY is not in Infisical."
+            exit 1
+          fi
+          # ::add-mask:: masks single values; a PEM is multiline, so mask each
+          # line or the key appears in the log the first time anything echoes it.
+          while IFS= read -r line; do echo "::add-mask::$line"; done <<< "$KEY"
+          {
+            echo "REVIEWER_APP_KEY<<__PEM_EOF__"
+            echo "$KEY"
+            echo "__PEM_EOF__"
+          } >> "$GITHUB_ENV"
+
+      - name: Mint reviewer app token
+        if: steps.config.outputs.configured == 'true' && vars.REVIEWER_APP_ID != ''
+        id: apptoken
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.REVIEWER_APP_ID }}
+          private-key: ${{ env.REVIEWER_APP_KEY }}
+          # Defaults to the installation for this repository's owner — exactly
+          # the per-org selection the PAT path had to do by hand.
+
       # review-pr.js owns the carve-out check and refuses to invoke a model on a
       # governance-critical diff, so no model call happens before that decision.
-      # It also selects the reviewer token for this repository's organization —
-      # fine-grained PATs are scoped to a single resource owner, so each org has
-      # its own (REVIEWER_GH_TOKEN_<ORG>), all resolved from the same vault.
+      # Reviewer credential preference: app token, then per-org PAT, then the
+      # home-org PAT (see the runner's header).
       - name: Run three-gate review
         if: steps.config.outputs.configured == 'true'
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
+          # Empty when the app is not configured; the runner then falls back to
+          # the PAT chain resolved from the vault. Distinct name on purpose:
+          # `infisical run` injects the whole project, and a stored PAT under
+          # the same name would silently shadow a minted app token.
+          REVIEWER_APP_TOKEN: ${{ steps.apptoken.outputs.token }}
           GEMINI_REVIEW_FLOOR: ${{ vars.GEMINI_REVIEW_FLOOR || 'flash' }}
           INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
           # Resolves on all triggers: the event on pull_request, the input on
@@ -172,21 +213,21 @@ jobs:
           # generation to satisfy a tier preference.
           GEMINI_PREFER_PRO: ${{ vars.GEMINI_PREFER_PRO || '' }}
         run: |
-          # ONLY exit 3 means "halted by design" (carve-out, or no model met the
-          # floor). Every other non-zero code is a real failure and must stay
-          # red.
-          #
-          # This previously accepted exit 1, which `infisical run` also returns
-          # on its own auth/permission errors. A broken run therefore reported
-          # success and posted nothing — the exact "looks like success but is
-          # not" outcome this pipeline exists to prevent.
+          # The halt signal is a MARKER FILE, not an exit code. `infisical run`
+          # collapses its child's exit code (a 3 surfaces as 1 — verified live),
+          # so a by-design halt and a wrapper failure are indistinguishable by
+          # code alone. The runner writes REVIEW_HALT_FILE only on an
+          # intentional halt; a wrapper that failed before reaching the runner
+          # cannot have written it.
+          export REVIEW_HALT_FILE="$RUNNER_TEMP/ai-review-halt"
+          rm -f "$REVIEW_HALT_FILE"
           set +e
           infisical run --projectId="$INFISICAL_PROJECT_ID" --env=dev -- \
             node scripts/review-pr.js --pr "$PR_NUMBER"
           code=$?
           set -e
-          if [[ $code -eq 3 ]]; then
-            echo "::notice title=Review halted::Escalated to human review by design. See the PR comment."
+          if [[ -f "$REVIEW_HALT_FILE" ]]; then
+            echo "::notice title=Review halted::$(cat "$REVIEW_HALT_FILE") — escalated to human review by design. See the PR comment."
             exit 0
           fi
           if [[ $code -ne 0 ]]; then

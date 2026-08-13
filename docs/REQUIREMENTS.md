@@ -90,8 +90,9 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
 - Both generators must inject:
   - the full mandate set from `AGENTS.md`
   - the **complete agent index** discovered from `agents/` (Automated tools must extract the **full first paragraph** of the `## Role` section for context richness).
-  - active skills from `mcp.config.json`
-  - active MCP protocol content from `mcp.config.json`
+  - **summaries** of active skills from `mcp.config.json` — title, spec path, Purpose lead, plus the skill's `Ask First`/`Never` boundary lines **verbatim** (hard gates stay resident; everything else loads on demand)
+  - **summaries** of active MCP protocols from `mcp.config.json` — spec pointer plus every hard-rule paragraph (`CRITICAL` / "Do not" / "Never") **verbatim**; protocols listed in `INLINE_FULL_PROTOCOLS` (currently `github`, the fleet's operational safety contract) are injected in full
+  - Full-body injection was retired by Decision [2026-08-13-0001]: it made generated context ~110k characters (~27.6k resident tokens per session, 2.7× the size at which Claude Code warns about oversized memory files) while the Dynamic Persona Protocol already mandates reading specs on demand. The invariant is: **prose summarizes, prohibitions stay resident.**
 - Both generators must support `--config=path/to/mcp.config.json`.
 
 ### 5. Fetch-on-Demand Security Is Non-Negotiable

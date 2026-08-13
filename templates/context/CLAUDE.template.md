@@ -37,8 +37,8 @@ infisical run --env=dev -- [command]
 - `docs/` — Documentation mirroring `agents/` structure, plus framework docs (REQUIREMENTS.md, METHODOLOGY.md, GOVERNANCE.md)
 - `skills/` — Reusable task definitions that agents compose into their workflows
 - `mcp-protocols/` — One `.md` file per MCP integration (Slack, Gmail, Google Suite, n8n, etc.)
-- `value-lenses/` — Value Lens framework specs consulted for trade-off decisions (injected into generated context)
-- `operating-profiles/` — Operating Profile specs adapting agent tone/cadence to organizational contexts (injected into generated context)
+- `value-lenses/` — Value Lens framework specs consulted for trade-off decisions (summarized into generated context; read the full spec before applying a lens)
+- `operating-profiles/` — Operating Profile specs adapting agent tone/cadence to organizational contexts (summarized into generated context; read the full spec before adopting a profile)
 - `scripts/` — Build utilities (context generation, environment verification, repository audit)
 - `templates/` — Canonical templates: context generation sources (`templates/context/`) and client service tiers (`templates/tiers/`)
 - `tests/` — Node test-runner suites for persona contracts, generator determinism, golden fixtures, and example smoke checks
@@ -59,7 +59,7 @@ templates/context/{GEMINI,CLAUDE}.template.md + mcp.config.json + AGENTS.md
     → {GEMINI,CLAUDE}.md
 ```
 
-The scripts read `mcp.config.json` to determine active MCPs, inject their protocol definitions from `mcp-protocols/`, and produce the final context files. Changes to MCP protocols or the config require re-running the generators.
+The scripts read `mcp.config.json` to determine active MCPs and inject a summary of each protocol from `mcp-protocols/` — spec pointer plus hard rules (CRITICAL / "Do not" / "Never") verbatim; the `github` protocol is injected in full as the fleet's operational safety contract. Full definitions are read on demand. Changes to MCP protocols or the config require re-running the generators.
 
 ### Fetch-on-Demand Security (AGENTS.md)
 

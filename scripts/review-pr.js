@@ -40,8 +40,12 @@
  *                        CI:    google-github-actions/auth (federation)
  *   GOOGLE_CLOUD_PROJECT required for the vertex backend
  *   GEMINI_BACKEND       vertex (default) | generativelanguage
- *   REVIEWER_GH_TOKEN    always required — pull-request context is read over
- *                        the API in every mode
+ *   Reviewer credential  one of, in preference order (always required — PR
+ *                        context is read over the API in every mode):
+ *                          REVIEWER_APP_TOKEN       GitHub App installation
+ *                                                   token, minted per run (fleet)
+ *                          REVIEWER_GH_TOKEN_<ORG>  per-org fine-grained PAT
+ *                          REVIEWER_GH_TOKEN        home-org PAT / local dev
  *   GITHUB_REPOSITORY    owner/repo (Actions sets this)
  *   GEMINI_REVIEW_FLOOR  minimum model tier (default: flash)
  *
@@ -50,11 +54,15 @@
  *   2 configuration or API error
  *   3 halted BY DESIGN: carve-out, or no model met the floor
  *
- *   Code 3 is deliberately not 1. This process runs wrapped by `infisical run`,
- *   which exits 1 on its own auth and permission failures — so a wrapper failure
- *   and an intentional halt were indistinguishable, and CI treated a broken run
- *   as a successful one. A distinct code cannot be produced by a wrapper that
- *   never reached this script.
+ *   Code 3 is deliberately not 1: `infisical run` exits 1 on its own auth
+ *   failures, so 1 cannot mean "halt". HOWEVER, the wrapper also COLLAPSES the
+ *   child's exit code — a child exiting 3 surfaces as 1 (verified live). Exit
+ *   codes therefore cannot carry the halt signal through the wrapper at all.
+ *
+ *   The authoritative halt signal is the MARKER FILE: when REVIEW_HALT_FILE is
+ *   set, a by-design halt writes its reason there before exiting. CI checks the
+ *   file, not the code. The distinct exit code is kept for direct (unwrapped)
+ *   callers.
  */
 
 'use strict';
@@ -125,6 +133,18 @@ Do not manufacture findings to appear diligent. "No findings" is a valid, expect
 // ---------------------------------------------------------------------------
 // Pure logic (unit-tested)
 // ---------------------------------------------------------------------------
+
+/**
+ * Record a by-design halt where CI can see it. Exit codes do not survive
+ * `infisical run` (a child's 3 surfaces as the wrapper's 1 — verified live),
+ * so when REVIEW_HALT_FILE is set the file, not the code, is the signal.
+ */
+function writeHaltMarker(reason) {
+  const dest = process.env.REVIEW_HALT_FILE;
+  if (!dest) return false;
+  require('fs').writeFileSync(dest, `${reason}\n`);
+  return true;
+}
 
 /** Which changed files fall inside the governance carve-out. */
 function detectCarveOut(files) {
@@ -365,14 +385,22 @@ async function main() {
     process.exit(2);
   }
 
-  // Fine-grained PATs are scoped to a single resource owner, so the fleet has
-  // one reviewer token per organization: REVIEWER_GH_TOKEN_<ORG> (uppercased,
-  // dashes to underscores — REVIEWER_GH_TOKEN_NEWPUSH_LABS). `infisical run`
-  // injects the whole project's secrets, so selection is just an env lookup.
-  // The bare REVIEWER_GH_TOKEN remains the fallback for the home org.
+  // Reviewer credential, in preference order:
+  //
+  //   1. REVIEWER_APP_TOKEN — a short-lived GitHub App installation token,
+  //      minted per run by the workflow. The preferred fleet mechanism: one app
+  //      installed on every organization, nothing long-lived, comments post as
+  //      the app's [bot] identity. Checked FIRST and via a distinct name
+  //      because `infisical run` injects the whole vault project into env — a
+  //      stored PAT under the same name would silently shadow the app token.
+  //   2. REVIEWER_GH_TOKEN_<ORG> — per-organization fine-grained PATs
+  //      (single-resource-owner by design), for fleets that cannot use an app.
+  //   3. REVIEWER_GH_TOKEN — the home-org PAT; also local development.
   const owner = (repo || '').split('/')[0];
   const perOrgKey = `REVIEWER_GH_TOKEN_${owner.toUpperCase().replace(/-/g, '_')}`;
-  const ghToken = process.env[perOrgKey] || process.env.REVIEWER_GH_TOKEN;
+  const ghToken = process.env.REVIEWER_APP_TOKEN
+    || process.env[perOrgKey]
+    || process.env.REVIEWER_GH_TOKEN;
   // No API-key path exists by design — see scripts/gcp-token.js.
   let token = null;
   let cfg = null;
@@ -388,7 +416,7 @@ async function main() {
   // Needed in every mode: pull-request context is read over the API even on a
   // dry run, so there is no offline path here.
   if (!ghToken) {
-    process.stderr.write(`✖ Neither ${perOrgKey} nor REVIEWER_GH_TOKEN is set. Pull-request context is read over the API in every mode, including --dry-run.\n`);
+    process.stderr.write(`✖ No reviewer credential: none of REVIEWER_APP_TOKEN, ${perOrgKey}, REVIEWER_GH_TOKEN is set. Pull-request context is read over the API in every mode, including --dry-run.\n`);
     process.exit(2);
   }
 
@@ -413,6 +441,7 @@ async function main() {
     if (args.post) await gh(`/repos/${repo}/issues/${args.pr}/comments`, { token: ghToken, method: 'POST', body: { body } });
     process.stderr.write(`${JSON.stringify({ task: 'AI review', result: 'halted: carve-out', carved })}\n`);
     process.stdout.write(`${body}\n`);
+    writeHaltMarker(`carve-out: ${carved.join(', ')}`);
     process.exit(3);
   }
 
@@ -424,6 +453,7 @@ async function main() {
     });
     if (!chosen) {
       process.stderr.write(`✖ No available model meets the '${args.floor}' floor. Refusing to review on an under-capability model.\n`);
+      writeHaltMarker(`no model met the '${args.floor}' floor`);
       process.exit(3);
     }
     // The Pro toggle's cost must be visible, not buried in an audit log.
@@ -486,7 +516,7 @@ async function main() {
 }
 
 module.exports = {
-  detectCarveOut, validateFindings, gateVerdict, recommend,
+  detectCarveOut, validateFindings, gateVerdict, recommend, writeHaltMarker,
   buildGatePrompt, buildRemediationPrompt, renderComment,
   SEVERITIES, BLOCKING_SEVERITIES, CARVE_OUT, GATES,
 };

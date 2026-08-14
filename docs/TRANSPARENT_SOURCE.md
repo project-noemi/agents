@@ -6,7 +6,7 @@ A legal license does not by itself create architectural trust. In the era of AI,
 
 ## What "Transparency" Means for NoéMI
 
-In AI contexts, "transparency" often refers to model weights or training data. Project NoéMI is an **agent specification library and reference architecture — not a runtime, an execution engine, or a Large Language Model**. External orchestrators (Gemini CLI, n8n, LangChain) consume the specifications defined here. Our guarantee is therefore scoped strictly to **spec-and-governance transparency**: you can always inspect exactly what an agent is instructed to do, what it refuses, and how it is audited.
+In AI contexts, "transparency" often refers to model weights or training data. Project NoéMI is an **agent specification library and reference architecture — not a runtime, an execution engine, or a Large Language Model**. External orchestrators (Gemini CLI, Claude Code, Codex, Grok Build, n8n, LangChain) consume the specifications defined here. Our guarantee is therefore scoped strictly to **spec-and-governance transparency**: you can always inspect exactly what an agent is instructed to do, what it refuses, and how it is audited.
 
 ## The Five Clauses
 

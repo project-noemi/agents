@@ -57,6 +57,8 @@ This example uses:
 - `n8n-nodes-base.googleDocs`
 - `n8n-nodes-base.gmail`
 
+Want Grok instead of Gemini? Import [`../../examples/workflows/rfp-responder-grok.json`](../../examples/workflows/rfp-responder-grok.json). That file uses Basic LLM Chain + `@n8n/n8n-nodes-langchain.lmChatXAiGrok` (n8n has no standalone Grok root node). Gemini 2.5 Flash remains the repository baseline.
+
 ## Step 2: Replace the Placeholder Credentials
 
 The workflow JSON contains obvious placeholder credential IDs and names where applicable. Replace them with credentials from your own n8n instance before activating the workflow.

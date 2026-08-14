@@ -7,7 +7,7 @@ This repository is both:
 - the **public reference architecture** for Project NoéMI
 - the **agent specification library** and example set that supports that architecture
 
-It is not a runtime or execution engine. External orchestrators such as Gemini CLI, n8n, and LangChain consume the generated context and persona specifications defined here.
+It is not a runtime or execution engine. External orchestrators such as Gemini CLI, Claude Code, Codex, Grok Build, n8n, and LangChain consume the generated context and persona specifications defined here.
 
 ## Canonical Sources of Truth
 
@@ -166,7 +166,7 @@ Lifecycle docs, templates, and governance text must not reorder these dimensions
 
 - Node.js is the primary runtime for repository utilities and generation scripts.
 - The built-in Node test runner is the primary validation framework for repository contracts and smoke tests.
-- Git, Node.js, and at least one supported local AI client (Gemini CLI, Claude Code CLI, or OpenAI Codex) remain part of the documented beginner toolchain.
+- Git, Node.js, and at least one supported local AI client (Gemini CLI, Claude Code CLI, OpenAI Codex, or Grok Build) remain part of the documented beginner toolchain.
 - The following MCP protocols are formally recognized as baseline requirements: `n8n`, `slack`, `gmail`, `google-*` suite, `web-search`, and `github`.
 - Docker becomes part of the documented toolchain when a builder moves into runtime homes or Docker verification.
 - Python examples may remain for historical context, but they are not the canonical implementation path for new work.

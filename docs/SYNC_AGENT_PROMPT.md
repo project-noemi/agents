@@ -2,7 +2,8 @@
 
 > A ready-to-use **agent instruction** for keeping a private `*/agents` fork
 > aligned with upstream `project-noemi/agents`. Paste it into a Claude Code
-> **routine**, a scheduled task, or any agentic IDE. The agent drives
+> **routine**, a Grok Build scheduled/`grok -p` job, a scheduled task, or any
+> agentic IDE. The agent drives
 > `scripts/sync-upstream.sh`, which handles branch creation, Git-flow merges
 > (`main` → `develop`), conflict surfacing, and **reviewed** Pull Request
 > generation. A human reviews and merges the PR — the agent never does.
@@ -101,6 +102,31 @@ reviewed upstream-sync PR every weekday morning:
 Because the script's duplicate guard refuses to open a second sync PR while one
 is still open, a daily routine self-throttles: it will keep reporting the same
 open PR until a human merges or closes it, then resume opening fresh ones.
+
+## Example: Daily Grok Build Job
+
+Grok Build can run the same instruction headlessly. Install the CLI from
+[`tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md)
+if `grok` is not on `PATH`.
+
+**Cron** (same weekday window as the Claude Code routine):
+
+```bash
+# 07:00 UTC, Mon–Fri — wrap secrets; never put XAI_API_KEY in the crontab
+0 7 * * 1-5 cd /path/to/your/agents && infisical run --env=dev -- grok -p "$(cat docs/SYNC_AGENT_PROMPT.md)" >> /var/log/noemi-sync-grok.log 2>&1
+```
+
+Or from the repository root, interactively:
+
+```bash
+grok
+```
+
+Then: `Read docs/SYNC_AGENT_PROMPT.md and follow The Agent Instruction.`
+
+Grok reads `AGENTS.md` and `CLAUDE.md`. There is no generated `GROK.md`. The
+machine-identity rule in the instruction still applies: open PRs as
+`noemi-agent`, never with a human token.
 
 For a CI-only drift alert (no agent, no PR), see the GitHub Actions example in
 [UPSTREAM_SYNC.md](UPSTREAM_SYNC.md).

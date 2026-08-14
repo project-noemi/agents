@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("builder", "gemini", "claude", "codex", "docker", "n8n")]
+    [ValidateSet("builder", "gemini", "claude", "codex", "grok", "docker", "n8n")]
     [string]$Mode = "builder"
 )
 
@@ -29,6 +29,7 @@ function Check-AnyLocalClient {
     if (Get-Command gemini -ErrorAction SilentlyContinue) { $clients += "gemini" }
     if (Get-Command claude -ErrorAction SilentlyContinue) { $clients += "claude" }
     if (Get-Command codex -ErrorAction SilentlyContinue) { $clients += "codex" }
+    if (Get-Command grok -ErrorAction SilentlyContinue) { $clients += "grok" }
 
     if ($clients.Count -gt 0) {
         Write-Host "✅ Found supported local AI client(s): $($clients -join ', ')." -ForegroundColor Green
@@ -36,7 +37,7 @@ function Check-AnyLocalClient {
     }
 
     Write-Host "❌ No supported local AI client found." -ForegroundColor Red
-    Write-Host "   Install at least one of: Gemini CLI, Claude Code CLI, or OpenAI Codex." -ForegroundColor Yellow
+    Write-Host "   Install at least one of: Gemini CLI, Claude Code CLI, OpenAI Codex, or Grok Build." -ForegroundColor Yellow
     return $false
 }
 
@@ -69,17 +70,23 @@ switch ($Mode) {
         if (-not (Check-Tool "OpenAI Codex CLI" "codex")) { $allGood = $false }
         Note-Tool "Docker" "docker"
     }
+    "grok" {
+        if (-not (Check-Tool "Grok Build CLI" "grok")) { $allGood = $false }
+        Note-Tool "Docker" "docker"
+    }
     "docker" {
         if (-not (Check-Tool "Docker" "docker")) { $allGood = $false }
         Note-Tool "Gemini CLI" "gemini"
         Note-Tool "Claude Code CLI" "claude"
         Note-Tool "OpenAI Codex CLI" "codex"
+        Note-Tool "Grok Build CLI" "grok"
     }
     "n8n" {
         Note-Tool "Docker" "docker"
         Note-Tool "Gemini CLI" "gemini"
         Note-Tool "Claude Code CLI" "claude"
         Note-Tool "OpenAI Codex CLI" "codex"
+        Note-Tool "Grok Build CLI" "grok"
     }
 }
 
@@ -128,6 +135,7 @@ Write-Host "`n🔑 Checking common API key env vars in the current shell..." -Fo
 Check-EnvVar "GEMINI_API_KEY"
 Check-EnvVar "ANTHROPIC_API_KEY"
 Check-EnvVar "OPENAI_API_KEY"
+Check-EnvVar "XAI_API_KEY"
 
 Write-Host "`n🧭 Recommended next step for $Mode mode:" -ForegroundColor Cyan
 switch ($Mode) {
@@ -141,6 +149,9 @@ switch ($Mode) {
         Write-Host "   Generate context with node scripts/generate_all.js and run one read-only local task first." -ForegroundColor White
     }
     "codex" {
+        Write-Host "   Generate context with node scripts/generate_all.js and run one read-only local task first." -ForegroundColor White
+    }
+    "grok" {
         Write-Host "   Generate context with node scripts/generate_all.js and run one read-only local task first." -ForegroundColor White
     }
     "docker" {

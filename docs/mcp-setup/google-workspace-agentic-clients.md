@@ -7,10 +7,11 @@ This guide explains how to connect Google Workspace to the main local agentic cl
 - OpenAI Codex
 - Claude Code app
 - Claude Code CLI
+- Grok Build (`grok`)
 
 The important point is that **Google Workspace does not look the same in every client**.
 
-If you want the most beginner-proof **single-machine** path first, start with [`gws-cli-machine-setup.md`](gws-cli-machine-setup.md). That gives Gemini CLI, Claude Code, and Codex one shared local Google Workspace command surface before you decide whether you also need MCP or n8n.
+If you want the most beginner-proof **single-machine** path first, start with [`gws-cli-machine-setup.md`](gws-cli-machine-setup.md). That gives Gemini CLI, Claude Code, Codex, and Grok Build one shared local Google Workspace command surface before you decide whether you also need MCP or n8n.
 
 ## Shared Local Foundation: `gws`
 
@@ -19,7 +20,7 @@ For a personal desktop or laptop, the simplest stable foundation is often:
 1. install `gws`
 2. authenticate `gws`
 3. prove one read-only Google Workspace command
-4. let Gemini, Claude, or Codex use that same local CLI
+4. let Gemini, Claude, Codex, or Grok Build use that same local CLI
 
 This avoids making a beginner debug three different Google auth stories at once.
 
@@ -32,6 +33,7 @@ This avoids making a beginner debug three different Google auth stories at once.
 | OpenAI Codex | `gws` on the local machine first; MCP when you need a managed transport layer | Beginner-friendly first, then team-grade if needed |
 | Claude Code app | `gws` on the local machine first; MCP when you need project- or team-scoped transport | Easier initial setup, then more structure later |
 | Claude Code CLI | `gws` on the local machine first; MCP when you need explicit transport control | Keeps the first setup simpler |
+| Grok Build | `gws` on the local machine first; MCP when you need a managed transport layer | Same shared-desktop foundation as Codex and Claude; install the CLI from [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md) |
 
 ## Shared Security Rule
 
@@ -154,12 +156,22 @@ Keep verification simple:
 2. Read from Docs or Calendar.
 3. Only then allow writes such as drafting or document creation.
 
+## Grok Build
+
+Use the same shared `gws` foundation first. Then, when you need MCP:
+
+```bash
+grok mcp add googleWorkspace -- op run --env-file=.env.template -- node path/to/server.js
+```
+
+Install the CLI from [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md) before debugging auth.
+
 ## Recommended Order
 
 1. [`gws-cli-machine-setup.md`](gws-cli-machine-setup.md) for the shared local Google Workspace foundation
 2. Gemini CLI when Google Workspace is your main daily surface
 3. Antigravity for a more visual Google-side workflow
-4. Codex or Claude Code when Google must be one tool among several governed integrations
+4. Codex, Claude Code, or Grok Build when Google must be one tool among several governed integrations
 5. MCP when you need a more managed, reusable transport layer than local shell usage
 
 ## Related Guides
@@ -169,4 +181,5 @@ Keep verification simple:
 - [`../tool-usages/google-local-workspace.md`](../tool-usages/google-local-workspace.md)
 - [`../tool-usages/claude-code-local-workspace.md`](../tool-usages/claude-code-local-workspace.md)
 - [`../tool-usages/openai-codex-local-workspace.md`](../tool-usages/openai-codex-local-workspace.md)
+- [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md)
 - [`google-workspace.md`](google-workspace.md)

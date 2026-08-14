@@ -7,6 +7,7 @@ This guide explains how to connect Microsoft 365, also commonly called Office 36
 - OpenAI Codex
 - Claude Code app
 - Claude Code CLI
+- Grok Build (`grok`)
 
 Unlike Gemini's first-party Google Workspace extension path, the Microsoft 365 story in this repository is standardized around **MCP servers**.
 
@@ -103,6 +104,14 @@ Or for a hosted MCP service:
 claude mcp add --transport http microsoft365 https://your-m365-mcp.example.com/mcp
 ```
 
+## Grok Build
+
+```bash
+grok mcp add microsoft365 -- op run --env-file=.env.template -- node path/to/microsoft-365-mcp.js
+```
+
+Install the CLI from [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md) before debugging Entra ID.
+
 ## Recommended Verification Order
 
 1. Outlook or calendar read
@@ -115,3 +124,4 @@ claude mcp add --transport http microsoft365 https://your-m365-mcp.example.com/m
 - [`../tool-usages/google-local-workspace.md`](../tool-usages/google-local-workspace.md)
 - [`../tool-usages/claude-code-local-workspace.md`](../tool-usages/claude-code-local-workspace.md)
 - [`../tool-usages/openai-codex-local-workspace.md`](../tool-usages/openai-codex-local-workspace.md)
+- [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md)

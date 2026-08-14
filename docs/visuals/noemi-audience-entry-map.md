@@ -17,7 +17,7 @@ flowchart TD
     secrets["Secure Secret Management"]
     workspaces["Agentic Local Workspaces"]
     integrations["Google Workspace and Microsoft 365 Client Guides"]
-    quickstarts["Gemini and n8n Quickstarts"]
+    quickstarts["Gemini, Grok, and n8n Quickstarts"]
     docker["Builder First 30 Minutes and Docker Agent Home"]
     visuals["Visual Guides"]
 

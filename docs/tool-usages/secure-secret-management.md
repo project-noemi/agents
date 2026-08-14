@@ -66,6 +66,7 @@ When the task needs credentials, wrap the client launch instead of creating a lo
 infisical run --env=dev -- gemini
 infisical run --env=dev -- claude
 infisical run --env=dev -- codex
+infisical run --env=dev -- grok
 ```
 
 ### 1Password examples
@@ -74,6 +75,7 @@ infisical run --env=dev -- codex
 op run --env-file=.env.template -- gemini
 op run --env-file=.env.template -- claude
 op run --env-file=.env.template -- codex
+op run --env-file=.env.template -- grok
 ```
 
 Unlike a plaintext `.env`, `.env.template` in this repo is only a vault-reference manifest.
@@ -95,6 +97,7 @@ Once a builder chooses one secret path, create aliases so the secure path become
 alias safe-gemini='infisical run --env=dev -- gemini'
 alias safe-claude='infisical run --env=dev -- claude'
 alias safe-codex='infisical run --env=dev -- codex'
+alias safe-grok='infisical run --env=dev -- grok'
 ```
 
 or:
@@ -103,6 +106,7 @@ or:
 alias safe-gemini='op run --env-file=.env.template -- gemini'
 alias safe-claude='op run --env-file=.env.template -- claude'
 alias safe-codex='op run --env-file=.env.template -- codex'
+alias safe-grok='op run --env-file=.env.template -- grok'
 ```
 
 For the client-by-client comparison and the role of Google's Antigravity, Claude Code app, and Codex app on top of these CLI habits, see:
@@ -111,6 +115,7 @@ For the client-by-client comparison and the role of Google's Antigravity, Claude
 - [`google-local-workspace.md`](google-local-workspace.md)
 - [`claude-code-local-workspace.md`](claude-code-local-workspace.md)
 - [`openai-codex-local-workspace.md`](openai-codex-local-workspace.md)
+- [`grok-build-local-workspace.md`](grok-build-local-workspace.md)
 
 ## The Tool Matrix For Project NoéMI
 

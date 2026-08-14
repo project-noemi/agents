@@ -1,6 +1,6 @@
 # DEV_AGENT_PROMPT — project-noemi/agents
 
-> **Agent specification library** and reference architecture for Project NoéMI. Defines AI agent personas, MCP integrations, governance frameworks, and value lenses as Markdown. External orchestrators (Gemini CLI, n8n, LangChain) consume generated context files. Node.js 24+ tooling with contract tests, golden-fixture tests, and E2E tests.
+> **Agent specification library** and reference architecture for Project NoéMI. Defines AI agent personas, MCP integrations, governance frameworks, and value lenses as Markdown. External orchestrators (Gemini CLI, Claude Code, Codex, Grok Build, n8n, LangChain) consume generated context files. Node.js 24+ tooling with contract tests, golden-fixture tests, and E2E tests.
 
 ---
 

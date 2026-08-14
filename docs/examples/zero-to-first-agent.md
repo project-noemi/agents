@@ -39,6 +39,23 @@ Pick the local AI client you want to learn first:
 - **Gemini CLI** if your team expects Google-heavy workflows or a clean terminal-first path
 - **Claude Code CLI / app** if you want a strong co-work experience around repositories and documents
 - **OpenAI Codex CLI / app** if you want a strong local execution and review workflow
+- **Grok Build (`grok`)** if you want xAI's local TUI / headless CLI. Install on the platform you actually use, then continue this guide:
+
+  **macOS / Linux** (and ChromeOS Linux terminal):
+
+  ```bash
+  curl -fsSL https://x.ai/cli/install.sh | bash
+  grok --version
+  ```
+
+  **Windows PowerShell**:
+
+  ```powershell
+  irm https://x.ai/cli/install.ps1 | iex
+  grok --version
+  ```
+
+  Open a new terminal after install so `PATH` includes `~/.grok/bin` (Windows: `%USERPROFILE%\.grok\bin`). Full notes: [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md). The same commands are in [`cross-platform-kickstart.md`](cross-platform-kickstart.md) and each workstation guide.
 
 You only need **one** of these to get your first success.
 
@@ -52,8 +69,9 @@ From the repository root, run the preflight mode from your matching workstation 
 - `gemini` if Gemini CLI is your first client
 - `claude` if Claude Code is your first client
 - `codex` if OpenAI Codex is your first client
+- `grok` if Grok Build is your first client
 
-Your workstation guide shows the exact `builder` command for your machine; substitute the client mode name (`gemini`, `claude`, or `codex`) in the same command to target one specific client.
+Your workstation guide shows the exact `builder` command for your machine; substitute the client mode name (`gemini`, `claude`, `codex`, or `grok`) in the same command to target one specific client.
 
 This verifies Git, Node.js, and the local client you actually plan to use. It does **not** require Docker for the beginner path.
 
@@ -103,6 +121,14 @@ Open the repository in Codex and ask:
 
 > Inspect this repository and summarize the engineering agents in one sentence each. Then tell me which one would help first with PR review.
 
+### Grok Build
+
+```bash
+grok -p "Read AGENTS.md and CLAUDE.md, list the engineering agents in this repository, and summarize what each one does in one sentence. Then tell me which one would help first with PR review."
+```
+
+(Prefer the interactive TUI? Run `grok` in the repo and paste the same request.)
+
 This is the right first success because it is:
 
 - useful
@@ -135,6 +161,7 @@ When a task needs credentials, launch the client through the wrapper instead of 
 infisical run --env=dev -- gemini
 op run --env-file=.env.template -- claude
 op run --env-file=.env.template -- codex
+op run --env-file=.env.template -- grok
 ```
 
 For the full local-first security flow, go next to [`../tool-usages/secure-secret-management.md`](../tool-usages/secure-secret-management.md).

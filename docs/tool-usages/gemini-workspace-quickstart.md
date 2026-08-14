@@ -11,9 +11,9 @@ Use this guide when you want ad-hoc, interactive work such as:
 
 This path uses the official Google Workspace extension for Gemini CLI. It does **not** use the generic `GOOGLE_CLIENT_ID` / `GOOGLE_REFRESH_TOKEN` environment-variable pattern described in the generic MCP setup guide, and it does **not** configure n8n credentials.
 
-If you specifically want the newer **shared-machine** `gws` CLI path that can also be used by Claude Code and Codex on the same workstation, start with [`../mcp-setup/gws-cli-machine-setup.md`](../mcp-setup/gws-cli-machine-setup.md) first.
+If you specifically want the newer **shared-machine** `gws` CLI path that can also be used by Claude Code, Codex, and Grok Build on the same workstation, start with [`../mcp-setup/gws-cli-machine-setup.md`](../mcp-setup/gws-cli-machine-setup.md) first.
 
-For the broader comparison between Gemini CLI, Antigravity, Claude Code, and Codex as local agentic workspaces, start with [`agentic-local-workspaces.md`](agentic-local-workspaces.md) and [`google-local-workspace.md`](google-local-workspace.md).
+For the broader comparison between Gemini CLI, Antigravity, Claude Code, Codex, and Grok Build as local agentic workspaces, start with [`agentic-local-workspaces.md`](agentic-local-workspaces.md) and [`google-local-workspace.md`](google-local-workspace.md).
 
 If you want repeatable event-driven automation, use [`../examples/n8n-google-workspace-quickstart.md`](../examples/n8n-google-workspace-quickstart.md) instead.
 

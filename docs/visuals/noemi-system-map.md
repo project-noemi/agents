@@ -11,7 +11,7 @@ flowchart TD
     personas["Agent Personas\nRole, mission, workflow, audit log"]
     skills["Skills\nReusable task recipes"]
     mcps["MCP Protocols and Integrations\nGoogle Workspace, Microsoft 365, Slack, GitHub, n8n, web"]
-    clients["Agentic Clients and Orchestrators\nGemini CLI, Antigravity, Claude Code, Codex, n8n"]
+    clients["Agentic Clients and Orchestrators\nGemini CLI, Antigravity, Claude Code, Codex, Grok Build, n8n"]
     profiles["Operating Profiles\nLocale, subregion, sector, audience"]
     lenses["Value Lenses\nPerformance-efficiency, care-continuity, balanced-enterprise"]
     runtime["Runtime Execution\nPrompts, approvals, retries, human review"]

@@ -102,6 +102,37 @@ crontab -l
 
 ---
 
+### Option A2: Cron + Grok Build
+
+Same single-machine pattern as Option A, with Grok Build (`grok -p`) instead of Gemini CLI. Install from [`../../../tool-usages/grok-build-local-workspace.md`](../../../tool-usages/grok-build-local-workspace.md).
+
+```bash
+#!/usr/bin/env bash
+# scripts/run-gatekeeper-grok.sh
+set -euo pipefail
+
+LOG_DIR="${HOME}/.gatekeeper/logs"
+mkdir -p "$LOG_DIR"
+LOGFILE="${LOG_DIR}/$(date +%Y%m%d-%H%M%S).log"
+
+echo "[$(date -u +%FT%TZ)] Gatekeeper cycle starting (Grok Build)" | tee "$LOGFILE"
+
+op run --env-file=.env.template -- \
+  grok -p "Read agents/engineering/gatekeeper.md and run one Gatekeeper cycle against the configured GitHub organization. Do not merge. Follow the persona's Refusal Criteria." \
+  2>&1 | tee -a "$LOGFILE"
+
+echo "[$(date -u +%FT%TZ)] Gatekeeper cycle complete" | tee -a "$LOGFILE"
+```
+
+```bash
+chmod +x scripts/run-gatekeeper-grok.sh
+# 0 */4 * * * /path/to/noemi/agents/scripts/run-gatekeeper-grok.sh >> /var/log/gatekeeper-cron.log 2>&1
+```
+
+Grok Build is a local orchestrator, not grok.com Custom Agents. Approval and merge stay human-owned.
+
+---
+
 ### Option B: GitHub Actions (Recommended for Teams)
 
 Best for teams already on GitHub — no infrastructure to manage.

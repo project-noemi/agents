@@ -110,10 +110,10 @@ test('environment verification scripts expose path-aware beginner and docker mod
     const shellScript = read('scripts/verify-env.sh');
     const powershellScript = read('scripts/verify-env.ps1');
 
-    assert.match(shellScript, /builder\|gemini\|claude\|codex\|docker\|n8n/);
+    assert.match(shellScript, /builder\|gemini\|claude\|codex\|grok\|docker\|n8n/);
     assert.match(shellScript, /No supported local AI client found/);
     assert.match(shellScript, /docs\/examples\/zero-to-first-agent\.md/);
-    assert.match(powershellScript, /ValidateSet\("builder", "gemini", "claude", "codex", "docker", "n8n"\)/);
+    assert.match(powershellScript, /ValidateSet\("builder", "gemini", "claude", "codex", "grok", "docker", "n8n"\)/);
     assert.match(powershellScript, /No supported local AI client found/);
 });
 

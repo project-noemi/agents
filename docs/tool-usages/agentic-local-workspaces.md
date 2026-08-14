@@ -77,10 +77,21 @@ For Builders, Practitioners, and Accelerators:
 
 That gives you the best of both worlds: a less intimidating daily workspace and a more reliable operating foundation.
 
+## Multi-Model Bridges
+
+Some stacks stay inside one host workspace and call a peer model through a plugin:
+
+- **Claude Code + Grok Build** — review, critique, and write-capable delegate via the xAI marketplace plugin. See [`grok-build-claude-code.md`](grok-build-claude-code.md).
+- **Claude Code + Codex** — gpt-class bulk work and review gate. See [`openai-codex-local-workspace.md`](openai-codex-local-workspace.md) and the [Orchestrator](../agents/engineering/orchestrator/README.md).
+
+These bridges do not replace the three primary stacks above; they deepen multi-model Diligence inside Claude Code.
+
 ## Where To Go Next
 
 - [`google-local-workspace.md`](google-local-workspace.md)
 - [`claude-code-local-workspace.md`](claude-code-local-workspace.md)
 - [`openai-codex-local-workspace.md`](openai-codex-local-workspace.md)
+- [`grok-build-claude-code.md`](grok-build-claude-code.md)
+- [`../agents/engineering/orchestrator/README.md`](../agents/engineering/orchestrator/README.md)
 - [`../mcp-setup/google-workspace-agentic-clients.md`](../mcp-setup/google-workspace-agentic-clients.md)
 - [`../mcp-setup/microsoft-365-agentic-clients.md`](../mcp-setup/microsoft-365-agentic-clients.md)

@@ -123,9 +123,9 @@
       "parameters": {
         "modelId": {
           "__rl": true,
-          "value": "models/gemini-2.5-flash",
+          "value": "models/gemini-3.6-flash",
           "mode": "list",
-          "cachedResultName": "models/gemini-2.5-flash"
+          "cachedResultName": "models/gemini-3.6-flash"
         },
         "messages": {
           "values": [
@@ -143,7 +143,7 @@
       "typeVersion": 1.1,
       "position": [360, 200],
       "id": "ad823021-8200-4062-9ae0-f6cbf2c0327c",
-      "name": "Triage Coworker (Gemini 2.5 Flash)",
+      "name": "Triage Coworker (Gemini 3.6 Flash)",
       "credentials": {
         "googlePalmApi": {
           "id": "REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID",
@@ -379,14 +379,14 @@
       "main": [
         [
           {
-            "node": "Triage Coworker (Gemini 2.5 Flash)",
+            "node": "Triage Coworker (Gemini 3.6 Flash)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Triage Coworker (Gemini 2.5 Flash)": {
+    "Triage Coworker (Gemini 3.6 Flash)": {
       "main": [
         [
           {

@@ -67,8 +67,8 @@ from datetime import datetime, timezone
 REQUIRED_SECRETS = ("OPENAI_API_KEY", "ERP_DATABASE_URL")
 
 # Non-secret runtime config (safe to default; carries no proprietary value).
-# NOTE: Project NoéMI's canonical model baseline is Gemini 2.5 Flash
-# (models/gemini-2.5-flash). We use an OpenAI client here only because
+# NOTE: Project NoéMI's canonical model baseline is Gemini 3.6 Flash
+# (models/gemini-3.6-flash). We use an OpenAI client here only because
 # OPENAI_API_KEY is the secret named in this Phase 0 exercise — the
 # Fetch-on-Demand pattern is identical regardless of which provider you swap in.
 LLM_MODEL = os.environ.get("LLM_MODEL", "gpt-4o-mini")

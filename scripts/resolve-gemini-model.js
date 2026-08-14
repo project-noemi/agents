@@ -4,7 +4,7 @@
  * review, by querying the API rather than trusting a name written into config.
  *
  * WHY NOT PIN A MODEL
- *   CLAUDE.md pins `models/gemini-2.5-flash` for reference workflows, lab
+ *   CLAUDE.md pins `models/gemini-3.6-flash` for reference workflows, lab
  *   examples, and smoke tests, where predictable cost and determinism are the
  *   point. That pin is correct there and is deliberately NOT changed by this
  *   script.

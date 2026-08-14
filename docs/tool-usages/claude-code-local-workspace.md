@@ -84,9 +84,24 @@ Once the MCP and secret-injection model is understood, the app becomes safer to 
 - users can forget which behavior came from app state vs project state
 - teams still need explicit Phase 0 setup discipline
 
+## Multi-Model Bridges Inside Claude Code
+
+Claude Code can stay the host workspace while a second model family challenges or rescues work:
+
+| Bridge | Plugin | Typical use |
+|--------|--------|-------------|
+| Grok Build | [`xai-org/grok-build-plugin-cc`](https://github.com/xai-org/grok-build-plugin-cc) | Independent review, design critique, write-capable delegate, Claude→Grok session import |
+| OpenAI Codex | `openai/codex-plugin-cc` | gpt-class bulk work, Codex review gate, rescue loops |
+
+Operator guide for Grok: [`grok-build-claude-code.md`](grok-build-claude-code.md).  
+Routing policy: [`../agents/engineering/orchestrator/README.md`](../agents/engineering/orchestrator/README.md).
+
 ## Recommended Next Docs
 
+- [`grok-build-claude-code.md`](grok-build-claude-code.md)
 - [`agentic-local-workspaces.md`](agentic-local-workspaces.md)
+- [`openai-codex-local-workspace.md`](openai-codex-local-workspace.md)
+- [`../agents/engineering/orchestrator/README.md`](../agents/engineering/orchestrator/README.md)
 - [`../mcp-setup/gws-cli-machine-setup.md`](../mcp-setup/gws-cli-machine-setup.md)
 - [`../mcp-setup/google-workspace-agentic-clients.md`](../mcp-setup/google-workspace-agentic-clients.md)
 - [`../mcp-setup/microsoft-365-agentic-clients.md`](../mcp-setup/microsoft-365-agentic-clients.md)
@@ -94,3 +109,4 @@ Once the MCP and secret-injection model is understood, the app becomes safer to 
 ## Official References
 
 - [Claude Code overview](https://docs.anthropic.com/en/docs/claude-code/overview)
+- [Grok Build ↔ Claude Code Bridge](https://github.com/xai-org/grok-build-plugin-cc)

@@ -108,7 +108,7 @@ Review uses the highest-capability Gemini model available at runtime, resolved
 by `scripts/resolve-gemini-model.js`. It queries the API rather than trusting a
 name in config, because any model named today is stale later.
 
-**This does not change the `models/gemini-2.5-flash` pin in `CLAUDE.md`.** That
+**This does not change the `models/gemini-3.6-flash` pin in `CLAUDE.md`.** That
 pin governs reference workflows, lab examples, and smoke tests, where
 determinism and predictable cost are the point. Review has the opposite
 objective and therefore its own policy.

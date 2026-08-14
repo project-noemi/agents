@@ -355,7 +355,7 @@ test('RFP responder workflow uses the current Google Gemini node path', () => {
 
     assert.ok(geminiNode, 'Expected Analyze Request (Gemini) node to exist');
     assert.equal(geminiNode.type, '@n8n/n8n-nodes-langchain.googleGemini');
-    assert.match(workflowText, /models\/gemini-2\.5-flash/);
+    assert.match(workflowText, /models\/gemini-3\.6-flash/);
     assert.match(workflowText, /REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID/);
     assert.doesNotMatch(workflowText, /@n8n\/n8n-nodes-langchain\.chainLlm/);
 });

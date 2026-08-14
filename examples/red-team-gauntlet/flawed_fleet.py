@@ -39,7 +39,7 @@ import time
 from dataclasses import dataclass
 
 # Canonical baseline model for Project NoéMI reference workflows.
-MODEL = "models/gemini-2.5-flash"
+MODEL = "models/gemini-3.6-flash"
 
 # When True, model calls return canned responses so this sandbox spends no real
 # tokens. Flip to False only inside a disposable, budget-capped lab — never

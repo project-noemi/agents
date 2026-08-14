@@ -35,9 +35,11 @@ The lab is designed to exercise capabilities the Labs appliance already provides
 
 ## Conventions
 
-- **AI model baseline:** `models/gemini-2.5-flash` via `@n8n/n8n-nodes-langchain.googleGemini` in `customer-inquiry-router.json`.
+- **AI model baseline:** `models/gemini-3.6-flash` via `@n8n/n8n-nodes-langchain.googleGemini` in `customer-inquiry-router.json`.
 - **Grok companion:** n8n has no standalone Grok root node. `customer-inquiry-router-grok.json` uses Basic LLM Chain (`chainLlm@1.7`) plus `@n8n/n8n-nodes-langchain.lmChatXAiGrok` and reads `$json.text`. Pick the current Grok chat model in the UI if `grok-4` is not listed. This does **not** change the dual-track AI Model Baseline.
 - **Node versions:** built for current n8n core nodes — `webhook@2.1`, `switch@3.2`, `set@3.4`, plus `googleGemini@1.1` (baseline) or `chainLlm` + `lmChatXAiGrok` (Grok variant). n8n's import migration handles older instances.
+- **AI model baseline:** `models/gemini-3.6-flash` via `@n8n/n8n-nodes-langchain.googleGemini`.
+- **Node versions:** built for current n8n core nodes — `webhook@2.1`, `switch@3.2`, `set@3.4`, plus `googleGemini@1.1`. n8n's import migration handles older instances.
 - **No hardcoded secrets:** credentials are referenced by placeholder ID only (Fetch-on-Demand). Real secrets stay in the vault.
 - **Audit logging:** mutating/routing branches emit a structured `audit_log` to the item payload (and, in production, to stderr → Loki), excluding secrets and PII.
 - **Naming:** English-first, slug-based filenames.

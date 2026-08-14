@@ -122,9 +122,16 @@ This solves the "new worktree every run" problem because every run points back t
 - practitioners benefit from a little CLI coaching before the tool feels natural
 - teams need to stay disciplined about where MCP setup lives
 
+## Peer Bridge: Grok Build In Claude Code
+
+When the host workspace is Claude Code and you want an xAI-family second pass (review, design critique, or write-capable rescue), use the Grok Build plugin rather than forcing Codex for every multi-model need. See [`grok-build-claude-code.md`](grok-build-claude-code.md) and the [Orchestrator routing guide](../agents/engineering/orchestrator/README.md).
+
 ## Recommended Next Docs
 
 - [`agentic-local-workspaces.md`](agentic-local-workspaces.md)
+- [`claude-code-local-workspace.md`](claude-code-local-workspace.md)
+- [`grok-build-claude-code.md`](grok-build-claude-code.md)
+- [`../agents/engineering/orchestrator/README.md`](../agents/engineering/orchestrator/README.md)
 - [`../mcp-setup/gws-cli-machine-setup.md`](../mcp-setup/gws-cli-machine-setup.md)
 - [`../mcp-setup/google-workspace-agentic-clients.md`](../mcp-setup/google-workspace-agentic-clients.md)
 - [`../mcp-setup/microsoft-365-agentic-clients.md`](../mcp-setup/microsoft-365-agentic-clients.md)

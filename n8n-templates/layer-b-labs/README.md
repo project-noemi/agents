@@ -34,7 +34,7 @@ The lab is designed to exercise capabilities the Labs appliance already provides
 
 ## Conventions
 
-- **AI model baseline:** `models/gemini-2.5-flash` via `@n8n/n8n-nodes-langchain.googleGemini`.
+- **AI model baseline:** `models/gemini-3.6-flash` via `@n8n/n8n-nodes-langchain.googleGemini`.
 - **Node versions:** built for current n8n core nodes — `webhook@2.1`, `switch@3.2`, `set@3.4`, plus `googleGemini@1.1`. n8n's import migration handles older instances.
 - **No hardcoded secrets:** credentials are referenced by placeholder ID only (Fetch-on-Demand). Real secrets stay in the vault.
 - **Audit logging:** mutating/routing branches emit a structured `audit_log` to the item payload (and, in production, to stderr → Loki), excluding secrets and PII.

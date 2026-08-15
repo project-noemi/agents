@@ -161,7 +161,7 @@ chances for the rotation discipline this register depends on to slip.
 | **Purpose** | Fleet-wide review-finding comments; replaces per-org reviewer PATs |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
 | **App owner (GitHub)** | Enterprise account (internal visibility). Transfer attested 2026-08-15: `GET /apps/noemi-reviewer` 404s for a non-enterprise token (same signal as `noemi-release-bot`). Do not rotate `REVIEWER_APP_PRIVATE_KEY`. |
-| **Credential** | App private key — Infisical secret `REVIEWER_APP_PRIVATE_KEY`, the only copy; App ID in Actions variable `REVIEWER_APP_ID` (set on each fleet repo 2026-08-15) |
+| **Credential** | App private key — Infisical secret `REVIEWER_APP_PRIVATE_KEY` in the **noemi-agents** vault project (same project as `AGENT_GH_TOKEN`). App ID is `REVIEWER_APP_ID` in that vault and/or the repo Actions variable. CI resolves the variable first, then Infisical (Decision [2026-08-15-0005]). |
 | **Runtime token** | Installation token minted per run, ~1 hour lifetime |
 | **Permissions** | Contents **read-only**, Pull requests read/write, Metadata read. No Workflows, Administration, or Secrets |
 | **Installed on** | Fleet repositories in `newpush`, `project-noemi`, `newpush-labs` — Product Owner confirmed install + `REVIEWER_APP_ID` on each repo 2026-08-15 |

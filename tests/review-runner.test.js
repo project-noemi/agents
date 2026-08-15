@@ -491,3 +491,11 @@ test('reviewer credential preference: app token shadows PATs, distinct name', ()
     assert.ok(appIdx > -1, 'app token path must exist');
     assert.ok(appIdx < patIdx, 'app token must be consulted before any PAT');
 });
+
+test('workflow: App ID is resolved from Infisical when the Actions variable is empty', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
+    assert.match(yml, /Resolve reviewer App ID/);
+    assert.match(yml, /infisical secrets get REVIEWER_APP_ID/);
+    assert.match(yml, /steps\.appid\.outputs\.present/);
+    assert.ok(yml.includes('app-id: ${{ env.REVIEWER_APP_ID }}'));
+});

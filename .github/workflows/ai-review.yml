@@ -147,21 +147,41 @@ jobs:
           echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
 
       # PREFERRED fleet credential: a GitHub App installation token, minted
-      # fresh for this run. One app installed on every organization replaces
-      # per-org PATs and their rotation schedule; nothing long-lived exists at
-      # runtime. Both steps no-op when REVIEWER_APP_ID is unset, and the runner
-      # falls back to the PAT chain — so the fleet keeps working while the app
-      # is being provisioned, and afterwards the PATs become dead weight to
-      # retire rather than a dependency.
+      # fresh for this run. The App ID may come from the Actions variable
+      # REVIEWER_APP_ID or, if that is empty, from Infisical in the same
+      # project as REVIEWER_APP_PRIVATE_KEY (the noemi-agents vault). A live
+      # 2026-08-15 run skipped minting because it only looked at vars, while
+      # the ID already lived in Infisical — Fetch-on-Demand is the source of
+      # truth. If neither source has an ID, fall back to the PAT chain.
+      - name: Resolve reviewer App ID
+        if: steps.config.outputs.configured == 'true'
+        id: appid
+        env:
+          PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+          VAR_APP_ID: ${{ vars.REVIEWER_APP_ID }}
+        run: |
+          APP_ID="${VAR_APP_ID}"
+          if [[ -z "$APP_ID" ]]; then
+            APP_ID=$(infisical secrets get REVIEWER_APP_ID \
+              --projectId="$PROJECT_ID" --env=dev --plain || true)
+          fi
+          if [[ -n "$APP_ID" ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "REVIEWER_APP_ID=$APP_ID" >> "$GITHUB_ENV"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Reviewer App ID unset::No vars.REVIEWER_APP_ID and no Infisical REVIEWER_APP_ID. Falling back to the PAT."
+          fi
+
       - name: Fetch reviewer app key
-        if: steps.config.outputs.configured == 'true' && vars.REVIEWER_APP_ID != ''
+        if: steps.config.outputs.configured == 'true' && steps.appid.outputs.present == 'true'
         env:
           PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
         run: |
           KEY=$(infisical secrets get REVIEWER_APP_PRIVATE_KEY \
             --projectId="$PROJECT_ID" --env=dev --plain)
           if [[ -z "$KEY" ]]; then
-            echo "::error title=App key missing::REVIEWER_APP_ID is set but REVIEWER_APP_PRIVATE_KEY is not in Infisical."
+            echo "::error title=App key missing::REVIEWER_APP_ID is resolved but REVIEWER_APP_PRIVATE_KEY is not in Infisical project ${PROJECT_ID}."
             exit 1
           fi
           # ::add-mask:: masks single values; a PEM is multiline, so mask each
@@ -174,11 +194,11 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Mint reviewer app token
-        if: steps.config.outputs.configured == 'true' && vars.REVIEWER_APP_ID != ''
+        if: steps.config.outputs.configured == 'true' && steps.appid.outputs.present == 'true'
         id: apptoken
         uses: actions/create-github-app-token@v2
         with:
-          app-id: ${{ vars.REVIEWER_APP_ID }}
+          app-id: ${{ env.REVIEWER_APP_ID }}
           private-key: ${{ env.REVIEWER_APP_KEY }}
           # Defaults to the installation for this repository's owner — exactly
           # the per-org selection the PAT path had to do by hand.

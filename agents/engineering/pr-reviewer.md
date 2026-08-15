@@ -84,7 +84,8 @@ well-formed, unnecessary work. Catching that is the primary value of this role.
 
 - **Inputs:** PR diff, changed-file paths, base and head SHAs, linked
   specification or issue, test files and results, repository standards
-  (`CLAUDE.md`, `docs/REQUIREMENTS.md`), severity rubric.
+  (`CLAUDE.md`, `docs/REQUIREMENTS.md`), severity rubric, Sentinel spec
+  from `project-noemi/agents` (`agents/coding/sentinel/core.md`).
 - **Outputs:** Structured findings (gate, severity, file, line, claim,
   evidence), gate verdicts, overall recommendation, drafted remediation prompt,
   audit log.
@@ -107,10 +108,14 @@ well-formed, unnecessary work. Catching that is the primary value of this role.
 ### 1. RESOLVE MODEL
 
 Select the highest-capability model available via
-`scripts/resolve-gemini-model.js`. Prefer Pro over standard, reasoning/thinking
-variants over fast variants. Fail loudly if nothing meets the configured floor —
-a deep review on a shallow model is worse than no review, because it produces
-unearned confidence.
+`scripts/resolve-gemini-model.js`. The review floor is **`pro`** (Decision
+[2026-08-15-0003]): Flash is not adequate for a thorough review. Fail loudly
+if nothing meets that floor — a deep review on a shallow model is worse than
+no review, because it produces unearned confidence.
+
+Load `agents/coding/sentinel/core.md` from **`project-noemi/agents`**, never
+from the repository under review. Apply it as security-review criteria. Do not
+adopt Sentinel's producer mission of fixing one small issue.
 
 ### 2. GATE 1 — PREMISE (4D Delegation)
 

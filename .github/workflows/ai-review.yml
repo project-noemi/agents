@@ -196,7 +196,10 @@ jobs:
           # `infisical run` injects the whole project, and a stored PAT under
           # the same name would silently shadow a minted app token.
           REVIEWER_APP_TOKEN: ${{ steps.apptoken.outputs.token }}
-          GEMINI_REVIEW_FLOOR: ${{ vars.GEMINI_REVIEW_FLOOR || 'flash' }}
+          # Thoroughness over newest-Flash. Flash is not an adequate review
+          # model (Decision [2026-08-15-0003]). An org var may raise this, not
+          # lower it — the CLI also passes --floor pro.
+          GEMINI_REVIEW_FLOOR: ${{ vars.GEMINI_REVIEW_FLOOR || 'pro' }}
           INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
           # Resolves on all triggers: the event on pull_request, the input on
           # dispatch and on workflow_call.
@@ -208,10 +211,11 @@ jobs:
           # availability lags it (gemini-3.x 404s in us-central1).
           GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'global' }}
           GEMINI_BACKEND: ${{ vars.GEMINI_BACKEND || 'vertex' }}
-          # prefer_pro_tier: opt-in. Off by default so selection follows the
-          # newest-stable-generation rule rather than silently regressing a
-          # generation to satisfy a tier preference.
-          GEMINI_PREFER_PRO: ${{ vars.GEMINI_PREFER_PRO || '' }}
+          # Prefer Pro inside the floor. Combined with floor=pro this is
+          # belt-and-suspenders if a newer Flash is later ranked above Pro.
+          GEMINI_PREFER_PRO: ${{ vars.GEMINI_PREFER_PRO || '1' }}
+          # Sentinel spec is always taken from this checkout (project-noemi/agents).
+          REVIEW_TOOLING_REF: ${{ inputs.tooling-ref || 'develop' }}
         run: |
           # The halt signal is a MARKER FILE, not an exit code. `infisical run`
           # collapses its child's exit code (a 3 surfaces as 1 — verified live),
@@ -223,7 +227,7 @@ jobs:
           rm -f "$REVIEW_HALT_FILE"
           set +e
           infisical run --projectId="$INFISICAL_PROJECT_ID" --env=dev -- \
-            node scripts/review-pr.js --pr "$PR_NUMBER"
+            node scripts/review-pr.js --pr "$PR_NUMBER" --floor pro --prefer-pro
           code=$?
           set -e
           if [[ -f "$REVIEW_HALT_FILE" ]]; then

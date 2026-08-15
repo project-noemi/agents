@@ -116,20 +116,25 @@ objective and therefore its own policy.
 Ranking is tier first (`pro` > `flash` > `flash-lite`), then generation, then a
 bonus for reasoning/thinking variants.
 
-> **Open policy question for human decision.** Tier currently dominates
-> generation, so `gemini-2.5-pro` outranks a hypothetical `gemini-3.6-flash`.
-> That is a deliberate reading of "use Pro if Pro is available," but it is
-> arguable — a newer Flash may well beat an older Pro. Revisit when a
-> generation gap is large enough to matter.
+The Product Owner decided (2026-08-15, Decision [2026-08-15-0003]) that
+**Flash is not an adequate review model.** The configured floor is **`pro`**.
+A newer Flash does not outrank an older Pro, and a catalogue with no Pro
+halts the review rather than silently running on Flash.
+
+**Floor:** if no available model meets the configured floor, the review fails
+loudly rather than downgrading. A deep review on a shallow model is worse than
+no review — it manufactures confidence that was never earned.
+
+**Sentinel brief.** Every review, including fleet reviews of other
+repositories, loads `agents/coding/sentinel/core.md` from
+`project-noemi/agents` (the tooling checkout, never the repo under review)
+and applies it as security-review criteria. The reviewer does not adopt
+Sentinel's producer mission.
 
 **Cost:** discovery trades reproducibility for capability. A review cannot be
 re-run identically later. Mitigation: the resolved model ID and timestamp are
 recorded in every review's audit log, so a verdict is always attributable to
 what produced it.
-
-**Floor:** if no available model meets the configured floor, the review fails
-loudly rather than downgrading. A deep review on a shallow model is worse than
-no review — it manufactures confidence that was never earned.
 
 ## Where the human sits
 

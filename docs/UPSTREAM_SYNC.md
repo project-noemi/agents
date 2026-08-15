@@ -258,6 +258,32 @@ Run ./scripts/sync-upstream.sh --dry-run first to check for drift,
 then run ./scripts/sync-upstream.sh to merge and push.
 ```
 
+## Using Grok Build for Upstream Sync
+
+If the admin uses **Grok Build** (`grok`), the same git steps apply. Grok reads this repository's `AGENTS.md` and `CLAUDE.md`; there is no generated `GROK.md`. Install the CLI from [`tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md) if it is not on `PATH`.
+
+### Interactive
+
+From the repository root:
+
+```
+grok
+```
+
+Then:
+
+```
+Read docs/UPSTREAM_SYNC.md and run ./scripts/sync-upstream.sh --dry-run. Show me the drift. Do not merge or push until I confirm.
+```
+
+### Headless dry-run
+
+```bash
+grok -p "Read docs/UPSTREAM_SYNC.md and run ./scripts/sync-upstream.sh --dry-run. Summarize the drift. Do not merge or push."
+```
+
+Never force-push. Treat Grok Build as a local orchestrator under the same approval rules as Claude Code and Gemini CLI.
+
 ### Automating with Google Apps Script (Optional)
 
 For fully automated weekly checks within Google Workspace, you can create a Google Apps Script trigger that sends a Monday morning reminder to the admin:
@@ -281,7 +307,7 @@ function sendSyncReminder() {
     'Upstream: https://github.com/project-noemi/agents',
     'Our repo: https://github.com/MyOrganization/agents',
     '',
-    'If using Gemini CLI, just paste the sync prompt from docs/UPSTREAM_SYNC.md.'
+    'If using Gemini CLI or Grok Build, paste the matching sync prompt from docs/UPSTREAM_SYNC.md.'
   ].join('\n');
 
   MailApp.sendEmail(admin, subject, body);

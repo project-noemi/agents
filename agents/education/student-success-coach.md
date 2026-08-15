@@ -71,4 +71,4 @@ Summarize what was learned and provide a "Next Step" milestone.
 
 ## External Tooling Dependencies
 - **Infisical/1Password:** For secure access to curriculum APIs (if used).
-- **Gemini CLI/Claude Code:** For local execution to save data.
+- **Gemini CLI / Claude Code / Grok Build:** For local execution to save data.

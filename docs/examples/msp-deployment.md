@@ -8,7 +8,7 @@ NoéMI is a specification library — not a runtime. This makes it well-suited f
 
 - **Client configurations are declarative and auditable** — each tenant gets a versioned set of Markdown specs and an `mcp.config.json`
 - **Secrets never leave the vault** — per-client vault compartments isolate credentials
-- **Orchestration is external** — the MSP chooses the execution engine (Gemini CLI, n8n, LangChain) per client need
+- **Orchestration is external** — the MSP chooses the execution engine (Gemini CLI, Grok Build, n8n, LangChain) per client need
 - **Governance is built in** — AI TRiSM, red team gauntlets, and the 4D Framework apply uniformly across tenants
 
 Before onboarding a client into an AI workflow, establish their Phase 0 initial assessment first. Use the client-side guide at [`../PHASE_ZERO_SECURITY_BASELINE.md`](../PHASE_ZERO_SECURITY_BASELINE.md) and the reusable templates in [`../phase-zero-assessment/`](../phase-zero-assessment/) to document both:
@@ -40,7 +40,8 @@ When you operationalize tenants, pair this guide with the orchestrator runtime e
 │  │        ▼              ▼         │                    │
 │  │  ┌──────────────────────────┐   │                    │
 │  │  │ Orchestrator (n8n /      │   │                    │
-│  │  │ Gemini CLI / LangChain)  │   │                    │
+│  │  │ Gemini CLI / Grok Build  │   │                    │
+│  │  │ / LangChain)             │   │                    │
 │  │  └──────────┬───────────────┘   │                    │
 │  │             ▼                   │                    │
 │  │  ┌──────────────────────────┐   │                    │
@@ -122,13 +123,19 @@ Each client gets an n8n instance (or namespace) with workflows wired to their ag
 - **Scheduled maintenance** — Linux/cPanel agents run health checks on cron, post results to Slack
 - **Alert escalation** — Guardian agents detect anomalies, create tickets, notify on-call
 
-### Pattern B: Gemini CLI for Ad-Hoc (Basic Tier)
+### Pattern B: Gemini CLI or Grok Build for Ad-Hoc (Basic Tier)
 
 For simpler engagements, technicians invoke agents directly:
 
 ```bash
 op run --env-file=.env.client-a -- gemini -p clients/client-a/GEMINI.md "Check disk usage on web01"
 ```
+
+```bash
+op run --env-file=.env.client-a -- grok -p "Read AGENTS.md and CLAUDE.md, then check disk usage on web01"
+```
+
+Grok Build is the local xAI stack (`grok` TUI / `-p` headless). It is not grok.com Custom Agents. See [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md).
 
 ### Pattern C: Fleet Deployment (Premium)
 
@@ -166,7 +173,7 @@ The Fleet Dashboard aggregates reports across all client tenants. Use the three-
 4. **Select tier** — Enable the appropriate agents and MCPs
 5. **Generate context** — Run `generate_gemini.js` with the client config
 6. **Run gauntlet** — Validate with Red Team before going live
-7. **Deploy orchestrator** — Stand up n8n workflows or configure Gemini CLI access
+7. **Deploy orchestrator** — Stand up n8n workflows or configure Gemini CLI / Grok Build access
 8. **Connect dashboard** — Point the client's agents at the Fleet Dashboard ingestion endpoint
 
 ## Next Steps

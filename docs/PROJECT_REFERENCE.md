@@ -442,7 +442,7 @@ NoéMI meets organizations where they are. Different maturity levels need differ
 - **For:** Organizations wanting compressed delivery
 - **Format:** 5 consecutive days, dual-track (Basic/Advanced)
 - Basic track: Strategy and exploration (Explorers)
-- Advanced track: Building with n8n, Gems, multi-agent systems (Practitioners/Accelerators)
+- Advanced track: Building with n8n, Gems, Grok Custom Agents, multi-agent systems (Practitioners/Accelerators)
 - Same depth, compressed timeline
 
 ### C. The 1-Day Workshop (Condensed Introduction)
@@ -584,6 +584,16 @@ v3.0 of the curriculum leverages the **NewPush Labs open-source stack**. This is
 | **Infisical** | SecretOps platform for secure credential management |
 | **NotebookLM** | Document-based knowledge retrieval and RAG-like interactions |
 | **Google Gemini Gems** | Custom AI personas for specific tasks |
+| **xAI Grok Custom Agents** | Hosted persona / Project / Skill equivalent to Gems and Custom GPTs |
+| **xAI Grok Build** | Local CLI / TUI agentic workspace (`grok`) — fourth stack alongside Gemini CLI, Claude Code, and Codex |
+
+Grok now covers both sides of the Gem / GPT job, and a local CLI stack:
+
+- **Custom Agents, Projects, and hosted Skills** on grok.com are the persona + persistent-knowledge surface. Load a NoéMI spec into the agent instruction box; put the rest of the file in a Project.
+- **Grok Build** (`grok`) is the local TUI / headless CLI: plan mode, subagents, worktrees, MCP, repo-local skills (`/skillify`), and `grok -p` for scripts. It reads this repository's `AGENTS.md` and `CLAUDE.md`. There is no generated `GROK.md`.
+- **Grok Bot** (limited tiers) is an always-on teammate on a shared cloud computer. Treat it as a mutating orchestrator, not as a tenant boundary.
+
+They are vendor surfaces, not a new model baseline. See [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) and [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md).
 
 Three principles govern the stack:
 
@@ -760,6 +770,8 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/frameworks/value-lenses.md`](frameworks/value-lenses.md) | Success-criteria overlays for comparing outcomes under different enterprise logics |
 | [`docs/mcp-setup/`](mcp-setup/) | MCP server setup guides (Google Workspace, n8n, Slack, Web Search) |
 | [`docs/tool-usages/`](tool-usages/) | Tool-specific guides and integration patterns |
+| [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) | Grok Custom Agents, Projects, Skills, and Grok Bot as the Gems / Custom GPT equivalent |
+| [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md) | Grok Build CLI / TUI: per-platform install, first win, and Fetch-on-Demand launch |
 | [`docs/examples/`](examples/) | Example implementations (Docker sandbox, RFP Responder, Video Automation) |
 | [`docs/examples/cross-model-review-setup.md`](examples/cross-model-review-setup.md) | Beginner walkthrough: machine identities, Gemini key options, and vault-backed CI for cross-model review |
 

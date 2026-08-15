@@ -15,7 +15,7 @@ Read these guides first:
 3. [`docker-agent-home.md`](docker-agent-home.md)
 4. [`../tool-usages/orchestrator-runtime-contract.md`](../tool-usages/orchestrator-runtime-contract.md)
 5. choose one implementation path:
-   [`../tool-usages/gemini-workspace-quickstart.md`](../tool-usages/gemini-workspace-quickstart.md) for human-led Gemini CLI work or [`n8n-google-workspace-quickstart.md`](n8n-google-workspace-quickstart.md) for event-driven automation
+   [`../tool-usages/gemini-workspace-quickstart.md`](../tool-usages/gemini-workspace-quickstart.md) for human-led Gemini CLI work, [`../tool-usages/grok-build-local-workspace.md`](../tool-usages/grok-build-local-workspace.md) for Grok Build, or [`n8n-google-workspace-quickstart.md`](n8n-google-workspace-quickstart.md) for event-driven automation
 
 Those explain the security contract, the shape of the Docker home you are about to launch, and the runtime responsibilities your orchestrator must own.
 
@@ -133,7 +133,7 @@ gemini -p GEMINI.md "List the engineering agents in this repository and summariz
 ```
 
 That confirms the generated context and orchestrator path are both usable after the Docker home is in place.
-If you are using Claude Code or Codex instead, reuse the same repo-local prompt there.
+If you are using Claude Code, Codex, or Grok Build instead, reuse the same repo-local prompt there (`grok -p "..."` for Grok Build).
 
 If the task needs external credentials, switch to the Fetch-on-Demand wrapper:
 

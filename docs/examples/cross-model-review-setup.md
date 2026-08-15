@@ -263,13 +263,14 @@ Their names still contain "pro" and "flash", so a naive rank will cheerfully
 choose an *image* model to review your code. Most published Gemini models are
 wrong for this job.
 
-### The Pro toggle
+### The Pro floor (required)
 
-If you want Pro regardless, it is an explicit switch rather than a hidden weight:
+Flash is not an adequate review model (Decision [2026-08-15-0003]). The
+runner and the workflow default to `--floor pro`. A catalogue with no Pro
+halts the review. `--prefer-pro` is also on by default.
 
 ```bash
-node scripts/resolve-gemini-model.js --prefer-pro
-# or set the GEMINI_PREFER_PRO repository variable to 1
+node scripts/resolve-gemini-model.js --floor pro --prefer-pro
 ```
 
 When the toggle costs you a generation, it tells you:
@@ -502,7 +503,7 @@ If nothing meets the minimum capability level, it **fails instead of quietly
 using a weaker model**. A shallow review that looks like a thorough one is worse
 than no review, because you would trust it.
 
-> This does **not** change the `gemini-2.5-flash` pin elsewhere in the
+> This does **not** change the `gemini-3.6-flash` pin elsewhere in the
 > repository. That pin exists so smoke tests behave identically every run.
 > Reproducibility is right for tests and wrong for review.
 
@@ -611,14 +612,17 @@ resource owner, so a multi-org fleet on PATs means one token per org, each on
 its own 90-day rotation. Don't. Create a **GitHub App** instead — one identity,
 installed everywhere, minting its own short-lived token per run:
 
-1. In the tooling org: Settings → Developer settings → GitHub Apps → **New
-   GitHub App**. Name it `noemi-reviewer` (comments will post as
-   `noemi-reviewer[bot]`). Disable webhooks; it needs no URL.
+1. Create the App at the **enterprise** (*Enterprise settings → GitHub Apps →
+   New GitHub App*), or **transfer** an existing org-owned App there
+   (App settings → Advanced → Transfer ownership → the **Enterprise**
+   account). Name it `noemi-reviewer` (comments as `noemi-reviewer[bot]`).
+   No webhook. Do not create a second App if one already exists.
+   Transferred to the enterprise 2026-08-15 (Decision [2026-08-15-0004]).
 2. Repository permissions — same least-privilege shape as the PAT:
    **Contents: Read-only**, **Pull requests: Read and write**, Metadata: read.
    The reviewer must stay structurally unable to author code.
-3. Generate a **private key** (downloads a `.pem`), store it in Infisical, and
-   record the **App ID**:
+3. Generate a **private key** only if this is a new App (a transfer keeps
+   the existing key). Store it in Infisical and record the **App ID**:
 
    ```bash
    infisical secrets set REVIEWER_APP_PRIVATE_KEY="$(cat noemi-reviewer.*.pem)" --env=dev
@@ -626,9 +630,10 @@ installed everywhere, minting its own short-lived token per run:
    ```
 
    Then delete the downloaded `.pem` — the vault copy is the only one that
-   should exist.
-4. **Install the app** on each organization (App settings → Install App →
-   All repositories), for all three orgs.
+   should exist. After a transfer, do **not** rotate the key.
+4. **Install the app** on each enterprise organization (Install App →
+   All repositories) for `newpush`, `project-noemi`, and `newpush-labs`.
+   Transfer does not add those installs.
 
 The workflow mints a one-hour installation token per run and the runner prefers
 it over any PAT. When `REVIEWER_APP_ID` is unset the whole path no-ops and the

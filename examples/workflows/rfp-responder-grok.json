@@ -1,5 +1,5 @@
 {
-  "name": "RFP / RFQ Auto-Responder Workflow",
+  "name": "RFP / RFQ Auto-Responder Workflow (Grok variant)",
   "nodes": [
     {
       "parameters": {
@@ -36,36 +36,42 @@
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "models/gemini-3.6-flash",
-          "mode": "list",
-          "cachedResultName": "models/gemini-3.6-flash"
-        },
-        "messages": {
-          "values": [
-            {
-              "content": "=You are the Knowledge Manager & Researcher agent. Analyze the incoming email to determine if it is a Request for Proposal (RFP) or a Request for Quote (RFQ).\n\nIf it IS an RFP/RFQ, extract the core requirements, deadlines, and key questions being asked. If it is NOT an RFP/RFQ, simply state so.\n\nReturn only valid JSON using this exact shape:\n{\n  \"is_rfp_rfq\": true,\n  \"summary\": \"Brief summary of the request\",\n  \"requirements\": [\"Requirement 1\", \"Requirement 2\"],\n  \"deadline\": \"YYYY-MM-DD or Not specified\"\n}\n\nSubject: {{ $('Gmail Trigger (New Emails)').item.json.subject || $('Gmail Trigger (New Emails)').item.json.snippet }}\nBody: {{ $('Gmail Trigger (New Emails)').item.json.textPlain || $('Gmail Trigger (New Emails)').item.json.text }}"
-            }
-          ]
-        },
-        "jsonOutput": true,
-        "simplify": false,
-        "builtInTools": {},
-        "options": {}
+        "promptType": "define",
+        "text": "=You are the Knowledge Manager & Researcher agent. Analyze the incoming email to determine if it is a Request for Proposal (RFP) or a Request for Quote (RFQ).\n\nIf it IS an RFP/RFQ, extract the core requirements, deadlines, and key questions being asked. If it is NOT an RFP/RFQ, simply state so.\n\nReturn only valid JSON using this exact shape:\n{\n  \"is_rfp_rfq\": true,\n  \"summary\": \"Brief summary of the request\",\n  \"requirements\": [\"Requirement 1\", \"Requirement 2\"],\n  \"deadline\": \"YYYY-MM-DD or Not specified\"\n}\n\nSubject: {{ $('Gmail Trigger (New Emails)').item.json.subject || $('Gmail Trigger (New Emails)').item.json.snippet }}\nBody: {{ $('Gmail Trigger (New Emails)').item.json.textPlain || $('Gmail Trigger (New Emails)').item.json.text }}"
       },
-      "type": "@n8n/n8n-nodes-langchain.googleGemini",
-      "typeVersion": 1.1,
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
       "position": [
         360,
         240
       ],
       "id": "3fb03353-8b71-4854-ab46-c8c8481b8567",
-      "name": "Analyze Request (Gemini)",
+      "name": "Analyze Request (Grok)"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "grok-4",
+          "mode": "list",
+          "cachedResultName": "grok-4"
+        },
+        "options": {
+          "responseFormat": "json_object"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
+      "typeVersion": 1,
+      "position": [
+        360,
+        460
+      ],
+      "id": "8aa01122-3344-4555-8666-99aabbccddee",
+      "name": "xAI Grok Chat Model",
       "credentials": {
-        "googlePalmApi": {
-          "id": "REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID",
-          "name": "Google Gemini(PaLM) Api account"
+        "xAiApi": {
+          "id": "REPLACE_WITH_YOUR_XAI_API_CREDENTIAL_ID",
+          "name": "xAI API account"
         }
       }
     },
@@ -81,7 +87,7 @@
           "conditions": [
             {
               "id": "55c1a52d-d203-4f65-b905-f1be58b516fe",
-              "leftValue": "={{ $('Analyze Request (Gemini)').item.json.candidates[0].content.parts[0].text }}",
+              "leftValue": "={{ $('Analyze Request (Grok)').item.json.text }}",
               "rightValue": "\"is_rfp_rfq\": true",
               "operator": {
                 "type": "string",
@@ -107,7 +113,7 @@
         "resource": "document",
         "operation": "create",
         "title": "=RFP Draft: {{ $('Gmail Trigger (New Emails)').item.json.subject || $('Gmail Trigger (New Emails)').item.json.snippet }}",
-        "content": "=RFP / RFQ Analysis\n\nSender: {{ $('Gmail Trigger (New Emails)').item.json.from }}\nDate: {{ $('Gmail Trigger (New Emails)').item.json.date }}\n\nSummary:\n{{ JSON.parse($('Analyze Request (Gemini)').item.json.candidates[0].content.parts[0].text).summary }}\n\nRequirements:\n{{ JSON.parse($('Analyze Request (Gemini)').item.json.candidates[0].content.parts[0].text).requirements.map((requirement) => '- ' + requirement).join('\\n') }}\n\nDeadline: {{ JSON.parse($('Analyze Request (Gemini)').item.json.candidates[0].content.parts[0].text).deadline }}\n\n---\nDraft Response Section:\n[Human reviewer to finalize proposal response here]"
+        "content": "=RFP / RFQ Analysis\n\nSender: {{ $('Gmail Trigger (New Emails)').item.json.from }}\nDate: {{ $('Gmail Trigger (New Emails)').item.json.date }}\n\nSummary:\n{{ JSON.parse($('Analyze Request (Grok)').item.json.text).summary }}\n\nRequirements:\n{{ JSON.parse($('Analyze Request (Grok)').item.json.text).requirements.map((requirement) => '- ' + requirement).join('\\n') }}\n\nDeadline: {{ JSON.parse($('Analyze Request (Grok)').item.json.text).deadline }}\n\n---\nDraft Response Section:\n[Human reviewer to finalize proposal response here]"
       },
       "type": "n8n-nodes-base.googleDocs",
       "typeVersion": 2,
@@ -162,14 +168,25 @@
       "main": [
         [
           {
-            "node": "Analyze Request (Gemini)",
+            "node": "Analyze Request (Grok)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Analyze Request (Gemini)": {
+    "xAI Grok Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analyze Request (Grok)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Request (Grok)": {
       "main": [
         [
           {
@@ -219,7 +236,7 @@
     "templateCredsSetupCompleted": false,
     "instanceId": "REPLACE_WITH_YOUR_INSTANCE_ID"
   },
-  "versionId": "cbf654e6-5ad2-45cf-9430-868a72b958d6",
-  "id": "rfpResponderTemplate",
+  "versionId": "d1e2f3a4-b5c6-4789-8def-0123456789ab",
+  "id": "rfpResponderGrokTemplate",
   "tags": []
 }

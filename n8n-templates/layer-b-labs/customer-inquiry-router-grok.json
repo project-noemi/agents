@@ -1,153 +1,104 @@
 {
-  "name": "Layer B Lab — Customer Inquiry Router (Vibe Coding Microburst)",
+  "name": "Layer B Lab — Customer Inquiry Router (Grok variant)",
   "nodes": [
     {
       "parameters": {
-        "content": "## 🧪 Layer B Lab — Customer Inquiry Router\n### A \"Vibe Coding\" microburst for Practitioners (the Crew)\n\nYou are about to build a **Virtual Coworker** that reads an incoming customer message and routes it to the right team — all described in plain English.\n\n**How to run this lab**\n1. Import this canvas into your NewPush Labs n8n instance.\n2. Read each coloured **microburst** sticky *before* you configure the node beside it.\n3. Attach your own Gemini credential (replace the `REPLACE_WITH_YOUR_…` placeholder).\n4. `POST` a test body like `{ \"message\": \"My invoice looks wrong\" }` to the webhook and watch the routing decision flow left → right.\n\n**The 4D AI Fluency Framework** (adapting Dakan & Feller) is embedded node-by-node:\n- **Delegation** → the Webhook (*what* to hand off)\n- **Description** → the LLM (*how* to ask)\n- **The Agentic Shift** → the Switch (from answer → action)\n- **Discernment & Diligence** → the outputs (judging & owning the result)\n\n**Runs on the NewPush Labs stack:** the webhook is reachable through Traefik ingress (behind Casdoor SSO), and n8n's stdout/stderr stream to Loki → Grafana — so you can watch each routing decision and its `audit_log` land in real time.\n\n> ⚠️ Labs = prototyping only. Use mock / test credentials. Promote to a production cluster only after peer review.",
-        "height": 220,
+        "content": "## 🧪 Layer B Lab — Customer Inquiry Router (Grok)\n### Optional vendor variant of the Gemini lab\n\nSame 4D microburst as `customer-inquiry-router.json`, with the official n8n **xAI Grok** path.\n\nGrok is **not** a drop-in replacement for `@n8n/n8n-nodes-langchain.googleGemini`. n8n exposes Grok as a LangChain **chat-model sub-node** (`lmChatXAiGrok`) that must hang off a **Basic LLM Chain**. Gemini 2.5 Flash remains the repository baseline; this file is the Grok companion.\n\n**How to run this lab**\n1. Import this canvas into your NewPush Labs n8n instance.\n2. Read each coloured **microburst** sticky *before* you configure the node beside it.\n3. Attach your own xAI credential (replace the `REPLACE_WITH_YOUR_…` placeholder). Pick the current Grok chat model in the sub-node if `grok-4` is not listed.\n4. `POST` a test body like `{ \"message\": \"My invoice looks wrong\" }` to `/webhook/customer-inquiry-router-grok`.\n\n> ⚠️ Labs = prototyping only. Use mock / test credentials. Promote to a production cluster only after peer review.",
+        "height": 260,
         "width": 1120,
         "color": 7
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [0, -480],
-      "id": "4a68de17-9a0b-4ba1-a4e5-4cc835f8ce45",
+      "position": [0, -520],
+      "id": "c1a8e0d2-4b91-4c6e-9f3a-7d2e1b0a9c11",
       "name": "Lab Overview"
     },
     {
       "parameters": {
-        "content": "## 1 · DELEGATION\n### \"Is this a task worth handing to an AI?\"\n\n**Delegation** (4D #1) is the discipline of deciding *what* to hand off and *how much* autonomy to grant.\n\n**Task vs. Goal awareness**\n- **Task** = one bounded step (\"classify this message\").\n- **Goal** = the outcome you own (\"every customer reaches the right team, fast\").\n\nDelegate the *task* to the coworker; keep ownership of the *goal*.\n\n**When to reach for AI here**\n- ✅ High-volume, repetitive, language-heavy judgement (triage, routing, summarising).\n- ❌ Irreversible, high-stakes, or legally-binding actions — keep a human in the loop.\n\n**This node = the Delegation boundary.** The Webhook is the exact moment a human (the *Explorer*) hands a task to the Virtual Coworker. Everything downstream is delegated work.",
-        "height": 380,
+        "content": "## 1 · DELEGATION\n### \"Is this a task worth handing to an AI?\"\n\n**Delegation** (4D #1) is the discipline of deciding *what* to hand off and *how much* autonomy to grant.\n\nDelegate the *task* (classify this message) to the coworker; keep ownership of the *goal* (every customer reaches the right team).\n\n**This node = the Delegation boundary.** The Webhook is the exact moment a human hands a task to the Virtual Coworker.",
+        "height": 320,
         "width": 340,
         "color": 5
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [0, -240],
-      "id": "68e01713-8039-463b-ae4c-a21c95eeac2c",
+      "id": "a91c2f44-0d6b-4e1f-8c77-2b5e9a11d003",
       "name": "Microburst — Delegation"
     },
     {
       "parameters": {
-        "content": "## 2 · DESCRIPTION\n### \"Say what you want — clearly.\"\n\n**Description** (4D #2) is the craft of telling the model precisely what you need. This is **Vibe Coding**: you program the coworker in plain English, not syntax.\n\n**The Communication Hierarchy — climb it!**\n1. **Vague** — \"sort my messages.\" → unpredictable.\n2. **Specific** — \"label this billing, support, or sales.\" → better.\n3. **Structured** — \"return JSON: { category, summary, confidence }.\" → machine-routable.\n4. **Contextual** — \"You are NewPush's front-desk coworker. Tone: warm, concise. If unsure, choose 'other'.\" → reliable & on-brand.\n\nThe system prompt in this node sits at level **3–4**: it gives the model a *role*, *rules*, and a *strict output format* — which is exactly what lets the next node act on it.\n\n> Tip: a Description is only as good as it is testable. Pin a sample input and inspect the JSON.",
-        "height": 380,
+        "content": "## 2 · DESCRIPTION\n### \"Say what you want — clearly.\"\n\nThe Basic LLM Chain holds the prompt. The **xAI Grok Chat Model** sub-node is the model. Together they are Description (4D #2).\n\nReturn **only** JSON `{ category, summary, confidence, suggested_reply }` so the Switch can act.",
+        "height": 320,
         "width": 360,
         "color": 6
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [360, -240],
-      "id": "69137ef9-534a-4649-a41f-1d456a06cc66",
+      "id": "b02d3e55-1e7c-4f20-9d88-3c6f0b22e114",
       "name": "Microburst — Description"
     },
     {
       "parameters": {
-        "content": "## 3 · THE AGENTIC SHIFT\n### From \"chat answer\" → autonomous action\n\nA chatbot *answers*. An **agent** *acts*. The Switch is where that shift happens.\n\n**Stateless chat query**\n> \"Which team handles this?\" → a sentence appears on screen → nothing changes.\n\n**Stateful, agentic routing decision**\n> The model's classification becomes a **branch in a live workflow** that moves the work to a real destination — with no human pressing \"send\".\n\nThis node reads the structured field the LLM produced (`category`) and *commits* to a path. The coworker now owns a consequence, not just a reply. That is the leap from *talking about* work to *doing* work.\n\n> The price of agency is rigor: every branch below must be trustworthy, because no one double-checks each one.",
-        "height": 380,
+        "content": "## 3 · THE AGENTIC SHIFT\n### From \"chat answer\" → autonomous action\n\nThe Switch reads `JSON.parse($json.text).category` — Basic LLM Chain exposes the completion on `text`, not Gemini's `content.parts[0].text`.",
+        "height": 320,
         "width": 340,
         "color": 2
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [760, -240],
-      "id": "765137a4-b4bd-46e7-870a-66435adc8923",
+      "id": "c13e4f66-2f8d-4031-ae99-4d701c33f225",
       "name": "Microburst — Agentic Shift"
     },
     {
       "parameters": {
-        "content": "## Mock Output · Billing Queue\n**Why a mock?** In Labs we *stub* the real integration (e.g. Zendesk, a billing queue) so we can prove the routing logic before wiring anything live.\n\n**Diligence (4D #4):** this node writes an `audit_log` field in NoéMI's canonical shape (`task, inputs, actions, risks, result`). On NewPush Labs that record streams via Promtail → **Loki** and is queryable in **Grafana** — so every routed action leaves a trace. Replace this stub with a real node only once the log looks right.",
-        "height": 220,
-        "width": 320,
-        "color": 4
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [1480, -120],
-      "id": "f54cc400-bf8f-44f1-a80a-d5a731baa2c6",
-      "name": "Microburst — Billing"
-    },
-    {
-      "parameters": {
-        "content": "## Mock Output · Technical Support\nThis stub stands in for your ticketing / on-call integration.\n\n**Resilience:** real downstream tools fail. When you promote this lab, wrap the live node with retry + exponential backoff and a graceful fallback, so a transient API error never silently drops a customer.",
-        "height": 210,
-        "width": 320,
-        "color": 4
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [1480, 140],
-      "id": "26a65cde-9a42-493f-8edd-e1a1e6532c88",
-      "name": "Microburst — Technical Support"
-    },
-    {
-      "parameters": {
-        "content": "## Mock Output · Sales Pipeline\nA placeholder for your CRM hand-off.\n\n**Promotion path:** `LABS (prototype) → peer review → PROD cluster`. Swap mock nodes for real integrations and placeholder credentials for vault-managed secrets *only* after a human approver signs off.",
-        "height": 210,
-        "width": 320,
-        "color": 4
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [1480, 380],
-      "id": "649368f1-c1e8-406d-9cd8-71d19f093ebc",
-      "name": "Microburst — Sales"
-    },
-    {
-      "parameters": {
-        "content": "## Mock Output · Human Escalation (Fallback)\n### Discernment in action\n\n**Discernment** (4D #3) is judging the quality and limits of the AI's output. This fallback branch *is* discernment made structural:\n\n- When the model is unsure it returns **\"other\"** → the work lands here, with a human, instead of being forced into the wrong queue.\n- This honours **The Refusal Principle**: a good coworker escalates rather than guesses on low-confidence or out-of-scope inputs.\n\n**Diligence:** every branch writes an `audit_log` that streams to **Loki/Grafana** on Labs. A rising fallback rate is your early-warning signal that the Description (prompt) needs tightening.",
-        "height": 280,
-        "width": 340,
-        "color": 4
-      },
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [1480, 620],
-      "id": "b6bde9e7-0f2e-46e1-a8b9-a18dc3cc6b99",
-      "name": "Microburst — Human Escalation"
-    },
-    {
-      "parameters": {
         "httpMethod": "POST",
-        "path": "customer-inquiry-router",
+        "path": "customer-inquiry-router-grok",
         "responseMode": "lastNode",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [0, 200],
-      "id": "0137fbd5-4c0d-43ed-a624-6e68ed877e4f",
+      "id": "d24f5077-309e-4142-bf00-5e812d440336",
       "name": "Customer Inquiry Webhook",
-      "webhookId": "f9ef2bdd-8ecb-496b-8a5c-7472ddf4de7b"
+      "webhookId": "a1b2c3d4-e5f6-4789-abcd-ef0123456789"
     },
     {
       "parameters": {
-        "modelId": {
-          "__rl": true,
-          "value": "models/gemini-3.6-flash",
-          "mode": "list",
-          "cachedResultName": "models/gemini-3.6-flash"
-        },
-        "messages": {
-          "values": [
-            {
-              "content": "=You are the front-desk Virtual Coworker for NewPush. Read the customer's message and decide which single team should handle it.\n\nCUSTOMER MESSAGE:\n{{ $json.body.message }}\n\nCATEGORIES (choose exactly one):\n- \"billing\" — invoices, payments, refunds, pricing, subscription changes.\n- \"technical_support\" — bugs, errors, outages, \"it's not working\", how-to questions.\n- \"sales\" — new business, upgrades, demos, quotes, partnership enquiries.\n- \"other\" — anything unclear, mixed, sensitive, or outside the above. When in doubt, choose \"other\" so a human can decide.\n\nTone: warm, concise, professional.\n\nReturn ONLY valid JSON — no markdown, no code fences — in this exact shape:\n{\n  \"category\": \"billing | technical_support | sales | other\",\n  \"summary\": \"one sentence describing the request\",\n  \"confidence\": 0.0,\n  \"suggested_reply\": \"a short, friendly holding reply to the customer\"\n}"
-            }
-          ]
-        },
-        "simplify": true,
-        "jsonOutput": true,
-        "builtInTools": {},
-        "options": {}
+        "promptType": "define",
+        "text": "=You are the front-desk Virtual Coworker for NewPush. Read the customer's message and decide which single team should handle it.\n\nCUSTOMER MESSAGE:\n{{ $json.body.message }}\n\nCATEGORIES (choose exactly one):\n- \"billing\" — invoices, payments, refunds, pricing, subscription changes.\n- \"technical_support\" — bugs, errors, outages, \"it's not working\", how-to questions.\n- \"sales\" — new business, upgrades, demos, quotes, partnership enquiries.\n- \"other\" — anything unclear, mixed, sensitive, or outside the above. When in doubt, choose \"other\" so a human can decide.\n\nTone: warm, concise, professional.\n\nReturn ONLY valid JSON — no markdown, no code fences — in this exact shape:\n{\n  \"category\": \"billing | technical_support | sales | other\",\n  \"summary\": \"one sentence describing the request\",\n  \"confidence\": 0.0,\n  \"suggested_reply\": \"a short, friendly holding reply to the customer\"\n}"
       },
-      "type": "@n8n/n8n-nodes-langchain.googleGemini",
-      "typeVersion": 1.1,
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
       "position": [360, 200],
-      "id": "ad823021-8200-4062-9ae0-f6cbf2c0327c",
-      "name": "Triage Coworker (Gemini 3.6 Flash)",
+      "id": "e3506188-410f-4253-c011-6f923e551447",
+      "name": "Triage Coworker (Grok)"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "grok-4",
+          "mode": "list",
+          "cachedResultName": "grok-4"
+        },
+        "options": {
+          "responseFormat": "json_object"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatXAiGrok",
+      "typeVersion": 1,
+      "position": [360, 420],
+      "id": "f4617299-5210-4364-d122-70a34f662558",
+      "name": "xAI Grok Chat Model",
       "credentials": {
-        "googlePalmApi": {
-          "id": "REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID",
-          "name": "Google Gemini(PaLM) Api account"
+        "xAiApi": {
+          "id": "REPLACE_WITH_YOUR_XAI_API_CREDENTIAL_ID",
+          "name": "xAI API account"
         }
       }
     },
@@ -167,7 +118,7 @@
                 "conditions": [
                   {
                     "id": "31a1ef99-44c9-4592-80e9-16d171e94d2b",
-                    "leftValue": "={{ JSON.parse($json.content.parts[0].text).category }}",
+                    "leftValue": "={{ JSON.parse($json.text).category }}",
                     "rightValue": "billing",
                     "operator": {
                       "type": "string",
@@ -191,7 +142,7 @@
                 "conditions": [
                   {
                     "id": "684309ac-a628-45ad-b772-35264275dc7e",
-                    "leftValue": "={{ JSON.parse($json.content.parts[0].text).category }}",
+                    "leftValue": "={{ JSON.parse($json.text).category }}",
                     "rightValue": "technical_support",
                     "operator": {
                       "type": "string",
@@ -215,7 +166,7 @@
                 "conditions": [
                   {
                     "id": "0772ed8e-045e-492c-9ad3-b900cebd4b43",
-                    "leftValue": "={{ JSON.parse($json.content.parts[0].text).category }}",
+                    "leftValue": "={{ JSON.parse($json.text).category }}",
                     "rightValue": "sales",
                     "operator": {
                       "type": "string",
@@ -379,14 +330,25 @@
       "main": [
         [
           {
-            "node": "Triage Coworker (Gemini 3.6 Flash)",
+            "node": "Triage Coworker (Grok)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Triage Coworker (Gemini 3.6 Flash)": {
+    "xAI Grok Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Triage Coworker (Grok)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triage Coworker (Grok)": {
       "main": [
         [
           {
@@ -436,11 +398,11 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "f77f2df7-eae7-4207-8341-d717654e079c",
+  "versionId": "b88e3c01-9d2a-4f11-8c44-0a1b2c3d4e5f",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "REPLACE_WITH_YOUR_INSTANCE_ID"
   },
-  "id": "PCn5NTaHC6U",
+  "id": "PCn5NTaHC6U-grok",
   "tags": []
 }

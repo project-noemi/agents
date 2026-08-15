@@ -4,13 +4,14 @@ MODE="builder"
 
 print_usage() {
     cat <<'EOF'
-Usage: bash scripts/verify-env.sh [--mode builder|gemini|claude|codex|docker|n8n]
+Usage: bash scripts/verify-env.sh [--mode builder|gemini|claude|codex|grok|docker|n8n]
 
 Modes:
   builder  Default beginner path. Requires Git, Node.js, and at least one supported local AI client.
   gemini   Gemini CLI local path.
   claude   Claude Code CLI local path.
   codex    OpenAI Codex CLI local path.
+  grok     Grok Build CLI local path.
   docker   Docker home and runtime verification path.
   n8n      n8n automation path without assuming a local AI client or Docker.
 EOF
@@ -40,7 +41,7 @@ done
 MODE="$(printf '%s' "$MODE" | tr '[:upper:]' '[:lower:]')"
 
 case "$MODE" in
-    builder|gemini|claude|codex|docker|n8n)
+    builder|gemini|claude|codex|grok|docker|n8n)
         ;;
     *)
         echo -e "❌ Unknown mode: $MODE"
@@ -74,7 +75,7 @@ note_tool() {
 check_any_local_client() {
     local found_clients=()
 
-    for tool in gemini claude codex; do
+    for tool in gemini claude codex grok; do
         if command -v "$tool" >/dev/null 2>&1; then
             found_clients+=("$tool")
         fi
@@ -86,7 +87,7 @@ check_any_local_client() {
     fi
 
     echo -e "❌ No supported local AI client found."
-    echo -e "   Install at least one of: Gemini CLI, Claude Code CLI, or OpenAI Codex."
+    echo -e "   Install at least one of: Gemini CLI, Claude Code CLI, OpenAI Codex, or Grok Build."
     return 1
 }
 
@@ -110,17 +111,23 @@ case "$MODE" in
         check_tool "OpenAI Codex CLI" "codex" || ALL_GOOD=false
         note_tool "Docker" "docker"
         ;;
+    grok)
+        check_tool "Grok Build CLI" "grok" || ALL_GOOD=false
+        note_tool "Docker" "docker"
+        ;;
     docker)
         check_tool "Docker" "docker" || ALL_GOOD=false
         note_tool "Gemini CLI" "gemini"
         note_tool "Claude Code CLI" "claude"
         note_tool "OpenAI Codex CLI" "codex"
+        note_tool "Grok Build CLI" "grok"
         ;;
     n8n)
         note_tool "Docker" "docker"
         note_tool "Gemini CLI" "gemini"
         note_tool "Claude Code CLI" "claude"
         note_tool "OpenAI Codex CLI" "codex"
+        note_tool "Grok Build CLI" "grok"
         ;;
 esac
 
@@ -175,13 +182,14 @@ check_env_var() {
 check_env_var "GEMINI_API_KEY"
 check_env_var "ANTHROPIC_API_KEY"
 check_env_var "OPENAI_API_KEY"
+check_env_var "XAI_API_KEY"
 
 echo -e "\n🧭 Recommended next step for $MODE mode:"
 case "$MODE" in
     builder)
         echo -e "   Read docs/examples/zero-to-first-agent.md and prove one safe local task first."
         ;;
-    gemini|claude|codex)
+    gemini|claude|codex|grok)
         echo -e "   Generate context with node scripts/generate_all.js and run one read-only local task first."
         ;;
     docker)

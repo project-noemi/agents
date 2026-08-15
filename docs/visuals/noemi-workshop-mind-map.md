@@ -33,6 +33,8 @@ mindmap
       Antigravity
       Claude Code
       Codex
+      Grok Build
+      Grok Custom Agents
       Google Workspace
       Microsoft 365
     Governance

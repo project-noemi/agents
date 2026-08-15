@@ -103,13 +103,22 @@ test('beginner builder docs start with a safe local success before Docker', () =
     assert.match(platformGuide, /macos-linux-kickstart\.md/);
     assert.match(platformGuide, /windows-kickstart\.md/);
     assert.match(platformGuide, /chromeos-kickstart\.md/);
+    assert.match(platformGuide, /curl -fsSL https:\/\/x\.ai\/cli\/install\.sh/);
+    assert.match(platformGuide, /irm https:\/\/x\.ai\/cli\/install\.ps1/);
+    assert.match(platformGuide, /verify-env\.sh --mode=grok/);
+    assert.match(beginnerGuide, /curl -fsSL https:\/\/x\.ai\/cli\/install\.sh/);
+    assert.match(beginnerGuide, /irm https:\/\/x\.ai\/cli\/install\.ps1/);
     assert.match(macGuide, /macOS or Linux/i);
     assert.match(macGuide, /bash scripts\/verify-env\.sh --mode=builder/i);
+    assert.match(macGuide, /curl -fsSL https:\/\/x\.ai\/cli\/install\.sh/);
     assert.match(windowsGuide, /PowerShell/i);
     assert.match(windowsGuide, /powershell -ExecutionPolicy Bypass -File scripts\/verify-env\.ps1 -Mode builder/i);
+    assert.match(windowsGuide, /irm https:\/\/x\.ai\/cli\/install\.ps1/);
     assert.match(windowsGuide, /You do \*\*not\*\* need WSL/i);
     assert.match(chromeOsGuide, /Linux development environment/i);
     assert.match(chromeOsGuide, /bash scripts\/verify-env\.sh --mode=builder/i);
+    assert.match(chromeOsGuide, /curl -fsSL https:\/\/x\.ai\/cli\/install\.sh/);
+    assert.match(chromeOsGuide, /verify-env\.sh --mode=grok/);
     assert.match(chromeOsGuide, /ChromeOS is often \*\*not\*\* the easiest place to start the Docker phase/i);
 });
 
@@ -185,6 +194,7 @@ test('Google Workspace docs separate Gemini CLI, generic MCP, and n8n setup path
     assert.match(gwsMachineSetup, /not an officially supported Google product/i);
     assert.match(gwsMachineSetup, /Claude Code/);
     assert.match(gwsMachineSetup, /Codex/);
+    assert.match(gwsMachineSetup, /Grok Build/);
     assert.match(geminiQuickstart, /gemini extensions install https:\/\/github\.com\/gemini-cli-extensions\/workspace/);
     assert.match(geminiQuickstart, /does \*\*not\*\* use the generic `GOOGLE_CLIENT_ID`/);
     assert.match(geminiQuickstart, /gws-cli-machine-setup\.md/);
@@ -198,11 +208,12 @@ test('Google Workspace docs separate Gemini CLI, generic MCP, and n8n setup path
     assert.match(matrix, /n8n Gmail \/ Docs \/ Drive \/ Sheets nodes/);
 });
 
-test('local workspace docs explain CLI-first builder habits across Gemini, Claude, and Codex', () => {
+test('local workspace docs explain CLI-first builder habits across Gemini, Claude, Codex, and Grok', () => {
     const overview = read('docs/tool-usages/agentic-local-workspaces.md');
     const google = read('docs/tool-usages/google-local-workspace.md');
     const claude = read('docs/tool-usages/claude-code-local-workspace.md');
     const codex = read('docs/tool-usages/openai-codex-local-workspace.md');
+    const grok = read('docs/tool-usages/grok-build-local-workspace.md');
     const googleClients = read('docs/mcp-setup/google-workspace-agentic-clients.md');
     const microsoftClients = read('docs/mcp-setup/microsoft-365-agentic-clients.md');
 
@@ -216,15 +227,19 @@ test('local workspace docs explain CLI-first builder habits across Gemini, Claud
     assert.match(claude, /claude mcp add/);
     assert.match(codex, /gws-cli-machine-setup\.md/);
     assert.match(codex, /codex mcp add/);
+    assert.match(grok, /curl -fsSL https:\/\/x\.ai\/cli\/install\.sh/);
+    assert.match(grok, /irm https:\/\/x\.ai\/cli\/install\.ps1/);
     assert.match(googleClients, /Gemini CLI/);
     assert.match(googleClients, /Antigravity/);
     assert.match(googleClients, /OpenAI Codex/);
     assert.match(googleClients, /Claude Code app/);
     assert.match(googleClients, /Claude Code CLI/);
+    assert.match(googleClients, /Grok Build/);
     assert.match(microsoftClients, /Microsoft 365, also commonly called Office 365/i);
     assert.match(microsoftClients, /gemini mcp add microsoft365/);
     assert.match(microsoftClients, /codex mcp add microsoft365/);
     assert.match(microsoftClients, /claude mcp add microsoft365/);
+    assert.match(microsoftClients, /grok mcp add microsoft365/);
 });
 
 test('localized operating profile docs separate culture from translation and guard against stereotypes', () => {
@@ -340,7 +355,39 @@ test('RFP responder workflow uses the current Google Gemini node path', () => {
 
     assert.ok(geminiNode, 'Expected Analyze Request (Gemini) node to exist');
     assert.equal(geminiNode.type, '@n8n/n8n-nodes-langchain.googleGemini');
-    assert.match(workflowText, /models\/gemini-2\.5-flash/);
+    assert.match(workflowText, /models\/gemini-3\.6-flash/);
     assert.match(workflowText, /REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID/);
     assert.doesNotMatch(workflowText, /@n8n\/n8n-nodes-langchain\.chainLlm/);
+});
+
+test('Grok companion n8n workflows use the official xAI chat-model path', () => {
+    const rfp = JSON.parse(read('examples/workflows/rfp-responder-grok.json'));
+    const rfpText = read('examples/workflows/rfp-responder-grok.json');
+    const lab = JSON.parse(read('n8n-templates/layer-b-labs/customer-inquiry-router-grok.json'));
+    const labText = read('n8n-templates/layer-b-labs/customer-inquiry-router-grok.json');
+
+    const rfpChain = rfp.nodes.find((node) => node.name === 'Analyze Request (Grok)');
+    const rfpModel = rfp.nodes.find((node) => node.type === '@n8n/n8n-nodes-langchain.lmChatXAiGrok');
+    const labChain = lab.nodes.find((node) => node.name === 'Triage Coworker (Grok)');
+    const labModel = lab.nodes.find((node) => node.type === '@n8n/n8n-nodes-langchain.lmChatXAiGrok');
+
+    assert.ok(rfpChain, 'Expected Analyze Request (Grok) chain node');
+    assert.equal(rfpChain.type, '@n8n/n8n-nodes-langchain.chainLlm');
+    assert.ok(rfpModel, 'Expected xAI Grok Chat Model on the RFP companion');
+    assert.match(rfpText, /REPLACE_WITH_YOUR_XAI_API_CREDENTIAL_ID/);
+    assert.equal(
+        rfp.nodes.some((node) => node.type === '@n8n/n8n-nodes-langchain.googleGemini'),
+        false
+    );
+    assert.doesNotMatch(rfpText, /candidates\[0\]\.content\.parts\[0\]\.text/);
+
+    assert.ok(labChain, 'Expected Triage Coworker (Grok) chain node');
+    assert.equal(labChain.type, '@n8n/n8n-nodes-langchain.chainLlm');
+    assert.ok(labModel, 'Expected xAI Grok Chat Model on the Layer B companion');
+    assert.match(labText, /REPLACE_WITH_YOUR_XAI_API_CREDENTIAL_ID/);
+    assert.equal(
+        lab.nodes.some((node) => node.type === '@n8n/n8n-nodes-langchain.googleGemini'),
+        false
+    );
+    assert.match(labText, /JSON\.parse\(\$json\.text\)\.category/);
 });

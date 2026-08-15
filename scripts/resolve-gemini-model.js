@@ -21,14 +21,11 @@
  *   review's audit log, so a verdict is always attributable to what produced
  *   it. See docs/AI_REVIEW_GOVERNANCE.md.
  *
- * SELECTION RULE (owner decision 2026-08-11)
- *   Prefer the newest stable model of the highest available generation. Pro is
- *   elevated only when a stable Pro exists in that generation; otherwise take
- *   the best stable model of the latest generation.
- *
- *   So generation dominates and tier orders within a generation. A hard-coded
- *   tier weight looks like "prefer Pro" but drags selection backwards whenever
- *   the newest generation has no stable Pro — which is the live situation.
+ * SELECTION RULE (owner decision 2026-08-15, Decision [2026-08-15-0003])
+ *   Review floor is `pro`. Flash is not adequate for a thorough review.
+ *   Among models that meet the floor, prefer the newest stable generation;
+ *   Pro is elevated within that generation. A catalogue with no Pro fails
+ *   loudly instead of running on Flash.
  *
  *   --prefer-pro / GEMINI_PREFER_PRO=1 (`prefer_pro_tier` / `force_pro`) makes
  *   Pro dominant instead. Selection may then fall back to an older stable Pro,
@@ -57,7 +54,7 @@
 const { getAccessToken, tokenSource } = require('./gcp-token.js');
 
 const TIER_RANK = { pro: 300, flash: 200, 'flash-lite': 100 };
-const DEFAULT_FLOOR = process.env.GEMINI_REVIEW_FLOOR || 'flash';
+const DEFAULT_FLOOR = process.env.GEMINI_REVIEW_FLOOR || 'pro';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 function parseArgs(argv) {
@@ -179,7 +176,7 @@ function rank(models, { allowPreview = false, preferPro = false } = {}) {
  * selects an older generation than the default rule would, that regression is
  * reported rather than left for someone to discover in an audit log.
  */
-function selectModel(models, { allowPreview = false, preferPro = false, floor = 'flash' } = {}) {
+function selectModel(models, { allowPreview = false, preferPro = false, floor = 'pro' } = {}) {
   const eligible = (opts) => rank(models, opts).filter((m) => meetsFloor(m, floor));
 
   const chosen = eligible({ allowPreview, preferPro })[0] || null;

@@ -263,13 +263,14 @@ Their names still contain "pro" and "flash", so a naive rank will cheerfully
 choose an *image* model to review your code. Most published Gemini models are
 wrong for this job.
 
-### The Pro toggle
+### The Pro floor (required)
 
-If you want Pro regardless, it is an explicit switch rather than a hidden weight:
+Flash is not an adequate review model (Decision [2026-08-15-0003]). The
+runner and the workflow default to `--floor pro`. A catalogue with no Pro
+halts the review. `--prefer-pro` is also on by default.
 
 ```bash
-node scripts/resolve-gemini-model.js --prefer-pro
-# or set the GEMINI_PREFER_PRO repository variable to 1
+node scripts/resolve-gemini-model.js --floor pro --prefer-pro
 ```
 
 When the toggle costs you a generation, it tells you:

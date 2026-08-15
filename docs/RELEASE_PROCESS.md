@@ -224,12 +224,21 @@ material is the private key. If either secret is missing, the promotion step is
 skipped and the job no-ops cleanly rather than failing.
 
 The provisioned App is **`noemi-release-bot`** (comments as
-`noemi-release-bot[bot]`). Named owner, enterprise installation scope,
+`noemi-release-bot[bot]`). It was created under `project-noemi` on 2026-08-05
+and **transferred to the enterprise** on 2026-08-15 (Decision
+[2026-08-15-0002]). App ID stayed `4490886`; do not mint a new key or rewrite
+the Actions secrets. The App is now **internal** (`GET /apps/noemi-release-bot`
+404s outside the enterprise). Named owner, enterprise installation scope,
 permission set, private-key custody, and the scoped merge exception
 (auto-merge of `develop → main` promotion PRs only, in any installed fleet
 repo) are recorded in the machine-identity register —
-`docs/MACHINE_IDENTITY.md`, Decision [2026-08-14-0002]. Do not grant
-`Workflows` permission or a branch-protection bypass.
+`docs/MACHINE_IDENTITY.md`. Do not grant `Workflows` permission or a
+branch-protection bypass.
+
+If an org-owned copy ever appears again, transfer it rather than creating a
+second App: App settings → **Advanced** → **Transfer ownership** → the
+**Enterprise** account (not an org of the same name). Make the App **private**
+first if the enterprise is Classic.
 
 ### Where the changelog lives: the GitHub Release, not a committed file
 

@@ -191,11 +191,11 @@ its owner, and the scoped merge exception.
 | Field | Value |
 |---|---|
 | **Identity** | `noemi-release-bot` GitHub App (comments and authors as `noemi-release-bot[bot]`) |
-| **Status** | **Provisioned** 2026-08-05 — live since promotion PRs #360/#363 |
+| **Status** | **Provisioned** 2026-08-05; **transferred to the enterprise** 2026-08-15 (Decision [2026-08-15-0002]) |
 | **Purpose** | Enterprise promotion actor: open and auto-merge content-gated `develop → main` PRs so `on: pull_request` checks run |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
-| **App owner (GitHub)** | Enterprise-level App; public record lists owning organization `project-noemi` (not a user, not a single repository) |
-| **Credential** | App private key — Actions secret `RELEASE_APP_PRIVATE_KEY` (org- or repo-level copy of the **same** enterprise key); App ID in `RELEASE_APP_ID` |
+| **App owner (GitHub)** | Enterprise account (internal visibility). Transfer attested 2026-08-15: `GET /apps/noemi-release-bot` now 404s for a non-enterprise token (expected); App ID is still `4490886` (bot avatar `/in/4490886`). Do not rotate `RELEASE_APP_ID` / `RELEASE_APP_PRIVATE_KEY`. |
+| **Credential** | App private key — Actions secret `RELEASE_APP_PRIVATE_KEY` (org- or repo-level copy of the **same** enterprise key); App ID in `RELEASE_APP_ID` (`4490886`) |
 | **Runtime token** | Installation token minted per run by `actions/create-github-app-token`, ~1 hour lifetime |
 | **Permissions** | Contents **read and write**, Pull requests read/write, Metadata read. No Workflows, Administration, or Secrets |
 | **Installed on** | Enterprise organizations `newpush`, `project-noemi`, `newpush-labs` — the same fleet as `noemi-reviewer[bot]`. **Not** a `project-noemi/agents`-only install |
@@ -227,6 +227,14 @@ writes).
 
 If `RELEASE_APP_ID` / `RELEASE_APP_PRIVATE_KEY` are unset, the promotion step
 no-ops cleanly — it does not fall back to `GITHUB_TOKEN` or a human PAT.
+
+Transfer does **not** install the App on the other fleet orgs by itself. After
+the 2026-08-15 ownership move, confirm installs on `newpush` and
+`newpush-labs` at
+<https://github.com/apps/noemi-release-bot/installations/new> if they are not
+already present. The `project-noemi` install is still live: the bot identity
+continues to resolve and historical promotion PRs still attribute to
+`noemi-release-bot[bot]`.
 
 ### Effective-permission posture — the token is the boundary
 

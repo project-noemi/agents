@@ -615,7 +615,8 @@ installed everywhere, minting its own short-lived token per run:
 1. Create the App at the **enterprise** (*Enterprise settings → GitHub Apps →
    New GitHub App*), or **transfer** an existing org-owned App there
    (App settings → Advanced → Transfer ownership → the **Enterprise**
-   account). Name it `noemi-reviewer` (comments as `noemi-reviewer[bot]`).
+   account). The live App slugs as `noemi-reviewer-bot` (comments as
+   `noemi-reviewer-bot[bot]`, verified on PR #403).
    No webhook. Do not create a second App if one already exists.
    Transferred to the enterprise 2026-08-15 (Decision [2026-08-15-0004]).
 2. Repository permissions — same least-privilege shape as the PAT:
@@ -626,11 +627,15 @@ installed everywhere, minting its own short-lived token per run:
 
    ```bash
    infisical secrets set REVIEWER_APP_PRIVATE_KEY="$(cat noemi-reviewer.*.pem)" --env=dev
+   infisical secrets set REVIEWER_APP_ID="<app-id>" --env=dev
    gh variable set REVIEWER_APP_ID --org <each-org> --visibility all --body "<app-id>"
    ```
 
-   Then delete the downloaded `.pem` — the vault copy is the only one that
-   should exist. After a transfer, do **not** rotate the key.
+   The vault project is **noemi-agents** (same `INFISICAL_PROJECT_ID` the
+   review workflow already uses). CI reads `vars.REVIEWER_APP_ID` first, then
+   the Infisical `REVIEWER_APP_ID` if the variable is empty. Then delete the
+   downloaded `.pem` — the vault copy is the only one that should exist.
+   After a transfer, do **not** rotate the key.
 4. **Install the app** on each enterprise organization (Install App →
    All repositories) for `newpush`, `project-noemi`, and `newpush-labs`.
    Transfer does not add those installs.

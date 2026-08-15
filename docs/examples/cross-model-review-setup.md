@@ -611,14 +611,17 @@ resource owner, so a multi-org fleet on PATs means one token per org, each on
 its own 90-day rotation. Don't. Create a **GitHub App** instead — one identity,
 installed everywhere, minting its own short-lived token per run:
 
-1. In the tooling org: Settings → Developer settings → GitHub Apps → **New
-   GitHub App**. Name it `noemi-reviewer` (comments will post as
-   `noemi-reviewer[bot]`). Disable webhooks; it needs no URL.
+1. Create the App at the **enterprise** (*Enterprise settings → GitHub Apps →
+   New GitHub App*), or **transfer** an existing org-owned App there
+   (App settings → Advanced → Transfer ownership → the **Enterprise**
+   account). Name it `noemi-reviewer` (comments as `noemi-reviewer[bot]`).
+   No webhook. Do not create a second App if one already exists.
+   Transferred to the enterprise 2026-08-15 (Decision [2026-08-15-0004]).
 2. Repository permissions — same least-privilege shape as the PAT:
    **Contents: Read-only**, **Pull requests: Read and write**, Metadata: read.
    The reviewer must stay structurally unable to author code.
-3. Generate a **private key** (downloads a `.pem`), store it in Infisical, and
-   record the **App ID**:
+3. Generate a **private key** only if this is a new App (a transfer keeps
+   the existing key). Store it in Infisical and record the **App ID**:
 
    ```bash
    infisical secrets set REVIEWER_APP_PRIVATE_KEY="$(cat noemi-reviewer.*.pem)" --env=dev
@@ -626,9 +629,10 @@ installed everywhere, minting its own short-lived token per run:
    ```
 
    Then delete the downloaded `.pem` — the vault copy is the only one that
-   should exist.
-4. **Install the app** on each organization (App settings → Install App →
-   All repositories), for all three orgs.
+   should exist. After a transfer, do **not** rotate the key.
+4. **Install the app** on each enterprise organization (Install App →
+   All repositories) for `newpush`, `project-noemi`, and `newpush-labs`.
+   Transfer does not add those installs.
 
 The workflow mints a one-hour installation token per run and the runner prefers
 it over any PAT. When `REVIEWER_APP_ID` is unset the whole path no-ops and the

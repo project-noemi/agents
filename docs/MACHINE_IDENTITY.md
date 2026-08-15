@@ -179,7 +179,12 @@ The daily CalVer promotion job opens (and auto-merges) the `develop → main`
 promotion PR with a **GitHub App installation token**, not with `noemi-agent`
 and not with the default `GITHUB_TOKEN`. A `GITHUB_TOKEN`-opened PR does not
 trigger `on: pull_request` workflows, so `main`'s required `check-source-branch`
-check would never run and auto-merge would stall. Setup mechanics live in
+check would never run and auto-merge would stall.
+
+This App is an **enterprise-level** identity — the same shape as
+`noemi-reviewer[bot]`. It exists so the fleet shares one promotion actor
+instead of a per-repository PAT or a per-repository App. Do not create a
+second release App for a single repo. Setup mechanics live in
 `docs/RELEASE_PROCESS.md`; this register records the provisioned identity,
 its owner, and the scoped merge exception.
 
@@ -187,16 +192,17 @@ its owner, and the scoped merge exception.
 |---|---|
 | **Identity** | `noemi-release-bot` GitHub App (comments and authors as `noemi-release-bot[bot]`) |
 | **Status** | **Provisioned** 2026-08-05 — live since promotion PRs #360/#363 |
-| **Purpose** | Open and auto-merge the content-gated `develop → main` promotion PR so `on: pull_request` checks run |
+| **Purpose** | Enterprise promotion actor: open and auto-merge content-gated `develop → main` PRs so `on: pull_request` checks run |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
-| **Credential** | App private key — repository Actions secret `RELEASE_APP_PRIVATE_KEY`, the only copy; App ID in `RELEASE_APP_ID` |
+| **App owner (GitHub)** | Enterprise-level App; public record lists owning organization `project-noemi` (not a user, not a single repository) |
+| **Credential** | App private key — Actions secret `RELEASE_APP_PRIVATE_KEY` (org- or repo-level copy of the **same** enterprise key); App ID in `RELEASE_APP_ID` |
 | **Runtime token** | Installation token minted per run by `actions/create-github-app-token`, ~1 hour lifetime |
 | **Permissions** | Contents **read and write**, Pull requests read/write, Metadata read. No Workflows, Administration, or Secrets |
-| **Installed on** | `project-noemi/agents` **only** — not org-wide, not the rest of the fleet |
+| **Installed on** | Enterprise organizations `newpush`, `project-noemi`, `newpush-labs` — the same fleet as `noemi-reviewer[bot]`. **Not** a `project-noemi/agents`-only install |
 | **Rotation** | None scheduled; revoke and re-key on suspected exposure. The installation token itself expires per run |
 | **May author feature work?** | **No.** It opens the promotion PR (a merge of already-reviewed `develop` into `main`). It does not write `CHANGELOG.md` or push commits to `main` (`git.commit: false`) |
 | **May approve PRs?** | **No.** Approval is a human-only act |
-| **May merge PRs?** | **Yes — scoped exception only.** Auto-merge of `develop → main` promotion PRs opened by `.github/workflows/release.yml`. No other PR, no other branch, no other workflow |
+| **May merge PRs?** | **Yes — scoped exception only.** Auto-merge of `develop → main` promotion PRs opened by the release workflow in any installed fleet repo. No other PR, no other branch, no other workflow |
 
 #### The sanctioned merge exception
 
@@ -204,16 +210,15 @@ its owner, and the scoped merge exception.
 only machine identity that may, and only because promotion is not a new review
 surface: every commit on `develop` already passed human review, and
 `require-develop-source.yml` guarantees the promotion PR's only possible source
-is `develop`. Widening this exception — other workflows, other repos, feature
-branches, or a protection bypass on `main` — is a new decision, not an
-operational tweak.
+is `develop`. Using the **same** enterprise App for the same promotion job in
+another fleet repository is the design, not a widening. Widening would be:
+other workflows, feature branches, or a protection bypass on `main`.
 
 The exception is **workflow-scoped, not token-scoped.** Contents + Pull
 requests write is enough to merge any PR the App can see; GitHub has no
-permission that means "merge promotion PRs only." The bound is that
-`.github/workflows/release.yml` is the only job that receives the minted
-token, and it only opens/merges the `develop → main` promotion PR. Do not
-hand this token to another workflow.
+permission that means "merge promotion PRs only." The bound is that only the
+release workflow receives the minted token, and it only opens/merges the
+`develop → main` promotion PR. Do not hand this token to another workflow.
 
 Verified executions (author *and* merger `noemi-release-bot[bot]`): promotion
 PRs #360, #363, #380, #387, #391, #396. Releases are stamped afterwards by
@@ -476,7 +481,7 @@ becomes unmergeable and admins have no escape hatch.
     "created fine-grained PAT scoped to single repo",
     "stored producer credential in Infisical as AGENT_GH_TOKEN",
     "granted write (push) permission on repository",
-    "registered noemi-release-bot GitHub App with scoped develop-to-main merge exception",
+    "registered noemi-release-bot as an enterprise-level GitHub App with scoped develop-to-main merge exception",
     "documented scheduled-session AGENT_GH_TOKEN injection contract"
   ],
   "risks": [

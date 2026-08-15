@@ -157,21 +157,23 @@ chances for the rotation discipline this register depends on to slip.
 | Field | Value |
 |---|---|
 | **Identity** | `noemi-reviewer` GitHub App (comments as `noemi-reviewer[bot]`) |
-| **Status** | Registered here ahead of provisioning — see setup guide |
+| **Status** | **Transferred to the enterprise** 2026-08-15; App ID set and installed on the fleet repos the same day (Decision [2026-08-15-0004]) |
 | **Purpose** | Fleet-wide review-finding comments; replaces per-org reviewer PATs |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
-| **Credential** | App private key — Infisical secret `REVIEWER_APP_PRIVATE_KEY`, the only copy |
+| **App owner (GitHub)** | Enterprise account (internal visibility). Transfer attested 2026-08-15: `GET /apps/noemi-reviewer` 404s for a non-enterprise token (same signal as `noemi-release-bot`). Do not rotate `REVIEWER_APP_PRIVATE_KEY`. |
+| **Credential** | App private key — Infisical secret `REVIEWER_APP_PRIVATE_KEY`, the only copy; App ID in Actions variable `REVIEWER_APP_ID` (set on each fleet repo 2026-08-15) |
 | **Runtime token** | Installation token minted per run, ~1 hour lifetime |
-| **Permissions** | Contents **read-only**, Pull requests read/write, Metadata read |
-| **Installed on** | `newpush`, `project-noemi`, `newpush-labs` — all repositories |
+| **Permissions** | Contents **read-only**, Pull requests read/write, Metadata read. No Workflows, Administration, or Secrets |
+| **Installed on** | Fleet repositories in `newpush`, `project-noemi`, `newpush-labs` — Product Owner confirmed install + `REVIEWER_APP_ID` on each repo 2026-08-15 |
 | **Rotation** | None scheduled; revoke and re-key on suspected exposure |
-| **May author code?** | **No** — same structural boundary as the PAT it replaces |
+| **May author code?** | **No** — Contents is read-only, enforced by token |
 | **May approve PRs?** | **No** in phase 1 — CODEOWNERS gate, as before |
 
-The `noemi-reviewer` *user account* remains registered above: its PAT serves
-local development and is the CI fallback while the app is provisioned. Once the
-app is live in all three orgs, revoke the user PATs rather than leaving dormant
-credentials — a fallback nobody exercises is a liability, not a safety net.
+The `noemi-reviewer` *user account* remains registered above. Review comments
+on #401 and the first #402 runs still attributed to that **user** (the PAT
+fallback, before `REVIEWER_APP_ID` was set). The next review after this
+wiring should attribute to `noemi-reviewer[bot]`. Once that is verified,
+revoke the user PATs. Do not mint a second App.
 
 ### Release promotion app — `noemi-release-bot[bot]`
 

@@ -615,7 +615,8 @@ installed everywhere, minting its own short-lived token per run:
 1. Create the App at the **enterprise** (*Enterprise settings → GitHub Apps →
    New GitHub App*), or **transfer** an existing org-owned App there
    (App settings → Advanced → Transfer ownership → the **Enterprise**
-   account). Name it `noemi-reviewer` (comments as `noemi-reviewer[bot]`).
+   account). The live App slugs as `noemi-reviewer-bot` (comments as
+   `noemi-reviewer-bot[bot]`, verified on PR #403).
    No webhook. Do not create a second App if one already exists.
    Transferred to the enterprise 2026-08-15 (Decision [2026-08-15-0004]).
 2. Repository permissions — same least-privilege shape as the PAT:

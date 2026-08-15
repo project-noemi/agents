@@ -156,11 +156,11 @@ chances for the rotation discipline this register depends on to slip.
 
 | Field | Value |
 |---|---|
-| **Identity** | `noemi-reviewer` GitHub App (comments as `noemi-reviewer[bot]`) |
+| **Identity** | `noemi-reviewer` GitHub App (slug `noemi-reviewer-bot`; comments as `noemi-reviewer-bot[bot]`) |
 | **Status** | **Transferred to the enterprise** 2026-08-15; App ID set and installed on the fleet repos the same day (Decision [2026-08-15-0004]) |
 | **Purpose** | Fleet-wide review-finding comments; replaces per-org reviewer PATs |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
-| **App owner (GitHub)** | Enterprise account (internal visibility). Transfer attested 2026-08-15: `GET /apps/noemi-reviewer` 404s for a non-enterprise token (same signal as `noemi-release-bot`). Do not rotate `REVIEWER_APP_PRIVATE_KEY`. |
+| **App owner (GitHub)** | Enterprise account (internal visibility). Public `GET /apps/noemi-reviewer-bot` 404s. Bot user `noemi-reviewer-bot[bot]` (id `317203355`) posted the carve-out halt on PR #403. Do not rotate `REVIEWER_APP_PRIVATE_KEY`. |
 | **Credential** | App private key — Infisical secret `REVIEWER_APP_PRIVATE_KEY` in the **noemi-agents** vault project (same project as `AGENT_GH_TOKEN`). App ID is `REVIEWER_APP_ID` in that vault and/or the repo Actions variable. CI resolves the variable first, then Infisical (Decision [2026-08-15-0005]). |
 | **Runtime token** | Installation token minted per run, ~1 hour lifetime |
 | **Permissions** | Contents **read-only**, Pull requests read/write, Metadata read. No Workflows, Administration, or Secrets |
@@ -169,11 +169,11 @@ chances for the rotation discipline this register depends on to slip.
 | **May author code?** | **No** — Contents is read-only, enforced by token |
 | **May approve PRs?** | **No** in phase 1 — CODEOWNERS gate, as before |
 
-The `noemi-reviewer` *user account* remains registered above. Review comments
-on #401 and the first #402 runs still attributed to that **user** (the PAT
-fallback, before `REVIEWER_APP_ID` was set). The next review after this
-wiring should attribute to `noemi-reviewer[bot]`. Once that is verified,
-revoke the user PATs. Do not mint a second App.
+The `noemi-reviewer` *user account* remains registered above. Reviews through
+#402 used that user PAT. PR #403 posted as **`noemi-reviewer-bot[bot]`** after
+the workflow began resolving the App ID from Infisical. Revoke the user PATs
+when the App path has been green on a couple of non-carve-out reviews. Do not
+mint a second App.
 
 ### Release promotion app — `noemi-release-bot[bot]`
 

@@ -147,21 +147,41 @@ jobs:
           echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
 
       # PREFERRED fleet credential: a GitHub App installation token, minted
-      # fresh for this run. One app installed on every organization replaces
-      # per-org PATs and their rotation schedule; nothing long-lived exists at
-      # runtime. Both steps no-op when REVIEWER_APP_ID is unset, and the runner
-      # falls back to the PAT chain — so the fleet keeps working while the app
-      # is being provisioned, and afterwards the PATs become dead weight to
-      # retire rather than a dependency.
+      # fresh for this run. The App ID may come from the Actions variable
+      # REVIEWER_APP_ID or, if that is empty, from Infisical in the same
+      # project as REVIEWER_APP_PRIVATE_KEY (the noemi-agents vault). A live
+      # 2026-08-15 run skipped minting because it only looked at vars, while
+      # the ID already lived in Infisical — Fetch-on-Demand is the source of
+      # truth. If neither source has an ID, fall back to the PAT chain.
+      - name: Resolve reviewer App ID
+        if: steps.config.outputs.configured == 'true'
+        id: appid
+        env:
+          PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+          VAR_APP_ID: ${{ vars.REVIEWER_APP_ID }}
+        run: |
+          APP_ID="${VAR_APP_ID}"
+          if [[ -z "$APP_ID" ]]; then
+            APP_ID=$(infisical secrets get REVIEWER_APP_ID \
+              --projectId="$PROJECT_ID" --env=dev --plain || true)
+          fi
+          if [[ -n "$APP_ID" ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "REVIEWER_APP_ID=$APP_ID" >> "$GITHUB_ENV"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Reviewer App ID unset::No vars.REVIEWER_APP_ID and no Infisical REVIEWER_APP_ID. Falling back to the PAT."
+          fi
+
       - name: Fetch reviewer app key
-        if: steps.config.outputs.configured == 'true' && vars.REVIEWER_APP_ID != ''
+        if: steps.config.outputs.configured == 'true' && steps.appid.outputs.present == 'true'
         env:
           PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
         run: |
           KEY=$(infisical secrets get REVIEWER_APP_PRIVATE_KEY \
             --projectId="$PROJECT_ID" --env=dev --plain)
           if [[ -z "$KEY" ]]; then
-            echo "::error title=App key missing::REVIEWER_APP_ID is set but REVIEWER_APP_PRIVATE_KEY is not in Infisical."
+            echo "::error title=App key missing::REVIEWER_APP_ID is resolved but REVIEWER_APP_PRIVATE_KEY is not in Infisical project ${PROJECT_ID}."
             exit 1
           fi
           # ::add-mask:: masks single values; a PEM is multiline, so mask each
@@ -174,11 +194,11 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Mint reviewer app token
-        if: steps.config.outputs.configured == 'true' && vars.REVIEWER_APP_ID != ''
+        if: steps.config.outputs.configured == 'true' && steps.appid.outputs.present == 'true'
         id: apptoken
         uses: actions/create-github-app-token@v2
         with:
-          app-id: ${{ vars.REVIEWER_APP_ID }}
+          app-id: ${{ env.REVIEWER_APP_ID }}
           private-key: ${{ env.REVIEWER_APP_KEY }}
           # Defaults to the installation for this repository's owner — exactly
           # the per-org selection the PAT path had to do by hand.
@@ -196,7 +216,10 @@ jobs:
           # `infisical run` injects the whole project, and a stored PAT under
           # the same name would silently shadow a minted app token.
           REVIEWER_APP_TOKEN: ${{ steps.apptoken.outputs.token }}
-          GEMINI_REVIEW_FLOOR: ${{ vars.GEMINI_REVIEW_FLOOR || 'flash' }}
+          # Thoroughness over newest-Flash. Flash is not an adequate review
+          # model (Decision [2026-08-15-0003]). An org var may raise this, not
+          # lower it — the CLI also passes --floor pro.
+          GEMINI_REVIEW_FLOOR: ${{ vars.GEMINI_REVIEW_FLOOR || 'pro' }}
           INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
           # Resolves on all triggers: the event on pull_request, the input on
           # dispatch and on workflow_call.
@@ -208,10 +231,11 @@ jobs:
           # availability lags it (gemini-3.x 404s in us-central1).
           GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'global' }}
           GEMINI_BACKEND: ${{ vars.GEMINI_BACKEND || 'vertex' }}
-          # prefer_pro_tier: opt-in. Off by default so selection follows the
-          # newest-stable-generation rule rather than silently regressing a
-          # generation to satisfy a tier preference.
-          GEMINI_PREFER_PRO: ${{ vars.GEMINI_PREFER_PRO || '' }}
+          # Prefer Pro inside the floor. Combined with floor=pro this is
+          # belt-and-suspenders if a newer Flash is later ranked above Pro.
+          GEMINI_PREFER_PRO: ${{ vars.GEMINI_PREFER_PRO || '1' }}
+          # Sentinel spec is always taken from this checkout (project-noemi/agents).
+          REVIEW_TOOLING_REF: ${{ inputs.tooling-ref || 'develop' }}
         run: |
           # The halt signal is a MARKER FILE, not an exit code. `infisical run`
           # collapses its child's exit code (a 3 surfaces as 1 — verified live),
@@ -223,7 +247,7 @@ jobs:
           rm -f "$REVIEW_HALT_FILE"
           set +e
           infisical run --projectId="$INFISICAL_PROJECT_ID" --env=dev -- \
-            node scripts/review-pr.js --pr "$PR_NUMBER"
+            node scripts/review-pr.js --pr "$PR_NUMBER" --floor pro --prefer-pro
           code=$?
           set -e
           if [[ -f "$REVIEW_HALT_FILE" ]]; then

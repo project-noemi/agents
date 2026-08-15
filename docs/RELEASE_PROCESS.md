@@ -182,10 +182,10 @@ on `main` as follows:
   develop is already reviewed — but supported if a second sign-off on the
   promotion is desired. (If you require approvals, ensure the automation can still
   satisfy them, e.g. via a reviewer or an approval step.)
-- **Set up the release GitHub App and its two secrets** (see the next section).
-  The promotion PR is opened with an App-minted token so its `on: pull_request`
-  checks actually run — without the App configured, the job cleanly no-ops and no
-  promotion happens.
+- **Set up the enterprise-level release GitHub App and its two secrets** (see
+  the next section). The promotion PR is opened with an App-minted token so its
+  `on: pull_request` checks actually run — without the App configured, the job
+  cleanly no-ops and no promotion happens.
 - **Enable "Allow auto-merge"** in the repository's General settings so
   `gh pr merge --auto` can arm the merge. (Without it, the job falls back to an
   immediate merge, which works only in the "must be a PR" configuration.)
@@ -194,21 +194,25 @@ on `main` as follows:
 
 The promotion PR needs to be opened by an actor that triggers `on: pull_request`
 (see the token nuance above). Instead of a personal access token, this repo uses
-a **GitHub App** whose installation token is minted per run. A repository admin
-sets it up once:
+an **enterprise-level GitHub App** whose installation token is minted per run.
+Create it once for the enterprise — not once per repository. A repository admin
+then wires the two secret names into each repo (or org) that runs promotion.
 
-1. **Create a GitHub App** (org-owned: *Settings → Developer settings → GitHub
-   Apps → New GitHub App*). It needs no webhook and no user-facing callback.
-   Grant it these **repository permissions** and nothing more:
+1. **Create a GitHub App at the enterprise** (*Enterprise settings → Settings
+   → GitHub Apps → New GitHub App*), not as a user-owned App and not as a
+   one-repo bot. It needs no webhook and no user-facing callback. Grant it
+   these **repository permissions** and nothing more:
    - **Contents: Read and write** (release-it's changelog commit / promotion).
    - **Pull requests: Read and write** (open and auto-merge the promotion PR).
 2. **Generate a private key** for the App (*Private keys → Generate a private
    key*) and download the `.pem`.
-3. **Install the App on the organization, scoped to the `agents` repository
-   only** (*Install App → Only select repositories → `agents`*). Do not install
-   it org-wide.
-4. **Store two repository Actions secrets** on `agents`
-   (*Settings → Secrets and variables → Actions*):
+3. **Install the App on the enterprise organizations** (`newpush`,
+   `project-noemi`, `newpush-labs` — the same fleet as `noemi-reviewer`).
+   This is one identity for the enterprise, not an `agents`-only install.
+   Do not mint a second App when another fleet repo adopts the release
+   workflow.
+4. **Store two Actions secrets** (organization secrets, or a repo-level copy
+   of the same values) on each consumer:
    - **`RELEASE_APP_ID`** — the App's numeric App ID (shown on the App's
      settings page).
    - **`RELEASE_APP_PRIVATE_KEY`** — the full contents of the downloaded `.pem`
@@ -218,6 +222,23 @@ The workflow reads exactly these two secret names. The minted token is
 short-lived (per run, auto-expiring — nothing to rotate); the only stored
 material is the private key. If either secret is missing, the promotion step is
 skipped and the job no-ops cleanly rather than failing.
+
+The provisioned App is **`noemi-release-bot`** (comments as
+`noemi-release-bot[bot]`). It was created under `project-noemi` on 2026-08-05
+and **transferred to the enterprise** on 2026-08-15 (Decision
+[2026-08-15-0002]). App ID stayed `4490886`; do not mint a new key or rewrite
+the Actions secrets. The App is now **internal** (`GET /apps/noemi-release-bot`
+404s outside the enterprise). Named owner, enterprise installation scope,
+permission set, private-key custody, and the scoped merge exception
+(auto-merge of `develop → main` promotion PRs only, in any installed fleet
+repo) are recorded in the machine-identity register —
+`docs/MACHINE_IDENTITY.md`. Do not grant `Workflows` permission or a
+branch-protection bypass.
+
+If an org-owned copy ever appears again, transfer it rather than creating a
+second App: App settings → **Advanced** → **Transfer ownership** → the
+**Enterprise** account (not an org of the same name). Make the App **private**
+first if the enterprise is Classic.
 
 ### Where the changelog lives: the GitHub Release, not a committed file
 

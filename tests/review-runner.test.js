@@ -11,6 +11,9 @@ const {
     buildGatePrompt,
     buildRemediationPrompt,
     renderComment,
+    loadSentinelFromDisk,
+    SENTINEL_REPO,
+    SENTINEL_PATH,
     SEVERITIES,
     BLOCKING_SEVERITIES,
     GATES,
@@ -125,6 +128,18 @@ test('prompt: the rubric is supplied and inventing tiers is forbidden', () => {
     });
     for (const s of SEVERITIES) assert.match(p, new RegExp(`- ${s}:`));
     assert.match(p, /may not invent severity levels/);
+});
+
+test('prompt: Sentinel spec from project-noemi/agents is injected as review criteria', () => {
+    const p = buildGatePrompt(GATES[2], {
+        title: 'T', body: '', files: [], diff: '', repo: 'other-org/other-repo', pr: '1',
+        sentinelSpec: '# Sentinel — Security Agent\nTrust Nothing: Verify everything.',
+    });
+    assert.match(p, /project-noemi\/agents/);
+    assert.match(p, /<sentinel_spec>/);
+    assert.match(p, /Trust Nothing: Verify everything/);
+    assert.match(p, /you review; you do not patch/);
+    assert.doesNotMatch(p, /other-org\/other-repo.*sentinel/i);
 });
 
 test('prompt: a malicious diff is embedded as data, not interpolated as instruction', () => {
@@ -283,6 +298,24 @@ test('selection: an image model never wins even when it is the newest Pro', () =
 test('model ranking: non-Gemini models are ignored', () => {
     assert.equal(classify('models/text-bison-001'), null);
     assert.equal(rank(['models/text-bison-001'], { allowPreview: false }).length, 0);
+});
+
+test('default review floor is pro — a flash-only catalogue is refused', () => {
+    const live = ['gemini-3.6-flash', 'gemini-3.5-flash']
+        .map((n) => `publishers/google/models/${n}`);
+    assert.equal(selectModel(live).chosen, null);
+    assert.ok(selectModel(live, { floor: 'flash' }).chosen);
+});
+
+test('Sentinel spec loads from this tooling tree, not the reviewed repo', () => {
+    const spec = loadSentinelFromDisk();
+    assert.ok(spec, 'agents/coding/sentinel/core.md must be readable next to the runner');
+    assert.match(spec, /# Sentinel/);
+    assert.match(spec, /Trust Nothing/);
+    assert.equal(SENTINEL_REPO, 'project-noemi/agents');
+    assert.equal(SENTINEL_PATH, 'agents/coding/sentinel/core.md');
+    const onDisk = fs.readFileSync(path.join(__dirname, '..', SENTINEL_PATH), 'utf8');
+    assert.equal(spec, onDisk);
 });
 
 test('model floor: a flash model does not satisfy a pro floor', () => {
@@ -457,4 +490,12 @@ test('reviewer credential preference: app token shadows PATs, distinct name', ()
     const patIdx = src.indexOf('process.env.REVIEWER_GH_TOKEN');
     assert.ok(appIdx > -1, 'app token path must exist');
     assert.ok(appIdx < patIdx, 'app token must be consulted before any PAT');
+});
+
+test('workflow: App ID is resolved from Infisical when the Actions variable is empty', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
+    assert.match(yml, /Resolve reviewer App ID/);
+    assert.match(yml, /infisical secrets get REVIEWER_APP_ID/);
+    assert.match(yml, /steps\.appid\.outputs\.present/);
+    assert.ok(yml.includes('app-id: ${{ env.REVIEWER_APP_ID }}'));
 });

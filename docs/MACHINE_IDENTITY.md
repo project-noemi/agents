@@ -46,7 +46,7 @@ identities have named owners (`docs/phase-zero-assessment/weighted-assessment-sp
 | **Rotation** | 90 days, or immediately on suspected exposure |
 | **First rotation due** | 2026-10-31 |
 | **May approve PRs?** | **No.** Approval is a human-only act |
-| **May merge PRs?** | **No.** Merge follows human approval |
+| **May merge PRs?** | **No.** Merge follows human approval. The sole sanctioned exception lives on `noemi-release-bot` below, not on this identity |
 
 ### Reviewer identity — `noemi-reviewer`
 
@@ -156,30 +156,99 @@ chances for the rotation discipline this register depends on to slip.
 
 | Field | Value |
 |---|---|
-| **Identity** | `noemi-reviewer` GitHub App (comments as `noemi-reviewer[bot]`) |
-| **Status** | Registered here ahead of provisioning — see setup guide |
+| **Identity** | `noemi-reviewer` GitHub App (slug `noemi-reviewer-bot`; comments as `noemi-reviewer-bot[bot]`) |
+| **Status** | **Transferred to the enterprise** 2026-08-15; App ID set and installed on the fleet repos the same day (Decision [2026-08-15-0004]) |
 | **Purpose** | Fleet-wide review-finding comments; replaces per-org reviewer PATs |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
-| **Credential** | App private key — Infisical secret `REVIEWER_APP_PRIVATE_KEY`, the only copy |
+| **App owner (GitHub)** | Enterprise account (internal visibility). Public `GET /apps/noemi-reviewer-bot` 404s. Bot user `noemi-reviewer-bot[bot]` (id `317203355`) posted the carve-out halt on PR #403. Do not rotate `REVIEWER_APP_PRIVATE_KEY`. |
+| **Credential** | App private key — Infisical secret `REVIEWER_APP_PRIVATE_KEY` in the **noemi-agents** vault project (same project as `AGENT_GH_TOKEN`). App ID is `REVIEWER_APP_ID` in that vault and/or the repo Actions variable. CI resolves the variable first, then Infisical (Decision [2026-08-15-0005]). |
 | **Runtime token** | Installation token minted per run, ~1 hour lifetime |
-| **Permissions** | Contents **read-only**, Pull requests read/write, Metadata read |
-| **Installed on** | `newpush`, `project-noemi`, `newpush-labs` — all repositories |
+| **Permissions** | Contents **read-only**, Pull requests read/write, Metadata read. No Workflows, Administration, or Secrets |
+| **Installed on** | Fleet repositories in `newpush`, `project-noemi`, `newpush-labs` — Product Owner confirmed install + `REVIEWER_APP_ID` on each repo 2026-08-15 |
 | **Rotation** | None scheduled; revoke and re-key on suspected exposure |
-| **May author code?** | **No** — same structural boundary as the PAT it replaces |
+| **May author code?** | **No** — Contents is read-only, enforced by token |
 | **May approve PRs?** | **No** in phase 1 — CODEOWNERS gate, as before |
 
-The `noemi-reviewer` *user account* remains registered above: its PAT serves
-local development and is the CI fallback while the app is provisioned. Once the
-app is live in all three orgs, revoke the user PATs rather than leaving dormant
-credentials — a fallback nobody exercises is a liability, not a safety net.
+The `noemi-reviewer` *user account* remains registered above. Reviews through
+#402 used that user PAT. PR #403 posted as **`noemi-reviewer-bot[bot]`** after
+the workflow began resolving the App ID from Infisical. Revoke the user PATs
+when the App path has been green on a couple of non-carve-out reviews. Do not
+mint a second App.
+
+### Release promotion app — `noemi-release-bot[bot]`
+
+The daily CalVer promotion job opens (and auto-merges) the `develop → main`
+promotion PR with a **GitHub App installation token**, not with `noemi-agent`
+and not with the default `GITHUB_TOKEN`. A `GITHUB_TOKEN`-opened PR does not
+trigger `on: pull_request` workflows, so `main`'s required `check-source-branch`
+check would never run and auto-merge would stall.
+
+This App is an **enterprise-level** identity — the same shape as
+`noemi-reviewer[bot]`. It exists so the fleet shares one promotion actor
+instead of a per-repository PAT or a per-repository App. Do not create a
+second release App for a single repo. Setup mechanics live in
+`docs/RELEASE_PROCESS.md`; this register records the provisioned identity,
+its owner, and the scoped merge exception.
+
+| Field | Value |
+|---|---|
+| **Identity** | `noemi-release-bot` GitHub App (comments and authors as `noemi-release-bot[bot]`) |
+| **Status** | **Provisioned** 2026-08-05; **transferred to the enterprise** 2026-08-15 (Decision [2026-08-15-0002]) |
+| **Purpose** | Enterprise promotion actor: open and auto-merge content-gated `develop → main` PRs so `on: pull_request` checks run |
+| **Named owner** | `@WSwarm` (Balazs Nagy) |
+| **App owner (GitHub)** | Enterprise account (internal visibility). Transfer attested 2026-08-15: `GET /apps/noemi-release-bot` now 404s for a non-enterprise token (expected); App ID is still `4490886` (bot avatar `/in/4490886`). Do not rotate `RELEASE_APP_ID` / `RELEASE_APP_PRIVATE_KEY`. |
+| **Credential** | App private key — Actions secret `RELEASE_APP_PRIVATE_KEY` (org- or repo-level copy of the **same** enterprise key); App ID in `RELEASE_APP_ID` (`4490886`) |
+| **Runtime token** | Installation token minted per run by `actions/create-github-app-token`, ~1 hour lifetime |
+| **Permissions** | Contents **read and write**, Pull requests read/write, Metadata read. No Workflows, Administration, or Secrets |
+| **Installed on** | Enterprise organizations `newpush`, `project-noemi`, `newpush-labs` — the same fleet as `noemi-reviewer[bot]`. **Not** a `project-noemi/agents`-only install |
+| **Rotation** | None scheduled; revoke and re-key on suspected exposure. The installation token itself expires per run |
+| **May author feature work?** | **No.** It opens the promotion PR (a merge of already-reviewed `develop` into `main`). It does not write `CHANGELOG.md` or push commits to `main` (`git.commit: false`) |
+| **May approve PRs?** | **No.** Approval is a human-only act |
+| **May merge PRs?** | **Yes — scoped exception only.** Auto-merge of `develop → main` promotion PRs opened by the release workflow in any installed fleet repo. No other PR, no other branch, no other workflow |
+
+#### The sanctioned merge exception
+
+`noemi-agent` and `noemi-reviewer` still **may not merge**. This App is the
+only machine identity that may, and only because promotion is not a new review
+surface: every commit on `develop` already passed human review, and
+`require-develop-source.yml` guarantees the promotion PR's only possible source
+is `develop`. Using the **same** enterprise App for the same promotion job in
+another fleet repository is the design, not a widening. Widening would be:
+other workflows, feature branches, or a protection bypass on `main`.
+
+The exception is **workflow-scoped, not token-scoped.** Contents + Pull
+requests write is enough to merge any PR the App can see; GitHub has no
+permission that means "merge promotion PRs only." The bound is that only the
+release workflow receives the minted token, and it only opens/merges the
+`develop → main` promotion PR. Do not hand this token to another workflow.
+
+Verified executions (author *and* merger `noemi-release-bot[bot]`): promotion
+PRs #360, #363, #380, #387, #391, #396. Releases are stamped afterwards by
+`github-actions[bot]` via `GITHUB_TOKEN` (tags and GitHub Releases, not branch
+writes).
+
+If `RELEASE_APP_ID` / `RELEASE_APP_PRIVATE_KEY` are unset, the promotion step
+no-ops cleanly — it does not fall back to `GITHUB_TOKEN` or a human PAT.
+
+Transfer does **not** install the App on the other fleet orgs by itself. After
+the 2026-08-15 ownership move, confirm installs on `newpush` and
+`newpush-labs` at
+<https://github.com/apps/noemi-release-bot/installations/new> if they are not
+already present. The `project-noemi` install is still live: the bot identity
+continues to resolve and historical promotion PRs still attribute to
+`noemi-release-bot[bot]`.
 
 ### Effective-permission posture — the token is the boundary
 
-GitHub resolves a user's access as the **highest** of all grants. Both bot
-identities are organization members of the `developers` team, which holds
-`maintain` on this repository, so both resolve to `maintain` regardless of the
-direct collaborator grants recorded above (`push` for the producer, `pull` for
-the reviewer).
+GitHub resolves a *user's* access as the **highest** of all grants. The two
+machine **user** identities (`noemi-agent`, `noemi-reviewer`) are organization
+members of the `developers` team, which holds `maintain` on this repository, so
+both resolve to `maintain` regardless of the direct collaborator grants recorded
+above (`push` for the producer, `pull` for the reviewer).
+
+The two GitHub **Apps** (`noemi-reviewer[bot]`, `noemi-release-bot[bot]`) are
+not users and do not inherit team membership. Their installation tokens carry
+exactly the App permissions in this register.
 
 **Decision (2026-08-03, repository owner): the bots remain in `developers` and
 `coders`.** The team memberships are accepted as-is and the account-level
@@ -330,6 +399,45 @@ bash scripts/agent-gh.sh whoami
 Agents push branches and open PRs through this wrapper. Humans then review and
 merge with their own credentials — the separation is the point.
 
+Remote sandboxes without `gh` use `node scripts/agent-pr.js` instead (same
+token, same identity guard). See the scheduled-session contract below.
+
+## Scheduled-session environment contract
+
+The scheduled Doc routine — and any other remote sandbox that has Node and
+outbound HTTPS but **no** `gh`, `infisical`, or `op` — cannot wrap commands in
+a vault CLI. `scripts/agent-pr.js` is the authoring path there. It reads
+`AGENT_GH_TOKEN` from process memory only (Fetch-on-Demand).
+
+The **environment owner** (a human; not an agent, not a commit in this
+repository) must inject these two names into that sandbox's secret settings:
+
+| Variable | Required value |
+|---|---|
+| `AGENT_GH_TOKEN` | the `noemi-agent` fine-grained PAT (same secret already stored in Infisical) |
+| `AGENT_GH_EXPECTED_LOGIN` | `noemi-agent` |
+
+Do **not** paste the token into a chat session, write it to disk, commit it, or
+run `gh secret set` from an agent session — any of those copies the secret out
+of the vault. Copy it from Infisical into the sandbox vendor's secret UI in a
+local terminal the owner controls.
+
+This repository **cannot** complete that injection. Interactive sessions that
+already resolve the token (verified here with `bash scripts/agent-gh.sh whoami`
+→ `noemi-agent`) are not evidence the scheduled sandbox has it. The 2026-08-05
+scheduled run authored PR #361 as `noemi-agent`; every scheduled run since
+2026-08-07 has not — the defect is isolated to that environment's secret
+settings (Clarification [2026-08-09]).
+
+Verification the next scheduled run must perform before opening a PR:
+
+```bash
+node scripts/agent-pr.js whoami        # expect: noemi-agent
+```
+
+If that refuses, the mandated behavior is still **stop and surface the gap**.
+There is no recorded §7 exemption for owner-authored scheduled doc PRs.
+
 ## Re-tightening after rollout
 
 `main` is configured with `enforce_admins: true` and empty PR bypass allowances
@@ -359,27 +467,39 @@ becomes unmergeable and admins have no escape hatch.
 
 - **Rotate** every 90 days: mint a new token as `noemi-agent`, update the
   Infisical secret, confirm with `agent-gh.sh whoami`, then delete the old token.
+  Re-inject the new value into the scheduled-session secret settings in the
+  same rotation (the sandbox does not read Infisical).
 - **Revoke immediately** if a token appears in logs, a commit, a chat
   transcript, or CI output. Revoking is safe — it only stops agents from opening
   PRs; it cannot affect merged history.
-- **Audit** what the identity did: `gh search prs --author=noemi-agent --repo project-noemi/agents`
+- **Audit** what the producer did: `gh search prs --author=noemi-agent --repo project-noemi/agents`
+- **Audit** what the release App did: `gh search prs --author=app/noemi-release-bot --repo project-noemi/agents`
+- **Re-key the release App** on suspected exposure of `RELEASE_APP_PRIVATE_KEY`:
+  generate a new private key on the App, replace the Actions secret, delete the
+  old key. There is no 90-day rotation for the App key.
 
 ## Audit Log
 
 ```json
 {
-  "task": "Provision machine identity for agent-authored pull requests",
-  "inputs": ["repo: project-noemi/agents", "identity: noemi-agent"],
+  "task": "Register machine identities for agent-authored pull requests and promotion",
+  "inputs": [
+    "repo: project-noemi/agents",
+    "identities: noemi-agent, noemi-reviewer, noemi-release-bot"
+  ],
   "actions": [
     "created fine-grained PAT scoped to single repo",
-    "stored credential in Infisical as AGENT_GH_TOKEN",
-    "granted write (push) permission on repository"
+    "stored producer credential in Infisical as AGENT_GH_TOKEN",
+    "granted write (push) permission on repository",
+    "registered noemi-release-bot as an enterprise-level GitHub App with scoped develop-to-main merge exception",
+    "documented scheduled-session AGENT_GH_TOKEN injection contract"
   ],
   "risks": [
     "machine user consumes a paid Enterprise seat",
     "Workflows:write would let agents edit the merge gate — left ungranted",
-    "main enforce_admins is true (no direct push/bypass); develop remains false until bot path is the only integration path"
+    "release App merge right is a sanctioned exception; widening it would collapse human-only merge",
+    "scheduled Doc sandbox still lacks AGENT_GH_TOKEN until the environment owner injects it"
   ],
-  "result": "Producer and reviewer identities separated; approval gate enforceable"
+  "result": "Producer, reviewer, and release identities registered; approval gate enforceable; promotion merge exception scoped"
 }
 ```

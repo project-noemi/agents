@@ -219,6 +219,13 @@ short-lived (per run, auto-expiring — nothing to rotate); the only stored
 material is the private key. If either secret is missing, the promotion step is
 skipped and the job no-ops cleanly rather than failing.
 
+The provisioned App in this repository is **`noemi-release-bot`** (comments as
+`noemi-release-bot[bot]`). Named owner, installation scope, permission set,
+private-key custody, and the scoped merge exception (auto-merge of `develop →
+main` promotion PRs only) are recorded in the machine-identity register —
+`docs/MACHINE_IDENTITY.md`, Decision [2026-08-14-0002]. Do not grant this App
+additional repositories, `Workflows` permission, or a branch-protection bypass.
+
 ### Where the changelog lives: the GitHub Release, not a committed file
 
 **The release never writes to a branch.** There is no `CHANGELOG.md` in this

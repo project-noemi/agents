@@ -600,12 +600,20 @@ which requires `admin:org` scope):
 `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, `GOOGLE_CLOUD_PROJECT`,
 `INFISICAL_PROJECT_ID`, `INFISICAL_IDENTITY_ID` — same values as the
 repository-level ones documented above. (`GOOGLE_CLOUD_LOCATION` defaults to
-`global` and can be omitted.)
+`global` and can be omitted.) Optional: `GEMINI_REVIEW_MODEL` (default
+`gemini-3.1-pro-preview`; set `auto` to restore catalogue discovery) and
+`REVIEWER_APP_ID`.
 
 **2. Widen the Infisical identity's claim filter.** If its OIDC subject filter
 is scoped to one repository, workflows in other repos will authenticate to
-GitHub fine and then fail Infisical login. Widen it to the organizations, e.g.
-`repo:newpush/*`, `repo:project-noemi/*`, `repo:newpush-labs/*`.
+GitHub fine and then fail Infisical login. Use **glob braces on Subject** and
+a **comma list (no braces) on Claims** — Infisical splits Claims on commas, so
+`{newpush, project-noemi, newpush-labs}` is parsed as `{newpush` and
+`newpush-labs}` and only `project-noemi` matches (verified 2026-08-16 on
+`newpush/platform`):
+
+- Subject: `repo:{newpush,project-noemi,newpush-labs}/*:*`
+- Claim `repository_owner`: `newpush,project-noemi,newpush-labs`
 
 **3. The reviewer GitHub App.** A fine-grained PAT is scoped to a single
 resource owner, so a multi-org fleet on PATs means one token per org, each on
@@ -615,7 +623,8 @@ installed everywhere, minting its own short-lived token per run:
 1. Create the App at the **enterprise** (*Enterprise settings → GitHub Apps →
    New GitHub App*), or **transfer** an existing org-owned App there
    (App settings → Advanced → Transfer ownership → the **Enterprise**
-   account). Name it `noemi-reviewer` (comments as `noemi-reviewer[bot]`).
+   account). The live App slugs as `noemi-reviewer-bot` (comments as
+   `noemi-reviewer-bot[bot]`, verified on PR #403).
    No webhook. Do not create a second App if one already exists.
    Transferred to the enterprise 2026-08-15 (Decision [2026-08-15-0004]).
 2. Repository permissions — same least-privilege shape as the PAT:
@@ -626,11 +635,15 @@ installed everywhere, minting its own short-lived token per run:
 
    ```bash
    infisical secrets set REVIEWER_APP_PRIVATE_KEY="$(cat noemi-reviewer.*.pem)" --env=dev
+   infisical secrets set REVIEWER_APP_ID="<app-id>" --env=dev
    gh variable set REVIEWER_APP_ID --org <each-org> --visibility all --body "<app-id>"
    ```
 
-   Then delete the downloaded `.pem` — the vault copy is the only one that
-   should exist. After a transfer, do **not** rotate the key.
+   The vault project is **noemi-agents** (same `INFISICAL_PROJECT_ID` the
+   review workflow already uses). CI reads `vars.REVIEWER_APP_ID` first, then
+   the Infisical `REVIEWER_APP_ID` if the variable is empty. Then delete the
+   downloaded `.pem` — the vault copy is the only one that should exist.
+   After a transfer, do **not** rotate the key.
 4. **Install the app** on each enterprise organization (Install App →
    All repositories) for `newpush`, `project-noemi`, and `newpush-labs`.
    Transfer does not add those installs.

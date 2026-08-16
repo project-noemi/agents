@@ -606,8 +606,14 @@ repository-level ones documented above. (`GOOGLE_CLOUD_LOCATION` defaults to
 
 **2. Widen the Infisical identity's claim filter.** If its OIDC subject filter
 is scoped to one repository, workflows in other repos will authenticate to
-GitHub fine and then fail Infisical login. Widen it to the organizations, e.g.
-`repo:newpush/*`, `repo:project-noemi/*`, `repo:newpush-labs/*`.
+GitHub fine and then fail Infisical login. Use **glob braces on Subject** and
+a **comma list (no braces) on Claims** — Infisical splits Claims on commas, so
+`{newpush, project-noemi, newpush-labs}` is parsed as `{newpush` and
+`newpush-labs}` and only `project-noemi` matches (verified 2026-08-16 on
+`newpush/platform`):
+
+- Subject: `repo:{newpush,project-noemi,newpush-labs}/*:*`
+- Claim `repository_owner`: `newpush,project-noemi,newpush-labs`
 
 **3. The reviewer GitHub App.** A fine-grained PAT is scoped to a single
 resource owner, so a multi-org fleet on PATs means one token per org, each on

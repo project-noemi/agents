@@ -93,7 +93,10 @@ Do not merge AI-review (or any other feature work) directly into \`main\`."
 open_phase0_issue() {
   local repo="$1"
   local existing
-  existing=$(gh issue list --repo "$repo" --search "in:title ${PHASE0_TITLE}" --state open --json url --jq '.[0].url' 2>/dev/null || true)
+  # `jq '.[0].url'` prints the literal string "null" on an empty list — that
+  # is not a URL. Parse through the tested helper so we never skip create.
+  existing=$(gh issue list --repo "$repo" --search "in:title ${PHASE0_TITLE}" \
+    --state open --json url 2>/dev/null | node scripts/deploy-ai-review-lib.js || true)
   if [[ -n "$existing" ]]; then
     printf '%s' "$existing"
     return 0

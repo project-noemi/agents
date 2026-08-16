@@ -48,6 +48,9 @@
  *                          REVIEWER_GH_TOKEN        home-org PAT / local dev
  *   GITHUB_REPOSITORY    owner/repo (Actions sets this)
  *   GEMINI_REVIEW_FLOOR  minimum model tier (default: pro)
+ *   GEMINI_REVIEW_MODEL  pin (default in CI: gemini-3.1-pro-preview).
+ *                        `auto` restores catalogue discovery.
+ *   GEMINI_ALLOW_PREVIEW allow preview/exp models during discovery
  *
  * EXIT CODES
  *   0 review completed (findings may exist — this is advisory in phase 1)
@@ -70,7 +73,7 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  selectModel, listModels, backendConfig, generateUrl,
+  selectModel, listModels, resolvePinnedModel, backendConfig, generateUrl,
 } = require('./resolve-gemini-model.js');
 const { getAccessToken, tokenSource } = require('./gcp-token.js');
 
@@ -383,6 +386,8 @@ function parseArgs(argv) {
     floor: process.env.GEMINI_REVIEW_FLOOR || 'pro',
     // `prefer_pro_tier` / `force_pro` — explicit toggle, see resolve-gemini-model.js
     preferPro: /^(1|true|yes)$/i.test(process.env.GEMINI_PREFER_PRO || '1'),
+    allowPreview: /^(1|true|yes)$/i.test(process.env.GEMINI_ALLOW_PREVIEW || ''),
+    model: process.env.GEMINI_REVIEW_MODEL || '',
   };
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--pr') args.pr = argv[++i];
@@ -390,7 +395,9 @@ function parseArgs(argv) {
     else if (argv[i] === '--no-post') args.post = false;
     else if (argv[i] === '--floor') args.floor = argv[++i];
     else if (argv[i] === '--prefer-pro' || argv[i] === '--force-pro') args.preferPro = true;
-    else if (argv[i] === '--help') { process.stdout.write('Usage: review-pr.js --pr <number> [--dry-run] [--no-post] [--floor tier] [--prefer-pro]\n'); process.exit(0); }
+    else if (argv[i] === '--allow-preview') args.allowPreview = true;
+    else if (argv[i] === '--model') args.model = argv[++i];
+    else if (argv[i] === '--help') { process.stdout.write('Usage: review-pr.js --pr <number> [--dry-run] [--no-post] [--floor tier] [--prefer-pro] [--allow-preview] [--model id]\n'); process.exit(0); }
   }
   return args;
 }
@@ -516,9 +523,21 @@ async function main() {
   // --- model -------------------------------------------------------------
   let model = 'models/(dry-run)';
   if (!args.dryRun) {
-    const { chosen, tradeoff } = selectModel(await listModels(token, cfg), {
-      allowPreview: false, preferPro: args.preferPro, floor: args.floor,
-    });
+    const available = await listModels(token, cfg);
+    let chosen = null;
+    let tradeoff = null;
+    try {
+      chosen = resolvePinnedModel(args.model, available);
+    } catch (err) {
+      process.stderr.write(`✖ ${err.message}\n`);
+      writeHaltMarker(err.message);
+      process.exit(3);
+    }
+    if (!chosen) {
+      ({ chosen, tradeoff } = selectModel(available, {
+        allowPreview: args.allowPreview, preferPro: args.preferPro, floor: args.floor,
+      }));
+    }
     if (!chosen) {
       process.stderr.write(`✖ No available model meets the '${args.floor}' floor. Refusing to review on an under-capability model.\n`);
       writeHaltMarker(`no model met the '${args.floor}' floor`);

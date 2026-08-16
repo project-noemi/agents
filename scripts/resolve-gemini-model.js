@@ -3,16 +3,17 @@
  * Resolve the highest-capability Gemini model currently available for deep
  * review, by querying the API rather than trusting a name written into config.
  *
- * WHY NOT PIN A MODEL
+ * PIN VS DISCOVERY
  *   CLAUDE.md pins `models/gemini-3.6-flash` for reference workflows, lab
  *   examples, and smoke tests, where predictable cost and determinism are the
  *   point. That pin is correct there and is deliberately NOT changed by this
  *   script.
  *
- *   Review is a different job. It wants maximum capability, and any model name
- *   hardcoded today is stale later — pinning 2.5 in 2026-04 is why a 3.x
- *   generation went unused. So review discovers what exists at runtime and
- *   ranks it, rather than naming a winner in advance.
+ *   Review used to discover at runtime so a name written in 2026-04 would not
+ *   freeze the fleet on 2.5. The Product Owner then pinned review itself to
+ *   `gemini-3.1-pro-preview` (Decision [2026-08-16-0001]): thoroughness over
+ *   newest-stable-Flash, and a preview Pro is an accepted risk. Discovery
+ *   remains the `GEMINI_REVIEW_MODEL=auto` path.
  *
  * WHAT IT COSTS
  *   Discovery trades reproducibility for capability: a review that passed on
@@ -21,10 +22,11 @@
  *   review's audit log, so a verdict is always attributable to what produced
  *   it. See docs/AI_REVIEW_GOVERNANCE.md.
  *
- * SELECTION RULE (owner decision 2026-08-15, Decision [2026-08-15-0003])
- *   Review floor is `pro`. Flash is not adequate for a thorough review.
- *   Among models that meet the floor, prefer the newest stable generation;
- *   Pro is elevated within that generation. A catalogue with no Pro fails
+ * SELECTION RULE (owner decision 2026-08-16, Decision [2026-08-16-0001])
+ *   Default review model is the pin `gemini-3.1-pro-preview` via
+ *   GEMINI_REVIEW_MODEL. Set that variable to `auto` to restore catalogue
+ *   discovery. The Pro floor from Decision [2026-08-15-0003] still applies
+ *   to discovery: Flash is not adequate, and a catalogue with no Pro fails
  *   loudly instead of running on Flash.
  *
  *   --prefer-pro / GEMINI_PREFER_PRO=1 (`prefer_pro_tier` / `force_pro`) makes
@@ -202,6 +204,41 @@ function meetsFloor(model, floor) {
   return (TIER_RANK[model.tier] || 0) >= floorRank;
 }
 
+/** Strip `models/` and `publishers/google/models/` so pins and catalogue ids compare. */
+function bareName(id) {
+  return String(id || '')
+    .trim()
+    .replace(/^publishers\/[^/]+\/models\//, '')
+    .replace(/^models\//, '');
+}
+
+/**
+ * Honour an explicit GEMINI_REVIEW_MODEL pin.
+ *
+ * Returns null for empty/`auto` (caller should discover). Throws if the pin
+ * is not a usable Gemini text model, or if a catalogue was supplied and the
+ * pin is not in it — fail closed rather than silently reviewing on a
+ * different model.
+ */
+function resolvePinnedModel(pin, available) {
+  if (!pin || pin === 'auto') return null;
+  const want = bareName(pin);
+  const probe = classify(`publishers/google/models/${want}`);
+  if (!probe) {
+    throw new Error(`GEMINI_REVIEW_MODEL '${pin}' is not a usable Gemini text model.`);
+  }
+  if (Array.isArray(available)) {
+    const hit = available.find((id) => bareName(id) === want);
+    if (!hit) {
+      throw new Error(
+        `Pinned GEMINI_REVIEW_MODEL '${want}' is not in the publisher catalogue.`,
+      );
+    }
+    return { ...classify(hit), pinned: true };
+  }
+  return { ...probe, pinned: true };
+}
+
 /**
  * Host for a Vertex location. `global` is NOT a region prefix — it is served by
  * the bare host, so `global-aiplatform.googleapis.com` does not resolve.
@@ -375,6 +412,7 @@ async function main() {
 // without shelling out; still runs as a CLI when invoked directly.
 module.exports = {
   classify, rank, compareModels, selectModel, meetsFloor, listModels,
+  resolvePinnedModel, bareName,
   backendConfig, generateUrl, vertexHost, TIER_RANK, NON_TEXT_MODALITY,
 };
 

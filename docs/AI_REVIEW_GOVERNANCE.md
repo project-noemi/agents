@@ -104,9 +104,11 @@ edited the merge gate during 2026-07 to unblock its own pull requests
 
 ## Model resolution
 
-Review uses the highest-capability Gemini model available at runtime, resolved
-by `scripts/resolve-gemini-model.js`. It queries the API rather than trusting a
-name in config, because any model named today is stale later.
+Review defaults to the Product Owner pin **`gemini-3.1-pro-preview`**
+(`GEMINI_REVIEW_MODEL`, Decision [2026-08-16-0001]). Set that variable to
+`auto` to restore catalogue discovery via `scripts/resolve-gemini-model.js`.
+A pin that is missing from the publisher catalogue, or that is not a usable
+Gemini text model, halts rather than silently reviewing on a different model.
 
 **This does not change the `models/gemini-3.6-flash` pin in `CLAUDE.md`.** That
 pin governs reference workflows, lab examples, and smoke tests, where
@@ -225,7 +227,7 @@ findings posted by `noemi-reviewer`. No static credential is stored in GitHub.
 | `noemi-reviewer` identity | ✅ provisioned, capabilities verified (cannot write code) | — |
 | Bot-authored PR loop (author → human approve → merge, no bypass) | ✅ proven on #340, #341 | — |
 | Three-gate review runner (`scripts/review-pr.js`) | ✅ live in CI; first review posted 2026-08-11 | — |
-| Model resolution (`scripts/resolve-gemini-model.js`) | ✅ live; generation-first rule, Pro toggle, modality filter | — |
+| Model resolution (`scripts/resolve-gemini-model.js`) | ✅ live; pin `gemini-3.1-pro-preview` (`auto` restores discovery) | — |
 | Google auth | ✅ Workload Identity Federation, org-scoped (no API key — org policy disallows them) | — |
 | Infisical auth in CI | ✅ OIDC, no stored secret | — |
 | Exit-code honesty (halt=3, failures stay red) | ✅ after a live run reported success while doing nothing | — |

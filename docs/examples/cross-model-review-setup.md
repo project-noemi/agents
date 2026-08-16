@@ -600,8 +600,8 @@ which requires `admin:org` scope):
 `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, `GOOGLE_CLOUD_PROJECT`,
 `INFISICAL_PROJECT_ID`, `INFISICAL_IDENTITY_ID` — same values as the
 repository-level ones documented above. (`GOOGLE_CLOUD_LOCATION` defaults to
-`global` and can be omitted.) Optional: `GEMINI_REVIEW_MODEL` (default
-`gemini-3.1-pro-preview`; set `auto` to restore catalogue discovery) and
+`global` and can be omitted.) Optional: `GEMINI_REVIEW_MODEL` (`auto` discovers
+the highest Pro preview, else a stable Pro; set an explicit id to pin) and
 `REVIEWER_APP_ID`.
 
 **2. Widen the Infisical identity's claim filter.** If its OIDC subject filter

@@ -9,11 +9,11 @@
  *   point. That pin is correct there and is deliberately NOT changed by this
  *   script.
  *
- *   Review used to discover at runtime so a name written in 2026-04 would not
- *   freeze the fleet on 2.5. The Product Owner then pinned review itself to
- *   `gemini-3.1-pro-preview` (Decision [2026-08-16-0001]): thoroughness over
- *   newest-stable-Flash, and a preview Pro is an accepted risk. Discovery
- *   remains the `GEMINI_REVIEW_MODEL=auto` path.
+ *   Review discovers at runtime. Decision [2026-08-16-0002] selects the
+ *   highest-generation **Pro preview**, and falls back to the highest
+ *   stable Pro only when the catalogue has no Pro preview. Flash is still
+ *   refused (Decision [2026-08-15-0003]). An explicit GEMINI_REVIEW_MODEL
+ *   pin still wins when set to a real model id.
  *
  * WHAT IT COSTS
  *   Discovery trades reproducibility for capability: a review that passed on
@@ -22,21 +22,16 @@
  *   review's audit log, so a verdict is always attributable to what produced
  *   it. See docs/AI_REVIEW_GOVERNANCE.md.
  *
- * SELECTION RULE (owner decision 2026-08-16, Decision [2026-08-16-0001])
- *   Default review model is the pin `gemini-3.1-pro-preview` via
- *   GEMINI_REVIEW_MODEL. Set that variable to `auto` to restore catalogue
- *   discovery. The Pro floor from Decision [2026-08-15-0003] still applies
- *   to discovery: Flash is not adequate, and a catalogue with no Pro fails
- *   loudly instead of running on Flash.
+ * SELECTION RULE (owner decision 2026-08-16, Decision [2026-08-16-0002])
+ *   Among models that meet the Pro floor: take the highest-generation Pro
+ *   preview. If the catalogue has no Pro preview, take the highest-generation
+ *   stable Pro. A catalogue with no Pro at all fails loudly.
  *
- *   --prefer-pro / GEMINI_PREFER_PRO=1 (`prefer_pro_tier` / `force_pro`) makes
- *   Pro dominant instead. Selection may then fall back to an older stable Pro,
- *   or with --allow-preview a preview Pro. Any generation regression caused by
- *   the toggle is reported explicitly, because the rule requires the trade-off
- *   to be visible rather than implicit.
+ *   --prefer-preview-pro / GEMINI_PREFER_PREVIEW_PRO=1 is the review default.
+ *   --prefer-pro / GEMINI_PREFER_PRO still exists for the older "Pro over
+ *   Flash, then generation" ranking when preview-first is off.
  *
- *   Preview builds need --allow-preview: an unstable model inside a governance
- *   control is its own risk.
+ *   GEMINI_REVIEW_MODEL=<id> pins a specific model. `auto` or empty discovers.
  *
  * USAGE
  *   infisical run --env=dev -- node scripts/resolve-gemini-model.js
@@ -64,6 +59,7 @@ function parseArgs(argv) {
     floor: DEFAULT_FLOOR, json: false, allowPreview: false, dryRun: false,
     // `prefer_pro_tier` / `force_pro`: an explicit toggle, not a hidden weight.
     preferPro: /^(1|true|yes)$/i.test(process.env.GEMINI_PREFER_PRO || ''),
+    preferPreviewPro: /^(1|true|yes)$/i.test(process.env.GEMINI_PREFER_PREVIEW_PRO || ''),
   };
   for (let i = 0; i < argv.length; i += 1) {
     switch (argv[i]) {
@@ -72,9 +68,10 @@ function parseArgs(argv) {
       case '--allow-preview': args.allowPreview = true; break;
       case '--prefer-pro':
       case '--force-pro': args.preferPro = true; break;
+      case '--prefer-preview-pro': args.preferPreviewPro = true; break;
       case '--dry-run': args.dryRun = true; break;
       case '--help':
-        process.stdout.write('Usage: resolve-gemini-model.js [--floor pro|flash|flash-lite] [--json] [--allow-preview] [--prefer-pro] [--dry-run]\n');
+        process.stdout.write('Usage: resolve-gemini-model.js [--floor pro|flash|flash-lite] [--json] [--allow-preview] [--prefer-pro] [--prefer-preview-pro] [--dry-run]\n');
         process.exit(0);
         break;
       default:
@@ -178,8 +175,32 @@ function rank(models, { allowPreview = false, preferPro = false } = {}) {
  * selects an older generation than the default rule would, that regression is
  * reported rather than left for someone to discover in an audit log.
  */
-function selectModel(models, { allowPreview = false, preferPro = false, floor = 'pro' } = {}) {
+function selectModel(models, {
+  allowPreview = false, preferPro = false, preferPreviewPro = false, floor = 'pro',
+} = {}) {
   const eligible = (opts) => rank(models, opts).filter((m) => meetsFloor(m, floor));
+
+  // Owner rule [2026-08-16-0002]: highest-generation Pro preview, else the
+  // highest-generation stable Pro. Flash never qualifies under the pro floor.
+  if (preferPreviewPro) {
+    const previewPros = eligible({ allowPreview: true, preferPro: true })
+      .filter((m) => m.tier === 'pro' && m.preview)
+      .sort((a, b) => {
+        if (a.generation !== b.generation) return b.generation - a.generation;
+        return (b.reasoning ? 1 : 0) - (a.reasoning ? 1 : 0);
+      });
+    if (previewPros[0]) return { chosen: previewPros[0], tradeoff: null };
+
+    const stablePro = eligible({ allowPreview: false, preferPro: true })
+      .find((m) => m.tier === 'pro') || null;
+    if (stablePro) {
+      return {
+        chosen: stablePro,
+        tradeoff: `no Pro preview in catalogue; fell back to ${stablePro.name}`,
+      };
+    }
+    return { chosen: null, tradeoff: null };
+  }
 
   const chosen = eligible({ allowPreview, preferPro })[0] || null;
   if (!chosen) return { chosen: null, tradeoff: null };
@@ -388,6 +409,7 @@ async function main() {
     floor: args.floor,
     backend: cfg.backend,
     prefer_pro_tier: args.preferPro,
+    prefer_preview_pro: args.preferPreviewPro,
     ...(tradeoff ? { tradeoff } : {}),
     considered: ranked.length,
   };
@@ -395,7 +417,7 @@ async function main() {
   // Audit log to stderr, payload to stdout, per CLAUDE.md.
   process.stderr.write(`${JSON.stringify({
     task: 'Resolve highest-capability Gemini model for review',
-    inputs: [`floor=${args.floor}`, `allow_preview=${args.allowPreview}`, `prefer_pro_tier=${args.preferPro}`, `backend=${cfg.backend}`, `auth=${tokenSource()}`],
+    inputs: [`floor=${args.floor}`, `allow_preview=${args.allowPreview}`, `prefer_pro_tier=${args.preferPro}`, `prefer_preview_pro=${args.preferPreviewPro}`, `backend=${cfg.backend}`, `auth=${tokenSource()}`],
     actions: [`listed ${available.length} models`, `ranked ${ranked.length} candidates`, `selected ${chosen.id}`],
     risks: [
       ...(chosen.preview ? ['selected a preview build'] : []),

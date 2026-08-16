@@ -28,8 +28,9 @@ which "different reviewer" becomes true rather than nominal.
 
 | Role | Identity | Responsibility |
 |---|---|---|
-| Producer | `noemi-agent` (Claude) | Authors branches and pull requests |
-| Reviewer | `noemi-reviewer` (Gemini) | Runs the three gates, posts findings |
+| Conductor | `noemi-conductor` (planned) | Issue triage, plan, plan red-team cycle; comments and labels only |
+| Producer | `noemi-agent` (Claude / Grok in the issue loop) | Authors branches and pull requests |
+| Reviewer | `noemi-reviewer` / `noemi-reviewer-bot[bot]` (Gemini) | Runs the three gates, posts findings |
 | Practitioner | human | Edits the remediation prompt before dispatch |
 | Accelerator | human | Owns the carve-out; authorizes protection changes |
 

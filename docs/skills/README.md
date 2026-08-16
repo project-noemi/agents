@@ -10,11 +10,11 @@ Agents (who)  →  compose  →  Skills (what)  →  use  →  MCP Protocols (ho
 
 | Category | Skills | Purpose |
 |----------|--------|---------|
-| [Classification](classification/) | Risk Triage | Multi-tier categorization (Safe / Needs Review / Blocked) |
+| [Classification](classification/) | Risk Triage, Issue Intake | Multi-tier categorization; GitHub issue sufficiency for the coding loop |
 | [Verification](verification/) | Pre-Flight Check, Cross-Reference | Validate preconditions; verify claims against source of truth |
 | [Reporting](reporting/) | Structured Report, Alert & Notify | Standardized report generation; Slack/email delivery |
 | [Security](security/) | HMAC Sign & Submit, PII Scan | Cryptographic payload signing; data privacy scanning |
-| [Orchestration](orchestration/) | Dispatch & Coordinate | Sub-agent delegation and output aggregation |
+| [Orchestration](orchestration/) | Dispatch & Coordinate, Issue Plan | Sub-agent delegation; issue plan plus plan red-team cycle |
 
 ## How Skills Work
 

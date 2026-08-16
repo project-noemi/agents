@@ -19,6 +19,7 @@
   ],
   "active_skills": [
     "classification/risk-triage",
+    "classification/issue-intake",
     "verification/pre-flight-check",
     "verification/cross-reference",
     "reporting/structured-report",
@@ -26,6 +27,7 @@
     "reporting/release-herald",
     "security/hmac-sign-submit",
     "security/pii-scan",
-    "orchestration/dispatch-coordinate"
+    "orchestration/dispatch-coordinate",
+    "orchestration/issue-plan"
   ]
 }

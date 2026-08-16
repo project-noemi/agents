@@ -7,6 +7,7 @@ Skills for categorizing items into discrete tiers to determine action paths.
 | Skill | Spec | Used By |
 |-------|------|---------|
 | [Risk Triage](../../../skills/classification/risk-triage.md) | Multi-tier categorization (Safe / Needs Review / Blocked) | Gatekeeper, PIIGuard, PromptShield |
+| [Issue Intake](../../../skills/classification/issue-intake.md) | Skip / refuse / needs-info / actionable for a new GitHub issue | Issue Conductor |
 
 ## Pattern
 

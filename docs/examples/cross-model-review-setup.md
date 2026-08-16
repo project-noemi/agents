@@ -657,15 +657,20 @@ PATs should be revoked rather than left as a dormant credential.
 ## Rolling out
 
 ```bash
-bash scripts/deploy-ai-review.sh --dry-run   # preview: who gets a PR, who is skipped
+bash scripts/deploy-ai-review.sh --dry-run   # preview: who gets a PR, who gets a Phase 0 issue
 gh auth refresh -s workflow                  # pushing workflow files needs this scope
-bash scripts/deploy-ai-review.sh             # open one PR per repository
+bash scripts/deploy-ai-review.sh             # open one PR (or Phase 0 issue) per repository
 ```
 
 The script is deliberately **PR-based**: it never pushes to a default branch.
 Each repository's maintainers accept the reviewer by merging — the merge is the
 consent step. It is idempotent: re-running skips repos that already have the
 workflow, so partial rollouts recover cleanly.
+
+PRs target **`develop`** when that branch exists, otherwise **`dev`**. They
+never target `main` / `master`. A repository that has only `main` gets a Phase
+0 issue instead (create `develop`, install `require-develop-source.yml`, protect
+`main` so only `develop` may merge into it — Decision [2026-08-16-0003]).
 
 ## Cost note
 

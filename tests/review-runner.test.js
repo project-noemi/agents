@@ -20,7 +20,7 @@ const {
 } = require('../scripts/review-pr.js');
 
 const {
-    classify, rank, selectModel, meetsFloor,
+    classify, rank, selectModel, meetsFloor, resolvePinnedModel,
 } = require('../scripts/resolve-gemini-model.js');
 
 // These tests assert the properties that must hold no matter what the reviewing
@@ -250,6 +250,35 @@ test('selection: prefer_pro_tier falls back to an older stable Pro and reports t
     assert.equal(chosen.name, 'gemini-2.5-pro');
     assert.match(tradeoff, /prefer_pro_tier selected gemini-2\.5-pro \(gen 2\.5\)/);
     assert.match(tradeoff, /gemini-3\.6-flash \(gen 3\.6\)/);
+});
+
+test('pin: empty and auto restore discovery', () => {
+    assert.equal(resolvePinnedModel('', ['publishers/google/models/gemini-2.5-pro']), null);
+    assert.equal(resolvePinnedModel('auto', ['publishers/google/models/gemini-2.5-pro']), null);
+});
+
+test('pin: exact catalogue match is returned and marked pinned', () => {
+    const available = ['gemini-2.5-pro', 'gemini-3.1-pro-preview', 'gemini-3.6-flash']
+        .map((n) => `publishers/google/models/${n}`);
+    const pinned = resolvePinnedModel('gemini-3.1-pro-preview', available);
+    assert.equal(pinned.name, 'gemini-3.1-pro-preview');
+    assert.equal(pinned.tier, 'pro');
+    assert.equal(pinned.pinned, true);
+    assert.equal(pinned.id, 'publishers/google/models/gemini-3.1-pro-preview');
+});
+
+test('pin: missing catalogue entry fails closed', () => {
+    assert.throws(
+        () => resolvePinnedModel('gemini-3.1-pro-preview', ['publishers/google/models/gemini-2.5-pro']),
+        /not in the publisher catalogue/,
+    );
+});
+
+test('pin: non-text modality is rejected before catalogue lookup', () => {
+    assert.throws(
+        () => resolvePinnedModel('gemini-3-pro-image', ['publishers/google/models/gemini-3-pro-image']),
+        /not a usable Gemini text model/,
+    );
 });
 
 test('selection: prefer_pro_tier plus previews reaches the newest Pro', () => {
@@ -490,6 +519,12 @@ test('reviewer credential preference: app token shadows PATs, distinct name', ()
     const patIdx = src.indexOf('process.env.REVIEWER_GH_TOKEN');
     assert.ok(appIdx > -1, 'app token path must exist');
     assert.ok(appIdx < patIdx, 'app token must be consulted before any PAT');
+});
+
+test('workflow: review model defaults to the gemini-3.1-pro-preview pin', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
+    assert.match(yml, /GEMINI_REVIEW_MODEL: \$\{\{ vars\.GEMINI_REVIEW_MODEL \|\| 'gemini-3\.1-pro-preview' \}\}/);
+    assert.match(yml, /--allow-preview/);
 });
 
 test('workflow: App ID is resolved from Infisical when the Actions variable is empty', () => {

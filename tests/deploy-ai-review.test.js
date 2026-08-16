@@ -22,6 +22,7 @@ test('deploy: prefers develop, then dev, and never opens a caller PR against mai
     assert.match(script, /--base "\$target"/);
     assert.doesNotMatch(script, /--base "\$default_branch"/);
     assert.match(script, /deploy-ai-review-lib\.js/);
+    assert.match(script, /pick-branch/);
 });
 
 test('pickIntegrationBranch: develop wins over dev and main', () => {
@@ -29,6 +30,19 @@ test('pickIntegrationBranch: develop wins over dev and main', () => {
     assert.equal(pickIntegrationBranch(['main', 'dev']), 'dev');
     assert.equal(pickIntegrationBranch(['main', 'master']), '');
     assert.equal(pickIntegrationBranch([]), '');
+});
+
+test('pick-branch CLI is what the shell script invokes', () => {
+    const helper = path.join(__dirname, '..', 'scripts', 'deploy-ai-review-lib.js');
+    const preferDevelop = spawnSync(process.execPath, [helper, 'pick-branch', 'main', 'dev', 'develop'], { encoding: 'utf8' });
+    assert.equal(preferDevelop.status, 0);
+    assert.equal(preferDevelop.stdout, 'develop');
+    const preferDev = spawnSync(process.execPath, [helper, 'pick-branch', 'master', 'dev'], { encoding: 'utf8' });
+    assert.equal(preferDev.status, 0);
+    assert.equal(preferDev.stdout, 'dev');
+    const mainOnly = spawnSync(process.execPath, [helper, 'pick-branch', 'main'], { encoding: 'utf8' });
+    assert.equal(mainOnly.status, 0);
+    assert.equal(mainOnly.stdout, '');
 });
 
 test('firstIssueUrl: empty list is not an existing issue (jq null trap)', () => {

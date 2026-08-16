@@ -3,9 +3,12 @@
  * Pure helpers for scripts/deploy-ai-review.sh. Kept in Node so the
  * issue-URL and branch-preference rules are unit-tested, not just grepped.
  *
- * STDIN (when run as CLI): JSON from `gh issue list --json url`.
- * STDOUT: the first http(s) issue URL, or empty. Never prints the JSON
- * literal `null` — that is how `jq '.[0].url'` lies when the list is empty.
+ * CLI:
+ *   node deploy-ai-review-lib.js pick-branch [names...]
+ *     → integration branch (develop, else dev, else empty)
+ *   node deploy-ai-review-lib.js   <  gh-issue-list.json
+ *     → first http(s) issue URL, or empty. Never prints the JSON
+ *       literal `null` — that is how `jq '.[0].url'` lies when the list is empty.
  */
 'use strict';
 
@@ -47,6 +50,9 @@ module.exports = { firstIssueUrl, pickIntegrationBranch };
 
 if (require.main === module) {
   const fs = require('fs');
-  const input = fs.readFileSync(0, 'utf8');
-  process.stdout.write(firstIssueUrl(input));
+  if (process.argv[2] === 'pick-branch') {
+    process.stdout.write(pickIntegrationBranch(process.argv.slice(3)));
+  } else {
+    process.stdout.write(firstIssueUrl(fs.readFileSync(0, 'utf8')));
+  }
 }

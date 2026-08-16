@@ -67,16 +67,19 @@ if [[ $DRY_RUN -eq 0 ]] && ! gh auth status 2>&1 | grep -q "workflow"; then
   exit 1
 fi
 
-# Prefer develop, then dev. Empty means only main/master (or nothing) exists.
+# Discover which well-known refs exist; preference is decided only in
+# scripts/deploy-ai-review-lib.js (pickIntegrationBranch) so the unit tests
+# cover the production rule.
+DEPLOY_LIB="${BASH_SOURCE[0]%/*}/deploy-ai-review-lib.js"
+
 integration_branch() {
   local repo="$1"
-  if gh api "repos/${repo}/git/ref/heads/develop" >/dev/null 2>&1; then
-    printf '%s' "develop"
-  elif gh api "repos/${repo}/git/ref/heads/dev" >/dev/null 2>&1; then
-    printf '%s' "dev"
-  else
-    printf ''
-  fi
+  local names=()
+  gh api "repos/${repo}/git/ref/heads/develop" >/dev/null 2>&1 && names+=(develop)
+  gh api "repos/${repo}/git/ref/heads/dev" >/dev/null 2>&1 && names+=(dev)
+  gh api "repos/${repo}/git/ref/heads/main" >/dev/null 2>&1 && names+=(main)
+  gh api "repos/${repo}/git/ref/heads/master" >/dev/null 2>&1 && names+=(master)
+  node "$DEPLOY_LIB" pick-branch "${names[@]}"
 }
 
 PHASE0_BODY="This repository has no \`develop\` or \`dev\` branch, so the fleet AI-review caller will **not** open a PR against \`main\` / \`master\`.
@@ -96,7 +99,7 @@ open_phase0_issue() {
   # `jq '.[0].url'` prints the literal string "null" on an empty list — that
   # is not a URL. Parse through the tested helper so we never skip create.
   existing=$(gh issue list --repo "$repo" --search "in:title ${PHASE0_TITLE}" \
-    --state open --json url 2>/dev/null | node scripts/deploy-ai-review-lib.js || true)
+    --state open --json url 2>/dev/null | node "$DEPLOY_LIB" || true)
   if [[ -n "$existing" ]]; then
     printf '%s' "$existing"
     return 0

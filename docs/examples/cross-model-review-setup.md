@@ -247,16 +247,16 @@ Vertex AI requires billing to be linked to the project.
 ## Which model gets chosen
 
 Not a name in a config file — names go stale. The resolver asks Google what
-exists and applies this rule:
+exists and applies the current rule (Decision [2026-08-16-0002]):
 
-> Prefer the newest **stable** model of the highest available generation. Pro is
-> elevated only when a stable Pro exists in that generation; otherwise take the
-> best stable model of the latest generation.
+> Among models meeting the **Pro floor**: take the highest-generation **Pro
+> preview**. If the catalogue has no Pro preview, take the highest-generation
+> stable Pro. A catalogue with no Pro at all halts the review.
 
-Generation dominates; tier orders *within* a generation. That matters because a
-hard tier preference looks sensible and quietly does the wrong thing: at the time
-of writing, every 3.x Pro is preview-only, so "always prefer Pro" would select a
-2.5-generation model while a stable 3.6 was available.
+`--prefer-preview-pro` / `GEMINI_PREFER_PREVIEW_PRO=1` is the review default.
+An explicit `GEMINI_REVIEW_MODEL=<id>` pin always wins; `auto` (the fleet's
+org-variable value) means discover. The earlier "newest stable generation" rule
+(Decision [2026-08-11]) survives only as the non-default legacy mode.
 
 Also filtered out: image, speech, embedding, robotics, and computer-use variants.
 Their names still contain "pro" and "flash", so a naive rank will cheerfully
@@ -266,22 +266,25 @@ wrong for this job.
 ### The Pro floor (required)
 
 Flash is not an adequate review model (Decision [2026-08-15-0003]). The
-runner and the workflow default to `--floor pro`. A catalogue with no Pro
-halts the review. `--prefer-pro` is also on by default.
+runner and the workflow default to `--floor pro`; a catalogue with no Pro
+halts the review rather than degrading.
 
 ```bash
-node scripts/resolve-gemini-model.js --floor pro --prefer-pro
+node scripts/resolve-gemini-model.js --floor pro --prefer-preview-pro
 ```
 
-When the toggle costs you a generation, it tells you:
+Preview Pro models are the deliberate default (Decision [2026-08-16-0002]):
+review wants maximum capability, and the trade-off — verdicts from a preview
+build — is accepted and visible: every review comment records the exact model
+ID that produced it.
 
-```
-⚠ prefer_pro_tier selected gemini-2.5-pro (gen 2.5); without it the newest
-  stable choice is gemini-3.6-flash (gen 3.6).
-```
+### The Sentinel brief
 
-Combine with `--allow-preview` to reach a newer Pro that is still in preview —
-accepting an unstable model inside a governance control.
+Every review loads the Sentinel security persona
+(`agents/coding/sentinel/core.md`) from `project-noemi/agents` as the code
+gate's security brief (Decision [2026-08-15-0003]). If that spec cannot be
+loaded, the review **halts** (marker `sentinel-spec-missing`) rather than
+reviewing with a weaker brief.
 
 ## Which backend
 
@@ -684,6 +687,8 @@ merge wave.
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| Review halts with `sentinel-spec-missing` | `agents/coding/sentinel/core.md` unreachable at the pinned tooling ref | Check the tooling checkout step and the ref it pins |
+| `App key missing: REVIEWER_APP_ID is resolved but REVIEWER_APP_PRIVATE_KEY is not in Infisical` | App ID configured without its private key | Store the key per the fleet-deployment GitHub App section |
 | `403 Resource not accessible` on writes | Org approval pending, or permission not set to Read **and write** | Check the org PAT-requests page (Part 3) |
 | `Token resolves to 'yourname', expected 'noemi-agent'` | Your own token is in the environment | The guard is working — unset `AGENT_GH_TOKEN` |
 | `Could not resolve the machine-identity token` | Secret missing from the vault | Re-store it (Part 2 / Part 3) |

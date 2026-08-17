@@ -16,6 +16,12 @@ webhook is added. Stage A today is `coding-loop/run.js`. Personas, skills, and
 `docs/model-routing.json` stay the source of truth; the section must not
 vendor a private copy.
 
+Organizations run the loop from a private `{company}-agents` copy (NewPush:
+`newpush/newpush-agents`) and sync **from** this repo. How to do that is
+`coding-loop/README.md` (short path: `docs/examples/build-your-coding-loop.md`).
+Do not invert that flow: do not design the general loop only in the private
+copy and paste a sanitized tree back later.
+
 Recorded as Decision [2026-08-16-0004].
 
 ## Identities

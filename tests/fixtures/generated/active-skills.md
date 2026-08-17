@@ -1,6 +1,6 @@
 ## Active Skills
 
-9 reusable skills available. Agents reference these in their Workflow sections.
+11 reusable skills available. Agents reference these in their Workflow sections.
 Summaries only: **read the full skill spec before executing it** — the Procedure, Boundaries, and Refusal Criteria that govern execution live in the spec, not here.
 All skills, always: adhere to the defined Boundaries and **never exceed authorized tool usage**; each skill's hard gates (`Ask First` / `Never`) are reproduced below verbatim.
 
@@ -10,6 +10,13 @@ All skills, always: adhere to the defined Boundaries and **never exceed authoriz
 - **Purpose:** Categorize items into risk tiers to determine the appropriate action path.
 - **Ask First:** Overriding a Blocked classification to a lower tier.
 - **Never:** Classify an item as Safe when any criterion is ambiguous or unresolvable. Skip the escape hatch check.
+
+### Issue Intake — Classification Skill
+
+- **Spec:** `skills/classification/issue-intake.md`
+- **Purpose:** Classify a newly opened GitHub issue for the issue-coding loop: whether the conductor should skip, refuse, ask for information, or treat the issue as actionable.
+- **Ask First:** Treating a bot-authored issue as actionable. Overriding a
+- **Never:** Open a pull request. Write code. Apply `noemi:planned`. Classify
 
 ### Pre-Flight Check — Verification Skill
 
@@ -66,3 +73,10 @@ All skills, always: adhere to the defined Boundaries and **never exceed authoriz
 - **Purpose:** Delegate work to one or more sub-agents and aggregate their outputs into a unified result.
 - **Ask First:** Overriding a sub-agent's output to resolve a conflict. Re-dispatching to a sub-agent after a consistency failure.
 - **Never:** Modify a sub-agent's output without flagging it. Dispatch to an agent spec that doesn't exist. Skip consistency checks.
+
+### Issue Plan — Orchestration Skill
+
+- **Spec:** `skills/orchestration/issue-plan.md`
+- **Purpose:** Produce a checkable implementation plan for an actionable GitHub issue, then run that plan through a Gemini Pro red-team cycle until the plan is accepted or `planRedTeam.maxCycles` is hit.
+- **Ask First:** Raising `cycle_limit` above the routing default for one
+- **Never:** Dispatch `noemi-agent`. Post as `noemi-reviewer-bot`. Treat a

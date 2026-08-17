@@ -1,6 +1,6 @@
 ## Agent Index
 
-29 agent specifications across 9 domains:
+30 agent specifications across 9 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
@@ -14,6 +14,7 @@
 | education | Student Success Coach — Education Agent | A compassionate, flexible, and strategic academic mentor specialized in supporting students from low-income or housing-unstable backgrounds. | `agents/education/student-success-coach.md` |
 | engineering | AI Architect — Engineering Agent | You are the AI Architect, the capstone persona of Project NoeMI. | `agents/engineering/ai-architect.md` |
 | engineering | Gatekeeper — Engineering Agent | Automated pull request triage agent that continuously monitors all repositories in a GitHub organization, classifies open PRs by risk level, and takes decisive action: auto-merges safe changes, flags  | `agents/engineering/gatekeeper.md` |
+| engineering | Issue Conductor — Engineering Agent | Fleet issue conductor that classifies, specifies, plans, and red-teams new GitHub issues, then dispatches coding and PR review to the identities that own those acts. | `agents/engineering/issue-conductor.md` |
 | engineering | Orchestrator — Engineering Agent | You are the Orchestrator, the model-selection and delegation authority for Claude Code workflows and subagents. | `agents/engineering/orchestrator.md` |
 | engineering | PR Reviewer — Engineering Agent | Cross-model adversarial reviewer for agent-authored pull requests. | `agents/engineering/pr-reviewer.md` |
 | guardian | PIIGuard — Guardian Agent | Primary Data Privacy Guardian for the Project NoéMI agent fleet. | `agents/guardian/pii-guard.md` |

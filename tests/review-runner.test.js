@@ -568,3 +568,92 @@ test('workflow: App ID is resolved from Infisical when the Actions variable is e
     assert.match(yml, /steps\.appid\.outputs\.present/);
     assert.ok(yml.includes('app-id: ${{ env.REVIEWER_APP_ID }}'));
 });
+
+test('retry predicate: classification is structural, never message-derived', () => {
+    const { isTransientGitHubError } = require('../scripts/review-pr.js');
+    const withStatus = (status) => Object.assign(new Error(`GitHub GET /x → ${status} {}`), { status });
+    for (const status of [503, 500, 429]) {
+        assert.equal(isTransientGitHubError(withStatus(status)), true, `${status} must retry`);
+    }
+    for (const status of [404, 401, 422]) {
+        assert.equal(isTransientGitHubError(withStatus(status)), false, `${status} must not retry`);
+    }
+    // Network-level failures carry no status: fetch throws TypeError. Transient.
+    assert.equal(isTransientGitHubError(new TypeError('fetch failed')), true);
+    assert.equal(isTransientGitHubError(new SyntaxError('bad json')), false);
+});
+
+test('retry predicate: a 4xx whose body quotes a 5xx marker is NOT retried (injection regression)', () => {
+    // The review of this change found the original predicate regexed the whole
+    // message — which embeds the response body, attacker-influencable text. A
+    // validation error reflecting "→ 503 " classified as transient.
+    const { isTransientGitHubError } = require('../scripts/review-pr.js');
+    const poisoned = Object.assign(
+        new Error('GitHub POST /pulls → 422 {"message":"Validation failed: title \'x → 503 y\' invalid"}'),
+        { status: 422 },
+    );
+    assert.equal(isTransientGitHubError(poisoned), false);
+});
+
+test('retry behavior through the real helper: transient retries to exhaustion, deterministic fails immediately', async () => {
+    const { isTransientGitHubError } = require('../scripts/review-pr.js');
+    const { withRetry } = require('../scripts/resilience_helpers.js');
+
+    let transientCalls = 0;
+    await assert.rejects(withRetry(async () => {
+        transientCalls += 1;
+        throw Object.assign(new Error('GitHub POST /x → 503 {}'), { status: 503 });
+    }, { maxRetries: 2, baseDelayMs: 1, retryIf: isTransientGitHubError }));
+    assert.equal(transientCalls, 3, 'a transient error is retried to exhaustion');
+
+    let deterministicCalls = 0;
+    await assert.rejects(withRetry(async () => {
+        deterministicCalls += 1;
+        throw Object.assign(new Error('GitHub GET /x → 404 {}'), { status: 404 });
+    }, { maxRetries: 2, baseDelayMs: 1, retryIf: isTransientGitHubError }));
+    assert.equal(deterministicCalls, 1, 'a deterministic error is not retried');
+});
+
+test('gh() end to end: a 503 response is retried and the eventual 200 is returned', async () => {
+    // Exercises the REAL gh() with a stubbed global fetch — fails if withRetry
+    // is unwired from gh(). REVIEW_RETRY_BASE_MS keeps the backoff schedule out
+    // of the suite's runtime (review finding: real 2s backoff in tests degrades
+    // the suite without adding assurance).
+    const { gh } = require('../scripts/review-pr.js');
+    const realFetch = global.fetch;
+    const realBase = process.env.REVIEW_RETRY_BASE_MS;
+    process.env.REVIEW_RETRY_BASE_MS = '1';
+    let calls = 0;
+    global.fetch = async () => {
+        calls += 1;
+        if (calls === 1) {
+            return { ok: false, status: 503, text: async () => '{"message":"down"}' };
+        }
+        return { ok: true, status: 200, json: async () => ({ ok: true }), text: async () => '{}' };
+    };
+    try {
+        const out = await gh('/repos/o/r/pulls/1', { token: 'x' });
+        assert.deepEqual(out, { ok: true });
+        assert.equal(calls, 2, 'the 503 must be retried exactly once before the 200');
+    } finally {
+        global.fetch = realFetch;
+        if (realBase === undefined) delete process.env.REVIEW_RETRY_BASE_MS;
+        else process.env.REVIEW_RETRY_BASE_MS = realBase;
+    }
+});
+
+test('gh() end to end: a 404 response throws without any retry', async () => {
+    const { gh } = require('../scripts/review-pr.js');
+    const realFetch = global.fetch;
+    let calls = 0;
+    global.fetch = async () => {
+        calls += 1;
+        return { ok: false, status: 404, text: async () => '{"message":"missing"}' };
+    };
+    try {
+        await assert.rejects(() => gh('/repos/o/r/pulls/999', { token: 'x' }), /404/);
+        assert.equal(calls, 1, 'deterministic failures must not be retried');
+    } finally {
+        global.fetch = realFetch;
+    }
+});

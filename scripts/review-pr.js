@@ -76,6 +76,7 @@ const {
   selectModel, listModels, resolvePinnedModel, backendConfig, generateUrl,
 } = require('./resolve-gemini-model.js');
 const { getAccessToken, tokenSource } = require('./gcp-token.js');
+const { withRetry } = require('./resilience_helpers.js');
 
 const GH_API = 'https://api.github.com';
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
@@ -404,19 +405,32 @@ function parseArgs(argv) {
   return args;
 }
 
+/** True for failures worth retrying: transient server errors and rate limits.
+ *  4xx (auth, not-found, validation) are deterministic — retrying them only
+ *  delays the real error. */
+function isTransientGitHubError(err) {
+  return /→ (429|5\d\d) /.test(String(err && err.message));
+}
+
 async function gh(path, { token, accept = 'application/vnd.github+json', method = 'GET', body } = {}) {
-  const res = await fetch(`${GH_API}${path}`, {
-    method,
-    headers: {
-      Accept: accept,
-      Authorization: `Bearer ${token}`,
-      'X-GitHub-Api-Version': '2022-11-28',
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  if (!res.ok) throw new Error(`GitHub ${method} ${path} → ${res.status} ${await res.text()}`);
-  return accept.includes('diff') ? res.text() : res.json();
+  // Exponential backoff per the repository resilience mandate
+  // (scripts/resilience_helpers.js). Added after GitHub's 2026-08-17 partial
+  // outage failed three review runs at the comment POST — with the review now
+  // a required-to-complete check, an unretried 503 blocks merges repo-wide.
+  return withRetry(async () => {
+    const res = await fetch(`${GH_API}${path}`, {
+      method,
+      headers: {
+        Accept: accept,
+        Authorization: `Bearer ${token}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (!res.ok) throw new Error(`GitHub ${method} ${path} → ${res.status} ${await res.text()}`);
+    return accept.includes('diff') ? res.text() : res.json();
+  }, { maxRetries: 4, baseDelayMs: 2000, maxDelayMs: 20000, retryIf: isTransientGitHubError });
 }
 
 async function callGemini(model, prompt, token, cfg) {

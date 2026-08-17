@@ -568,3 +568,16 @@ test('workflow: App ID is resolved from Infisical when the Actions variable is e
     assert.match(yml, /steps\.appid\.outputs\.present/);
     assert.ok(yml.includes('app-id: ${{ env.REVIEWER_APP_ID }}'));
 });
+
+test('transient-error predicate: 5xx/429 retry, 4xx do not', () => {
+    // Added after the 2026-08-17 GitHub outage failed three review runs at the
+    // comment POST. Retrying a 401/404 only delays the real error.
+    const src = require('../scripts/review-pr.js');
+    // predicate is internal; assert via the module source contract instead
+    const fs = require('fs');
+    const path = require('path');
+    const text = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'review-pr.js'), 'utf8');
+    assert.match(text, /withRetry/, 'gh() must use the canonical resilience helper');
+    assert.match(text, /429\|5\\d\\d/, 'retry only transient statuses');
+    assert.match(text, /retryIf: isTransientGitHubError/, 'predicate must be wired in');
+});

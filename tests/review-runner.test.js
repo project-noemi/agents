@@ -569,15 +569,71 @@ test('workflow: App ID is resolved from Infisical when the Actions variable is e
     assert.ok(yml.includes('app-id: ${{ env.REVIEWER_APP_ID }}'));
 });
 
-test('transient-error predicate: 5xx/429 retry, 4xx do not', () => {
-    // Added after the 2026-08-17 GitHub outage failed three review runs at the
-    // comment POST. Retrying a 401/404 only delays the real error.
-    const src = require('../scripts/review-pr.js');
-    // predicate is internal; assert via the module source contract instead
-    const fs = require('fs');
-    const path = require('path');
-    const text = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'review-pr.js'), 'utf8');
-    assert.match(text, /withRetry/, 'gh() must use the canonical resilience helper');
-    assert.match(text, /429\|5\\d\\d/, 'retry only transient statuses');
-    assert.match(text, /retryIf: isTransientGitHubError/, 'predicate must be wired in');
+test('retry predicate: transient statuses retry, deterministic ones do not', () => {
+    const { isTransientGitHubError } = require('../scripts/review-pr.js');
+    for (const msg of ['GitHub POST /x → 503 {}', 'GitHub GET /y → 500 {}', 'GitHub GET /z → 429 {}']) {
+        assert.equal(isTransientGitHubError(new Error(msg)), true, `${msg} must retry`);
+    }
+    for (const msg of ['GitHub GET /x → 404 {}', 'GitHub POST /y → 401 {}', 'GitHub PUT /z → 422 {}', 'something else']) {
+        assert.equal(isTransientGitHubError(new Error(msg)), false, `${msg} must not retry`);
+    }
+});
+
+test('retry behavior through the real helper: 503 retries to exhaustion, 404 fails immediately', async () => {
+    // The committed proof of the PR's claim — previously only run ad-hoc.
+    const { isTransientGitHubError } = require('../scripts/review-pr.js');
+    const { withRetry } = require('../scripts/resilience_helpers.js');
+
+    let transientCalls = 0;
+    await assert.rejects(withRetry(async () => {
+        transientCalls += 1;
+        throw new Error('GitHub POST /x → 503 {}');
+    }, { maxRetries: 2, baseDelayMs: 1, retryIf: isTransientGitHubError }));
+    assert.equal(transientCalls, 3, 'a transient error is retried to exhaustion');
+
+    let deterministicCalls = 0;
+    await assert.rejects(withRetry(async () => {
+        deterministicCalls += 1;
+        throw new Error('GitHub GET /x → 404 {}');
+    }, { maxRetries: 2, baseDelayMs: 1, retryIf: isTransientGitHubError }));
+    assert.equal(deterministicCalls, 1, 'a deterministic error is not retried');
+});
+
+test('gh() end to end: a 503 response is retried and the eventual 200 is returned', async () => {
+    // Exercises the REAL gh() with a stubbed global fetch — this test fails if
+    // withRetry is unwired from gh(), which the previous source-grep test
+    // could never guarantee. Runs ~2s: gh()'s real backoff schedule.
+    const { gh } = require('../scripts/review-pr.js');
+    const realFetch = global.fetch;
+    let calls = 0;
+    global.fetch = async () => {
+        calls += 1;
+        if (calls === 1) {
+            return { ok: false, status: 503, text: async () => '{"message":"down"}' };
+        }
+        return { ok: true, status: 200, json: async () => ({ ok: true }), text: async () => '{}' };
+    };
+    try {
+        const out = await gh('/repos/o/r/pulls/1', { token: 'x' });
+        assert.deepEqual(out, { ok: true });
+        assert.equal(calls, 2, 'the 503 must be retried exactly once before the 200');
+    } finally {
+        global.fetch = realFetch;
+    }
+});
+
+test('gh() end to end: a 404 response throws without any retry', async () => {
+    const { gh } = require('../scripts/review-pr.js');
+    const realFetch = global.fetch;
+    let calls = 0;
+    global.fetch = async () => {
+        calls += 1;
+        return { ok: false, status: 404, text: async () => '{"message":"missing"}' };
+    };
+    try {
+        await assert.rejects(() => gh('/repos/o/r/pulls/999', { token: 'x' }), /404/);
+        assert.equal(calls, 1, 'deterministic failures must not be retried');
+    } finally {
+        global.fetch = realFetch;
+    }
 });

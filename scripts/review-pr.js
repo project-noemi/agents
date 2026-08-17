@@ -636,6 +636,7 @@ async function main() {
 
 module.exports = {
   detectCarveOut, validateFindings, gateVerdict, recommend, writeHaltMarker,
+  gh, isTransientGitHubError,
   buildGatePrompt, buildRemediationPrompt, renderComment,
   loadSentinelFromDisk, loadSentinelInstructions,
   SENTINEL_REPO, SENTINEL_PATH,

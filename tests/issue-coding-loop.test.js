@@ -94,3 +94,15 @@ test('architecture doc names the three identities and the plan cycle stop', () =
   assert.match(doc, /Never start Stage C on a rejected plan/);
   assert.match(doc, /highest-generation preview/);
 });
+
+test('architecture and conductor treat GitHub 429/5xx as retries, not verdicts', () => {
+  const doc = read('docs/architecture/issue-coding-loop.md');
+  const conductor = read('agents/engineering/issue-conductor.md');
+  assert.match(doc, /GitHub availability/);
+  assert.match(doc, /scripts\/resilience_helpers\.js/);
+  assert.match(doc, /re-queues the review/);
+  assert.match(doc, /required to complete/);
+  assert.match(conductor, /scripts\/resilience_helpers\.js/);
+  assert.match(conductor, /GitHub outage is not a decision/);
+  assert.match(conductor, /429 and 5xx/);
+});

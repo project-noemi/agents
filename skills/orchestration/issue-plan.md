@@ -25,7 +25,10 @@ from coding a rejected idea.
    - **Tests** — how we will know the change is wrong if it is wrong
    - **Risks** — including governance carve-outs and secret handling
    - **Stop conditions** — what would send this back to `noemi:needs-info`
-3. **Label** — Apply `noemi:planned` when the first draft is posted.
+3. **Label** — Apply `noemi:planned` when the first draft is posted. The host
+   must persist the comment and label through `withRetry` (`scripts/resilience_helpers.js`):
+   retry 429/5xx until GitHub accepts; do not return `needs-info` because the
+   API was down.
 4. **Red-team (Stage B′)** — Using the Stage D family (Gemini Pro, same
    selection rule as `scripts/resolve-gemini-model.js`), attack the plan on
    premise and framing only. Do not invent a second reviewer identity; this
@@ -88,7 +91,7 @@ from coding a rejected idea.
 - **Ask First:** Raising `cycle_limit` above the routing default for one
   issue.
 - **Never:** Dispatch `noemi-agent`. Post as `noemi-reviewer-bot`. Treat a
-  failing plan at the limit as accepted.
+  failing plan at the limit as accepted. Treat a GitHub 503 as a plan verdict.
 
 ## Audit Log
 

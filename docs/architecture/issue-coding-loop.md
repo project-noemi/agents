@@ -114,6 +114,31 @@ Reuse the existing fleet reviewer (`scripts/review-pr.js` /
 `noemi-reviewer-bot[bot]`). Do not add a second Gemini reviewer. Label
 `noemi:review`. Humans still own approval and merge.
 
+On `develop`, Cross-Model PR Review is **required to complete** and remains
+advisory on the verdict (Decision [2026-08-17-0001]). A GitHub outage that
+fails the comment POST is not a review. The runner retries transient GitHub
+errors (429 / 5xx) via `scripts/resilience_helpers.js` until the post
+succeeds or the retry budget is exhausted; if the budget is exhausted the
+host **re-queues the review**, it does not treat the outage as findings or
+as a skipped stage.
+
+## GitHub availability
+
+Every GitHub call in this loop — conductor comments and labels, producer
+PR open, Stage D review post — uses the same contract as
+`scripts/review-pr.js`:
+
+- Retry **only** transient statuses: 429 and 5xx.
+- Do **not** retry deterministic 4xx (401, 403, 404, 422).
+- Use `scripts/resilience_helpers.js` (`withRetry`) or the host’s equivalent.
+- An exhausted retry budget is a **connection failure**, not a product
+  decision. Re-queue the stage. Do not apply `noemi:needs-info`,
+  `noemi:wont-act`, or a fake review verdict because GitHub was down.
+
+The 2026-08-17 GitHub partial outage failed live reviews at the final
+comment POST after Gemini had already finished. That class of failure must
+not fail the required-to-complete check or strand an issue.
+
 ## Model selection
 
 Same rule as the fleet reviewer (Decision [2026-08-16-0002]), applied per
@@ -165,6 +190,8 @@ metering are schema fields, not implemented product.
 - Clarifying questions are the control that keeps “every issue” from becoming
   “every vague thought becomes a PR.”
 - Human still owns merge. Reviewer never approves. Conductor never codes.
+- GitHub 429/5xx are retried; they are never classified as skip, refuse, or
+  a finished review (see **GitHub availability**).
 
 ## Out of scope for this spec
 

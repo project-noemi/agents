@@ -37,3 +37,12 @@ identity is **planned, not provisioned**.
 
 Do not enable org-wide pickup without `limits.concurrent_jobs` and
 `limits.daily_usd`.
+
+## GitHub outages
+
+Every GitHub write this persona asks the host to make (issue comments,
+labels, dispatching Stage D) retries 429/5xx via
+`scripts/resilience_helpers.js` until GitHub accepts, then re-queues.
+See `docs/architecture/issue-coding-loop.md` (**GitHub availability**)
+and Decision [2026-08-17-0002]. A 503 is not a product stop.
+

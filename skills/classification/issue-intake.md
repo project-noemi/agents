@@ -41,7 +41,8 @@ apply the same escape hatches, sufficiency bar, and label transitions.
    `unsafe`.
 8. **Label** — Apply exactly one primary conductor label for the outcome
    (`noemi:queued`, `noemi:needs-info`, `noemi:wont-act`). Do not apply
-   `noemi:planned` here.
+   `noemi:planned` here. Persisting the label is a host GitHub call: retry
+   429/5xx via `scripts/resilience_helpers.js`; a down API is not `REFUSED`.
 
 ## Outputs
 - **tier** — `SKIPPED`, `REFUSED`, `NEEDS_INFO`, or `ACTIONABLE`
@@ -88,7 +89,8 @@ apply the same escape hatches, sufficiency bar, and label transitions.
 - **Ask First:** Treating a bot-authored issue as actionable. Overriding a
   `scan-blocked` result.
 - **Never:** Open a pull request. Write code. Apply `noemi:planned`. Classify
-  `ACTIONABLE` on an empty body.
+  `ACTIONABLE` on an empty body. Classify `REFUSED` or `NEEDS_INFO` because
+  GitHub returned 429 or 5xx.
 
 ## Audit Log
 

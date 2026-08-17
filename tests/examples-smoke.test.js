@@ -120,6 +120,20 @@ test('beginner builder docs start with a safe local success before Docker', () =
     assert.match(chromeOsGuide, /curl -fsSL https:\/\/x\.ai\/cli\/install\.sh/);
     assert.match(chromeOsGuide, /verify-env\.sh --mode=grok/);
     assert.match(chromeOsGuide, /ChromeOS is often \*\*not\*\* the easiest place to start the Docker phase/i);
+    assert.match(readme, /Coders \/ Deploy a loop/);
+    assert.match(readme, /build-your-coding-loop\.md/);
+});
+
+test('coder quick start deploys an issue loop from a private company-agents copy', () => {
+    const guide = read('docs/examples/build-your-coding-loop.md');
+    const operator = read('coding-loop/README.md');
+    assert.match(guide, /coder quick start/i);
+    assert.match(guide, /coding-loop\/run\.js/);
+    assert.match(guide, /CONDUCTOR_GH_TOKEN/);
+    assert.match(guide, /newpush\/newpush-agents/);
+    assert.match(guide, /zero-to-first-agent\.md/);
+    assert.match(operator, /Build your own/);
+    assert.match(operator, /CONDUCTOR_GH_TOKEN/);
 });
 
 test('template infrastructure is grouped under templates/context and the root no longer carries the old template files or stray n8n workflow folder', () => {

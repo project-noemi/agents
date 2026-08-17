@@ -247,6 +247,35 @@ already present. The `project-noemi` install is still live: the bot identity
 continues to resolve and historical promotion PRs still attribute to
 `noemi-release-bot[bot]`.
 
+### Conductor identity — `noemi-conductor` (planned)
+
+The issue-coding loop needs a third actor that can comment on issues without
+being the producer or the reviewer (Decision [2026-08-16-0004]). Issue chatter
+attributed to `noemi-agent` would make the later PR look self-planned. Issue
+chatter attributed to `noemi-reviewer-bot[bot]` would mix planning with PR
+review and destroy the cross-model trail.
+
+| Field | Value |
+|---|---|
+| **Identity** | `noemi-conductor` (GitHub App, planned) |
+| **Status** | **Planned.** Not provisioned. No App ID, no token, no install. |
+| **Purpose** | Comment on issues and apply `noemi:*` labels for triage, sufficiency, planning, and stops |
+| **Named owner** | `@WSwarm` (Balazs Nagy) |
+| **Credential** | Not issued. When provisioned: installation token from Infisical, Fetch-on-Demand, never written to disk |
+| **Permissions (intended)** | Issues read/write, Metadata read. **No** Contents write. **No** Pull requests write. **No** Workflows, Administration, or Secrets |
+| **May author code?** | **No** |
+| **May open PRs?** | **No** |
+| **May review or approve PRs?** | **No** |
+| **May merge PRs?** | **No** |
+
+Do not provision this identity by widening `noemi-agent` or
+`noemi-reviewer-bot`. A new App with Issues-only scope is the point. Until it
+exists, the persona and architecture are the contract; hosts must not post
+conductor comments as another machine user.
+
+See `docs/architecture/issue-coding-loop.md` and
+`agents/engineering/issue-conductor.md`.
+
 ### Effective-permission posture — the token is the boundary
 
 GitHub resolves a *user's* access as the **highest** of all grants. The two

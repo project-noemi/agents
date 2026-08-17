@@ -8,8 +8,8 @@
  * budget). Does not call a model and does not mark ACTIONABLE.
  *
  * USAGE
- *   node scripts/issue-loop/run.js --repo org/name --issue 12
- *   node scripts/issue-loop/run.js --repo org/name --issue 12 --post
+ *   node coding-loop/run.js --repo org/name --issue 12
+ *   node coding-loop/run.js --repo org/name --issue 12 --post
  *
  * --post applies the conductor label. It requires CONDUCTOR_GH_TOKEN and
  * refuses AGENT_GH_TOKEN / REVIEWER_* so identities stay split.
@@ -18,10 +18,10 @@
 
 const fs = require('fs');
 const path = require('path');
-const { gh } = require('../github-client.js');
+const { gh } = require('../scripts/github-client.js');
 const { classifyIssue, issueFromGitHub } = require('./intake.js');
 
-const repoRoot = path.join(__dirname, '..', '..');
+const repoRoot = path.join(__dirname, '..');
 
 function parseArgs(argv) {
   const args = { post: false, scanStatus: 'APPROVED' };
@@ -33,7 +33,7 @@ function parseArgs(argv) {
       case '--tenant': args.tenantPath = argv[++i]; break;
       case '--scan-status': args.scanStatus = argv[++i]; break;
       case '--help':
-        process.stdout.write('Usage: issue-loop/run.js --repo owner/name --issue N [--post] [--tenant path] [--scan-status APPROVED|BLOCKED|REDACTED]\n');
+        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--tenant path] [--scan-status APPROVED|BLOCKED|REDACTED]\n');
         process.exit(0);
         break;
       default:

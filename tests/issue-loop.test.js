@@ -9,7 +9,7 @@ const {
   isEmptyOrTemplate,
   issueFromGitHub,
   tenantAllows,
-} = require('../scripts/issue-loop/intake.js');
+} = require('../coding-loop/intake.js');
 
 const tenant = {
   tenantId: 'newpush-internal',
@@ -138,7 +138,7 @@ test('issueFromGitHub maps a REST payload onto the intake shape', () => {
 });
 
 test('CLI --post without CONDUCTOR_GH_TOKEN is refused (identity split)', () => {
-  const script = path.join(__dirname, '..', 'scripts', 'issue-loop', 'run.js');
+  const script = path.join(__dirname, '..', 'coding-loop', 'run.js');
   const env = { ...process.env };
   delete env.CONDUCTOR_GH_TOKEN;
   const result = spawnSync(process.execPath, [script, '--repo', 'project-noemi/agents', '--issue', '1', '--post'], {

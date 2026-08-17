@@ -367,7 +367,10 @@ module.exports = { decideVerdict, apiAll, isReviewerLogin, REVIEW_CHECK_NAME };
 
 if (require.main === module) {
   main().catch((err) => {
-    process.stderr.write(`✖ ${err.stack || err.message}\n`);
+    // Message only, never the stack: fail securely (Sentinel brief). Stacks
+    // leak runner paths and internal state into public CI logs, and the
+    // message already carries the actionable part (method, path, status).
+    process.stderr.write(`✖ ${err.message}\n`);
     process.exit(2);
   });
 }

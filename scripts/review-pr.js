@@ -405,11 +405,24 @@ function parseArgs(argv) {
   return args;
 }
 
-/** True for failures worth retrying: transient server errors and rate limits.
- *  4xx (auth, not-found, validation) are deterministic — retrying them only
- *  delays the real error. */
+/**
+ * True for failures worth retrying: transient server errors, rate limits, and
+ * network-level failures. 4xx (auth, not-found, validation) are deterministic
+ * — retrying them only delays the real error.
+ *
+ * Classification keys on the STRUCTURED `status` property that gh() stamps on
+ * its errors — never on the message text. The message embeds the raw response
+ * body, which can reflect attacker-influencable input (a PR title inside a
+ * validation error); parsing it let a 4xx whose body contained "→ 503 " pass
+ * as transient. Found by the cross-model review of this very change.
+ * Errors with no status (fetch's network-level TypeError) are transient by
+ * definition — that is the classic retry case.
+ */
 function isTransientGitHubError(err) {
-  return /→ (429|5\d\d) /.test(String(err && err.message));
+  if (err && Number.isInteger(err.status)) {
+    return err.status === 429 || (err.status >= 500 && err.status < 600);
+  }
+  return Boolean(err) && err.name === 'TypeError';
 }
 
 async function gh(path, { token, accept = 'application/vnd.github+json', method = 'GET', body } = {}) {
@@ -428,9 +441,22 @@ async function gh(path, { token, accept = 'application/vnd.github+json', method 
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
-    if (!res.ok) throw new Error(`GitHub ${method} ${path} → ${res.status} ${await res.text()}`);
+    if (!res.ok) {
+      const error = new Error(`GitHub ${method} ${path} → ${res.status} ${await res.text()}`);
+      // Structured status for retry classification — the message is display
+      // text and embeds the response body, so it must never drive decisions.
+      error.status = res.status;
+      throw error;
+    }
     return accept.includes('diff') ? res.text() : res.json();
-  }, { maxRetries: 4, baseDelayMs: 2000, maxDelayMs: 20000, retryIf: isTransientGitHubError });
+  }, {
+    maxRetries: 4,
+    // Operational knob; tests set it to 1 so the end-to-end retry test does
+    // not pay the production backoff schedule.
+    baseDelayMs: Number(process.env.REVIEW_RETRY_BASE_MS || 2000),
+    maxDelayMs: 20000,
+    retryIf: isTransientGitHubError,
+  });
 }
 
 async function callGemini(model, prompt, token, cfg) {

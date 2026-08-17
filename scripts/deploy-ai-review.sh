@@ -153,27 +153,46 @@ for org in $ORGS; do
       continue
     fi
 
-    if gh api "repos/${repo}/contents/${WORKFLOW_PATH}?ref=${target}" >/dev/null 2>&1; then
-      log "  ⏭  ${repo} (already has ${WORKFLOW_PATH} on ${target})"; skipped=$((skipped+1)); continue
+    # Existing file: skip when identical to the template, UPDATE when it
+    # differs — that is how template changes (e.g. the @main pin) roll out,
+    # and how a divergent fork of the reviewer gets replaced by the standard
+    # caller. The update is still a PR: each repo's humans accept it by merge.
+    existing_json=$(gh api "repos/${repo}/contents/${WORKFLOW_PATH}?ref=${target}" 2>/dev/null || true)
+    if [[ -n "$existing_json" ]]; then
+      existing_b64=$(jq -r '.content' <<<"$existing_json" | tr -d '\n')
+      if [[ "$existing_b64" == "$CONTENT_B64" ]]; then
+        log "  ⏭  ${repo} (caller already current on ${target})"; skipped=$((skipped+1)); continue
+      fi
+      MODE="update"
+      # Updating an existing file requires its current blob sha.
+      FILE_SHA=$(jq -r '.sha' <<<"$existing_json")
+      WORK_BRANCH="${BRANCH}-update"
+      COMMIT_MSG="ci: update cross-model AI review caller to the current template"
+    else
+      MODE="add"
+      FILE_SHA=""
+      WORK_BRANCH="$BRANCH"
+      COMMIT_MSG="ci: add cross-model AI review (advisory)"
     fi
 
     if [[ $DRY_RUN -eq 1 ]]; then
-      log "  ▶  would deploy to ${repo} (base: ${target})"
+      log "  ▶  would ${MODE} on ${repo} (base: ${target})"
       created=$((created+1)); continue
     fi
 
+    put_args=(-f message="$COMMIT_MSG" -f content="$CONTENT_B64" -f branch="$WORK_BRANCH")
+    [[ -n "$FILE_SHA" ]] && put_args+=(-f sha="$FILE_SHA")
     if head_sha=$(gh api "repos/${repo}/git/ref/heads/${target}" --jq .object.sha 2>/dev/null) \
        && gh api --method POST "repos/${repo}/git/refs" \
-            -f ref="refs/heads/${BRANCH}" -f sha="$head_sha" >/dev/null 2>&1 \
+            -f ref="refs/heads/${WORK_BRANCH}" -f sha="$head_sha" >/dev/null 2>&1 \
        && gh api --method PUT "repos/${repo}/contents/${WORKFLOW_PATH}" \
-            -f message="ci: add cross-model AI review (advisory)" \
-            -f content="$CONTENT_B64" -f branch="$BRANCH" >/dev/null 2>&1 \
-       && url=$(gh pr create --repo "$repo" --base "$target" --head "$BRANCH" \
-            --title "ci: add cross-model AI review (advisory)" --body "$PR_BODY" 2>/dev/null); then
+            "${put_args[@]}" >/dev/null 2>&1 \
+       && url=$(gh pr create --repo "$repo" --base "$target" --head "$WORK_BRANCH" \
+            --title "$COMMIT_MSG" --body "$PR_BODY" 2>/dev/null); then
       log "  ✔  ${repo} → ${url}"
       created=$((created+1))
     else
-      log "  ✖  ${repo} — failed (permissions, or branch ${BRANCH} already exists)"
+      log "  ✖  ${repo} — failed (permissions, or branch ${WORK_BRANCH} already exists)"
       failed=$((failed+1))
     fi
   done <<< "$repos"

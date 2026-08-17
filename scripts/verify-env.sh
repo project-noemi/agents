@@ -145,11 +145,13 @@ echo -e "✅ Node.js $(node -v) meets the 24.x LTS baseline."
 
 echo -e "\n🔒 Checking SecretOps CLI (Fetch-on-Demand)..."
 SECRETS_CLI=false
+SECRETS_AUTH=false
 if command -v op >/dev/null 2>&1; then
     echo -e "✅ 1Password CLI (op) is installed."
     SECRETS_CLI=true
     if op user get --me >/dev/null 2>&1; then
         echo -e "   ✅ Authenticated to 1Password."
+        SECRETS_AUTH=true
     else
         echo -e "   ⚠️  Not authenticated to 1Password. Run 'op signin'."
     fi
@@ -159,6 +161,7 @@ if command -v infisical >/dev/null 2>&1; then
     SECRETS_CLI=true
     if infisical whoami >/dev/null 2>&1; then
         echo -e "   ✅ Authenticated to Infisical."
+        SECRETS_AUTH=true
     else
         echo -e "   ⚠️  Not authenticated to Infisical. Run 'infisical login'."
     fi
@@ -170,6 +173,14 @@ if [ "$SECRETS_CLI" = false ]; then
     echo -e "   Local repo-only prompts can still work without secrets, but Gmail, GitHub, n8n, and Workspace flows should use Fetch-on-Demand wrappers."
 fi
 
+# CLAUDE.md mandate: missing or invalid SecretOps authentication in docker mode
+# MUST be fatal (exit 1); it stays a warning in every other mode to support
+# local exploration.
+if [ "$MODE" = "docker" ] && [ "$SECRETS_AUTH" = false ]; then
+    echo -e "❌ docker mode requires an authenticated SecretOps CLI (infisical login / op signin). Aborting."
+    exit 1
+fi
+
 echo -e "\n🔑 Checking common API key env vars in the current shell..."
 check_env_var() {
     if [ -n "${!1}" ]; then
@@ -179,10 +190,23 @@ check_env_var() {
     fi
 }
 
-check_env_var "GEMINI_API_KEY"
+# GEMINI_API_KEY is deliberately NOT checked: the Google org policy disallows
+# API keys outright; the review path authenticates via ADC / Workload Identity
+# Federation instead (see docs/examples/cross-model-review-setup.md).
 check_env_var "ANTHROPIC_API_KEY"
 check_env_var "OPENAI_API_KEY"
 check_env_var "XAI_API_KEY"
+
+echo -e "\n☁️  Checking Google ADC (review path — no API key exists by policy)..."
+if command -v gcloud >/dev/null 2>&1; then
+    if gcloud auth application-default print-access-token >/dev/null 2>&1; then
+        echo -e "✅ Application Default Credentials are live."
+    else
+        echo -e "ℹ️  gcloud installed but ADC not authenticated. For local review runs: gcloud auth application-default login"
+    fi
+else
+    echo -e "ℹ️  gcloud CLI not installed — only needed for local cross-model review runs (CI uses federation)."
+fi
 
 echo -e "\n🧭 Recommended next step for $MODE mode:"
 case "$MODE" in

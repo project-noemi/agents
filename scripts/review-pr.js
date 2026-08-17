@@ -76,6 +76,7 @@ const {
   selectModel, listModels, resolvePinnedModel, backendConfig, generateUrl,
 } = require('./resolve-gemini-model.js');
 const { getAccessToken, tokenSource } = require('./gcp-token.js');
+const { withRetry } = require('./resilience_helpers.js');
 
 const GH_API = 'https://api.github.com';
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
@@ -404,19 +405,58 @@ function parseArgs(argv) {
   return args;
 }
 
+/**
+ * True for failures worth retrying: transient server errors, rate limits, and
+ * network-level failures. 4xx (auth, not-found, validation) are deterministic
+ * — retrying them only delays the real error.
+ *
+ * Classification keys on the STRUCTURED `status` property that gh() stamps on
+ * its errors — never on the message text. The message embeds the raw response
+ * body, which can reflect attacker-influencable input (a PR title inside a
+ * validation error); parsing it let a 4xx whose body contained "→ 503 " pass
+ * as transient. Found by the cross-model review of this very change.
+ * Errors with no status (fetch's network-level TypeError) are transient by
+ * definition — that is the classic retry case.
+ */
+function isTransientGitHubError(err) {
+  if (err && Number.isInteger(err.status)) {
+    return err.status === 429 || (err.status >= 500 && err.status < 600);
+  }
+  return Boolean(err) && err.name === 'TypeError';
+}
+
 async function gh(path, { token, accept = 'application/vnd.github+json', method = 'GET', body } = {}) {
-  const res = await fetch(`${GH_API}${path}`, {
-    method,
-    headers: {
-      Accept: accept,
-      Authorization: `Bearer ${token}`,
-      'X-GitHub-Api-Version': '2022-11-28',
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
+  // Exponential backoff per the repository resilience mandate
+  // (scripts/resilience_helpers.js). Added after GitHub's 2026-08-17 partial
+  // outage failed three review runs at the comment POST — with the review now
+  // a required-to-complete check, an unretried 503 blocks merges repo-wide.
+  return withRetry(async () => {
+    const res = await fetch(`${GH_API}${path}`, {
+      method,
+      headers: {
+        Accept: accept,
+        Authorization: `Bearer ${token}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (!res.ok) {
+      const error = new Error(`GitHub ${method} ${path} → ${res.status} ${await res.text()}`);
+      // Structured status for retry classification — the message is display
+      // text and embeds the response body, so it must never drive decisions.
+      error.status = res.status;
+      throw error;
+    }
+    return accept.includes('diff') ? res.text() : res.json();
+  }, {
+    maxRetries: 4,
+    // Operational knob; tests set it to 1 so the end-to-end retry test does
+    // not pay the production backoff schedule.
+    baseDelayMs: Number(process.env.REVIEW_RETRY_BASE_MS || 2000),
+    maxDelayMs: 20000,
+    retryIf: isTransientGitHubError,
   });
-  if (!res.ok) throw new Error(`GitHub ${method} ${path} → ${res.status} ${await res.text()}`);
-  return accept.includes('diff') ? res.text() : res.json();
 }
 
 async function callGemini(model, prompt, token, cfg) {
@@ -622,6 +662,7 @@ async function main() {
 
 module.exports = {
   detectCarveOut, validateFindings, gateVerdict, recommend, writeHaltMarker,
+  gh, isTransientGitHubError,
   buildGatePrompt, buildRemediationPrompt, renderComment,
   loadSentinelFromDisk, loadSentinelInstructions,
   SENTINEL_REPO, SENTINEL_PATH,

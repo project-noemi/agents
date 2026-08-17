@@ -154,14 +154,35 @@ async function api(path, init = {}) {
   return res.status === 204 ? null : res.json();
 }
 
+/**
+ * Fetch every page of a collection. The repository's GitHub protocol mandates
+ * pagination on all API responses, and this gate is a case study in why: issue
+ * comments return OLDEST-first, so past 100 comments an unpaginated fetch
+ * silently drops the LATEST review verdict — and the gate judges the PR on a
+ * stale or missing verdict.
+ */
+async function apiAll(pathBase, pick) {
+  const items = [];
+  for (let page = 1; page <= 50; page += 1) {
+    const sep = pathBase.includes('?') ? '&' : '?';
+    const batch = pick(await api(`${pathBase}${sep}per_page=100&page=${page}`));
+    items.push(...batch);
+    if (batch.length < 100) break;
+  }
+  return items;
+}
+
 async function collectState(repo, prNumber, remediationAttempted) {
   const pr = await api(`/repos/${repo}/pulls/${prNumber}`);
-  const runs = await api(`/repos/${repo}/commits/${pr.head.sha}/check-runs?per_page=100`);
+  const checkRuns = await apiAll(
+    `/repos/${repo}/commits/${pr.head.sha}/check-runs`,
+    (body) => body.check_runs || [],
+  );
 
   const pending = [];
   const failing = [];
   let reviewCheckRunning = false;
-  for (const run of runs.check_runs || []) {
+  for (const run of checkRuns) {
     if (run.name === REVIEW_CHECK_NAME) {
       if (run.status !== 'completed') reviewCheckRunning = true;
       // The review check's conclusion is deliberately not a failure signal:
@@ -175,7 +196,7 @@ async function collectState(repo, prNumber, remediationAttempted) {
     else if (!['success', 'neutral', 'skipped'].includes(run.conclusion)) failing.push(run.name);
   }
 
-  const comments = await api(`/repos/${repo}/issues/${prNumber}/comments?per_page=100`);
+  const comments = await apiAll(`/repos/${repo}/issues/${prNumber}/comments`, (body) => body);
   const review = latestVerdict(comments.map((c) => ({
     login: c.user?.login || '', body: c.body || '',
   })));
@@ -287,7 +308,7 @@ async function main() {
   }
 }
 
-module.exports = { decideVerdict, REVIEW_CHECK_NAME };
+module.exports = { decideVerdict, apiAll, REVIEW_CHECK_NAME };
 
 if (require.main === module) {
   main().catch((err) => {

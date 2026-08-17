@@ -78,3 +78,43 @@ test('an already-merged PR is terminal with nothing to do', () => {
     });
     assert.equal(v.verdict, 'ALREADY_MERGED');
 });
+
+test('pagination: the latest verdict beyond page 1 is not silently dropped (the finding scenario)', async () => {
+    // Issue comments return OLDEST-first: with >100 comments, an unpaginated
+    // fetch keeps only the stale early pages and the gate judges on a missing
+    // or outdated verdict. apiAll must walk every page.
+    const { apiAll } = require('../scripts/pr-merge-gate.js');
+    process.env.AGENT_GH_TOKEN = process.env.AGENT_GH_TOKEN || 'test-token';
+    const realFetch = global.fetch;
+    const pageOf = (n, from) => Array.from({ length: n }, (_, i) => ({ id: from + i }));
+    global.fetch = async (url) => {
+        const page = Number(new URL(url).searchParams.get('page'));
+        const body = page === 1 ? pageOf(100, 0) : page === 2 ? pageOf(3, 100) : [];
+        return { ok: true, status: 200, json: async () => body, text: async () => '' };
+    };
+    try {
+        const all = await apiAll('/repos/o/r/issues/1/comments', (b) => b);
+        assert.equal(all.length, 103, 'both pages must be collected');
+        assert.equal(all[102].id, 102, 'the newest items live on the last page');
+    } finally {
+        global.fetch = realFetch;
+    }
+});
+
+test('pagination: a short first page stops after one request', async () => {
+    const { apiAll } = require('../scripts/pr-merge-gate.js');
+    process.env.AGENT_GH_TOKEN = process.env.AGENT_GH_TOKEN || 'test-token';
+    const realFetch = global.fetch;
+    let calls = 0;
+    global.fetch = async () => {
+        calls += 1;
+        return { ok: true, status: 200, json: async () => [{ id: 1 }], text: async () => '' };
+    };
+    try {
+        const all = await apiAll('/repos/o/r/issues/1/comments', (b) => b);
+        assert.equal(all.length, 1);
+        assert.equal(calls, 1, 'no needless second page');
+    } finally {
+        global.fetch = realFetch;
+    }
+});

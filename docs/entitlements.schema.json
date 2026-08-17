@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-noemi.dev/schemas/entitlements.schema.json",
+  "title": "NoéMI issue-coding-loop tenant entitlement",
+  "description": "Seam for later billing. Hosts must refuse a run that fails this schema or that exceeds limits. No billing code lives in this repository.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tenantId", "source", "plan", "limits"],
+  "properties": {
+    "tenantId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "enum": ["byo", "newpush-pool"]
+    },
+    "plan": {
+      "type": "string",
+      "enum": ["monthly", "on-demand", "internal"]
+    },
+    "orgs": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "GitHub organizations this tenant may run on."
+    },
+    "models": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional per-stage overrides. Unset stages use docs/model-routing.json.",
+      "properties": {
+        "triage": { "$ref": "#/$defs/stageOverride" },
+        "plan": { "$ref": "#/$defs/stageOverride" },
+        "code": { "$ref": "#/$defs/stageOverride" },
+        "redteam": { "$ref": "#/$defs/stageOverride" }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["concurrent_jobs"],
+      "properties": {
+        "daily_usd": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Hard daily spend cap. null is refused for non-internal plans."
+        },
+        "concurrent_jobs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "repos": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Allowlist of owner/name repos. Empty means every repo in orgs."
+        }
+      }
+    },
+    "vault": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provider": { "type": "string", "enum": ["infisical", "1password"] },
+        "project": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "stageOverride": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pin": { "type": "string", "minLength": 1 },
+        "family": { "type": "string", "minLength": 1 },
+        "effort": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

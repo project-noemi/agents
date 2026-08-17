@@ -192,7 +192,9 @@ async function main() {
   })}\n`);
 }
 
-module.exports = { parseReviewVerdict, latestVerdict, buildCalibrationRow, alreadyLogged };
+module.exports = {
+  parseReviewVerdict, latestVerdict, buildCalibrationRow, alreadyLogged, REVIEWER_LOGINS,
+};
 
 if (require.main === module) {
   main().catch((err) => {

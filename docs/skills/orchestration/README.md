@@ -6,7 +6,8 @@ Skills for coordinating work across multiple agents.
 
 | Skill | Spec | Used By |
 |-------|------|---------|
-| [Dispatch & Coordinate](../../../skills/orchestration/dispatch-coordinate.md) | Delegate tasks to sub-agents and aggregate outputs | Video Content Manager |
+| [Dispatch & Coordinate](../../../skills/orchestration/dispatch-coordinate.md) | Delegate tasks to sub-agents and aggregate outputs | Video Content Manager, Issue Conductor |
+| [Issue Plan](../../../skills/orchestration/issue-plan.md) | Draft an implementation plan and red-team it until pass or cycle limit | Issue Conductor |
 
 ## Pattern
 

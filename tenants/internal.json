@@ -1,0 +1,20 @@
+{
+  "tenantId": "newpush-internal",
+  "source": "newpush-pool",
+  "plan": "internal",
+  "orgs": [
+    "newpush",
+    "project-noemi",
+    "newpush-labs"
+  ],
+  "models": {},
+  "limits": {
+    "daily_usd": 50,
+    "concurrent_jobs": 3,
+    "repos": []
+  },
+  "vault": {
+    "provider": "infisical",
+    "project": "noemi-agents"
+  }
+}

@@ -174,3 +174,29 @@ Per the Product Owner directive of 2026-08-03 (Decision [2026-08-03-0002], Requi
 - In containerized or remote sessions without `gh`, use `node scripts/agent-pr.js` (resolves `AGENT_GH_TOKEN` from process memory and speaks to the REST API directly).
 - Both paths verify the token against `AGENT_GH_EXPECTED_LOGIN` and refuse to act as any other account. If no machine-identity token resolves, STOP and surface the gap to the human — never fall back to opening the PR with human credentials.
 - Approving remains a human-only act. Merging remains a human-only act for `noemi-agent` / `noemi-reviewer`. The sole sanctioned exception is `noemi-release-bot` auto-merging `develop → main` promotion PRs opened by `.github/workflows/release.yml` (Decision [2026-08-14-0002], `docs/MACHINE_IDENTITY.md`).
+
+
+### PR Finalization — the Merge Gate (MANDATORY, Decision [2026-08-17-0002])
+
+You never merge, and you never bypass. After opening the PR, run the gate and
+obey its verdict:
+
+```bash
+AGENT_GH_TOKEN=... GITHUB_REPOSITORY=project-noemi/agents \
+  node scripts/pr-merge-gate.js --pr <N> --poll
+```
+
+| Verdict | What you do |
+|---|---|
+| `WAIT_CHECKS` | Nothing — `--poll` handles it. |
+| `RETRIGGERED` | The review was missing (e.g. a GitHub outage); the gate close/reopened the PR to re-fire it. Keep polling. |
+| `REMEDIATE` | The review verdict is failing. You get **exactly one** fix round: address the findings at their **root cause** — you may NOT delete or weaken any test, assertion, or check to pass (Mender rules, `agents/coding/mender/core.md`). Push, then re-run the gate **with `--remediation-attempted`**. |
+| `ARMED_AUTOMERGE` | Stop. Auto-merge is armed; a human code-owner approval completes the merge. Report the PR as ready in your summary. |
+| `ESCALATED` | Stop. The gate filed a `doc-run-escalation` issue. Do not retry, do not merge, do not work around it. |
+| `PR_CLOSED` | Stop. A human closed the PR — that closure is a decision, not an outage. Never reopen it. |
+| `ALREADY_MERGED` | Stop. Nothing left to do. |
+
+Rationale: your merges previously happened by admin bypass with zero approvals
+and no review verdict consulted — the Admin Override Watch flags every such
+event. The gate converts your finish into a governed one: passing review +
+green checks + a human approval.

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "$comment": "Issue-coding loop model contract. Hosts discover per-stage family using the same rule as the fleet reviewer (Decision [2026-08-16-0002], [2026-08-16-0004]). See docs/architecture/issue-coding-loop.md. Optional per-stage pin overrides discovery.",
+  "selectionDefault": "highest-preview-then-stable",
+  "planRedTeam": {
+    "maxCycles": 3,
+    "onLimit": "needs-info"
+  },
+  "stages": {
+    "triage": {
+      "provider": "anthropic",
+      "family": "fable-5-max",
+      "selection": "highest-preview-then-stable"
+    },
+    "plan": {
+      "provider": "anthropic",
+      "family": "fable-5-max",
+      "selection": "highest-preview-then-stable"
+    },
+    "code": {
+      "provider": "xai",
+      "family": "grok-latest",
+      "effort": "xhigh",
+      "selection": "highest-preview-then-stable"
+    },
+    "redteam": {
+      "provider": "google",
+      "family": "gemini-pro",
+      "selection": "highest-preview-then-stable"
+    }
+  }
+}

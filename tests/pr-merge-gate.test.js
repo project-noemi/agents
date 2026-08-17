@@ -7,7 +7,7 @@ const { decideVerdict } = require('../scripts/pr-merge-gate.js');
 // verdict-first, one remediation round, arm-don't-merge, escalate otherwise.
 
 const GREEN = { pending: [], failing: [] };
-const OPEN = { prState: 'open', merged: false };
+const OPEN = { prState: 'open', merged: false, reviewHalted: false, reviewCheckRunning: false, reviewCheckConcluded: 'success' };
 const PASS = { failing: false, gates: [], claim: '' };
 const FAIL = { failing: true, gates: ['code'], claim: 'cache key collision' };
 
@@ -22,12 +22,12 @@ test('red checks escalate even with a passing review — remediation is not lice
 });
 
 test('no verdict + review still running → wait, not retrigger', () => {
-    const v = decideVerdict({ ...OPEN, checks: GREEN, review: null, reviewCheckRunning: true, remediationAttempted: false });
+    const v = decideVerdict({ ...OPEN, checks: GREEN, review: null, reviewCheckRunning: true, reviewCheckConcluded: null, remediationAttempted: false });
     assert.equal(v.verdict, 'WAIT_CHECKS');
 });
 
 test('no verdict + nothing running → retrigger (the outage case)', () => {
-    const v = decideVerdict({ ...OPEN, checks: GREEN, review: null, reviewCheckRunning: false, remediationAttempted: false });
+    const v = decideVerdict({ ...OPEN, checks: GREEN, review: null, reviewCheckConcluded: null, remediationAttempted: false });
     assert.equal(v.verdict, 'RETRIGGERED');
 });
 
@@ -117,4 +117,44 @@ test('pagination: a short first page stops after one request', async () => {
     } finally {
         global.fetch = realFetch;
     }
+});
+
+test('stale verdict: an old FAILING verdict must not escalate while the new review runs (finding scenario A)', () => {
+    // After a remediation push the old failing comment still exists while the
+    // fresh review is in flight — judging on it kills the remediation loop.
+    const v = decideVerdict({
+        ...OPEN, checks: GREEN, review: FAIL,
+        reviewCheckRunning: true, reviewCheckConcluded: null,
+        remediationAttempted: true,
+    });
+    assert.equal(v.verdict, 'WAIT_CHECKS');
+});
+
+test('stale verdict: an old PASSING verdict must not arm auto-merge on an unreviewed commit (finding scenario B)', () => {
+    // New commit pushed; its review run failed before posting (outage class).
+    // The stale pass on the PR must not arm auto-merge for code no one judged.
+    const v = decideVerdict({
+        ...OPEN, checks: GREEN, review: PASS,
+        reviewCheckRunning: false, reviewCheckConcluded: 'failure',
+        remediationAttempted: false,
+    });
+    assert.equal(v.verdict, 'RETRIGGERED');
+    assert.match(v.reason, /failed before posting/);
+});
+
+test('a reviewer HALT is terminal escalation — never retriggered into a loop, never merged past', () => {
+    const v = decideVerdict({
+        ...OPEN, checks: GREEN, review: null, reviewHalted: true,
+        remediationAttempted: false,
+    });
+    assert.equal(v.verdict, 'ESCALATED');
+    assert.match(v.reason, /halted/);
+});
+
+test('successful run with an unparseable verdict escalates rather than guessing', () => {
+    const v = decideVerdict({
+        ...OPEN, checks: GREEN, review: null, remediationAttempted: false,
+    });
+    assert.equal(v.verdict, 'ESCALATED');
+    assert.match(v.reason, /format drift/);
 });

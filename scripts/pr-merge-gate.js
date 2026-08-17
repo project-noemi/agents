@@ -69,11 +69,27 @@ const POLL_DEADLINE_MS = 30 * 60_000;
  *           check itself is EXCLUDED from `failing` — its comment verdict, not
  *           its conclusion, is what judges the PR)
  *   review: null | { failing: boolean, gates: string[], claim: string }
- *   reviewCheckRunning: boolean
+ *   reviewHalted: boolean — the reviewer posted a HALT (carve-out /
+ *           sentinel-missing), which is an escalation, not a verdict
+ *   reviewCheckRunning: boolean — a review run for the CURRENT head SHA is in
+ *           flight
+ *   reviewCheckConcluded: 'success' | 'failure' | null — the review run's
+ *           conclusion FOR THE CURRENT HEAD SHA (null = no run exists yet)
  *   remediationAttempted: boolean
+ *
+ * Verdict freshness is SHA-anchored: comments are not tied to commits, so
+ * after any push an old verdict still sits on the PR while the new review
+ * runs. Judging on it breaks both ways — escalating a remediation before its
+ * re-review finishes, or arming auto-merge on unreviewed code from a stale
+ * pass. The comment verdict is only trusted when the review check for the
+ * current head SHA concluded 'success' (its comment cannot post before that
+ * run completes, and a successful run has posted it).
  */
 function decideVerdict(state) {
-  const { prState, merged, checks, review, reviewCheckRunning, remediationAttempted } = state;
+  const {
+    prState, merged, checks, review, reviewHalted,
+    reviewCheckRunning, reviewCheckConcluded, remediationAttempted,
+  } = state;
 
   // PR state precedes every heuristic. A human-closed PR looks exactly like an
   // outage to the retrigger logic (checks cancelled → no review, nothing
@@ -97,12 +113,35 @@ function decideVerdict(state) {
     };
   }
 
+  // A review in flight for THIS SHA suspends all verdict reading: whatever
+  // comment exists belongs to an older commit.
+  if (reviewCheckRunning) {
+    return { verdict: 'WAIT_CHECKS', reason: 'review for the current commit still running' };
+  }
+
+  // No successful review run for THIS SHA means the comment channel is stale
+  // or empty for it: either no run exists yet, or the run died before posting
+  // (the outage class). Never judge on a stale verdict — re-fire instead.
+  if (reviewCheckConcluded !== 'success') {
+    return {
+      verdict: 'RETRIGGERED',
+      reason: reviewCheckConcluded === 'failure'
+        ? 'the review run for this commit failed before posting a verdict'
+        : 'no review run exists for this commit',
+    };
+  }
+
+  // A halt is the reviewer escalating to a human (carve-out, missing Sentinel
+  // brief) — retriggering would loop forever, and merging would bypass the
+  // escalation. Terminal.
+  if (reviewHalted) {
+    return { verdict: 'ESCALATED', reason: 'the reviewer halted (carve-out or missing brief) — human review required' };
+  }
+
   if (review === null) {
-    if (reviewCheckRunning || checks.pending.length > 0) {
-      return { verdict: 'WAIT_CHECKS', reason: 'review/checks still running' };
-    }
-    // No verdict, nothing running — the outage case. Re-fire the reviewer.
-    return { verdict: 'RETRIGGERED', reason: 'no review verdict and no review run in flight' };
+    // Successful run, no halt, yet no parseable verdict — a contract change in
+    // the comment format. A human should look rather than the gate guessing.
+    return { verdict: 'ESCALATED', reason: 'review run succeeded but no verdict could be parsed — comment format drift?' };
   }
 
   if (review.failing) {
@@ -182,14 +221,13 @@ async function collectState(repo, prNumber, remediationAttempted) {
   const pending = [];
   const failing = [];
   let reviewCheckRunning = false;
+  let reviewCheckConcluded = null;
   for (const run of checkRuns) {
     if (run.name === REVIEW_CHECK_NAME) {
+      // Check-runs are fetched for pr.head.sha, so these signals are anchored
+      // to the CURRENT commit — the freshness anchor the comments lack.
       if (run.status !== 'completed') reviewCheckRunning = true;
-      // The review check's conclusion is deliberately not a failure signal:
-      // the comment verdict is the judgment; a red review check is infra.
-      if (run.status === 'completed' && run.conclusion === 'failure') {
-        reviewCheckRunning = false;
-      }
+      else reviewCheckConcluded = run.conclusion === 'success' ? 'success' : 'failure';
       continue;
     }
     if (run.status !== 'completed') pending.push(run.name);
@@ -197,9 +235,13 @@ async function collectState(repo, prNumber, remediationAttempted) {
   }
 
   const comments = await apiAll(`/repos/${repo}/issues/${prNumber}/comments`, (body) => body);
-  const review = latestVerdict(comments.map((c) => ({
-    login: c.user?.login || '', body: c.body || '',
-  })));
+  const normalized = comments.map((c) => ({ login: c.user?.login || '', body: c.body || '' }));
+  const review = latestVerdict(normalized);
+  // The reviewer's LATEST comment being a halt means the newest judgment is
+  // "a human must look" — verdicts from earlier rounds do not override it.
+  const reviewerComments = normalized.filter((c) => /noemi-reviewer/.test(c.login));
+  const last = reviewerComments[reviewerComments.length - 1];
+  const reviewHalted = Boolean(last && last.body.includes('AI review halted'));
 
   return {
     pr,
@@ -208,7 +250,9 @@ async function collectState(repo, prNumber, remediationAttempted) {
       merged: Boolean(pr.merged),
       checks: { pending, failing },
       review,
+      reviewHalted,
       reviewCheckRunning,
+      reviewCheckConcluded,
       remediationAttempted,
     },
   };

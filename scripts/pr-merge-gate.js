@@ -51,7 +51,7 @@
 
 'use strict';
 
-const { parseReviewVerdict, latestVerdict } = require('./calibration-watch.js');
+const { latestVerdict, REVIEWER_LOGINS } = require('./calibration-watch.js');
 
 const API = 'https://api.github.com';
 const REVIEW_CHECK_NAME = 'Cross-Model PR Review';
@@ -165,6 +165,17 @@ function decideVerdict(state) {
   return { verdict: 'ARMED_AUTOMERGE', reason: 'review passing and all checks green' };
 }
 
+/**
+ * EXACT origin validation for reviewer comments, sharing the canonical login
+ * list with the calibration watch — one source of truth, because two copies
+ * drift. A substring test here was a critical review finding: any user whose
+ * login merely CONTAINED "noemi-reviewer" (fake-noemi-reviewer-bot) could
+ * spoof authoritative halts and grief every PR into permanent escalation.
+ */
+function isReviewerLogin(login) {
+  return REVIEWER_LOGINS.includes(String(login || '').replace(/\[bot\]$/, ''));
+}
+
 // ---------------------------------------------------------------------------
 // GitHub I/O (raw fetch — the sandbox has no gh CLI)
 // ---------------------------------------------------------------------------
@@ -239,7 +250,7 @@ async function collectState(repo, prNumber, remediationAttempted) {
   const review = latestVerdict(normalized);
   // The reviewer's LATEST comment being a halt means the newest judgment is
   // "a human must look" — verdicts from earlier rounds do not override it.
-  const reviewerComments = normalized.filter((c) => /noemi-reviewer/.test(c.login));
+  const reviewerComments = normalized.filter((c) => isReviewerLogin(c.login));
   const last = reviewerComments[reviewerComments.length - 1];
   const reviewHalted = Boolean(last && last.body.includes('AI review halted'));
 
@@ -352,7 +363,7 @@ async function main() {
   }
 }
 
-module.exports = { decideVerdict, apiAll, REVIEW_CHECK_NAME };
+module.exports = { decideVerdict, apiAll, isReviewerLogin, REVIEW_CHECK_NAME };
 
 if (require.main === module) {
   main().catch((err) => {

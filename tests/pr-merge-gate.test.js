@@ -158,3 +158,16 @@ test('successful run with an unparseable verdict escalates rather than guessing'
     assert.equal(v.verdict, 'ESCALATED');
     assert.match(v.reason, /format drift/);
 });
+
+test('halt origin is exact-match: lookalike logins cannot spoof the reviewer (critical finding)', () => {
+    const { isReviewerLogin } = require('../scripts/pr-merge-gate.js');
+    // Authoritative identities, both eras:
+    assert.equal(isReviewerLogin('noemi-reviewer-bot[bot]'), true);
+    assert.equal(isReviewerLogin('noemi-reviewer'), true);
+    // Spoof shapes a substring test would have trusted:
+    for (const fake of ['fake-noemi-reviewer-bot', 'noemi-reviewer-botX', 'not-noemi-reviewer', 'xnoemi-reviewer', 'noemi-reviewer-bot-2[bot]']) {
+        assert.equal(isReviewerLogin(fake), false, `${fake} must not be trusted`);
+    }
+    assert.equal(isReviewerLogin(''), false);
+    assert.equal(isReviewerLogin(undefined), false);
+});

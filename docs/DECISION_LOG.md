@@ -1026,3 +1026,9 @@
 - **Context:** GitHub's 2026-08-17 partial outage failed live review runs at the comment POST after Gemini had already finished. `fix/review-runner-retry` implements the runner side. PR #409 had fallen behind that work and still described Stage D as a single post with no availability rule.
 - **Impact:** `docs/architecture/issue-coding-loop.md`, `agents/engineering/issue-conductor.md`, and the intake/plan skills name the retry contract. The runner change stays on its own branch until merged to `develop`; this spec does not duplicate `review-pr.js`.
 
+## [2026-08-17-0003] Coding-Loop Runtime Is Not the NewPush Slack Mastra Repo
+
+- **Decision:** Do **not** implement the issue-coding loop inside `newpush/newpush-mastra-orchestration`. That repo is the NewPush MSP Slack / Autotask / Datto agent (internal, UNLICENSED). The loop’s first *framework* remains Mastra; its first *executable* lives in `project-noemi/agents` as `scripts/issue-loop/` (the reviewer pattern). The webhook service belongs in a **new public `project-noemi` repository** (recommended `coding-loop`) so customers can see the host, `noemi-agent` can open PRs, and the license matches this org. Stage A ships here as deterministic intake only — it never marks `ACTIONABLE` without a sufficiency model.
+- **Context:** Product Owner asked, after #409 merged, whether to reuse the private NewPush Mastra repo or create a public Project NoéMI repo. Inspection showed the existing Mastra tree is a chat-ops product (Slack adapters, Datto/Autotask tools, 1Password user impersonation), last described as `newpush-agent`, and `noemi-agent` 404s on it.
+- **Impact:** `scripts/github-client.js` extracted so review and the issue loop share structured 429/5xx retry. `scripts/issue-loop/intake.js` + `run.js` implement Stage A hard gates. Architecture doc stops naming the Slack Mastra repo as the host.
+

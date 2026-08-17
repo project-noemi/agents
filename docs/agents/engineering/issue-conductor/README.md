@@ -4,9 +4,11 @@ The Issue Conductor owns the **fleet issue-coding loop**: every new issue in
 the operated orgs is triaged, specified, planned, and independently
 red-teamed before `noemi-agent` is allowed to open a PR.
 
-This repository holds the **spec**. The first host is Mastra
-(`newpush/newpush-mastra-orchestration`). The `noemi-conductor` GitHub
-identity is **planned, not provisioned**.
+This repository holds the **spec** and the Stage A runner
+(`scripts/issue-loop/`). The first framework is Mastra. The webhook
+service is a **new public `project-noemi` repo**, not
+`newpush/newpush-mastra-orchestration` (that is the MSP Slack agent).
+The `noemi-conductor` GitHub identity is **planned, not provisioned**.
 
 | Item | Location |
 |---|---|

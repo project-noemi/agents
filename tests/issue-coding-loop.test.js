@@ -95,6 +95,13 @@ test('architecture doc names the three identities and the plan cycle stop', () =
   assert.match(doc, /highest-generation preview/);
 });
 
+test('architecture does not name the NewPush Slack Mastra repo as the host', () => {
+  const doc = read('docs/architecture/issue-coding-loop.md');
+  assert.match(doc, /not\*\* `newpush\/newpush-mastra-orchestration`/);
+  assert.match(doc, /scripts\/issue-loop\//);
+  assert.match(doc, /public `project-noemi` host repo/);
+});
+
 test('architecture and conductor treat GitHub 429/5xx as retries, not verdicts', () => {
   const doc = read('docs/architecture/issue-coding-loop.md');
   const conductor = read('agents/engineering/issue-conductor.md');

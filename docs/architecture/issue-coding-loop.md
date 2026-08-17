@@ -2,10 +2,20 @@
 
 Architecture for turning a GitHub issue into a planned, implemented, and
 independently reviewed pull request. This repository remains the **spec
-library**. The first host that executes the loop is **Mastra**
-(`newpush/newpush-mastra-orchestration`). Mastra must load personas, skills,
-and `docs/model-routing.json` from a pinned ref of `project-noemi/agents`. It
-must not vendor a private copy of those files.
+library** and now also holds the **executable Stage A runner**
+(`scripts/issue-loop/`), the same shape as `scripts/review-pr.js`.
+
+The first *framework* is **Mastra**. The first *GitHub home* for the webhook
+service is **not** `newpush/newpush-mastra-orchestration`. That repository is
+NewPush’s internal Slack / Autotask / Datto chatbot (UNLICENSED, internal
+visibility, noemi-agent cannot open PRs there). Putting the coding loop in it
+would mix two products and hide the public reference runtime.
+
+A public `project-noemi` host repo (recommended name `coding-loop`) is the
+webhook service. Until that repo exists, hosts call
+`scripts/issue-loop/run.js`. Any host — Mastra or otherwise — must load
+personas, skills, and `docs/model-routing.json` from a pinned ref of
+`project-noemi/agents`. It must not vendor a private copy of those files.
 
 Recorded as Decision [2026-08-16-0004].
 

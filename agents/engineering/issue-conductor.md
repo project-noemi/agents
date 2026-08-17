@@ -70,7 +70,8 @@ Only after B′ passes:
 Leave approval and merge to the Accelerator. If Mender is needed later, that is a human-edited remediation prompt, not a conductor self-heal.
 
 ## External Tooling Dependencies
-- **Mastra** (`newpush/newpush-mastra-orchestration`) — first host. Not part of this repository.
+- **Mastra** — first framework. The webhook host is a public `project-noemi` repo (Decision [2026-08-17-0003]), not the internal NewPush Slack Mastra product.
+- **`scripts/issue-loop/`** — Stage A deterministic runner in this repository.
 - **`docs/model-routing.json`** — per-stage family and plan-cycle contract.
 - **`scripts/resilience_helpers.js`** — canonical `withRetry` for every GitHub call the host makes on this persona’s behalf (429/5xx only). Same contract as `scripts/review-pr.js`.
 - **GitHub Issues API** via the planned `noemi-conductor` identity — comments and labels only.

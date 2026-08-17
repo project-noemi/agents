@@ -41,8 +41,8 @@ One row per disagreement. Keep reasons short and concrete.
 
 | Date | PR | Model | Gate | Reviewer said | Human did | Direction | Reason |
 |---|---|---|---|---|---|---|---|
-| 2026-08-14 | #392 | publishers/google/models/gemini-3.7-flash | premise | premise fail: The pull request contains significant undisclosed scope far beyond the described documentation mapping of Grok Custom Agents across four fil | **merged over** | PENDING-HUMAN | PENDING-HUMAN — edit this row, then approve |
-
+| 2026-08-15 | #399 | publishers/google/models/gemini-2.5-pro | framing | framing fail: The pull request description misrepresents its contents by claiming not to include changes from another PR that are present in the diff, and | **merged over** | Human Review | Approved because it was intended and the finding was a false positive |
+| 2026-08-14 | #392 | publishers/google/models/gemini-3.7-flash | premise | premise fail: The pull request contains significant undisclosed scope far beyond the described documentation mapping of Grok Custom Agents across four fil | **merged over** | Human Review | Approved because it was intended and the finding was a false positive |
 ## Reading the log
 
 When considering phase 2, compute over a stated window (e.g. the last 30

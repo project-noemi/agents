@@ -193,6 +193,8 @@ AGENT_GH_TOKEN=... GITHUB_REPOSITORY=project-noemi/agents \
 | `REMEDIATE` | The review verdict is failing. You get **exactly one** fix round: address the findings at their **root cause** — you may NOT delete or weaken any test, assertion, or check to pass (Mender rules, `agents/coding/mender/core.md`). Push, then re-run the gate **with `--remediation-attempted`**. |
 | `ARMED_AUTOMERGE` | Stop. Auto-merge is armed; a human code-owner approval completes the merge. Report the PR as ready in your summary. |
 | `ESCALATED` | Stop. The gate filed a `doc-run-escalation` issue. Do not retry, do not merge, do not work around it. |
+| `PR_CLOSED` | Stop. A human closed the PR — that closure is a decision, not an outage. Never reopen it. |
+| `ALREADY_MERGED` | Stop. Nothing left to do. |
 
 Rationale: your merges previously happened by admin bypass with zero approvals
 and no review verdict consulted — the Admin Override Watch flags every such

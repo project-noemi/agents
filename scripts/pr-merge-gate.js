@@ -25,6 +25,10 @@
  *     the human approval is what completes the merge.
  *
  * VERDICTS (stdout JSON, one per invocation; exit != 0 only on infra failure)
+ *   PR_CLOSED          terminal: a human closed the PR. Their closure is a
+ *                      decision, not an outage — the gate never reopens it and
+ *                      files no escalation (the human already decided)
+ *   ALREADY_MERGED     terminal: nothing left to gate
  *   WAIT_CHECKS        checks (or the review) still running — poll again
  *   RETRIGGERED        review was absent and not running; PR was close/reopened
  *                      to re-fire it — poll again
@@ -60,6 +64,7 @@ const POLL_DEADLINE_MS = 30 * 60_000;
 
 /**
  * @param {object} state
+ *   prState: 'open' | 'closed'   merged: boolean
  *   checks: { pending: string[], failing: string[] }  (check names; the review
  *           check itself is EXCLUDED from `failing` — its comment verdict, not
  *           its conclusion, is what judges the PR)
@@ -68,7 +73,20 @@ const POLL_DEADLINE_MS = 30 * 60_000;
  *   remediationAttempted: boolean
  */
 function decideVerdict(state) {
-  const { checks, review, reviewCheckRunning, remediationAttempted } = state;
+  const { prState, merged, checks, review, reviewCheckRunning, remediationAttempted } = state;
+
+  // PR state precedes every heuristic. A human-closed PR looks exactly like an
+  // outage to the retrigger logic (checks cancelled → no review, nothing
+  // running), and "re-fire the reviewer" is implemented as close/REOPEN — so
+  // without this check the gate would reopen a PR a human deliberately
+  // rejected. A human's closure is a decision, not an outage: terminal, no
+  // reopen, no escalation issue (the human already decided).
+  if (merged) {
+    return { verdict: 'ALREADY_MERGED', reason: 'PR is already merged — nothing to gate' };
+  }
+  if (prState !== 'open') {
+    return { verdict: 'PR_CLOSED', reason: 'a human closed this PR; the gate stops and never reopens it' };
+  }
 
   // Hard-red checks escalate regardless of the review: a failing test suite is
   // not something the remediation round is licensed to "fix" by weakening.
@@ -164,7 +182,14 @@ async function collectState(repo, prNumber, remediationAttempted) {
 
   return {
     pr,
-    state: { checks: { pending, failing }, review, reviewCheckRunning, remediationAttempted },
+    state: {
+      prState: pr.state,
+      merged: Boolean(pr.merged),
+      checks: { pending, failing },
+      review,
+      reviewCheckRunning,
+      remediationAttempted,
+    },
   };
 }
 
@@ -244,7 +269,7 @@ async function main() {
       await fileEscalation(repo, prNumber, reason, state.review);
     }
 
-    const terminal = ['ARMED_AUTOMERGE', 'ESCALATED', 'REMEDIATE'].includes(verdict);
+    const terminal = ['ARMED_AUTOMERGE', 'ESCALATED', 'REMEDIATE', 'PR_CLOSED', 'ALREADY_MERGED'].includes(verdict);
     if (terminal || !poll || Date.now() > deadline) {
       process.stderr.write(`${JSON.stringify({
         task: 'PR merge gate',

@@ -281,6 +281,39 @@ test('pin: non-text modality is rejected before catalogue lookup', () => {
     );
 });
 
+test('selection: prefer_preview_pro takes the highest-generation Pro preview', () => {
+    const live = [
+        'gemini-2.5-pro', 'gemini-3.6-flash', 'gemini-3.1-pro-preview',
+        'gemini-3.7-pro-preview', 'gemini-3.7-flash-preview',
+    ].map((n) => `publishers/google/models/${n}`);
+    const { chosen, tradeoff } = selectModel(live, { floor: 'pro', preferPreviewPro: true });
+    assert.equal(chosen.name, 'gemini-3.7-pro-preview');
+    assert.equal(tradeoff, null);
+});
+
+test('selection: prefer_preview_pro beats a newer stable Pro', () => {
+    const live = ['gemini-3.6-pro', 'gemini-3.1-pro-preview']
+        .map((n) => `publishers/google/models/${n}`);
+    const { chosen } = selectModel(live, { floor: 'pro', preferPreviewPro: true });
+    assert.equal(chosen.name, 'gemini-3.1-pro-preview', 'any Pro preview outranks stable Pro');
+});
+
+test('selection: prefer_preview_pro falls back to stable Pro when none are preview', () => {
+    const live = ['gemini-2.5-pro', 'gemini-3.6-flash']
+        .map((n) => `publishers/google/models/${n}`);
+    const { chosen, tradeoff } = selectModel(live, { floor: 'pro', preferPreviewPro: true });
+    assert.equal(chosen.name, 'gemini-2.5-pro');
+    assert.match(tradeoff, /no Pro preview/);
+    assert.match(tradeoff, /gemini-2\.5-pro/);
+});
+
+test('selection: prefer_preview_pro does not treat a Flash preview as a Pro preview', () => {
+    const live = ['gemini-3.8-flash-preview', 'gemini-2.5-pro']
+        .map((n) => `publishers/google/models/${n}`);
+    const { chosen } = selectModel(live, { floor: 'pro', preferPreviewPro: true });
+    assert.equal(chosen.name, 'gemini-2.5-pro');
+});
+
 test('selection: prefer_pro_tier plus previews reaches the newest Pro', () => {
     const live = ['gemini-3.6-flash', 'gemini-2.5-pro', 'gemini-3.1-pro-preview']
         .map((n) => `publishers/google/models/${n}`);
@@ -521,9 +554,10 @@ test('reviewer credential preference: app token shadows PATs, distinct name', ()
     assert.ok(appIdx < patIdx, 'app token must be consulted before any PAT');
 });
 
-test('workflow: review model defaults to the gemini-3.1-pro-preview pin', () => {
+test('workflow: review discovers the highest Pro preview (no hard pin)', () => {
     const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
-    assert.match(yml, /GEMINI_REVIEW_MODEL: \$\{\{ vars\.GEMINI_REVIEW_MODEL \|\| 'gemini-3\.1-pro-preview' \}\}/);
+    assert.match(yml, /GEMINI_REVIEW_MODEL: \$\{\{ vars\.GEMINI_REVIEW_MODEL \|\| 'auto' \}\}/);
+    assert.match(yml, /--prefer-preview-pro/);
     assert.match(yml, /--allow-preview/);
 });
 

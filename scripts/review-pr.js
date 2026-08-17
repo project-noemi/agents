@@ -48,9 +48,9 @@
  *                          REVIEWER_GH_TOKEN        home-org PAT / local dev
  *   GITHUB_REPOSITORY    owner/repo (Actions sets this)
  *   GEMINI_REVIEW_FLOOR  minimum model tier (default: pro)
- *   GEMINI_REVIEW_MODEL  pin (default in CI: gemini-3.1-pro-preview).
- *                        `auto` restores catalogue discovery.
+ *   GEMINI_REVIEW_MODEL  optional pin. `auto` or empty discovers.
  *   GEMINI_ALLOW_PREVIEW allow preview/exp models during discovery
+ *   GEMINI_PREFER_PREVIEW_PRO  highest Pro preview, else stable Pro (default on)
  *
  * EXIT CODES
  *   0 review completed (findings may exist — this is advisory in phase 1)
@@ -387,6 +387,7 @@ function parseArgs(argv) {
     // `prefer_pro_tier` / `force_pro` — explicit toggle, see resolve-gemini-model.js
     preferPro: /^(1|true|yes)$/i.test(process.env.GEMINI_PREFER_PRO || '1'),
     allowPreview: /^(1|true|yes)$/i.test(process.env.GEMINI_ALLOW_PREVIEW || ''),
+    preferPreviewPro: /^(1|true|yes)$/i.test(process.env.GEMINI_PREFER_PREVIEW_PRO || '1'),
     model: process.env.GEMINI_REVIEW_MODEL || '',
   };
   for (let i = 0; i < argv.length; i += 1) {
@@ -395,9 +396,10 @@ function parseArgs(argv) {
     else if (argv[i] === '--no-post') args.post = false;
     else if (argv[i] === '--floor') args.floor = argv[++i];
     else if (argv[i] === '--prefer-pro' || argv[i] === '--force-pro') args.preferPro = true;
+    else if (argv[i] === '--prefer-preview-pro') args.preferPreviewPro = true;
     else if (argv[i] === '--allow-preview') args.allowPreview = true;
     else if (argv[i] === '--model') args.model = argv[++i];
-    else if (argv[i] === '--help') { process.stdout.write('Usage: review-pr.js --pr <number> [--dry-run] [--no-post] [--floor tier] [--prefer-pro] [--allow-preview] [--model id]\n'); process.exit(0); }
+    else if (argv[i] === '--help') { process.stdout.write('Usage: review-pr.js --pr <number> [--dry-run] [--no-post] [--floor tier] [--prefer-pro] [--prefer-preview-pro] [--allow-preview] [--model id]\n'); process.exit(0); }
   }
   return args;
 }
@@ -535,7 +537,10 @@ async function main() {
     }
     if (!chosen) {
       ({ chosen, tradeoff } = selectModel(available, {
-        allowPreview: args.allowPreview, preferPro: args.preferPro, floor: args.floor,
+        allowPreview: args.allowPreview,
+        preferPro: args.preferPro,
+        preferPreviewPro: args.preferPreviewPro,
+        floor: args.floor,
       }));
     }
     if (!chosen) {

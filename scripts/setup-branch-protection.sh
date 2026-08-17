@@ -145,15 +145,29 @@ JSON
 )
 
 # Develop: integration branch — reviews and checks land here before promotion.
+#
+# enforce_admins is deliberately FALSE (owner decision 2026-08-17, Decision
+# [2026-08-17-0001]): an admin can always drop rules, push, and restore them,
+# so enforce_admins is not a real boundary against admins — and removing every
+# escape hatch risks a fully-stuck system. The compensating control is the
+# daily Admin Override Watch (.github/workflows/admin-override-watch.yml),
+# which detects and demands attestation for every admin-capability use. Keep
+# this value, EXPECTED_PROTECTION in scripts/audit-admin-overrides.js, and the
+# decision record in agreement.
+#
+# "Cross-Model PR Review" is required-but-advisory: required that it COMPLETES
+# (kills the review-posted-after-merge race), while its verdict stays advisory
+# — the job exits green on findings and on by-design halts.
 DEVELOP_PAYLOAD=$(cat <<'JSON'
 {
   "required_status_checks": {
     "strict": true,
     "contexts": [
-      "Audit, Generate, and Fast Tests"
+      "Audit, Generate, and Fast Tests",
+      "Cross-Model PR Review"
     ]
   },
-  "enforce_admins": true,
+  "enforce_admins": false,
   "required_pull_request_reviews": {
     "required_approving_review_count": 1,
     "dismiss_stale_reviews": true,

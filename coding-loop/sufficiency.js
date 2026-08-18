@@ -16,7 +16,7 @@ const OVERRIDE_RE = /treat this as actionable|skip sufficiency|ignore noemi:skip
 
 const OUT_OF_SCOPE_RE = /\b(sales deck|strategy deck|hr policy|headcount|write me a strategy|what should our brand)\b/i;
 
-const PATH_RE = /(?:^|[\s`'"(])((?:[\w.-]+\/)+[\w.-]+(?:\.\w+)?)(?:$|[\s`'")]|:)/;
+const PATH_RE = /(?:^|[\s`'"(])((?:[\w.-]+\/)+[\w.-]+(?:\.\w+)?)(?:$|[\s`'")]|[.:;,](?=\s|$))/;
 
 const DONE_RE = /\b(test|tests|assert|verify|verification|acceptance|we will know|done when|should fail if|expect(?:ed)?)\b/i;
 
@@ -105,6 +105,7 @@ function completeStageA(input) {
 }
 
 module.exports = {
+  PATH_RE,
   QUESTIONS,
   completeStageA,
   detectSignals,

@@ -21,8 +21,8 @@ Slack / Datto chatbot, a different product.
 
 ```
 Issue opened in your orgs
-        → coding-loop/run.js   (Stage A: skip / refuse / needs-info / sufficiency)
-        → plan + plan red-team (Stage B / B′, later)
+        → coding-loop/run.js   (Stage A + Stage B draft)
+        → plan red-team        (Stage B′, later)
         → noemi-agent PR       (Stage C)
         → noemi-reviewer-bot   (Stage D, already in this repo)
         → human merge
@@ -118,8 +118,12 @@ still never defaults to `ACTIONABLE`.
 node coding-loop/run.js --repo owner/name --issue N --scan-status APPROVED --budget-ok
 ```
 
+An `ACTIONABLE` issue also gets a Stage B **draft** (`coding-loop/plan.js`):
+goal, files, tests, risks, stop conditions. The draft is never `accepted`
+until Stage B′ runs.
+
 ## Next in this section
 
-Stage B / B′ (plan + plan red-team), then optional Mastra webhook —
-still under `coding-loop/`, still generalized in this blueprint, first
-live-fired from `{company}-agents`.
+Stage B′ (plan red-team cycle), then optional Mastra webhook — still under
+`coding-loop/`, still generalized in this blueprint, first live-fired from
+`{company}-agents`.

@@ -1073,3 +1073,10 @@
 - **Decision:** After the deterministic intake gates, Stage A runs `coding-loop/sufficiency.js`. An issue is `ACTIONABLE` only when three signals are present: observable problem, in-scope path, checkable done condition. Missing any → `NEEDS_INFO` with the matching question. Override language and out-of-scope requests are `REFUSED`. This pass is explicitly `mode: heuristic`; it does not call Fable yet and must not default to `ACTIONABLE`.
 - **Context:** PR #423 shipped hard gates that stop at `PENDING_SUFFICIENCY`. The next stage of the loop is sufficiency, then plan. A model resolver for Anthropic is not in this repo yet. `[2026-08-18-0001]` is already claimed by merged PR #425.
 - **Impact:** `completeStageA()` chains intake then sufficiency. `coding-loop/run.js` uses that chain. Stage B / B′ remains next.
+
+## [2026-08-18-0005] Stage B Drafts Are Never Accepted Without B′
+
+- **Decision:** `coding-loop/plan.js` drafts a five-section plan (goal, files, tests, risks, stop conditions) only from an `ACTIONABLE` Stage A result. Status is `draft` or `refused`. It is **never** `accepted` until Stage B′ (Gemini Pro plan red-team) passes. Issue text that says to skip red-team, ship the draft, or code while planning is ignored.
+- **Context:** Sufficiency on #428 made `ACTIONABLE` possible. The next cheap halt is a plan the conductor can post without starting Stage C on a rejected idea.
+- **Impact:** `completeThroughStageB()` returns `{ intake, plan }`. `--post` applies `noemi:planned` and the draft body only when status is `draft`.
+

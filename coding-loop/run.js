@@ -4,9 +4,8 @@
 /**
  * Stage A entry for the issue-coding loop.
  *
- * Runs Stage A: deterministic intake gates, then conservative sufficiency.
- * Sufficiency is a heuristic until the Fable family is wired — it still
- * never defaults to ACTIONABLE.
+ * Runs Stage A (intake + sufficiency) then a Stage B plan *draft*.
+ * The draft is never `accepted` — Stage B′ is not wired yet.
  *
  * USAGE
  *   node coding-loop/run.js --repo org/name --issue 12
@@ -21,7 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { gh } = require('../scripts/github-client.js');
 const { issueFromGitHub } = require('./intake.js');
-const { completeStageA } = require('./sufficiency.js');
+const { completeThroughStageB, loadRouting } = require('./plan.js');
 
 const repoRoot = path.join(__dirname, '..');
 
@@ -128,36 +127,44 @@ async function main() {
   const payload = await gh(`/repos/${args.repo}/issues/${args.issue}`, { token });
   const issue = issueFromGitHub(args.repo, payload);
   const gateInputs = buildGateInputs(args);
-  const result = completeStageA({
+  const { intake, plan } = completeThroughStageB({
     issue,
     tenant,
     scan: gateInputs.scan,
     budget: gateInputs.budget,
+    routing: loadRouting(repoRoot),
   });
 
-  if (args.post && result.tier !== 'SKIPPED') {
+  if (args.post && intake.tier !== 'SKIPPED') {
+    const label = plan.status === 'draft' ? plan.label : intake.label;
     await gh(`/repos/${args.repo}/issues/${args.issue}/labels`, {
       token: conductorToken(),
       method: 'POST',
-      body: { labels: [result.label] },
+      body: { labels: [label] },
     });
-    if (result.questions.length > 0) {
+    const comment = plan.status === 'draft'
+      ? plan.plan
+      : (intake.questions || []).map((q) => `- ${q}`).join('\n');
+    if (comment) {
       await gh(`/repos/${args.repo}/issues/${args.issue}/comments`, {
         token: conductorToken(),
         method: 'POST',
-        body: { body: result.questions.map((q) => `- ${q}`).join('\n') },
+        body: { body: comment },
       });
     }
   }
 
   process.stderr.write(`${JSON.stringify({
-    task: 'Issue-loop Stage A intake and sufficiency',
+    task: 'Issue-loop Stage A then Stage B draft',
     inputs: [`issue=${args.repo}#${args.issue}`, `post=${args.post}`, `scan=${args.scanStatus || 'UNSCANNED'}`, `budget=${args.budgetState || 'unverified'}`],
-    actions: [result.tier, ...(result.reasons || [])],
-    risks: result.mode === 'heuristic' ? ['sufficiency is heuristic until the Stage A model is wired'] : [],
-    result: result.label,
+    actions: [intake.tier, plan.status, ...(intake.reasons || [])],
+    risks: [
+      intake.mode === 'heuristic' ? 'sufficiency is heuristic until the Stage A model is wired' : null,
+      plan.status === 'draft' ? 'plan is a draft; Stage B′ has not accepted it' : null,
+    ].filter(Boolean),
+    result: plan.status === 'draft' ? plan.label : intake.label,
   })}\n`);
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ intake, plan }, null, 2)}\n`);
 }
 
 function exitCodeForError(err) {

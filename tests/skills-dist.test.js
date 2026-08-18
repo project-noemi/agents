@@ -153,3 +153,24 @@ test('license drift fails generation instead of stamping a stale identifier', ()
         fs.rmSync(tmp, { recursive: true, force: true });
     }
 });
+
+test('generate prunes stray files inside kept directories — the audit remedy must actually work', () => {
+    // The audit tells users `npm run generate` fixes extra files; a prune that
+    // only removed whole stale directories left strays inside kept ones,
+    // breaking that promise (review finding). Prune is file-granular.
+    const { spawnSync } = require('child_process');
+    const strayFile = path.join(repoRoot, 'skills-dist', 'issue-intake', 'stray.txt');
+    const strayDir = path.join(repoRoot, 'skills-dist', 'issue-intake', 'nested');
+    fs.writeFileSync(strayFile, 'stray');
+    fs.mkdirSync(strayDir, { recursive: true });
+    fs.writeFileSync(path.join(strayDir, 'y.txt'), 'stray');
+    try {
+        const result = spawnSync('node', ['scripts/generate_all.js'], { cwd: repoRoot, encoding: 'utf8' });
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(fs.existsSync(strayFile), false, 'stray file inside a kept dir must be pruned');
+        assert.equal(fs.existsSync(strayDir), false, 'stray nested dir must be pruned');
+    } finally {
+        fs.rmSync(strayFile, { force: true });
+        fs.rmSync(strayDir, { recursive: true, force: true });
+    }
+});

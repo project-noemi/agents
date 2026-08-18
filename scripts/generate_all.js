@@ -109,19 +109,29 @@ function generateSkillsDist() {
     }
 
     // Prune anything the builder did not produce — renamed or removed skills
-    // must not leave stale artifacts for the public to install.
+    // must not leave stale artifacts, and a stray file INSIDE a kept directory
+    // is pruned too: the audit's error message promises that running this
+    // generator fixes extra files, so the generator must actually deliver at
+    // file granularity, not directory granularity (review finding).
     if (fs.existsSync(skillsDistDir)) {
         for (const entry of fs.readdirSync(skillsDistDir, { withFileTypes: true })) {
             const entryPath = path.join(skillsDistDir, entry.name);
-            if (entry.isDirectory()) {
-                const keep = expected.has(path.join('skills-dist', entry.name, 'SKILL.md'));
-                if (!keep) {
-                    fs.rmSync(entryPath, { recursive: true, force: true });
-                    console.log(`  pruned stale skills-dist/${entry.name}/`);
-                }
-            } else {
+            if (!entry.isDirectory()) {
                 fs.rmSync(entryPath, { force: true });
                 console.log(`  pruned stray skills-dist/${entry.name}`);
+                continue;
+            }
+            const keep = expected.has(path.join('skills-dist', entry.name, 'SKILL.md'));
+            if (!keep) {
+                fs.rmSync(entryPath, { recursive: true, force: true });
+                console.log(`  pruned stale skills-dist/${entry.name}/`);
+                continue;
+            }
+            for (const inner of fs.readdirSync(entryPath, { withFileTypes: true })) {
+                if (inner.name !== 'SKILL.md') {
+                    fs.rmSync(path.join(entryPath, inner.name), { recursive: true, force: true });
+                    console.log(`  pruned stray skills-dist/${entry.name}/${inner.name}`);
+                }
             }
         }
     }

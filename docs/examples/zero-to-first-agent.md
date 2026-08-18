@@ -192,6 +192,7 @@ After this first win, follow this order:
    [`../tool-usages/gemini-workspace-quickstart.md`](../tool-usages/gemini-workspace-quickstart.md) or [`n8n-google-workspace-quickstart.md`](n8n-google-workspace-quickstart.md)
 4. [`builder-first-30-minutes.md`](builder-first-30-minutes.md) when you want the Docker phase
 5. [`docker-agent-home.md`](docker-agent-home.md) when you are ready to build a governed runtime home
+6. [`build-your-coding-loop.md`](build-your-coding-loop.md) when you are a coder and want issues to become PRs
 
 ## Outcome
 

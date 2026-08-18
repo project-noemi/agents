@@ -90,3 +90,16 @@ test('dedup: an existing row for the PR is detected', () => {
     assert.equal(alreadyLogged(log, 393), false);
     assert.equal(alreadyLogged(log, 39), false, 'must not prefix-match #392');
 });
+
+test('recursion guard: entry branches are exempt from generating entries', () => {
+    // Observed live: entry PR #418 merged over a failing framing verdict (its
+    // row was still PENDING-HUMAN at review time), spawning meta-entry #420.
+    // Without exemption each such merge spawns the next — an unbounded chain.
+    // The guard is branch-name-based and lives in main(); this pins the
+    // convention the guard keys on so a branch-prefix rename breaks loudly.
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'calibration-watch.js'), 'utf8');
+    assert.match(src, /startsWith\('calibration\/'\)/, 'guard must key on the entry branch prefix');
+    assert.match(src, /`calibration\/pr-\$\{prNumber\}`/, 'entry branches must carry that prefix');
+});

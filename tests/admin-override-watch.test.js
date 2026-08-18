@@ -28,6 +28,7 @@ test('direct push: the ff66bdc incident classifies as a finding EVEN AFTER promo
     assert.ok(f, 'a develop commit with no develop-based merged PR must be a finding');
     assert.equal(f.kind, 'direct-push');
     assert.equal(f.severity, 'high');
+    assert.equal(f.actor, 'thakivagyok', 'the actor is a structured field — attestation is assigned to a person');
     assert.match(f.detail, /ff66bdc/);
     assert.match(f.detail, /swept later into: #397/);
 });
@@ -67,6 +68,7 @@ test('manual promotion: the #397 incident classifies as a finding', () => {
     });
     assert.equal(findings.length, 1);
     assert.equal(findings[0].kind, 'manual-promotion');
+    assert.equal(findings[0].actor, 'thakivagyok');
     assert.match(findings[0].detail, /#397/);
 });
 
@@ -131,8 +133,10 @@ test('protection drift: matching policy yields no findings', () => {
 });
 
 test('rendering: findings produce an attestation demand; a clean window renders empty', () => {
-    const md = renderFindings('o/r', [{ kind: 'direct-push', severity: 'high', branch: 'develop', detail: 'd' }], 2);
+    const md = renderFindings('o/r', [{ kind: 'direct-push', severity: 'high', branch: 'develop', detail: 'd', actor: 'someone' }], 2);
     assert.match(md, /Attestation required/);
-    assert.match(md, /not the actor/);
+    assert.match(md, /other than the Actor/);
+    assert.match(md, /\| Actor \|/, 'the actor is a first-class column');
+    assert.match(md, /\*\*someone\*\*/);
     assert.equal(renderFindings('o/r', [], 2), '');
 });

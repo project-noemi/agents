@@ -88,6 +88,13 @@ test('intake: outside tenant and exhausted budget are refused', () => {
   });
   assert.equal(allow.tier, 'REFUSED');
 
+  const asString = tenantAllows(
+    issue({ org: 'newpush', repo: 'platform' }),
+    { ...tenant, limits: { repos: 'newpush/platform' } },
+  );
+  assert.equal(asString.ok, false, 'a string repos field must not fail open as allow-all');
+  assert.equal(asString.reason, 'tenant-misconfigured');
+
   const budget = classifyIssue({
     issue: issue(),
     tenant,

@@ -1092,4 +1092,10 @@
 - **Context:** Plan stages A–B′ on #428 can now accept a plan. Starting Stage C by opening empty or conductor-authored PRs would collapse identities or spam the fleet.
 - **Impact:** `prepareImplementation` returns `ready` + `opened: false`, or `refused` (`plan-not-accepted` / `no-integration-branch`).
 
+## [2026-08-18-0008] Coding-Loop Pickup Is a Reusable Workflow; Scan and Stage D Are Local Helpers
+
+- **Decision:** Pickup is `.github/workflows/coding-loop.yml` (`workflow_call` / `workflow_dispatch`) plus `templates/ci/coding-loop-caller.yml` at `@main`, same shape as the fleet reviewer. Budget stays fail-closed (`vars.CODING_LOOP_BUDGET_OK`). If `--scan-status` is omitted, `coding-loop/scan.js` scans the fetched body and **blocks** private keys / cloud tokens / SSN-shaped values (not email). Stage D (`coding-loop/stage-d.js`) only **delegates** to `noemi-reviewer-bot` once a PR URL exists; it never approves.
+- **Context:** #428 already prepared Stage C without opening a PR. The loop still needed a host path and a scan that does not default to APPROVED.
+- **Impact:** Callers opt in via the thin workflow. This repo does not run the loop on every issue until a caller is installed and the budget var is set.
+
 

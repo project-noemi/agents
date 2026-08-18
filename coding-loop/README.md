@@ -128,7 +128,12 @@ language fail. Pass → `accepted`. Fail at `planRedTeam.maxCycles` →
 PR until Grok is wired. `AGENT_GH_TOKEN` is required; the conductor token
 is refused.
 
+Pickup: install `templates/ci/coding-loop-caller.yml` and set
+`CODING_LOOP_BUDGET_OK=true` only when the daily cap is real. Stage D
+delegates to the fleet reviewer when a PR URL exists
+(`coding-loop/stage-d.js`).
+
 ## Next in this section
 
-Grok writer for Stage C, Gemini critic for B′, fleet reviewer for Stage D
-(already exists). Optional Mastra webhook stays in this section.
+Grok writer for Stage C and Gemini for B′. The fleet reviewer already
+covers Stage D once a PR is opened.

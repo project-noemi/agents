@@ -134,6 +134,12 @@ runner.
 Reuse the existing fleet reviewer (`scripts/review-pr.js` /
 `noemi-reviewer-bot[bot]`). Do not add a second Gemini reviewer. Label
 `noemi:review`. Humans still own approval and merge.
+`coding-loop/stage-d.js` only delegates once a PR URL exists.
+
+Pickup is the reusable workflow `.github/workflows/coding-loop.yml` and
+`templates/ci/coding-loop-caller.yml`. Budget is fail-closed
+(`vars.CODING_LOOP_BUDGET_OK`). Omit `--scan-status` and the runner scans
+the fetched body (`coding-loop/scan.js`).
 
 On `develop`, Cross-Model PR Review is **required to complete** and remains
 advisory on the verdict (Decision [2026-08-17-0001]). A GitHub outage that

@@ -22,6 +22,8 @@ const { gh } = require('../scripts/github-client.js');
 const { issueFromGitHub } = require('./intake.js');
 const { completeThroughStageB, loadRouting } = require('./plan.js');
 const { assertProducerToken, prepareImplementation } = require('./dispatch.js');
+const { scanIssueBody } = require('./scan.js');
+const { prepareReview } = require('./stage-d.js');
 
 const repoRoot = path.join(__dirname, '..');
 
@@ -139,6 +141,9 @@ async function main() {
   const payload = await gh(`/repos/${args.repo}/issues/${args.issue}`, { token });
   const issue = issueFromGitHub(args.repo, payload);
   const gateInputs = buildGateInputs(args);
+  if (!gateInputs.scan) {
+    gateInputs.scan = scanIssueBody(`${issue.title || ''}\n${issue.body || ''}`);
+  }
   const { intake, plan } = completeThroughStageB({
     issue,
     tenant,
@@ -177,6 +182,7 @@ async function main() {
       branches: ['develop', 'dev', 'main'],
     })
     : null;
+  const review = prepareReview({ implementation });
 
   process.stderr.write(`${JSON.stringify({
     task: 'Issue-loop Stage A through Stage C prepare',
@@ -190,7 +196,7 @@ async function main() {
     ].filter(Boolean),
     result: (implementation && implementation.label) || plan.label || intake.label,
   })}\n`);
-  process.stdout.write(`${JSON.stringify({ intake, plan, implementation }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ intake, plan, implementation, review }, null, 2)}\n`);
 }
 
 function exitCodeForError(err) {

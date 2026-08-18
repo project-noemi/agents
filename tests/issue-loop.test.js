@@ -407,6 +407,41 @@ test('CLI --post without CONDUCTOR_GH_TOKEN is refused (identity split)', () => 
   assert.doesNotMatch(result.stderr, /AGENT_GH_TOKEN is enough/);
 });
 
+test('scanIssueBody: blocks keys, approves ordinary issue text', () => {
+  const { scanIssueBody } = require('../coding-loop/scan.js');
+  const clean = scanIssueBody(sufficientBody);
+  assert.equal(clean.status, 'APPROVED');
+  const pem = scanIssueBody('leak\n-----BEGIN RSA PRIVATE KEY-----\nMII\n');
+  assert.equal(pem.status, 'BLOCKED');
+  assert.ok(pem.findings.some((f) => f.type === 'private_key'));
+  const aws = scanIssueBody('AKIAIOSFODNN7EXAMPLE extra text');
+  assert.equal(aws.status, 'BLOCKED');
+});
+
+test('Stage D: waits until a PR is opened, then delegates to the fleet reviewer', () => {
+  const { prepareReview } = require('../coding-loop/stage-d.js');
+  assert.equal(prepareReview({}).status, 'refused');
+  assert.equal(prepareReview({ implementation: { status: 'ready', opened: false } }).status, 'waiting');
+  const done = prepareReview({
+    implementation: { status: 'ready', opened: true, url: 'https://github.com/o/r/pull/1' },
+  });
+  assert.equal(done.status, 'delegated');
+  assert.equal(done.identity, 'noemi-reviewer-bot');
+  assert.equal(done.label, 'noemi:review');
+});
+
+test('coding-loop workflow is reusable and does not default budget to ok', () => {
+  const fs = require('fs');
+  const yml = fs.readFileSync(require('path').join(__dirname, '..', '.github/workflows/coding-loop.yml'), 'utf8');
+  const caller = fs.readFileSync(require('path').join(__dirname, '..', 'templates/ci/coding-loop-caller.yml'), 'utf8');
+  assert.match(yml, /workflow_call/);
+  assert.match(yml, /coding-loop\/run\.js/);
+  assert.match(yml, /CODING_LOOP_BUDGET_OK/);
+  assert.doesNotMatch(yml, /--budget-ok"/);
+  assert.match(caller, /project-noemi\/agents\/\.github\/workflows\/coding-loop\.yml@main/);
+  assert.match(caller, /issues:/);
+});
+
 test('run.js: nothing asserted means nothing granted — both gates fail closed by default', () => {
   // The critical review finding: parseArgs defaulted scanStatus to APPROVED
   // and main() hardcoded budget exhausted:false — fail-open by omission.

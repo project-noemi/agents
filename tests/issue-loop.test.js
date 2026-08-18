@@ -10,6 +10,7 @@ const {
   issueFromGitHub,
   tenantAllows,
 } = require('../coding-loop/intake.js');
+const { assertRepoIssue } = require('../coding-loop/run.js');
 
 const tenant = {
   tenantId: 'newpush-internal',
@@ -135,6 +136,27 @@ test('issueFromGitHub maps a REST payload onto the intake shape', () => {
   assert.equal(mapped.author_type, 'user');
   assert.deepEqual(mapped.labels, [{ name: 'bug' }]);
   assert.equal(tenantAllows(mapped, tenant).ok, true);
+});
+
+test('assertRepoIssue: owner/name and a positive integer only', () => {
+  assert.doesNotThrow(() => assertRepoIssue('project-noemi/agents', '12'));
+  assert.doesNotThrow(() => assertRepoIssue('newpush/on-call_app', '1'));
+  for (const bad of ['../etc/passwd', 'org', 'org/repo/extra', 'org/re po', 'org/repo?x', '']) {
+    assert.throws(() => assertRepoIssue(bad, '1'), /owner\/name/, bad);
+  }
+  for (const bad of ['0', '-1', '12abc', '1.5', '', '01']) {
+    assert.throws(() => assertRepoIssue('org/repo', bad), /positive integer/, bad);
+  }
+});
+
+test('CLI rejects a malformed --repo before it touches GitHub', () => {
+  const script = path.join(__dirname, '..', 'coding-loop', 'run.js');
+  const result = spawnSync(process.execPath, [script, '--repo', '../evil/x', '--issue', '1'], {
+    env: { ...process.env },
+    encoding: 'utf8',
+  });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /owner\/name/);
 });
 
 test('CLI --post without CONDUCTOR_GH_TOKEN is refused (identity split)', () => {

@@ -46,6 +46,21 @@ function parseArgs(argv) {
   return args;
 }
 
+/** owner/name and a positive issue number — refuse anything that would
+ *  change the GitHub path (extra slashes, `..`, non-digits). */
+function assertRepoIssue(repo, issue) {
+  if (typeof repo !== 'string' || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo) || repo.includes('..')) {
+    const err = new Error('Need --repo owner/name (letters, digits, . _ - only).');
+    err.status = 400;
+    throw err;
+  }
+  if (!/^[1-9][0-9]*$/.test(String(issue))) {
+    const err = new Error('Need --issue N (positive integer).');
+    err.status = 400;
+    throw err;
+  }
+}
+
 function loadTenant(relPath) {
   const file = path.resolve(repoRoot, relPath || 'tenants/internal.json');
   return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -68,6 +83,12 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.repo || !args.issue) {
     process.stderr.write('✖ Need --repo owner/name and --issue N.\n');
+    process.exit(2);
+  }
+  try {
+    assertRepoIssue(args.repo, args.issue);
+  } catch (err) {
+    process.stderr.write(`✖ ${err.message}\n`);
     process.exit(2);
   }
 
@@ -124,4 +145,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArgs, loadTenant };
+module.exports = { parseArgs, loadTenant, assertRepoIssue };

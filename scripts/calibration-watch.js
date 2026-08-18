@@ -184,7 +184,7 @@ async function main() {
     '',
     'This entry is the phase-2 evidence the governance framework requires. Before approving:',
     '',
-    '1. Edit the row\'s **Direction** cell: `reviewer too strict` / `reviewer too lenient` / `reviewer wrong domain`.',
+    '1. Edit the row\'s **Direction** cell: `reviewer too strict` / `reviewer too lenient` / `reviewer wrong domain` / `reviewer misinterpreted`.',
     '2. Replace the **Reason** cell with one concrete sentence.',
     '',
     'Merging with PENDING-HUMAN still in the row defeats the log\'s purpose — the edit *is* the attestation.',

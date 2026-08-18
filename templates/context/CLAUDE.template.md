@@ -47,6 +47,7 @@ infisical run --env=dev -- [command]
 - `n8n-templates/` — Importable n8n workflow templates for the Layer B (Dynamic Labs) curriculum
 - `guardian-layer/` — Guardian-layer security evaluation reference (currently Python; runtime choice under review)
 - `infrastructure/` — Phase 0 SecretOps baseline boilerplate (`secret-ops/`)
+- `tenants/` — Issue-coding-loop tenant entitlement configs (`internal.json`; schema in `docs/entitlements.schema.json`)
 - `clients/` — Client onboarding workspace (gitignored placeholder)
 
 ### Context Generation Pipeline

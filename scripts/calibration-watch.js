@@ -120,6 +120,17 @@ async function main() {
     return;
   }
 
+  // Recursion guard: entry PRs are themselves reviewable and CAN legitimately
+  // merge over a failing verdict (observed live: #418 merged while the
+  // reviewer's framing gate flagged its then-unfilled PENDING-HUMAN row, which
+  // spawned meta-entry #420). An entry about an entry records nothing the
+  // underlying row does not already record, and each such merge would spawn
+  // the next — an unbounded chain. Entries are exempt from generating entries.
+  if ((pr.head?.ref || '').startsWith('calibration/')) {
+    process.stderr.write(`PR #${prNumber} is itself a calibration entry — entries do not generate entries.\n`);
+    return;
+  }
+
   const raw = JSON.parse(gh(['api', `repos/${repo}/issues/${prNumber}/comments?per_page=100`]));
   const verdict = latestVerdict(raw.map((c) => ({ login: c.user?.login || '', body: c.body || '' })));
 

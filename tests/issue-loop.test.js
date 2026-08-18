@@ -99,7 +99,7 @@ test('intake: outside tenant and exhausted budget are refused', () => {
 });
 
 test('intake: unscanned or blocked bodies are refused, never actionable', () => {
-  const missing = classifyIssue({ issue: issue(), tenant });
+  const missing = classifyIssue({ issue: issue(), tenant, budget: { exhausted: false } });
   assert.equal(missing.tier, 'REFUSED');
   assert.deepEqual(missing.reasons, ['unscanned-body']);
 
@@ -107,9 +107,21 @@ test('intake: unscanned or blocked bodies are refused, never actionable', () => 
     issue: issue(),
     tenant,
     scan: { status: 'BLOCKED' },
+    budget: { exhausted: false },
   });
   assert.equal(blocked.tier, 'REFUSED');
   assert.deepEqual(blocked.reasons, ['scan-blocked']);
+});
+
+test('intake: an UNKNOWN budget state is refused, not waved through (fail closed)', () => {
+  // Symmetric with unscanned-body: only an explicit exhausted:boolean asserts
+  // that someone checked capacity. Review finding: the CLI hardcoded
+  // exhausted:false, silently bypassing this gate.
+  for (const budget of [undefined, null, {}, { exhausted: 'no' }]) {
+    const r = classifyIssue({ issue: issue(), tenant, scan: { status: 'APPROVED' }, budget });
+    assert.equal(r.tier, 'REFUSED', `budget=${JSON.stringify(budget)} must refuse`);
+    assert.deepEqual(r.reasons, ['budget-unverified']);
+  }
 });
 
 test('intake: passing hard gates is PENDING_SUFFICIENCY, never ACTIONABLE', () => {
@@ -117,6 +129,7 @@ test('intake: passing hard gates is PENDING_SUFFICIENCY, never ACTIONABLE', () =
     issue: issue(),
     tenant,
     scan: { status: 'APPROVED' },
+    budget: { exhausted: false },
   });
   assert.equal(result.tier, 'PENDING_SUFFICIENCY');
   assert.equal(result.label, 'noemi:queued');
@@ -177,4 +190,23 @@ test('CLI --post without CONDUCTOR_GH_TOKEN is refused (identity split)', () => 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /CONDUCTOR_GH_TOKEN/);
   assert.doesNotMatch(result.stderr, /AGENT_GH_TOKEN is enough/);
+});
+
+test('run.js: nothing asserted means nothing granted — both gates fail closed by default', () => {
+  // The critical review finding: parseArgs defaulted scanStatus to APPROVED
+  // and main() hardcoded budget exhausted:false — fail-open by omission.
+  const { parseArgs, buildGateInputs } = require('../coding-loop/run.js');
+  const bare = buildGateInputs(parseArgs([]));
+  assert.equal(bare.scan, null, 'no --scan-status must mean UNSCANNED, never APPROVED');
+  assert.equal(bare.budget, null, 'no budget assertion must mean UNVERIFIED, never ok');
+  // And the classifier turns those nulls into refusals:
+  const r = classifyIssue({ issue: issue(), tenant, ...bare });
+  assert.equal(r.tier, 'REFUSED');
+
+  const asserted = buildGateInputs(parseArgs(['--scan-status', 'APPROVED', '--budget-ok']));
+  assert.deepEqual(asserted.scan, { status: 'APPROVED' });
+  assert.deepEqual(asserted.budget, { exhausted: false });
+
+  const spent = buildGateInputs(parseArgs(['--budget-exhausted']));
+  assert.deepEqual(spent.budget, { exhausted: true });
 });

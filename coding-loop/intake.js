@@ -122,7 +122,20 @@ function classifyIssue({ issue, tenant, scan, budget } = {}) {
     };
   }
 
-  if (budget && budget.exhausted) {
+  // Symmetric with the unscanned-body gate below: an UNKNOWN budget state is
+  // refused, not waved through. Only an explicit exhausted:boolean asserts
+  // that someone actually checked capacity.
+  if (!budget || typeof budget !== 'object' || typeof budget.exhausted !== 'boolean') {
+    return {
+      tier: 'REFUSED',
+      reasons: ['budget-unverified'],
+      questions: [],
+      label: 'noemi:wont-act',
+      confidence: 'high',
+    };
+  }
+
+  if (budget.exhausted) {
     return {
       tier: 'REFUSED',
       reasons: ['budget'],

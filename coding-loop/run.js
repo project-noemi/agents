@@ -24,7 +24,11 @@ const { classifyIssue, issueFromGitHub } = require('./intake.js');
 const repoRoot = path.join(__dirname, '..');
 
 function parseArgs(argv) {
-  const args = { post: false, scanStatus: 'APPROVED' };
+  // No permissive defaults: security gates fail CLOSED. A scan status exists
+  // only if a scanner produced one, and budget capacity exists only if the
+  // caller checked it — the CLI asserting either by default was a critical
+  // review finding (fail-open by omission).
+  const args = { post: false, scanStatus: null, budgetState: null };
   for (let i = 0; i < argv.length; i += 1) {
     switch (argv[i]) {
       case '--repo': args.repo = argv[++i]; break;
@@ -32,8 +36,11 @@ function parseArgs(argv) {
       case '--post': args.post = true; break;
       case '--tenant': args.tenantPath = argv[++i]; break;
       case '--scan-status': args.scanStatus = argv[++i]; break;
+      case '--budget-ok': args.budgetState = 'ok'; break;
+      case '--budget-exhausted': args.budgetState = 'exhausted'; break;
       case '--help':
-        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--tenant path] [--scan-status APPROVED|BLOCKED|REDACTED]\n');
+        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--tenant path] --scan-status APPROVED|BLOCKED|REDACTED (--budget-ok | --budget-exhausted)\n'
+          + 'Omitting --scan-status or the budget assertion classifies the issue as REFUSED (fail closed).\n');
         process.exit(0);
         break;
       default:
@@ -59,6 +66,18 @@ function assertRepoIssue(repo, issue) {
     err.status = 400;
     throw err;
   }
+}
+
+/**
+ * Translate CLI assertions into classifier inputs. Anything not explicitly
+ * asserted is passed as null so classifyIssue's own fail-closed paths fire —
+ * the enforcement point is the classifier, never this wrapper.
+ */
+function buildGateInputs(args) {
+  return {
+    scan: args.scanStatus ? { status: args.scanStatus } : null,
+    budget: args.budgetState ? { exhausted: args.budgetState === 'exhausted' } : null,
+  };
 }
 
 function loadTenant(relPath) {
@@ -106,11 +125,12 @@ async function main() {
   const tenant = loadTenant(args.tenantPath);
   const payload = await gh(`/repos/${args.repo}/issues/${args.issue}`, { token });
   const issue = issueFromGitHub(args.repo, payload);
+  const gateInputs = buildGateInputs(args);
   const result = classifyIssue({
     issue,
     tenant,
-    scan: { status: args.scanStatus },
-    budget: { exhausted: false },
+    scan: gateInputs.scan,
+    budget: gateInputs.budget,
   });
 
   if (args.post && result.tier !== 'SKIPPED') {
@@ -130,7 +150,7 @@ async function main() {
 
   process.stderr.write(`${JSON.stringify({
     task: 'Issue-loop Stage A deterministic intake',
-    inputs: [`issue=${args.repo}#${args.issue}`, `post=${args.post}`, `scan=${args.scanStatus}`],
+    inputs: [`issue=${args.repo}#${args.issue}`, `post=${args.post}`, `scan=${args.scanStatus || 'UNSCANNED'}`, `budget=${args.budgetState || 'unverified'}`],
     actions: [result.tier, ...result.reasons],
     risks: result.tier === 'PENDING_SUFFICIENCY' ? ['sufficiency model not yet invoked'] : [],
     result: result.label,
@@ -149,4 +169,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArgs, loadTenant, assertRepoIssue, exitCodeForError };
+module.exports = { parseArgs, buildGateInputs, loadTenant, assertRepoIssue, exitCodeForError };

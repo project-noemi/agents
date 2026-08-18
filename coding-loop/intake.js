@@ -60,9 +60,14 @@ function tenantAllows(issue, tenant) {
   if (!org || !orgs.includes(org)) {
     return { ok: false, reason: 'outside-tenant' };
   }
-  const allow = tenant && tenant.limits && Array.isArray(tenant.limits.repos)
-    ? tenant.limits.repos
-    : [];
+  const repos = tenant && tenant.limits ? tenant.limits.repos : undefined;
+  // Missing or [] means every repo in orgs (documented internal default).
+  // A present non-array is a broken allowlist — fail closed, do not treat
+  // it as "allow all" (review finding on #423, merged over that fail).
+  if (repos !== undefined && repos !== null && !Array.isArray(repos)) {
+    return { ok: false, reason: 'tenant-misconfigured' };
+  }
+  const allow = Array.isArray(repos) ? repos : [];
   if (allow.length > 0 && !allow.includes(`${org}/${repo}`)) {
     return { ok: false, reason: 'outside-tenant' };
   }

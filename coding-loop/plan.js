@@ -3,9 +3,9 @@
 /**
  * Stage B plan draft (skills/orchestration/issue-plan.md steps 1–3).
  *
- * Drafts a checkable plan from an ACTIONABLE Stage A result. Does not call
- * Fable. Does not run Stage B′. status is therefore `draft` or `refused` —
- * never `accepted`. A draft is not a license to start Stage C.
+ * Drafts a checkable plan from an ACTIONABLE Stage A result, then runs a
+ * structural Stage B′ (premise/framing only). Gemini is not called yet.
+ * status is refused | accepted | needs-info. accepted requires B′ pass.
  */
 
 const fs = require('fs');
@@ -108,20 +108,75 @@ function draftPlan({ issue, intake, scan, routing } = {}) {
   };
 }
 
+function critiquePlan(plan) {
+  const findings = [];
+  const body = plan && plan.plan ? plan.plan : '';
+  for (const heading of ['## Goal', '## Files', '## Tests', '## Risks', '## Stop conditions']) {
+    if (!body.includes(heading)) {
+      findings.push({
+        severity: 'high',
+        gate: 'framing',
+        claim: `Plan is missing ${heading}.`,
+      });
+    }
+  }
+  if (!plan || !Array.isArray(plan.files) || plan.files.length === 0) {
+    findings.push({
+      severity: 'high',
+      gate: 'premise',
+      claim: 'Plan has no concrete files; a bounded search is not an implementation plan.',
+    });
+  }
+  if (SKIP_B_PRIME_RE.test(body)) {
+    findings.push({
+      severity: 'high',
+      gate: 'framing',
+      claim: 'Plan records a skip-red-team / ship-the-draft instruction.',
+    });
+  }
+  const blocking = findings.some((item) => item.severity === 'high' || item.severity === 'critical');
+  return { verdict: blocking ? 'fail' : 'pass', findings };
+}
+
+function runPlanRedTeam(plan, { maxCycles } = {}) {
+  if (!plan || plan.status === 'refused') return plan;
+  const limit = Number.isInteger(maxCycles) ? maxCycles
+    : (Number.isInteger(plan.maxCycles) ? plan.maxCycles : 3);
+  let current = { ...plan, mode: 'heuristic' };
+  for (let cycle = 1; cycle <= limit; cycle += 1) {
+    const { verdict, findings } = critiquePlan(current);
+    current = { ...current, cycles: cycle, verdict, findings };
+    if (verdict === 'pass') {
+      return { ...current, status: 'accepted', label: 'noemi:planned' };
+    }
+    if (cycle === limit) {
+      return { ...current, status: 'needs-info', label: 'noemi:needs-info' };
+    }
+    // Cannot invent files or drop skip-red-team text the issue required.
+    // Cycle count still advances so a limit is a real stop.
+  }
+  return current;
+}
+
 function completeThroughStageB(input) {
   const { completeStageA } = require('./sufficiency.js');
   const intake = completeStageA(input);
-  if (intake.tier !== 'ACTIONABLE') {
-    return { intake, plan: draftPlan({ ...input, intake }) };
-  }
-  return { intake, plan: draftPlan({ ...input, intake }) };
+  const drafted = draftPlan({ ...input, intake });
+  const plan = runPlanRedTeam(drafted, {
+    maxCycles: input && input.routing && input.routing.planRedTeam
+      ? input.routing.planRedTeam.maxCycles
+      : drafted.maxCycles,
+  });
+  return { intake, plan };
 }
 
 module.exports = {
   SKIP_B_PRIME_RE,
   completeThroughStageB,
+  critiquePlan,
   draftPlan,
   extractPaths,
   formatPlan,
   loadRouting,
+  runPlanRedTeam,
 };

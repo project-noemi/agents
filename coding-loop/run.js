@@ -136,15 +136,19 @@ async function main() {
   });
 
   if (args.post && intake.tier !== 'SKIPPED') {
-    const label = plan.status === 'draft' ? plan.label : intake.label;
+    const label = (plan.status === 'accepted' || plan.status === 'needs-info')
+      ? plan.label
+      : intake.label;
     await gh(`/repos/${args.repo}/issues/${args.issue}/labels`, {
       token: conductorToken(),
       method: 'POST',
       body: { labels: [label] },
     });
-    const comment = plan.status === 'draft'
+    const comment = plan.status === 'accepted'
       ? plan.plan
-      : (intake.questions || []).map((q) => `- ${q}`).join('\n');
+      : plan.status === 'needs-info'
+        ? ['Plan red-team did not pass:', ...(plan.findings || []).map((f) => `- ${f.claim}`)].join('\n')
+        : (intake.questions || []).map((q) => `- ${q}`).join('\n');
     if (comment) {
       await gh(`/repos/${args.repo}/issues/${args.issue}/comments`, {
         token: conductorToken(),
@@ -160,9 +164,10 @@ async function main() {
     actions: [intake.tier, plan.status, ...(intake.reasons || [])],
     risks: [
       intake.mode === 'heuristic' ? 'sufficiency is heuristic until the Stage A model is wired' : null,
-      plan.status === 'draft' ? 'plan is a draft; Stage B′ has not accepted it' : null,
+      plan.status === 'accepted' ? 'Stage B′ is structural until Gemini is wired' : null,
+      plan.status === 'needs-info' ? 'Stage B′ hit the cycle limit' : null,
     ].filter(Boolean),
-    result: plan.status === 'draft' ? plan.label : intake.label,
+    result: plan.label || intake.label,
   })}\n`);
   process.stdout.write(`${JSON.stringify({ intake, plan }, null, 2)}\n`);
 }

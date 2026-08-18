@@ -1080,3 +1080,9 @@
 - **Context:** Sufficiency on #428 made `ACTIONABLE` possible. The next cheap halt is a plan the conductor can post without starting Stage C on a rejected idea.
 - **Impact:** `completeThroughStageB()` returns `{ intake, plan }`. `--post` applies `noemi:planned` and the draft body only when status is `draft`.
 
+## [2026-08-18-0006] Stage B′ Is a Structural Plan Red-Team Until Gemini Is Wired
+
+- **Decision:** After the Stage B draft, `runPlanRedTeam` critiques premise/framing only: required headings, at least one concrete file, no skip-red-team instruction. A pass sets `status: accepted`. A fail retries up to `planRedTeam.maxCycles` (default 3) and then sets `needs-info`. It does not invent files to clear a fail. Gemini Pro remains the intended critic; this slice is `mode: heuristic`.
+- **Context:** #428 already drafted plans but left them unaccepted. Continuing the loop requires a cheap halt before Stage C.
+- **Impact:** `completeThroughStageB` runs B′. `--post` writes `noemi:planned` only on accept and `noemi:needs-info` on cycle-limit fail.
+

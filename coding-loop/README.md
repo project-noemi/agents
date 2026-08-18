@@ -118,12 +118,12 @@ still never defaults to `ACTIONABLE`.
 node coding-loop/run.js --repo owner/name --issue N --scan-status APPROVED --budget-ok
 ```
 
-An `ACTIONABLE` issue also gets a Stage B **draft** (`coding-loop/plan.js`):
-goal, files, tests, risks, stop conditions. The draft is never `accepted`
-until Stage B′ runs.
+An `ACTIONABLE` issue gets a Stage B plan and a structural Stage B′
+(`coding-loop/plan.js`): missing sections, no files, or skip-red-team
+language fail. Pass → `accepted`. Fail at `planRedTeam.maxCycles` →
+`needs-info`. Gemini is not called yet.
 
 ## Next in this section
 
-Stage B′ (plan red-team cycle), then optional Mastra webhook — still under
-`coding-loop/`, still generalized in this blueprint, first live-fired from
-`{company}-agents`.
+Wire Gemini Pro as the real B′ critic, then Stage C (`noemi-agent` PR).
+Optional Mastra webhook stays in this section.

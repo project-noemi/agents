@@ -13,8 +13,9 @@ follows the same pattern.
 
 Mastra is the first *framework* inside `coding-loop/` when a long-running
 webhook is added. Stage A today is `coding-loop/run.js` (intake then fail-closed sufficiency).
-Stage B drafts a plan (`coding-loop/plan.js`) and never marks it `accepted`
-until B′ exists.
+Stage B drafts a plan (`coding-loop/plan.js`). Stage B′ is a structural
+red-team (headings, files, no skip-red-team). `accepted` only on B′ pass;
+fail at `planRedTeam.maxCycles` is `needs-info`. Gemini is not called yet.
 Personas, skills, and
 `docs/model-routing.json` stay the source of truth; the section must not
 vendor a private copy.

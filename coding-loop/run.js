@@ -138,11 +138,15 @@ async function main() {
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
+function exitCodeForError(err) {
+  return err && Number.isInteger(err.status) && err.status >= 500 ? 2 : 1;
+}
+
 if (require.main === module) {
   main().catch((err) => {
     process.stderr.write(`✖ ${err.message}\n`);
-    process.exit(err.status && err.status >= 500 ? 2 : 2);
+    process.exit(exitCodeForError(err));
   });
 }
 
-module.exports = { parseArgs, loadTenant, assertRepoIssue };
+module.exports = { parseArgs, loadTenant, assertRepoIssue, exitCodeForError };

@@ -10,7 +10,7 @@ const {
   issueFromGitHub,
   tenantAllows,
 } = require('../coding-loop/intake.js');
-const { assertRepoIssue } = require('../coding-loop/run.js');
+const { assertRepoIssue, exitCodeForError } = require('../coding-loop/run.js');
 
 const tenant = {
   tenantId: 'newpush-internal',
@@ -157,6 +157,13 @@ test('CLI rejects a malformed --repo before it touches GitHub', () => {
   });
   assert.equal(result.status, 2);
   assert.match(result.stderr, /owner\/name/);
+});
+
+test('exitCodeForError: 5xx is 2, everything else is 1', () => {
+  assert.equal(exitCodeForError(Object.assign(new Error('down'), { status: 503 })), 2);
+  assert.equal(exitCodeForError(Object.assign(new Error('down'), { status: 500 })), 2);
+  assert.equal(exitCodeForError(Object.assign(new Error('missing'), { status: 404 })), 1);
+  assert.equal(exitCodeForError(new Error('no status')), 1);
 });
 
 test('CLI --post without CONDUCTOR_GH_TOKEN is refused (identity split)', () => {

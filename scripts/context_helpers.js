@@ -658,10 +658,21 @@ function buildSkillDistFile({ slug, content, sourceRelPath, mandateSections }) {
     ].join('\n');
 }
 
+/** Placeholder marker that disqualifies a skill from publication. */
+const SKILL_DIST_PLACEHOLDER = /\bTBD\b/;
+
 /**
  * Build every skills-dist artifact in memory, sorted by slug for determinism.
  * Slug = source basename; a collision between domains fails loudly rather
  * than letting one skill silently overwrite another.
+ *
+ * Returns { files, withheld }. A skill whose canonical spec still contains
+ * placeholder content (TBD) is WITHHELD from publication rather than shipped:
+ * the governance badge stamped on every artifact asserts real Refusal
+ * Criteria and audit contracts, and stamping it onto a template would be a
+ * false claim in a public file (found by the cross-model review of this very
+ * pipeline). Filling the placeholders auto-publishes the skill on the next
+ * generate — no pipeline change needed.
  */
 function buildSkillsDist({ skillsDir, agentsMdPath, repoRoot }) {
     const sections = extractTopLevelSections(fs.readFileSync(agentsMdPath, 'utf8'));
@@ -674,6 +685,7 @@ function buildSkillsDist({ skillsDir, agentsMdPath, repoRoot }) {
     });
 
     const files = [];
+    const withheld = [];
     const bySlug = new Map();
     for (const skill of discoverSkills(skillsDir)) {
         const slug = path.basename(skill.path, '.md');
@@ -682,20 +694,34 @@ function buildSkillsDist({ skillsDir, agentsMdPath, repoRoot }) {
             throw new Error(`skills-dist slug collision: '${slug}' from ${sourceRelPath} and ${bySlug.get(slug)}.`);
         }
         bySlug.set(slug, sourceRelPath);
+
+        const content = fs.readFileSync(skill.path, 'utf8');
+        if (SKILL_DIST_PLACEHOLDER.test(content)) {
+            withheld.push({
+                slug,
+                sourceRelPath,
+                reason: 'contains placeholder content (TBD) in governed sections — fill it to publish'
+            });
+            continue;
+        }
+
         files.push({
             slug,
             sourceRelPath,
             relPath: path.join('skills-dist', slug, 'SKILL.md'),
             content: buildSkillDistFile({
                 slug,
-                content: fs.readFileSync(skill.path, 'utf8'),
+                content,
                 sourceRelPath,
                 mandateSections
             })
         });
     }
 
-    return files.sort((left, right) => left.slug.localeCompare(right.slug));
+    return {
+        files: files.sort((left, right) => left.slug.localeCompare(right.slug)),
+        withheld: withheld.sort((left, right) => left.slug.localeCompare(right.slug))
+    };
 }
 
 module.exports = {

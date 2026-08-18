@@ -259,7 +259,7 @@ function checkSkillsDistDeterminism() {
         return;
     }
 
-    const expectedByRel = new Map(expected.map((file) => [file.relPath, file.content]));
+    const expectedByRel = new Map(expected.files.map((file) => [file.relPath, file.content]));
 
     for (const [relPath, content] of expectedByRel) {
         const fullPath = path.join(repoRoot, relPath);

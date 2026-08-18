@@ -66,7 +66,8 @@ test('frontmatter: quotes in the Purpose lead are YAML-escaped', () => {
 });
 
 test('artifact shape: provenance, license, mandates, and a single H1', () => {
-    const files = buildSkillsDist({ skillsDir, agentsMdPath, repoRoot });
+    const { files } = buildSkillsDist({ skillsDir, agentsMdPath, repoRoot });
+    assert.ok(files.length > 0, 'at least the substantively complete skills must publish');
     for (const file of files) {
         const c = file.content;
         assert.match(c, /^---\nname: [a-z0-9-]+\ndescription: "/, `${file.slug}: frontmatter`);
@@ -87,12 +88,32 @@ test('determinism: two in-memory builds are byte-identical, slugs unique and sor
     const a = buildSkillsDist({ skillsDir, agentsMdPath, repoRoot });
     const b = buildSkillsDist({ skillsDir, agentsMdPath, repoRoot });
     assert.deepEqual(a, b, 'the builder must be a pure function of its inputs');
-    const slugs = a.map((f) => f.slug);
+    const slugs = a.files.map((f) => f.slug);
     assert.deepEqual(slugs, [...new Set(slugs)].sort(), 'slugs unique and sorted');
 });
 
+test('honesty gate: placeholder skills are withheld, and no published artifact contains TBD', () => {
+    // The cross-model review of this pipeline caught the governance badge
+    // being stamped onto template skills still carrying TBD in their Refusal
+    // Criteria — a false claim in a public file. The invariant, not a count
+    // (counts change as skills are completed): withheld ⇔ source has TBD,
+    // and published artifacts never contain the placeholder at all.
+    const { files, withheld } = buildSkillsDist({ skillsDir, agentsMdPath, repoRoot });
+    for (const held of withheld) {
+        const source = fs.readFileSync(path.join(repoRoot, held.sourceRelPath), 'utf8');
+        assert.match(source, /\bTBD\b/, `${held.slug} withheld without a placeholder in its source`);
+        assert.match(held.reason, /fill it to publish/);
+    }
+    for (const file of files) {
+        assert.doesNotMatch(file.content, /\bTBD\b/,
+            `${file.slug}: a published artifact must never carry placeholder content under the governance badge`);
+        const source = fs.readFileSync(path.join(repoRoot, file.sourceRelPath), 'utf8');
+        assert.doesNotMatch(source, /\bTBD\b/, `${file.slug}: published skill's source must be complete`);
+    }
+});
+
 test('committed artifacts match the builder byte-for-byte (the audit contract)', () => {
-    for (const file of buildSkillsDist({ skillsDir, agentsMdPath, repoRoot })) {
+    for (const file of buildSkillsDist({ skillsDir, agentsMdPath, repoRoot }).files) {
         const onDisk = fs.readFileSync(path.join(repoRoot, file.relPath), 'utf8');
         assert.equal(onDisk, file.content,
             `${file.relPath} drifted — run npm run generate; skills-dist/ is a build artifact`);

@@ -95,7 +95,11 @@ function generate(target, config, agents) {
  */
 function generateSkillsDist() {
     console.log('Generating skills-dist/ (public SKILL.md artifacts)...');
-    const files = buildSkillsDist({ skillsDir, agentsMdPath, repoRoot });
+    const { files, withheld } = buildSkillsDist({ skillsDir, agentsMdPath, repoRoot });
+
+    for (const held of withheld) {
+        console.warn(`  WITHHELD from publication: ${held.sourceRelPath} — ${held.reason}`);
+    }
 
     const expected = new Set(files.map((file) => file.relPath));
     for (const file of files) {
@@ -122,7 +126,8 @@ function generateSkillsDist() {
         }
     }
 
-    console.log(`Successfully generated skills-dist/ with ${files.length} SKILL.md file(s).`);
+    console.log(`Successfully generated skills-dist/ with ${files.length} SKILL.md file(s)`
+        + (withheld.length ? ` (${withheld.length} withheld pending substantive completion).` : '.'));
     return true;
 }
 

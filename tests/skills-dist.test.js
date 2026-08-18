@@ -119,3 +119,37 @@ test('committed artifacts match the builder byte-for-byte (the audit contract)',
             `${file.relPath} drifted — run npm run generate; skills-dist/ is a build artifact`);
     }
 });
+
+test('license drift fails generation instead of stamping a stale identifier', () => {
+    // The provenance blockquote is a public legal claim; it must be verified
+    // against the real LICENSE at build time, not asserted from memory.
+    const os = require('os');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'skills-dist-license-'));
+    try {
+        fs.mkdirSync(path.join(tmp, 'skills'));
+        fs.writeFileSync(path.join(tmp, 'skills', 'demo.md'),
+            '# Demo — Skill\n\n## Purpose\n\nDo a thing.\n');
+        fs.writeFileSync(path.join(tmp, 'AGENTS.md'),
+            '# 🔐 Secrets & Configuration\nrule\n\n# 🛡 Error Handling and Resilience\nrule\n');
+        fs.writeFileSync(path.join(tmp, 'LICENSE'), 'MIT License\n');
+        assert.throws(
+            () => buildSkillsDist({
+                skillsDir: path.join(tmp, 'skills'),
+                agentsMdPath: path.join(tmp, 'AGENTS.md'),
+                repoRoot: tmp,
+            }),
+            /LICENSE no longer matches/,
+        );
+        // And with the real identifier present, the same fixture builds.
+        fs.writeFileSync(path.join(tmp, 'LICENSE'),
+            '# Functional Source License, Version 1.1, Apache 2.0 Future License\n');
+        const { files } = buildSkillsDist({
+            skillsDir: path.join(tmp, 'skills'),
+            agentsMdPath: path.join(tmp, 'AGENTS.md'),
+            repoRoot: tmp,
+        });
+        assert.equal(files.length, 1);
+    } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+    }
+});

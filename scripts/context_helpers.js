@@ -675,6 +675,16 @@ const SKILL_DIST_PLACEHOLDER = /\bTBD\b/;
  * generate — no pipeline change needed.
  */
 function buildSkillsDist({ skillsDir, agentsMdPath, repoRoot }) {
+    // The provenance blockquote stamps FSL-1.1-Apache-2.0 into every public
+    // artifact. Verify the identifier against the ACTUAL license file at build
+    // time: if the repository ever relicenses, generation fails loudly instead
+    // of publishing a stale legal claim (review finding on this pipeline).
+    const licensePath = path.join(repoRoot, 'LICENSE');
+    if (!fs.existsSync(licensePath)
+        || !/Functional Source License, Version 1\.1, Apache 2\.0/.test(fs.readFileSync(licensePath, 'utf8').slice(0, 500))) {
+        throw new Error('LICENSE no longer matches the FSL-1.1-Apache-2.0 identifier stamped into skills-dist artifacts — update the provenance template before regenerating.');
+    }
+
     const sections = extractTopLevelSections(fs.readFileSync(agentsMdPath, 'utf8'));
     const mandateSections = SKILL_DIST_MANDATE_SECTIONS.map((title) => {
         const section = sections.find((candidate) => candidate.title === title);

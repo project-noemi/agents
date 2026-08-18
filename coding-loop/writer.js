@@ -13,13 +13,24 @@ const XAI_API = 'https://api.x.ai/v1';
 const MAX_FILES = 20;
 const MAX_FILE_CHARS = 200000;
 
+const path = require('path');
+
 const CARVE_OUT = [
   '.github/CODEOWNERS',
-  '.github/workflows/require-develop-source.yml',
-  '.github/workflows/ai-review.yml',
   'docs/MACHINE_IDENTITY.md',
   'docs/AI_REVIEW_GOVERNANCE.md',
 ];
+
+function normalizeRepoPath(filePath) {
+  return path.posix.normalize(String(filePath || '').replace(/\\/g, '/')).replace(/^\.\/+/, '');
+}
+
+/** Any Actions workflow is a CI RCE surface. Listing two YAML files is not enough. */
+function isCarvedOut(filePath) {
+  const normalized = normalizeRepoPath(filePath);
+  if (CARVE_OUT.includes(normalized)) return true;
+  return normalized === '.github/workflows' || normalized.startsWith('.github/workflows/');
+}
 
 function assertWriterKey(env = process.env) {
   const key = env && env.XAI_API_KEY;
@@ -79,7 +90,7 @@ function validateFiles(files, plan) {
     if (typeof filePath !== 'string' || !filePath || filePath.includes('..') || filePath.startsWith('/')) {
       return { ok: false, reason: 'writer-bad-path' };
     }
-    if (CARVE_OUT.includes(filePath)) {
+    if (isCarvedOut(filePath)) {
       return { ok: false, reason: 'writer-carve-out' };
     }
     if (!allowed.has(filePath)) {
@@ -211,6 +222,8 @@ module.exports = {
   buildWriterPrompt,
   classifyGrok,
   draftChanges,
+  isCarvedOut,
+  normalizeRepoPath,
   selectGrokModel,
   validateFiles,
 };

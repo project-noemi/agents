@@ -11,6 +11,7 @@
 
 const { pickIntegrationBranch } = require('../scripts/deploy-ai-review-lib.js');
 const { gh } = require('../scripts/github-client.js');
+const { isCarvedOut } = require('./writer.js');
 
 function slugIssue(issue) {
   const n = issue && issue.number;
@@ -84,6 +85,9 @@ async function openImplementationPr({
 
   if (!Array.isArray(files) || files.length === 0) {
     return { ...prepared, status: 'refused', reason: 'writer-empty', opened: false };
+  }
+  if (files.some((file) => isCarvedOut(file && file.path))) {
+    return { ...prepared, status: 'refused', reason: 'writer-carve-out', opened: false };
   }
 
   if (typeof repo !== 'string' || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) {

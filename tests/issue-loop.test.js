@@ -15,7 +15,7 @@ const { completeStageA, evaluateSufficiency, issueText } = require('../coding-lo
 const { completeThroughStageB, draftPlan, extractPaths, runPlanRedTeam } = require('../coding-loop/plan.js');
 const { assertProducerToken, openImplementationPr, prepareImplementation } = require('../coding-loop/dispatch.js');
 const { critiquePlanLive } = require('../coding-loop/critic.js');
-const { assertWriterKey, draftChanges, selectGrokModel, validateFiles } = require('../coding-loop/writer.js');
+const { assertWriterKey, draftChanges, isCarvedOut, selectGrokModel, validateFiles } = require('../coding-loop/writer.js');
 
 const tenant = {
   tenantId: 'newpush-internal',
@@ -616,6 +616,28 @@ test('draftChanges: refuses paths outside the plan and secret-shaped content', a
   assert.equal(validateFiles([], plan).reason, 'writer-empty');
 });
 
+test('draftChanges: any Actions workflow path is carved out, not just two YAML files', async () => {
+  assert.equal(isCarvedOut('.github/workflows/pwn.yml'), true);
+  assert.equal(isCarvedOut('.github/workflows/coding-loop.yml'), true);
+  assert.equal(isCarvedOut('.github/./workflows/nested/hook.yml'), true);
+  assert.equal(isCarvedOut('coding-loop/run.js'), false);
+
+  const plan = {
+    status: 'accepted',
+    files: ['.github/workflows/pwn.yml', 'coding-loop/run.js'],
+    plan: '## Goal\nadd a workflow',
+  };
+  const planted = await draftChanges({
+    issue: issue(),
+    plan,
+    callModel: async () => ({
+      files: [{ path: '.github/workflows/pwn.yml', content: 'on: push\njobs: {}\n' }],
+    }),
+  });
+  assert.equal(planted.status, 'refused');
+  assert.equal(planted.reason, 'writer-carve-out');
+});
+
 test('openImplementationPr: injected gh opens a PR; wrong identity and empty files do not', async () => {
   const ready = await completeThroughStageB({
     issue: issue({ body: sufficientBody, number: 12 }),
@@ -668,6 +690,21 @@ test('openImplementationPr: injected gh opens a PR; wrong identity and empty fil
   });
   assert.equal(empty.opened, false);
   assert.equal(empty.reason, 'writer-empty');
+
+  const beforeMutations = calls.length;
+  const workflow = await openImplementationPr({
+    repo: 'project-noemi/agents',
+    issue: issue({ number: 12 }),
+    plan: ready.plan,
+    branches: ['develop'],
+    token: 'agent-token',
+    files: [{ path: '.github/workflows/pwn.yml', content: 'on: push\njobs: {}\n' }],
+    ghImpl,
+    env: { AGENT_GH_EXPECTED_LOGIN: 'noemi-agent' },
+  });
+  assert.equal(workflow.opened, false);
+  assert.equal(workflow.reason, 'writer-carve-out');
+  assert.equal(calls.length, beforeMutations, 'must not create a branch or PR for a workflow path');
 
   await assert.rejects(
     () => openImplementationPr({

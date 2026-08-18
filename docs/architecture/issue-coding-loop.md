@@ -13,9 +13,11 @@ follows the same pattern.
 
 Mastra is the first *framework* inside `coding-loop/` when a long-running
 webhook is added. Stage A today is `coding-loop/run.js` (intake then fail-closed sufficiency).
-Stage B drafts a plan (`coding-loop/plan.js`). Stage B′ is a structural
-red-team (headings, files, no skip-red-team). `accepted` only on B′ pass;
-fail at `planRedTeam.maxCycles` is `needs-info`. Gemini is not called yet.
+Stage B drafts a plan (`coding-loop/plan.js`). Stage B′ is structural
+(headings, files, no skip-red-team) and, with `--live-critic`, Gemini Pro.
+`accepted` only on B′ pass; fail at `planRedTeam.maxCycles` is `needs-info`.
+A critic outage is retried, then re-queued — never treated as a pass.
+`--implement --open-pr` drafts with Grok and opens a `noemi-agent` PR.
 Personas, skills, and
 `docs/model-routing.json` stay the source of truth; the section must not
 vendor a private copy.
@@ -125,9 +127,10 @@ Default `maxCycles` is 3 (`docs/model-routing.json` → `planRedTeam`).
 `agents/coding/architect/core.md` (or a more specific coding persona) running
 as `noemi-agent`. Label `noemi:in-progress`. Open a PR against `develop` (then
 `dev`). Never against `main` when an integration branch exists (Decision
-[2026-08-16-0003]). Today `coding-loop/dispatch.js` only **prepares** that
-envelope (`opened: false`); Grok is not wired and no PR is opened from the
-runner.
+[2026-08-16-0003]). `--implement` prepares the envelope (`opened: false`).
+`--implement --open-pr` calls Grok (`coding-loop/writer.js`) and opens the
+PR with `AGENT_GH_TOKEN` (`coding-loop/dispatch.js`). Pickup does not open
+PRs just because the producer token is present.
 
 ### Stage D — PR red-team
 

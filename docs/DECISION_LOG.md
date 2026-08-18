@@ -1098,4 +1098,16 @@
 - **Context:** #428 already prepared Stage C without opening a PR. The loop still needed a host path and a scan that does not default to APPROVED.
 - **Impact:** Callers opt in via the thin workflow. This repo does not run the loop on every issue until a caller is installed and the budget var is set.
 
+## [2026-08-18-0009] Stage B′ Calls Gemini Pro When Asked and Never Accepts on Outage
+
+- **Decision:** `coding-loop/critic.js` is the live Stage B′ critic. Structural critique still runs first. `--live-critic` then calls Gemini Pro (ADC, `scripts/resolve-gemini-model.js` preview-Pro-first). Findings use the same severity rubric as the fleet reviewer; unknown severities coerce up. 429/5xx retry via `withRetry`; exhaustion throws so the host re-queues. Unparseable JSON is a 502, not a pass. Without `--live-critic` the structural critic remains (mode `heuristic`).
+- **Context:** #428 already accepted plans on structural B′ only. The owner asked to add the live Gemini critic rather than leave it as a later slice.
+- **Impact:** `completeThroughStageB` is async and accepts an injected `critic`. Unit tests inject `callModel` and never hit Gemini.
+
+## [2026-08-18-0010] Stage C May Open a noemi-agent PR from a Grok Draft
+
+- **Decision:** `--implement --open-pr` drafts files with Grok (`XAI_API_KEY`, Fetch-on-Demand, highest preview then stable, optional `XAI_CODE_MODEL` pin) and opens the PR as `noemi-agent` against `develop` then `dev`. Paths outside the plan, governance carve-outs, and secret-shaped contents are refused. The token must resolve to `AGENT_GH_EXPECTED_LOGIN`. An existing head branch is refused, not overwritten. Conductor/reviewer tokens cannot open. Tests inject the writer and `gh()`; they do not open live PRs. The reusable pickup workflow still only prepares the envelope.
+- **Context:** #428 prepared Stage C without a writer. The owner asked to add the Grok open-PR path on the same PR.
+- **Impact:** `coding-loop/writer.js` + `openImplementationPr`. `--open-pr` without `--implement` or without `XAI_API_KEY` exits 2.
+
 

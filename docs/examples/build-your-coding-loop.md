@@ -26,7 +26,8 @@ real issue.”
 - a private `{company}-agents` copy of this blueprint
 - `tenants/` filled with **your** orgs and spend caps
 - a dry Stage A run: `node coding-loop/run.js --repo org/name --issue N`
-- a clear next step for labels (`--post`) and later Stages B–D
+- a clear next step for labels (`--post`), Gemini B′ (`--live-critic`), and
+  opening a producer PR (`--implement --open-pr`)
 
 You will **not** yet have org-wide pickup, a sufficiency model, or a
 provisioned conductor App. Those stay later on purpose.
@@ -110,6 +111,20 @@ repo:
 - wire `issues: opened` (Actions or a webhook) to `coding-loop/run.js`
 - then one org, then the rest
 - keep Stage D on the existing fleet reviewer
+
+Gemini B′ (`--live-critic`) needs ADC (`GCP_ACCESS_TOKEN` or
+`gcloud auth application-default login`). Opening the implementation PR
+is a **producer** act, not pickup:
+
+```bash
+infisical run --env=dev -- node coding-loop/run.js \
+  --repo your-org/your-repo --issue N \
+  --scan-status APPROVED --budget-ok \
+  --implement --open-pr
+```
+
+That requires `AGENT_GH_TOKEN` and `XAI_API_KEY`. Do not open PRs with
+the conductor token.
 
 Architecture: [`../architecture/issue-coding-loop.md`](../architecture/issue-coding-loop.md).
 

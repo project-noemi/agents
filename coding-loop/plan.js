@@ -3,9 +3,10 @@
 /**
  * Stage B plan draft (skills/orchestration/issue-plan.md steps 1–3).
  *
- * Drafts a checkable plan from an ACTIONABLE Stage A result, then runs a
- * structural Stage B′ (premise/framing only). Gemini is not called yet.
+ * Drafts a checkable plan from an ACTIONABLE Stage A result, then runs
+ * Stage B′ (structural, plus optional live Gemini via `critic`).
  * status is refused | accepted | needs-info. accepted requires B′ pass.
+ * A critic throw (429/5xx after retry) is not a plan verdict — re-queue.
  */
 
 const fs = require('fs');
@@ -83,7 +84,7 @@ function draftPlan({ issue, intake, scan, routing } = {}) {
   ];
   const stops = [
     'A required file or done-condition was guessed, not stated.',
-    'Stage B′ (when wired) returns fail at planRedTeam.maxCycles.',
+    'Stage B′ returns fail at planRedTeam.maxCycles.',
   ];
 
   if (SKIP_B_PRIME_RE.test(text)) {
@@ -138,14 +139,21 @@ function critiquePlan(plan) {
   return { verdict: blocking ? 'fail' : 'pass', findings };
 }
 
-function runPlanRedTeam(plan, { maxCycles } = {}) {
+async function runPlanRedTeam(plan, { maxCycles, critic } = {}) {
   if (!plan || plan.status === 'refused') return plan;
   const limit = Number.isInteger(maxCycles) ? maxCycles
     : (Number.isInteger(plan.maxCycles) ? plan.maxCycles : 3);
-  let current = { ...plan, mode: 'heuristic' };
+  const critique = critic || critiquePlan;
+  let current = { ...plan, mode: critic ? 'gemini' : 'heuristic' };
   for (let cycle = 1; cycle <= limit; cycle += 1) {
-    const { verdict, findings } = critiquePlan(current);
-    current = { ...current, cycles: cycle, verdict, findings };
+    const { verdict, findings, mode } = await Promise.resolve(critique(current));
+    current = {
+      ...current,
+      cycles: cycle,
+      verdict,
+      findings,
+      mode: mode || current.mode,
+    };
     if (verdict === 'pass') {
       return { ...current, status: 'accepted', label: 'noemi:planned' };
     }
@@ -158,14 +166,15 @@ function runPlanRedTeam(plan, { maxCycles } = {}) {
   return current;
 }
 
-function completeThroughStageB(input) {
+async function completeThroughStageB(input) {
   const { completeStageA } = require('./sufficiency.js');
   const intake = completeStageA(input);
   const drafted = draftPlan({ ...input, intake });
-  const plan = runPlanRedTeam(drafted, {
+  const plan = await runPlanRedTeam(drafted, {
     maxCycles: input && input.routing && input.routing.planRedTeam
       ? input.routing.planRedTeam.maxCycles
       : drafted.maxCycles,
+    critic: input && input.critic,
   });
   return { intake, plan };
 }

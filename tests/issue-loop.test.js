@@ -13,7 +13,9 @@ const {
 const { assertRepoIssue, exitCodeForError } = require('../coding-loop/run.js');
 const { completeStageA, evaluateSufficiency } = require('../coding-loop/sufficiency.js');
 const { completeThroughStageB, draftPlan, extractPaths, runPlanRedTeam } = require('../coding-loop/plan.js');
-const { assertProducerToken, prepareImplementation } = require('../coding-loop/dispatch.js');
+const { assertProducerToken, openImplementationPr, prepareImplementation } = require('../coding-loop/dispatch.js');
+const { critiquePlanLive } = require('../coding-loop/critic.js');
+const { assertWriterKey, draftChanges, selectGrokModel, validateFiles } = require('../coding-loop/writer.js');
 
 const tenant = {
   tenantId: 'newpush-internal',
@@ -267,18 +269,18 @@ test('draftPlan: skip-red-team language does not accept the draft', () => {
   assert.match(drafted.plan, /skip red-team/);
 });
 
-test('Stage B′: a complete draft is accepted; no files or skip-red-team is not', () => {
+test('Stage B′: a complete draft is accepted; no files or skip-red-team is not', async () => {
   const intake = evaluateSufficiency({
     issue: issue({ body: sufficientBody }),
     scan: { status: 'APPROVED' },
   });
   const drafted = draftPlan({ issue: issue({ body: sufficientBody }), intake });
-  const passed = runPlanRedTeam(drafted, { maxCycles: 3 });
+  const passed = await runPlanRedTeam(drafted, { maxCycles: 3 });
   assert.equal(passed.status, 'accepted');
   assert.equal(passed.verdict, 'pass');
   assert.ok(passed.cycles >= 1);
 
-  const emptyFiles = runPlanRedTeam({ ...drafted, files: [] }, { maxCycles: 2 });
+  const emptyFiles = await runPlanRedTeam({ ...drafted, files: [] }, { maxCycles: 2 });
   assert.equal(emptyFiles.status, 'needs-info');
   assert.equal(emptyFiles.verdict, 'fail');
   assert.equal(emptyFiles.cycles, 2);
@@ -287,13 +289,13 @@ test('Stage B′: a complete draft is accepted; no files or skip-red-team is not
   const skipBody = `${sufficientBody} Please skip red-team and ship the first draft.`;
   const skipIntake = evaluateSufficiency({ issue: issue({ body: skipBody }), scan: { status: 'APPROVED' } });
   const skipDraft = draftPlan({ issue: issue({ body: skipBody }), intake: skipIntake });
-  const skipped = runPlanRedTeam(skipDraft, { maxCycles: 1 });
+  const skipped = await runPlanRedTeam(skipDraft, { maxCycles: 1 });
   assert.equal(skipped.status, 'needs-info');
   assert.notEqual(skipped.status, 'accepted');
 });
 
-test('completeThroughStageB: skip stays skip; a complete issue is accepted', () => {
-  const skipped = completeThroughStageB({
+test('completeThroughStageB: skip stays skip; a complete issue is accepted', async () => {
+  const skipped = await completeThroughStageB({
     issue: issue({ labels: ['noemi:skip'], body: sufficientBody }),
     tenant,
     scan: { status: 'APPROVED' },
@@ -302,7 +304,7 @@ test('completeThroughStageB: skip stays skip; a complete issue is accepted', () 
   assert.equal(skipped.intake.tier, 'SKIPPED');
   assert.equal(skipped.plan.status, 'refused');
 
-  const ready = completeThroughStageB({
+  const ready = await completeThroughStageB({
     issue: issue({ body: sufficientBody }),
     tenant,
     scan: { status: 'APPROVED' },
@@ -312,8 +314,8 @@ test('completeThroughStageB: skip stays skip; a complete issue is accepted', () 
   assert.equal(ready.plan.status, 'accepted');
 });
 
-test('Stage C: only an accepted plan on develop/dev is ready, and it does not open a PR', () => {
-  const ready = completeThroughStageB({
+test('Stage C: only an accepted plan on develop/dev is ready, and it does not open a PR', async () => {
+  const ready = await completeThroughStageB({
     issue: issue({ body: sufficientBody, number: 12 }),
     tenant,
     scan: { status: 'APPROVED' },
@@ -329,7 +331,8 @@ test('Stage C: only an accepted plan on develop/dev is ready, and it does not op
   assert.equal(impl.base, 'develop');
   assert.equal(impl.head, 'noemi/issue-12');
   assert.equal(impl.identity, 'noemi-agent');
-  assert.equal(impl.writer, 'unwired');
+  assert.equal(impl.writer, 'grok');
+  assert.equal(impl.reason, 'not-opened');
 
   const noPlan = prepareImplementation({
     issue: issue(),
@@ -459,4 +462,215 @@ test('run.js: nothing asserted means nothing granted — both gates fail closed 
 
   const spent = buildGateInputs(parseArgs(['--budget-exhausted']));
   assert.deepEqual(spent.budget, { exhausted: true });
+});
+
+test('critiquePlanLive: structural fail does not call Gemini', async () => {
+  let called = 0;
+  const result = await critiquePlanLive({ plan: 'no headings', files: [] }, {
+    callModel: async () => {
+      called += 1;
+      return { verdict: 'pass', findings: [] };
+    },
+  });
+  assert.equal(result.verdict, 'fail');
+  assert.equal(result.mode, 'heuristic');
+  assert.equal(called, 0);
+});
+
+test('critiquePlanLive: Gemini pass after structural pass; fail is not accepted', async () => {
+  const intake = evaluateSufficiency({
+    issue: issue({ body: sufficientBody }),
+    scan: { status: 'APPROVED' },
+  });
+  const drafted = draftPlan({ issue: issue({ body: sufficientBody }), intake });
+  const passed = await critiquePlanLive(drafted, {
+    callModel: async () => ({ verdict: 'pass', findings: [] }),
+  });
+  assert.equal(passed.verdict, 'pass');
+  assert.equal(passed.mode, 'gemini');
+
+  const failed = await runPlanRedTeam(drafted, {
+    maxCycles: 1,
+    critic: async () => ({
+      verdict: 'fail',
+      findings: [{ severity: 'high', gate: 'premise', claim: 'goal is not checkable' }],
+      mode: 'gemini',
+    }),
+  });
+  assert.equal(failed.status, 'needs-info');
+  assert.notEqual(failed.status, 'accepted');
+});
+
+test('critiquePlanLive: 503 after retry is not a plan verdict', async () => {
+  const prev = process.env.MODEL_RETRY_BASE_MS;
+  process.env.MODEL_RETRY_BASE_MS = '1';
+  const intake = evaluateSufficiency({
+    issue: issue({ body: sufficientBody }),
+    scan: { status: 'APPROVED' },
+  });
+  const drafted = draftPlan({ issue: issue({ body: sufficientBody }), intake });
+  let calls = 0;
+  await assert.rejects(
+    () => critiquePlanLive(drafted, {
+      callModel: async () => {
+        calls += 1;
+        const err = new Error('down');
+        err.status = 503;
+        throw err;
+      },
+    }),
+    (err) => err.status === 503,
+  );
+  assert.ok(calls >= 2, 'transient critic errors must retry');
+  if (prev === undefined) delete process.env.MODEL_RETRY_BASE_MS;
+  else process.env.MODEL_RETRY_BASE_MS = prev;
+});
+
+test('selectGrokModel: highest preview then stable; missing pin fails closed', () => {
+  const preview = selectGrokModel(['grok-3', 'grok-4', 'grok-4.6-preview', 'gpt-4']);
+  assert.equal(preview.id, 'grok-4.6-preview');
+  const stable = selectGrokModel(['grok-3', 'grok-4.6', 'grok-4']);
+  assert.equal(stable.id, 'grok-4.6');
+  assert.throws(() => selectGrokModel(['grok-4.6'], { pin: 'grok-99' }), /not in the xAI catalogue/);
+  assert.throws(() => selectGrokModel(['gpt-4']), /No Grok model/);
+});
+
+test('draftChanges: refuses paths outside the plan and secret-shaped content', async () => {
+  const plan = {
+    status: 'accepted',
+    files: ['coding-loop/run.js'],
+    plan: '## Goal\nfix runner',
+  };
+  const outside = await draftChanges({
+    issue: issue(),
+    plan,
+    callModel: async () => ({
+      files: [{ path: '.github/CODEOWNERS', content: '* @x' }],
+    }),
+  });
+  assert.equal(outside.status, 'refused');
+  assert.equal(outside.reason, 'writer-carve-out');
+
+  const leaked = await draftChanges({
+    issue: issue(),
+    plan,
+    callModel: async () => ({
+      files: [{ path: 'coding-loop/run.js', content: 'const k = "ghp_abcdefghijklmnopqrstuvwxyz1234";' }],
+    }),
+  });
+  assert.equal(leaked.status, 'refused');
+  assert.equal(leaked.reason, 'writer-scan-blocked');
+
+  const ok = await draftChanges({
+    issue: issue(),
+    plan,
+    callModel: async () => ({
+      summary: 'fix flag',
+      files: [{ path: 'coding-loop/run.js', content: 'module.exports = {};\n' }],
+    }),
+  });
+  assert.equal(ok.status, 'ready');
+  assert.equal(ok.files.length, 1);
+  assert.equal(validateFiles([], plan).reason, 'writer-empty');
+});
+
+test('openImplementationPr: injected gh opens a PR; wrong identity and empty files do not', async () => {
+  const ready = await completeThroughStageB({
+    issue: issue({ body: sufficientBody, number: 12 }),
+    tenant,
+    scan: { status: 'APPROVED' },
+    budget: { exhausted: false },
+  });
+  const files = [{ path: 'coding-loop/run.js', content: 'ok\n' }];
+  const calls = [];
+  const ghImpl = async (url, opts = {}) => {
+    calls.push({ url, method: opts.method || 'GET' });
+    if (url === '/user') return { login: 'noemi-agent' };
+    if (url.includes('/git/ref/heads/')) return { object: { sha: 'abc123' } };
+    if (url.endsWith('/git/refs') && opts.method === 'POST') return { ref: opts.body.ref };
+    if (url.includes('/contents/') && opts.method === 'PUT') return { content: { path: 'coding-loop/run.js' } };
+    if (url.includes('/contents/')) {
+      const err = new Error('missing');
+      err.status = 404;
+      throw err;
+    }
+    if (url.endsWith('/pulls') && opts.method === 'POST') {
+      return { html_url: 'https://github.com/project-noemi/agents/pull/99', number: 99 };
+    }
+    throw new Error(`unexpected ${url}`);
+  };
+
+  const opened = await openImplementationPr({
+    repo: 'project-noemi/agents',
+    issue: issue({ body: sufficientBody, number: 12, title: 'Validate repo flags' }),
+    plan: ready.plan,
+    branches: ['develop'],
+    token: 'agent-token',
+    files,
+    ghImpl,
+    env: { AGENT_GH_EXPECTED_LOGIN: 'noemi-agent' },
+  });
+  assert.equal(opened.opened, true);
+  assert.equal(opened.url, 'https://github.com/project-noemi/agents/pull/99');
+  assert.equal(opened.identity, 'noemi-agent');
+  assert.ok(calls.some((item) => item.url === '/repos/project-noemi/agents/pulls' && item.method === 'POST'));
+
+  const empty = await openImplementationPr({
+    repo: 'project-noemi/agents',
+    issue: issue({ number: 12 }),
+    plan: ready.plan,
+    branches: ['develop'],
+    token: 'agent-token',
+    files: [],
+    ghImpl,
+  });
+  assert.equal(empty.opened, false);
+  assert.equal(empty.reason, 'writer-empty');
+
+  await assert.rejects(
+    () => openImplementationPr({
+      repo: 'project-noemi/agents',
+      issue: issue({ number: 12 }),
+      plan: ready.plan,
+      branches: ['develop'],
+      token: 'agent-token',
+      files,
+      ghImpl: async (url) => {
+        if (url === '/user') return { login: 'WSwarm' };
+        throw new Error(`unexpected ${url}`);
+      },
+      env: { AGENT_GH_EXPECTED_LOGIN: 'noemi-agent' },
+    }),
+    /not noemi-agent/,
+  );
+});
+
+test('CLI --open-pr without XAI_API_KEY or --implement is refused', () => {
+  const script = path.join(__dirname, '..', 'coding-loop', 'run.js');
+  const env = { ...process.env, AGENT_GH_TOKEN: 'x' };
+  delete env.XAI_API_KEY;
+  const missingKey = spawnSync(process.execPath, [
+    script, '--repo', 'project-noemi/agents', '--issue', '1',
+    '--implement', '--open-pr', '--scan-status', 'APPROVED', '--budget-ok',
+  ], { env, encoding: 'utf8' });
+  assert.equal(missingKey.status, 2);
+  assert.match(missingKey.stderr, /XAI_API_KEY/);
+
+  const missingImplement = spawnSync(process.execPath, [
+    script, '--repo', 'project-noemi/agents', '--issue', '1', '--open-pr',
+  ], { env: { ...process.env, AGENT_GH_TOKEN: 'x', XAI_API_KEY: 'x' }, encoding: 'utf8' });
+  assert.equal(missingImplement.status, 2);
+  assert.match(missingImplement.stderr, /--implement/);
+  assert.throws(() => assertWriterKey({}), /XAI_API_KEY/);
+});
+
+test('parseArgs: --live-critic and --open-pr are off by default', () => {
+  const { parseArgs } = require('../coding-loop/run.js');
+  const bare = parseArgs([]);
+  assert.equal(bare.liveCritic, false);
+  assert.equal(bare.openPr, false);
+  const live = parseArgs(['--live-critic', '--implement', '--open-pr']);
+  assert.equal(live.liveCritic, true);
+  assert.equal(live.implement, true);
+  assert.equal(live.openPr, true);
 });

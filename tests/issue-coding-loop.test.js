@@ -95,6 +95,16 @@ test('architecture doc names the three identities and the plan cycle stop', () =
   assert.match(doc, /highest-generation preview/);
 });
 
+test('architecture keeps the loop in this repo under coding-loop/', () => {
+  const doc = read('docs/architecture/issue-coding-loop.md');
+  assert.match(doc, /newpush\/newpush-mastra-orchestration/);
+  assert.match(doc, /not a second GitHub repo/);
+  assert.match(doc, /coding-loop\//);
+  assert.match(doc, /newpush\/newpush-agents/);
+  assert.ok(require('fs').existsSync(require('path').join(__dirname, '..', 'coding-loop', 'run.js')));
+  assert.ok(require('fs').existsSync(require('path').join(__dirname, '..', 'docs', 'examples', 'build-your-coding-loop.md')));
+});
+
 test('architecture and conductor treat GitHub 429/5xx as retries, not verdicts', () => {
   const doc = read('docs/architecture/issue-coding-loop.md');
   const conductor = read('agents/engineering/issue-conductor.md');

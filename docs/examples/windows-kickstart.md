@@ -143,6 +143,7 @@ After this local-first success:
 2. [`../tool-usages/secure-secret-management.md`](../tool-usages/secure-secret-management.md)
 3. [`../tool-usages/agentic-local-workspaces.md`](../tool-usages/agentic-local-workspaces.md)
 4. [`builder-first-30-minutes.md`](builder-first-30-minutes.md) when you are ready for Docker
+5. [`build-your-coding-loop.md`](build-your-coding-loop.md) when you want to deploy an issue → PR loop
 
 ## Windows Notes
 

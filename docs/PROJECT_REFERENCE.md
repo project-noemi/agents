@@ -716,6 +716,10 @@ Start with Phase 0 and the governance framework. Your job is to ensure that what
 Start with the first agent tutorial. Build something. Then read the agent specifications in this repository to understand how production-grade agents are structured.
 → [`docs/examples/zero-to-first-agent.md`](examples/zero-to-first-agent.md)
 
+**If you are a coder and want issues to become pull requests:**
+Copy this blueprint to a private `{company}-agents` repo and run Stage A. Do not design the loop only in the private copy.
+→ [`docs/examples/build-your-coding-loop.md`](examples/build-your-coding-loop.md)
+
 **If you just want to see the big picture:**
 Start with the visual maps. They show the system architecture, the audience paths, the runtime flow, and the workshop structure in diagram form.
 → [`docs/visuals/`](visuals/)
@@ -772,6 +776,8 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/tool-usages/`](tool-usages/) | Tool-specific guides and integration patterns |
 | [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) | Grok Custom Agents, Projects, Skills, and Grok Bot as the Gems / Custom GPT equivalent |
 | [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md) | Grok Build CLI / TUI: per-platform install, first win, and Fetch-on-Demand launch |
+| [`docs/examples/build-your-coding-loop.md`](examples/build-your-coding-loop.md) | Coder quick start: deploy an issue → PR loop on your `{company}-agents` copy |
+| [`coding-loop/`](../coding-loop/) | In-repo Coding Loop runtime (Stage A runner + operator checklist) |
 | [`docs/examples/`](examples/) | Example implementations (Docker sandbox, RFP Responder, Video Automation) |
 | [`docs/examples/cross-model-review-setup.md`](examples/cross-model-review-setup.md) | Beginner walkthrough: machine identities, Gemini key options, and vault-backed CI for cross-model review |
 

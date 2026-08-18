@@ -4,6 +4,8 @@ This walkthrough is the fastest safe path from a **first local success** to a wo
 
 If you are completely new to AI implementation, start with [`zero-to-first-agent.md`](zero-to-first-agent.md) first. That guide gets you through the first harmless, read-only local task. This guide is the **phase-two Docker path**.
 
+If you already ship code and want an issue → PR loop instead of a Docker home, use [`build-your-coding-loop.md`](build-your-coding-loop.md).
+
 It does not turn Project NoeMI into a runtime engine. It shows how to validate the reference architecture, generate the current agent context, and launch one local Docker home around those assets.
 
 ## Before You Start

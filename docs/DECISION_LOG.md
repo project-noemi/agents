@@ -1086,3 +1086,10 @@
 - **Context:** #428 already drafted plans but left them unaccepted. Continuing the loop requires a cheap halt before Stage C.
 - **Impact:** `completeThroughStageB` runs B′. `--post` writes `noemi:planned` only on accept and `noemi:needs-info` on cycle-limit fail.
 
+## [2026-08-18-0007] Stage C Prepares a Producer PR Envelope and Does Not Write Code Yet
+
+- **Decision:** `coding-loop/dispatch.js` prepares a `noemi-agent` PR (base `develop` then `dev`, never `main` when those exist) only from an `accepted` plan. It does **not** write implementation files (Grok is unwired) and does **not** open the PR from the helper. `--implement` requires `AGENT_GH_TOKEN` and refuses the conductor token. Stage D remains the existing fleet reviewer once a PR exists.
+- **Context:** Plan stages A–B′ on #428 can now accept a plan. Starting Stage C by opening empty or conductor-authored PRs would collapse identities or spam the fleet.
+- **Impact:** `prepareImplementation` returns `ready` + `opened: false`, or `refused` (`plan-not-accepted` / `no-integration-branch`).
+
+

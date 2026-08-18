@@ -125,7 +125,9 @@ Default `maxCycles` is 3 (`docs/model-routing.json` → `planRedTeam`).
 `agents/coding/architect/core.md` (or a more specific coding persona) running
 as `noemi-agent`. Label `noemi:in-progress`. Open a PR against `develop` (then
 `dev`). Never against `main` when an integration branch exists (Decision
-[2026-08-16-0003]).
+[2026-08-16-0003]). Today `coding-loop/dispatch.js` only **prepares** that
+envelope (`opened: false`); Grok is not wired and no PR is opened from the
+runner.
 
 ### Stage D — PR red-team
 

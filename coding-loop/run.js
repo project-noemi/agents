@@ -21,6 +21,7 @@ const path = require('path');
 const { gh } = require('../scripts/github-client.js');
 const { issueFromGitHub } = require('./intake.js');
 const { completeThroughStageB, loadRouting } = require('./plan.js');
+const { assertProducerToken, prepareImplementation } = require('./dispatch.js');
 
 const repoRoot = path.join(__dirname, '..');
 
@@ -29,19 +30,21 @@ function parseArgs(argv) {
   // only if a scanner produced one, and budget capacity exists only if the
   // caller checked it — the CLI asserting either by default was a critical
   // review finding (fail-open by omission).
-  const args = { post: false, scanStatus: null, budgetState: null };
+  const args = { post: false, implement: false, scanStatus: null, budgetState: null };
   for (let i = 0; i < argv.length; i += 1) {
     switch (argv[i]) {
       case '--repo': args.repo = argv[++i]; break;
       case '--issue': args.issue = argv[++i]; break;
       case '--post': args.post = true; break;
+      case '--implement': args.implement = true; break;
       case '--tenant': args.tenantPath = argv[++i]; break;
       case '--scan-status': args.scanStatus = argv[++i]; break;
       case '--budget-ok': args.budgetState = 'ok'; break;
       case '--budget-exhausted': args.budgetState = 'exhausted'; break;
       case '--help':
-        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--tenant path] --scan-status APPROVED|BLOCKED|REDACTED (--budget-ok | --budget-exhausted)\n'
-          + 'Omitting --scan-status or the budget assertion classifies the issue as REFUSED (fail closed).\n');
+        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--implement] [--tenant path] --scan-status APPROVED|BLOCKED|REDACTED (--budget-ok | --budget-exhausted)\n'
+          + 'Omitting --scan-status or the budget assertion classifies the issue as REFUSED (fail closed).\n'
+          + '--implement prepares a noemi-agent PR envelope; it does not write code or open a PR.\n');
         process.exit(0);
         break;
       default:
@@ -117,6 +120,15 @@ async function main() {
     process.exit(2);
   }
 
+  if (args.implement) {
+    try {
+      assertProducerToken(process.env);
+    } catch (err) {
+      process.stderr.write(`✖ ${err.message}\n`);
+      process.exit(2);
+    }
+  }
+
   const token = args.post ? conductorToken() : readToken();
   if (!token) {
     process.stderr.write('✖ Need a GitHub token to read the issue (CONDUCTOR_GH_TOKEN, GH_TOKEN, or GITHUB_TOKEN).\n');
@@ -158,18 +170,27 @@ async function main() {
     }
   }
 
+  const implementation = args.implement
+    ? prepareImplementation({
+      issue,
+      plan,
+      branches: ['develop', 'dev', 'main'],
+    })
+    : null;
+
   process.stderr.write(`${JSON.stringify({
-    task: 'Issue-loop Stage A then Stage B draft',
-    inputs: [`issue=${args.repo}#${args.issue}`, `post=${args.post}`, `scan=${args.scanStatus || 'UNSCANNED'}`, `budget=${args.budgetState || 'unverified'}`],
-    actions: [intake.tier, plan.status, ...(intake.reasons || [])],
+    task: 'Issue-loop Stage A through Stage C prepare',
+    inputs: [`issue=${args.repo}#${args.issue}`, `post=${args.post}`, `implement=${args.implement}`, `scan=${args.scanStatus || 'UNSCANNED'}`, `budget=${args.budgetState || 'unverified'}`],
+    actions: [intake.tier, plan.status, implementation && implementation.status, ...(intake.reasons || [])].filter(Boolean),
     risks: [
       intake.mode === 'heuristic' ? 'sufficiency is heuristic until the Stage A model is wired' : null,
       plan.status === 'accepted' ? 'Stage B′ is structural until Gemini is wired' : null,
       plan.status === 'needs-info' ? 'Stage B′ hit the cycle limit' : null,
+      implementation && implementation.status === 'ready' ? 'Stage C writer (Grok) is not wired; no PR opened' : null,
     ].filter(Boolean),
-    result: plan.label || intake.label,
+    result: (implementation && implementation.label) || plan.label || intake.label,
   })}\n`);
-  process.stdout.write(`${JSON.stringify({ intake, plan }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ intake, plan, implementation }, null, 2)}\n`);
 }
 
 function exitCodeForError(err) {

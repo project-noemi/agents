@@ -13,6 +13,7 @@ const {
 const { assertRepoIssue, exitCodeForError } = require('../coding-loop/run.js');
 const { completeStageA, evaluateSufficiency } = require('../coding-loop/sufficiency.js');
 const { completeThroughStageB, draftPlan, extractPaths, runPlanRedTeam } = require('../coding-loop/plan.js');
+const { assertProducerToken, prepareImplementation } = require('../coding-loop/dispatch.js');
 
 const tenant = {
   tenantId: 'newpush-internal',
@@ -311,6 +312,48 @@ test('completeThroughStageB: skip stays skip; a complete issue is accepted', () 
   assert.equal(ready.plan.status, 'accepted');
 });
 
+test('Stage C: only an accepted plan on develop/dev is ready, and it does not open a PR', () => {
+  const ready = completeThroughStageB({
+    issue: issue({ body: sufficientBody, number: 12 }),
+    tenant,
+    scan: { status: 'APPROVED' },
+    budget: { exhausted: false },
+  });
+  const impl = prepareImplementation({
+    issue: issue({ body: sufficientBody, number: 12, title: 'Validate repo flags' }),
+    plan: ready.plan,
+    branches: ['main', 'develop'],
+  });
+  assert.equal(impl.status, 'ready');
+  assert.equal(impl.opened, false);
+  assert.equal(impl.base, 'develop');
+  assert.equal(impl.head, 'noemi/issue-12');
+  assert.equal(impl.identity, 'noemi-agent');
+  assert.equal(impl.writer, 'unwired');
+
+  const noPlan = prepareImplementation({
+    issue: issue(),
+    plan: { status: 'needs-info' },
+    branches: ['develop'],
+  });
+  assert.equal(noPlan.status, 'refused');
+  assert.equal(noPlan.reason, 'plan-not-accepted');
+
+  const noBase = prepareImplementation({
+    issue: issue(),
+    plan: ready.plan,
+    branches: ['main', 'master'],
+  });
+  assert.equal(noBase.status, 'refused');
+  assert.equal(noBase.reason, 'no-integration-branch');
+});
+
+test('Stage C: producer token is required; conductor is not enough', () => {
+  assert.throws(() => assertProducerToken({}), /AGENT_GH_TOKEN/);
+  assert.throws(() => assertProducerToken({ CONDUCTOR_GH_TOKEN: 'x' }), /AGENT_GH_TOKEN/);
+  assert.equal(assertProducerToken({ AGENT_GH_TOKEN: 'x' }), 'x');
+});
+
 test('assertRepoIssue: owner/name and a positive integer only', () => {
   assert.doesNotThrow(() => assertRepoIssue('project-noemi/agents', '12'));
   assert.doesNotThrow(() => assertRepoIssue('newpush/on-call_app', '1'));
@@ -337,6 +380,18 @@ test('exitCodeForError: 5xx is 2, everything else is 1', () => {
   assert.equal(exitCodeForError(Object.assign(new Error('down'), { status: 500 })), 2);
   assert.equal(exitCodeForError(Object.assign(new Error('missing'), { status: 404 })), 1);
   assert.equal(exitCodeForError(new Error('no status')), 1);
+});
+
+test('CLI --implement without AGENT_GH_TOKEN is refused (identity split)', () => {
+  const script = path.join(__dirname, '..', 'coding-loop', 'run.js');
+  const env = { ...process.env };
+  delete env.AGENT_GH_TOKEN;
+  const result = spawnSync(process.execPath, [
+    script, '--repo', 'project-noemi/agents', '--issue', '1', '--implement',
+    '--scan-status', 'APPROVED', '--budget-ok',
+  ], { env, encoding: 'utf8' });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /AGENT_GH_TOKEN/);
 });
 
 test('CLI --post without CONDUCTOR_GH_TOKEN is refused (identity split)', () => {

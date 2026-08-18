@@ -123,7 +123,12 @@ An `ACTIONABLE` issue gets a Stage B plan and a structural Stage B′
 language fail. Pass → `accepted`. Fail at `planRedTeam.maxCycles` →
 `needs-info`. Gemini is not called yet.
 
+`--implement` prepares a Stage C envelope (`coding-loop/dispatch.js`) for
+`noemi-agent` on `develop` (then `dev`). It does not write code or open a
+PR until Grok is wired. `AGENT_GH_TOKEN` is required; the conductor token
+is refused.
+
 ## Next in this section
 
-Wire Gemini Pro as the real B′ critic, then Stage C (`noemi-agent` PR).
-Optional Mastra webhook stays in this section.
+Grok writer for Stage C, Gemini critic for B′, fleet reviewer for Stage D
+(already exists). Optional Mastra webhook stays in this section.

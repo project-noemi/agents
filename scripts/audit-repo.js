@@ -9,7 +9,8 @@ const {
     buildGlobalMandates,
     discoverAgents,
     extractAgentHeadings,
-    extractTopLevelSections
+    extractTopLevelSections,
+    buildSkillsDist
 } = require('./context_helpers');
 
 const repoRoot = path.join(__dirname, '..');
@@ -239,6 +240,55 @@ function checkInlineSafetyContract() {
     }
 }
 
+// skills-dist/ is an immutable build artifact: byte-determined by skills/ +
+// AGENTS.md via the same builder generate_all.js uses. Re-running the builder
+// in memory and demanding byte equality makes manual edits, stale files, and
+// missing artifacts all loud (Decision: skills.sh Phase 1 distribution).
+function checkSkillsDistDeterminism() {
+    console.log('Auditing skills-dist build artifacts (determinism)...');
+
+    let expected;
+    try {
+        expected = buildSkillsDist({
+            skillsDir: path.join(repoRoot, 'skills'),
+            agentsMdPath,
+            repoRoot
+        });
+    } catch (error) {
+        fail(`skills-dist builder failed: ${error.message}`);
+        return;
+    }
+
+    const expectedByRel = new Map(expected.map((file) => [file.relPath, file.content]));
+
+    for (const [relPath, content] of expectedByRel) {
+        const fullPath = path.join(repoRoot, relPath);
+        if (!fs.existsSync(fullPath)) {
+            fail(`${relPath} is missing — skills-dist/ is generated output; run \`npm run generate\` (node scripts/generate_all.js).`);
+            continue;
+        }
+        if (fs.readFileSync(fullPath, 'utf8') !== content) {
+            fail(`${relPath} has drifted from its generated content — manual edits to skills-dist/ are prohibited; run \`npm run generate\` (node scripts/generate_all.js).`);
+        }
+    }
+
+    const distDir = path.join(repoRoot, 'skills-dist');
+    if (!fs.existsSync(distDir)) {
+        return; // every artifact already reported missing above
+    }
+    const walk = (dir) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                walk(fullPath);
+            } else if (!expectedByRel.has(path.relative(repoRoot, fullPath))) {
+                fail(`${path.relative(repoRoot, fullPath)} is not a generated artifact — skills-dist/ is immutable build output; remove it or run \`npm run generate\`.`);
+            }
+        }
+    };
+    walk(distDir);
+}
+
 function checkLicensingPosture() {
     const licensePath = path.join(repoRoot, 'LICENSE');
     const packageJsonPath = path.join(repoRoot, 'package.json');
@@ -333,6 +383,7 @@ function main() {
     checkPersonas();
     checkSkills();
     checkGeneratedOutputs();
+    checkSkillsDistDeterminism();
     checkLicensingPosture();
     checkPhaseZeroKit();
     checkMergeGateInvariant();

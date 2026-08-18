@@ -8,6 +8,7 @@ const {
     buildGlobalMandates,
     buildMcpSection,
     buildSkillsSection,
+    buildSkillsDist,
     discoverAgents,
     injectBetween,
     parseCliArgs,
@@ -21,6 +22,9 @@ const agentsMdPath = path.join(__dirname, '../AGENTS.md');
 const agentsDir = path.join(__dirname, '../agents');
 const valueLensesDir = path.join(__dirname, '../value-lenses');
 const operatingProfilesDir = path.join(__dirname, '../operating-profiles');
+
+const repoRoot = path.join(__dirname, '..');
+const skillsDistDir = path.join(repoRoot, 'skills-dist');
 
 const TARGETS = [
     {
@@ -82,6 +86,46 @@ function generate(target, config, agents) {
     }
 }
 
+/**
+ * skills-dist/<slug>/SKILL.md — the public skills.sh distribution surface
+ * (Phase 1). Build artifacts, byte-determined by skills/ + AGENTS.md: written
+ * here, verified byte-exact by scripts/audit-repo.js, never edited by hand.
+ * Deliberately independent of mcp.config.json: ALL canonical skills publish,
+ * not just the active set, so config-override runs cannot perturb the tree.
+ */
+function generateSkillsDist() {
+    console.log('Generating skills-dist/ (public SKILL.md artifacts)...');
+    const files = buildSkillsDist({ skillsDir, agentsMdPath, repoRoot });
+
+    const expected = new Set(files.map((file) => file.relPath));
+    for (const file of files) {
+        const fullPath = path.join(repoRoot, file.relPath);
+        fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+        fs.writeFileSync(fullPath, file.content, 'utf8');
+    }
+
+    // Prune anything the builder did not produce — renamed or removed skills
+    // must not leave stale artifacts for the public to install.
+    if (fs.existsSync(skillsDistDir)) {
+        for (const entry of fs.readdirSync(skillsDistDir, { withFileTypes: true })) {
+            const entryPath = path.join(skillsDistDir, entry.name);
+            if (entry.isDirectory()) {
+                const keep = expected.has(path.join('skills-dist', entry.name, 'SKILL.md'));
+                if (!keep) {
+                    fs.rmSync(entryPath, { recursive: true, force: true });
+                    console.log(`  pruned stale skills-dist/${entry.name}/`);
+                }
+            } else {
+                fs.rmSync(entryPath, { force: true });
+                console.log(`  pruned stray skills-dist/${entry.name}`);
+            }
+        }
+    }
+
+    console.log(`Successfully generated skills-dist/ with ${files.length} SKILL.md file(s).`);
+    return true;
+}
+
 function run() {
     const { configOverride } = parseCliArgs(process.argv.slice(2));
 
@@ -104,6 +148,13 @@ function run() {
         if (!generate(target, config, agents)) {
             success = false;
         }
+    }
+
+    try {
+        generateSkillsDist();
+    } catch (error) {
+        console.error(`Error generating skills-dist/: ${error.message}`);
+        success = false;
     }
 
     if (!success) {

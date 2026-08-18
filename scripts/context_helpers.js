@@ -537,6 +537,167 @@ function discoverSkills(baseDir) {
     return skills;
 }
 
+
+// ---------------------------------------------------------------------------
+// skills-dist: public SKILL.md distribution surface (skills.sh ecosystem)
+//
+// The NoéMI skill format stays canonical; skills-dist/<slug>/SKILL.md is a
+// GENERATED artifact, byte-determined by skills/ + AGENTS.md. The same builder
+// runs in generate_all.js (to write) and audit-repo.js (to verify in-memory),
+// so the two can never drift. Nothing here may be time- or locale-dependent.
+// ---------------------------------------------------------------------------
+
+/** Public coordinates for rewritten links and provenance. `main` on purpose:
+ *  installers copy files out of the release-train-promoted branch. */
+const SKILL_DIST_REPO_URL = 'https://github.com/project-noemi/agents';
+const SKILL_DIST_REF = 'main';
+
+/** AGENTS.md sections that travel with every published skill. A foreign
+ *  agent has none of this repository's generated context, so the SecretOps
+ *  and error-handling/audit mandates must ride in the artifact itself. */
+const SKILL_DIST_MANDATE_SECTIONS = [
+    '🔐 Secrets & Configuration',
+    '🛡 Error Handling and Resilience'
+];
+
+/** Double-quoted YAML scalar — registry frontmatter parsers are strict. */
+function yamlQuote(value) {
+    return `"${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+/**
+ * Rewrite repo-relative markdown links to absolute GitHub URLs pinned to
+ * `main`. An installed SKILL.md lives in a stranger's agent config; a relative
+ * link there dangles — the execution-drift failure the Referential Integrity
+ * standard exists to prevent. External URLs, anchors, mailto:, and data: are
+ * untouched, and a path that escapes the repository root is left as-is rather
+ * than guessed at.
+ */
+function rewriteRelativeLinks(markdown, sourceRelPath) {
+    const sourceDir = path.posix.dirname(sourceRelPath.split(path.sep).join('/'));
+    return markdown.replace(/\]\(([^)\s]+)((?:\s+"[^"]*")?)\)/g, (match, target, title) => {
+        if (/^(https?:|mailto:|data:|#)/i.test(target)) {
+            return match;
+        }
+        const [rawPath, ...anchorParts] = target.split('#');
+        const anchor = anchorParts.length > 0 ? `#${anchorParts.join('#')}` : '';
+        const resolved = rawPath.startsWith('/')
+            ? path.posix.normalize(rawPath.slice(1))
+            : path.posix.normalize(path.posix.join(sourceDir, rawPath));
+        if (resolved.startsWith('..')) {
+            return match;
+        }
+        return `](${SKILL_DIST_REPO_URL}/blob/${SKILL_DIST_REF}/${resolved}${anchor}${title})`;
+    });
+}
+
+/**
+ * Demote headings by `levels` so injected sections nest correctly: a mandate
+ * section title moves H1→H3, so its own H2 subsections must move H2→H4 to
+ * remain its children rather than becoming its siblings. Capped at H6.
+ */
+function demoteHeadings(markdown, levels = 1) {
+    return markdown.replace(/^(#{1,5})(\s)/gm, (match, hashes, space) => {
+        const depth = Math.min(hashes.length + levels, 6);
+        return `${'#'.repeat(depth)}${space}`;
+    });
+}
+
+/**
+ * Compose one SKILL.md from a canonical skill spec.
+ * Layout: frontmatter → provenance/governance blockquote → canonical H1 →
+ * Global Mandates → the remainder of the canonical body, links rewritten.
+ */
+function buildSkillDistFile({ slug, content, sourceRelPath, mandateSections }) {
+    const description = firstSentences(extractSectionBody(content, 'Purpose'));
+    if (!description) {
+        throw new Error(`${sourceRelPath}: no Purpose section to derive a description from.`);
+    }
+
+    const rewritten = rewriteRelativeLinks(content.trim(), sourceRelPath);
+    const titleMatch = rewritten.match(/^#\s+(.+)$/m);
+    const title = titleMatch ? titleMatch[1].trim() : slug;
+    const afterTitle = titleMatch
+        ? rewritten.slice(rewritten.indexOf(titleMatch[0]) + titleMatch[0].length).trim()
+        : rewritten;
+
+    const sourceUrl = `${SKILL_DIST_REPO_URL}/blob/${SKILL_DIST_REF}/${sourceRelPath.split(path.sep).join('/')}`;
+
+    const mandates = mandateSections
+        .map((section) => `### ${section.title}\n\n${demoteHeadings(section.body, 2).trim()}`)
+        .join('\n\n');
+
+    return [
+        '---',
+        `name: ${slug}`,
+        `description: ${yamlQuote(description)}`,
+        '---',
+        '',
+        '> **Governance: NoéMI 4D** — this skill ships with Refusal Criteria, hard',
+        '> `Ask First` / `Never` gates, and an audit-log contract, and passed',
+        '> cross-model review before publication.',
+        '>',
+        `> **Generated file — do not edit.** Built from [\`${sourceRelPath.split(path.sep).join('/')}\`](${sourceUrl})`,
+        `> in [project-noemi/agents](${SKILL_DIST_REPO_URL}) by \`node scripts/generate_all.js\`.`,
+        '>',
+        '> **License:** Functional Source License, Version 1.1, Apache 2.0 Future',
+        `> License (FSL-1.1-Apache-2.0) — see [LICENSE](${SKILL_DIST_REPO_URL}/blob/${SKILL_DIST_REF}/LICENSE)`,
+        '> before redistribution or commercial use.',
+        '',
+        `# ${title}`,
+        '',
+        '## Global Mandates',
+        '',
+        'These repository-wide mandates travel with the skill and bind regardless of',
+        'the host agent\'s own context:',
+        '',
+        mandates,
+        '',
+        afterTitle,
+        ''
+    ].join('\n');
+}
+
+/**
+ * Build every skills-dist artifact in memory, sorted by slug for determinism.
+ * Slug = source basename; a collision between domains fails loudly rather
+ * than letting one skill silently overwrite another.
+ */
+function buildSkillsDist({ skillsDir, agentsMdPath, repoRoot }) {
+    const sections = extractTopLevelSections(fs.readFileSync(agentsMdPath, 'utf8'));
+    const mandateSections = SKILL_DIST_MANDATE_SECTIONS.map((title) => {
+        const section = sections.find((candidate) => candidate.title === title);
+        if (!section) {
+            throw new Error(`AGENTS.md is missing the '${title}' section required by skills-dist.`);
+        }
+        return section;
+    });
+
+    const files = [];
+    const bySlug = new Map();
+    for (const skill of discoverSkills(skillsDir)) {
+        const slug = path.basename(skill.path, '.md');
+        const sourceRelPath = path.relative(repoRoot, skill.path);
+        if (bySlug.has(slug)) {
+            throw new Error(`skills-dist slug collision: '${slug}' from ${sourceRelPath} and ${bySlug.get(slug)}.`);
+        }
+        bySlug.set(slug, sourceRelPath);
+        files.push({
+            slug,
+            sourceRelPath,
+            relPath: path.join('skills-dist', slug, 'SKILL.md'),
+            content: buildSkillDistFile({
+                slug,
+                content: fs.readFileSync(skill.path, 'utf8'),
+                sourceRelPath,
+                mandateSections
+            })
+        });
+    }
+
+    return files.sort((left, right) => left.slug.localeCompare(right.slug));
+}
+
 module.exports = {
     INLINE_FULL_PROTOCOLS,
     REQUIRED_AGENT_SECTIONS,
@@ -548,6 +709,8 @@ module.exports = {
     buildGlobalMandates,
     buildMcpSection,
     buildSkillsSection,
+    buildSkillsDist,
+    buildSkillDistFile,
     discoverAgents,
     discoverSkills,
     extractAgentHeadings,
@@ -557,6 +720,7 @@ module.exports = {
     extractTopLevelSections,
     firstSentences,
     injectBetween,
+    rewriteRelativeLinks,
     parseCliArgs,
     readConfig
 };

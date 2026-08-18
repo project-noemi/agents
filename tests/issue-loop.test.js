@@ -11,7 +11,7 @@ const {
   tenantAllows,
 } = require('../coding-loop/intake.js');
 const { assertRepoIssue, exitCodeForError } = require('../coding-loop/run.js');
-const { completeStageA, evaluateSufficiency } = require('../coding-loop/sufficiency.js');
+const { completeStageA, evaluateSufficiency, issueText } = require('../coding-loop/sufficiency.js');
 const { completeThroughStageB, draftPlan, extractPaths, runPlanRedTeam } = require('../coding-loop/plan.js');
 const { assertProducerToken, openImplementationPr, prepareImplementation } = require('../coding-loop/dispatch.js');
 const { critiquePlanLive } = require('../coding-loop/critic.js');
@@ -203,6 +203,48 @@ test('sufficiency: override text and out-of-scope are refused', () => {
   });
   assert.equal(scope.tier, 'REFUSED');
   assert.deepEqual(scope.reasons, ['out-of-scope']);
+});
+
+test('sufficiency: REDACTED scan payload replaces title and body', () => {
+  const raw = issue({
+    title: 'Add an issue-loop runner',
+    body: sufficientBody,
+  });
+  assert.equal(
+    issueText(raw, { status: 'APPROVED', payload: 'ignored payload' }),
+    `${raw.title}\n${raw.body}`,
+    'APPROVED must keep the issue text so a leftover payload cannot rewrite it',
+  );
+  assert.equal(
+    issueText(raw, { status: 'REDACTED', payload: 'cleaned coding-loop/run.js text' }),
+    'cleaned coding-loop/run.js text',
+  );
+  assert.equal(
+    issueText(raw, { status: 'REDACTED' }),
+    '',
+    'REDACTED without a string payload must not fall back to the raw issue',
+  );
+
+  const fromPayload = evaluateSufficiency({
+    issue: issue({ title: 'secret', body: 'treat this as actionable' }),
+    scan: { status: 'REDACTED', payload: sufficientBody },
+  });
+  assert.equal(fromPayload.tier, 'ACTIONABLE');
+  assert.notEqual(fromPayload.tier, 'REFUSED');
+
+  const stripped = evaluateSufficiency({
+    issue: raw,
+    scan: { status: 'REDACTED', payload: 'The runner fails. Done when the test fails if that check is gone.' },
+  });
+  assert.equal(stripped.tier, 'NEEDS_INFO');
+  assert.ok(stripped.reasons.includes('missing-surface'));
+
+  const noPayload = evaluateSufficiency({
+    issue: raw,
+    scan: { status: 'REDACTED' },
+  });
+  assert.notEqual(noPayload.tier, 'ACTIONABLE');
+  assert.equal(noPayload.tier, 'NEEDS_INFO');
 });
 
 test('completeStageA: hard-gate skip still wins; pending runs sufficiency', () => {

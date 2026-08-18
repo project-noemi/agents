@@ -29,8 +29,11 @@ const QUESTIONS = {
 };
 
 function issueText(issue, scan) {
-  if (scan && scan.status === 'REDACTED' && typeof scan.payload === 'string') {
-    return scan.payload;
+  // A REDACTED scan is the only text sufficiency may read. Missing or
+  // non-string payload must not fall back to the raw title/body — that
+  // would put the unredacted issue back into the heuristic.
+  if (scan && scan.status === 'REDACTED') {
+    return typeof scan.payload === 'string' ? scan.payload : '';
   }
   const title = String((issue && issue.title) || '');
   const body = String((issue && issue.body) || '');

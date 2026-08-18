@@ -59,11 +59,11 @@ self-approval) and destroys attribution even where it does not fail.
 | **Identity** | `noemi-reviewer` (GitHub user, machine account) |
 | **GitHub user ID** | `312384097` |
 | **Status** | **Provisioned** 2026-08-03, capabilities verified |
-| **First rotation due** | 2026-11-01 |
+| **First rotation due** | ~~2026-11-01~~ retired 2026-08-17 — the credential no longer exists in the vault; a rotation clock on a dead credential fires phantom tasks |
 | **Purpose** | Post three-gate review findings on agent-authored PRs |
 | **Model family** | Gemini — deliberately *not* Claude (see below) |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
-| **Credential store** | Infisical — secret `REVIEWER_GH_TOKEN` |
+| **Credential store** | ~~Infisical `REVIEWER_GH_TOKEN`~~ — **removed from the vault by 2026-08-17** (absent from env=dev; observed in the 2026-08-17 standing survey). Confirm the PAT is also revoked GitHub-side (signed in as `noemi-reviewer`) — vault removal alone does not invalidate the token |
 | **Repo permission** | `read` (pull) + `Pull requests: write` |
 | **Rotation** | 90 days, or immediately on suspected exposure |
 | **May author code?** | **No.** `Contents: read` only — enforced by token |
@@ -171,9 +171,18 @@ chances for the rotation discipline this register depends on to slip.
 
 The `noemi-reviewer` *user account* remains registered above. Reviews through
 #402 used that user PAT. PR #403 posted as **`noemi-reviewer-bot[bot]`** after
-the workflow began resolving the App ID from Infisical. Revoke the user PATs
-when the App path has been green on a couple of non-carve-out reviews. Do not
-mint a second App.
+the workflow began resolving the App ID from Infisical. Do not mint a second
+App.
+
+**Attestation (2026-08-17):** the vault copy of `REVIEWER_GH_TOKEN` was removed
+by 2026-08-17 without a register entry recording it — reconciled here. Noted
+honestly: the removal preceded the register's own precondition ("green on a
+couple of non-carve-out reviews" — only PR #408 qualified at the time); the App
+path has since carried every review without incident. Residual actions: confirm
+GitHub-side revocation of the user PAT, and retire the PAT provisioning
+instructions in `docs/examples/cross-model-review-setup.md` when the fallback
+chain is next touched — the runner's `REVIEWER_GH_TOKEN` fallback is now a dead
+path that fails closed.
 
 ### Release promotion app — `noemi-release-bot[bot]`
 
@@ -237,6 +246,35 @@ the 2026-08-15 ownership move, confirm installs on `newpush` and
 already present. The `project-noemi` install is still live: the bot identity
 continues to resolve and historical promotion PRs still attribute to
 `noemi-release-bot[bot]`.
+
+### Conductor identity — `noemi-conductor` (planned)
+
+The issue-coding loop needs a third actor that can comment on issues without
+being the producer or the reviewer (Decision [2026-08-16-0004]). Issue chatter
+attributed to `noemi-agent` would make the later PR look self-planned. Issue
+chatter attributed to `noemi-reviewer-bot[bot]` would mix planning with PR
+review and destroy the cross-model trail.
+
+| Field | Value |
+|---|---|
+| **Identity** | `noemi-conductor` (GitHub App, planned) |
+| **Status** | **Planned.** Not provisioned. No App ID, no token, no install. |
+| **Purpose** | Comment on issues and apply `noemi:*` labels for triage, sufficiency, planning, and stops |
+| **Named owner** | `@WSwarm` (Balazs Nagy) |
+| **Credential** | Not issued. When provisioned: installation token from Infisical, Fetch-on-Demand, never written to disk |
+| **Permissions (intended)** | Issues read/write, Metadata read. **No** Contents write. **No** Pull requests write. **No** Workflows, Administration, or Secrets |
+| **May author code?** | **No** |
+| **May open PRs?** | **No** |
+| **May review or approve PRs?** | **No** |
+| **May merge PRs?** | **No** |
+
+Do not provision this identity by widening `noemi-agent` or
+`noemi-reviewer-bot`. A new App with Issues-only scope is the point. Until it
+exists, the persona and architecture are the contract; hosts must not post
+conductor comments as another machine user.
+
+See `docs/architecture/issue-coding-loop.md` and
+`agents/engineering/issue-conductor.md`.
 
 ### Effective-permission posture — the token is the boundary
 

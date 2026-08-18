@@ -1,0 +1,83 @@
+# Calibration auto-log — the phase-2 evidence engine.
+#
+# When a PR merges whose latest AI-review verdict was FAILING, this opens a
+# noemi-agent-authored PR appending a pre-filled row to
+# docs/reviews/CALIBRATION.md. The human edits Direction/Reason and approves —
+# that edit is the attestation. Discipline alone left the log empty through a
+# week of live reviews; the log now writes itself and humans only confirm.
+#
+# The PR is opened with AGENT_GH_TOKEN (noemi-agent) fetched from Infisical via
+# OIDC — GITHUB_TOKEN cannot be used: PRs it opens never trigger workflows, so
+# the required checks would never report and the entry could not merge.
+name: Calibration Watch
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'PR number to (back)fill a calibration entry for'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  calibrate:
+    name: Log merges that override the reviewer
+    # On the close event, only merged PRs matter; dispatch always runs.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Check configuration
+        id: config
+        env:
+          PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+          IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
+        run: |
+          if [[ -z "$PROJECT_ID" || -z "$IDENTITY_ID" ]]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Calibration watch skipped::Infisical variables missing."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Infisical CLI
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
+          sudo apt-get install -y infisical
+
+      - name: Authenticate to Infisical via OIDC
+        if: steps.config.outputs.configured == 'true'
+        env:
+          IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
+          OIDC_AUDIENCE: ${{ vars.INFISICAL_OIDC_AUDIENCE || 'infisical' }}
+        run: |
+          JWT=$(curl -sH "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${OIDC_AUDIENCE}" | jq -r .value)
+          TOKEN=$(infisical login --method=oidc-auth \
+            --machine-identity-id="$IDENTITY_ID" --jwt="$JWT" --plain --silent)
+          echo "::add-mask::$TOKEN"
+          echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      - name: Open calibration entry if the merge overrode the reviewer
+        if: steps.config.outputs.configured == 'true'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr }}
+          INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+        run: |
+          # infisical run injects AGENT_GH_TOKEN; the script's gh calls pick it
+          # up via GH_TOKEN so the entry PR is authored by noemi-agent.
+          infisical run --projectId="$INFISICAL_PROJECT_ID" --env=dev -- \
+            bash -c 'GH_TOKEN="$AGENT_GH_TOKEN" node scripts/calibration-watch.js'

@@ -36,11 +36,19 @@ One row per disagreement. Keep reasons short and concrete.
 - `reviewer too strict` — finding dismissed or severity lowered
 - `reviewer too lenient` — severity raised, or a miss found later
 - `reviewer wrong domain` — finding factually incorrect about the code
+- `reviewer misinterpreted` — the finding is accurate about the diff but
+  misreads the change's intent, authorization, or context (e.g. flags
+  "undisclosed scope" that was intended and authorized). The remedy is
+  supplying the reviewer better context — a fuller description, a linked
+  issue — not tuning its strictness.
 
 ## Log
 
 | Date | PR | Model | Gate | Reviewer said | Human did | Direction | Reason |
 |---|---|---|---|---|---|---|---|
+| 2026-08-18 | #423 | publishers/google/models/gemini-3.1-pro-preview | code | code fail: The tenant repository allowlist fails open if `limits.repos` is misconfigured as a string instead of an array. | **merged over** | human-error | correction is slated for PR #425 - great catch by review calibration system |
+| 2026-08-15 | #399 | publishers/google/models/gemini-2.5-pro | framing | framing fail: The pull request description misrepresents its contents by claiming not to include changes from another PR that are present in the diff, and | **merged over** | reviewer misinterpreted | Approved because it was intended and the finding was a false positive |
+| 2026-08-14 | #392 | publishers/google/models/gemini-3.7-flash | premise | premise fail: The pull request contains significant undisclosed scope far beyond the described documentation mapping of Grok Custom Agents across four fil | **merged over** | reviewer misinterpreted | Approved because it was intended and the finding was a false positive |
 
 ## Reading the log
 
@@ -50,6 +58,10 @@ reviewed PRs):
 - **Override rate** — entries ÷ reviews. High is not automatically bad; a high
   rate of `too strict` with zero `too lenient` is a tunable prompt, not an
   untrustworthy reviewer.
+- **Misinterpretation rate** — a high `misinterpreted` rate is a CONTEXT-supply
+  problem, not a reviewer-quality problem: the fix is richer PR descriptions
+  and linked specs reaching the reviewer, and it counts against phase 2 only
+  until that context path improves.
 - **Lenient misses** — any `too lenient` entry on a `critical`/`high` matter is
   disqualifying for phase 2 until understood, because phase 2 removes the human
   who caught it.

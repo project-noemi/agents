@@ -28,8 +28,9 @@ which "different reviewer" becomes true rather than nominal.
 
 | Role | Identity | Responsibility |
 |---|---|---|
-| Producer | `noemi-agent` (Claude) | Authors branches and pull requests |
-| Reviewer | `noemi-reviewer` (Gemini) | Runs the three gates, posts findings |
+| Conductor | `noemi-conductor` (planned) | Issue triage, plan, plan red-team cycle; comments and labels only |
+| Producer | `noemi-agent` (Claude / Grok in the issue loop) | Authors branches and pull requests |
+| Reviewer | `noemi-reviewer` / `noemi-reviewer-bot[bot]` (Gemini) | Runs the three gates, posts findings |
 | Practitioner | human | Edits the remediation prompt before dispatch |
 | Accelerator | human | Owns the carve-out; authorizes protection changes |
 
@@ -215,7 +216,7 @@ judgment enters, and the only place the framework can be observed adapting.
 
 ## Rollout status
 
-Current as of 2026-08-11. Update this table when an item changes — it is the
+Current as of 2026-08-17. Update this table when an item changes — it is the
 handoff point for anyone picking the work up.
 
 **Phase 1 is operational.** The first fully automated cross-model review ran in
@@ -232,14 +233,16 @@ findings posted by `noemi-reviewer`. No static credential is stored in GitHub.
 | Model resolution (`scripts/resolve-gemini-model.js`) | ✅ live; highest Pro preview, else stable Pro | — |
 | Google auth | ✅ Workload Identity Federation, org-scoped (no API key — org policy disallows them) | — |
 | Infisical auth in CI | ✅ OIDC, no stored secret | — |
-| Exit-code honesty (halt=3, failures stay red) | ✅ after a live run reported success while doing nothing | — |
+| Halt-signal honesty | ✅ marker file (`REVIEW_HALT_FILE`) — exit codes do not survive `infisical run`; failures stay red | — |
 | Vertex location | ✅ `global` (regional availability lags the catalogue) | — |
 | CODEOWNERS + `require_code_owner_reviews` | ✅ six owners on `develop`; carve-out stays owner-only | — |
 | `enforce_admins: true` on `main` | ✅ promotion policy | — |
-| `enforce_admins: true` on `develop` | ⚠️ authorized 2026-08-11, application pending | admin runs the protection call |
+| Admin override on `develop` | ✅ **kept by decision [2026-08-17-0001]** — `enforce_admins: false` is the deliberate state; a daily Admin Override Watch detects every use and demands attestation | — |
 | Calibration log | ✅ `docs/reviews/CALIBRATION.md` — deliberately outside the carve-out | humans recording overrides |
 | Phase 2 (reviewer approvals) | ❌ not authorized | override-rate evidence from phase 1 |
-| Multi-repo deployment (all `newpush`, `project-noemi`, `newpush-labs` repos) | 🔄 in progress | reusable workflow + per-org reviewer tokens + org variables |
+| Admin Override Watch | ✅ daily 05:30 UTC; detectors pinned to the real 2026-08-14 incidents | humans attesting findings |
+| `Cross-Model PR Review` required-to-complete on `develop` | ⚠️ in `setup-branch-protection.sh`, apply pending | admin runs the script |
+| Multi-repo deployment | ✅ done 2026-08-16 — reviewer live on 32/39 fleet repos (3 pending develop→main promotion, 4 exempt) | — |
 
 ### Calibration: the evidence phase 2 requires
 

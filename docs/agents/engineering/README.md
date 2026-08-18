@@ -13,3 +13,7 @@ This directory contains documentation for agents specialized in systems architec
 - **Gatekeeper**: Automated pull-request triage and risk classification.
   - Spec: `agents/engineering/gatekeeper.md`
   - Usage notes: [`gatekeeper/README.md`](gatekeeper/README.md)
+- **Issue Conductor**: Fleet issue-coding loop (triage, plan, plan red-team, dispatch). Spec only until Mastra hosts it.
+  - Spec: `agents/engineering/issue-conductor.md`
+  - Usage notes: [`issue-conductor/README.md`](issue-conductor/README.md)
+  - Architecture: [`../../architecture/issue-coding-loop.md`](../../architecture/issue-coding-loop.md)

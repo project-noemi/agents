@@ -201,6 +201,10 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 → [docs/examples/zero-to-first-agent.md](docs/examples/zero-to-first-agent.md)
 (Building your first Virtual Coworker)
 
+**Coders / Deploy a loop**
+→ [docs/examples/build-your-coding-loop.md](docs/examples/build-your-coding-loop.md)
+(Issue → plan → PR on your private `{company}-agents` copy)
+
 **Onboarding by Platform** — go straight to the guide for your machine and get one safe, read-only AI win in ~15 minutes:
 → [macOS / Linux](docs/examples/macos-linux-kickstart.md)
 &nbsp;·&nbsp; [Windows](docs/examples/windows-kickstart.md)

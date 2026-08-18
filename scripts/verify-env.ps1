@@ -132,7 +132,8 @@ if (-not $secretsCli) {
 }
 
 Write-Host "`n🔑 Checking common API key env vars in the current shell..." -ForegroundColor Cyan
-Check-EnvVar "GEMINI_API_KEY"
+# GEMINI_API_KEY deliberately not checked: Google org policy disallows API keys;
+# the review path uses ADC / Workload Identity Federation instead.
 Check-EnvVar "ANTHROPIC_API_KEY"
 Check-EnvVar "OPENAI_API_KEY"
 Check-EnvVar "XAI_API_KEY"

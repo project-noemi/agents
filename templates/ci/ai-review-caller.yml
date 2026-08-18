@@ -19,7 +19,11 @@ on:
 
 jobs:
   review:
-    uses: project-noemi/agents/.github/workflows/ai-review.yml@develop
+    # Pinned to @main: the release train promotes develop to main daily after
+    # review, so the fleet consumes only human-reviewed reviewer code. A
+    # @develop pin would let any merge to develop change review behavior
+    # fleet-wide with no gate.
+    uses: project-noemi/agents/.github/workflows/ai-review.yml@main
     permissions:
       contents: read
       pull-requests: write

@@ -76,8 +76,7 @@ const {
   selectModel, listModels, resolvePinnedModel, backendConfig, generateUrl,
 } = require('./resolve-gemini-model.js');
 const { getAccessToken, tokenSource } = require('./gcp-token.js');
-
-const GH_API = 'https://api.github.com';
+const { GH_API, gh, isTransientGitHubError } = require('./github-client.js');
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
 
 /** Canonical Sentinel spec. Always this repo — never the repository under review. */
@@ -404,21 +403,6 @@ function parseArgs(argv) {
   return args;
 }
 
-async function gh(path, { token, accept = 'application/vnd.github+json', method = 'GET', body } = {}) {
-  const res = await fetch(`${GH_API}${path}`, {
-    method,
-    headers: {
-      Accept: accept,
-      Authorization: `Bearer ${token}`,
-      'X-GitHub-Api-Version': '2022-11-28',
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  if (!res.ok) throw new Error(`GitHub ${method} ${path} → ${res.status} ${await res.text()}`);
-  return accept.includes('diff') ? res.text() : res.json();
-}
-
 async function callGemini(model, prompt, token, cfg) {
   const res = await fetch(generateUrl(model, cfg), {
     method: 'POST',
@@ -622,6 +606,7 @@ async function main() {
 
 module.exports = {
   detectCarveOut, validateFindings, gateVerdict, recommend, writeHaltMarker,
+  gh, isTransientGitHubError,
   buildGatePrompt, buildRemediationPrompt, renderComment,
   loadSentinelFromDisk, loadSentinelInstructions,
   SENTINEL_REPO, SENTINEL_PATH,

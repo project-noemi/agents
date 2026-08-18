@@ -1,0 +1,90 @@
+# Daily admin-override watch (Decision [2026-08-17-0001]).
+#
+# The admin override on protected branches is deliberately KEPT — an admin can
+# always drop rules, push, and restore them, so enforce_admins is not a real
+# boundary against admins, and removing every escape hatch risks a fully-stuck
+# system. The control is DETECTION: every use of admin capability must surface
+# within a day and be attested by a human. Silent override is the one
+# prohibited state.
+#
+# Findings file (or update) an issue labeled `admin-override`; a clean window
+# files nothing. The detection logic lives in scripts/audit-admin-overrides.js
+# — unit-tested there, not duplicated here.
+name: Admin Override Watch
+
+on:
+  schedule:
+    - cron: '30 5 * * *'   # daily, before the 06:00 UTC release train
+  workflow_dispatch:
+    inputs:
+      window-days:
+        description: 'Lookback window in days'
+        required: false
+        default: '2'
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  watch:
+    name: Scan for admin-capability use
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Scan protected branches
+        id: scan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOS: ${{ vars.OVERRIDE_WATCH_REPOS || 'project-noemi/agents' }}
+          WINDOW_DAYS: ${{ inputs.window-days || '2' }}
+        run: |
+          # Exit 4 = findings (file an issue). 0 = clean. Anything else = the
+          # scan itself broke and must go red — a watch that fails silently
+          # is worse than no watch.
+          set +e
+          node scripts/audit-admin-overrides.js > findings.md
+          code=$?
+          set -e
+          if [[ $code -eq 4 ]]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Admin-capability use detected::See the admin-override issue."
+          elif [[ $code -eq 0 ]]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Admin-override watch::Clean window."
+          else
+            echo "::error title=Watch failed::audit-admin-overrides.js exited ${code}. No scan was completed."
+            exit "$code"
+          fi
+
+      - name: File or update the attestation issue
+        if: steps.scan.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create admin-override \
+            --repo "$GITHUB_REPOSITORY" \
+            --description "Admin-capability use awaiting human attestation" \
+            --color D93F0B 2>/dev/null || true
+
+          TODAY=$(date -u +%Y-%m-%d)
+          TITLE="Admin-override watch: attestation required ($TODAY)"
+
+          # One issue per day at most; re-runs the same day update it.
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" \
+            --label admin-override --state open \
+            --search "in:title $TODAY" --json number --jq '.[0].number // empty')
+
+          if [[ -n "$existing" ]]; then
+            gh issue comment "$existing" --repo "$GITHUB_REPOSITORY" --body-file findings.md
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "$TITLE" --label admin-override --body-file findings.md
+          fi

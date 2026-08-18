@@ -78,3 +78,4 @@ That is why Project NoeMI separates:
 3. [`../tool-usages/secure-secret-management.md`](../tool-usages/secure-secret-management.md)
 4. [`builder-first-30-minutes.md`](builder-first-30-minutes.md)
 5. [`docker-agent-home.md`](docker-agent-home.md)
+6. [`build-your-coding-loop.md`](build-your-coding-loop.md) if you want to deploy an issue → PR loop (skip here only after a first local win)

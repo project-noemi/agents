@@ -79,6 +79,7 @@ function classifyCommit(commit, branch) {
     kind: 'direct-push',
     severity: 'high',
     branch,
+    actor: commit.actor,
     detail: `commit ${commit.oid.slice(0, 7)} ("${commit.headline}") by ${commit.actor} `
       + `committed ${commit.committedDate} reached protected '${branch}' with no merged pull request `
       + `based on it${merged.length ? ` (only swept later into: ${merged.map((p) => `#${p.number}→${p.baseRefName}`).join(', ')})` : ''}`,
@@ -99,6 +100,7 @@ function classifyMergedPR(pr) {
         kind: 'manual-promotion',
         severity: 'high',
         branch: 'main',
+        actor: merger,
         detail: `PR #${pr.number} ("${pr.title}") into main authored by ${author}, merged by ${merger} `
           + `at ${pr.mergedAt} — outside the release App's scoped promotion exception`,
       });
@@ -112,6 +114,7 @@ function classifyMergedPR(pr) {
         kind: 'unreviewed-merge',
         severity: 'high',
         branch: 'develop',
+        actor: merger,
         detail: `PR #${pr.number} ("${pr.title}") merged into develop by ${merger} at ${pr.mergedAt} `
           + 'with zero approving reviews — develop requires one, so this took an admin bypass '
           + '(or the rule was off at the time)',
@@ -122,6 +125,7 @@ function classifyMergedPR(pr) {
         kind: 'self-merge',
         severity: 'medium',
         branch: 'develop',
+        actor: author,
         detail: `PR #${pr.number} ("${pr.title}") was merged by its own author (${author}) at ${pr.mergedAt}`,
       });
     }
@@ -176,6 +180,9 @@ function diffProtection(branch, live) {
     kind: 'protection-drift',
     severity: 'high',
     branch,
+    // Who flipped a protection setting is invisible without the org audit
+    // log; never guess an actor for an attestation-bearing column.
+    actor: '(unknown — needs org audit log)',
     detail: `${branch}: ${d}`,
   }));
 }
@@ -185,15 +192,15 @@ function renderFindings(repo, findings, windowDays) {
   const lines = [
     `### ${repo} — ${findings.length} admin-capability event(s) in the last ${windowDays} day(s)`,
     '',
-    '| Kind | Severity | Branch | Detail |',
-    '|---|---|---|---|',
+    '| Actor | Kind | Severity | Branch | Detail |',
+    '|---|---|---|---|---|',
   ];
   for (const f of findings) {
-    lines.push(`| ${f.kind} | ${f.severity} | ${f.branch} | ${f.detail.replace(/\|/g, '\\|')} |`);
+    lines.push(`| **${f.actor || '(unknown)'}** | ${f.kind} | ${f.severity} | ${f.branch} | ${f.detail.replace(/\|/g, '\\|')} |`);
   }
-  lines.push('', '**Attestation required.** For each event, a human (not the actor) confirms it was'
-    + ' legitimate and states why — or opens remediation. Silent override is the one prohibited state'
-    + ' (Decision [2026-08-17-0001]).');
+  lines.push('', '**Attestation required.** For each event, a human **other than the Actor named in its row**'
+    + ' confirms it was legitimate and states why — or opens remediation. Silent override is the one'
+    + ' prohibited state (Decision [2026-08-17-0001]).');
   return lines.join('\n');
 }
 

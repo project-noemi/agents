@@ -12,7 +12,8 @@ fleet reviewer already runs from this tree (`scripts/review-pr.js`). The loop
 follows the same pattern.
 
 Mastra is the first *framework* inside `coding-loop/` when a long-running
-webhook is added. Stage A today is `coding-loop/run.js`. Personas, skills, and
+webhook is added. Stage A today is `coding-loop/run.js` (intake then fail-closed sufficiency).
+Personas, skills, and
 `docs/model-routing.json` stay the source of truth; the section must not
 vendor a private copy.
 

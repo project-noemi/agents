@@ -4,8 +4,9 @@
 /**
  * Stage A entry for the issue-coding loop.
  *
- * Runs the deterministic intake gates (skip / bot / empty / tenant / scan /
- * budget). Does not call a model and does not mark ACTIONABLE.
+ * Runs Stage A: deterministic intake gates, then conservative sufficiency.
+ * Sufficiency is a heuristic until the Fable family is wired — it still
+ * never defaults to ACTIONABLE.
  *
  * USAGE
  *   node coding-loop/run.js --repo org/name --issue 12
@@ -19,7 +20,8 @@
 const fs = require('fs');
 const path = require('path');
 const { gh } = require('../scripts/github-client.js');
-const { classifyIssue, issueFromGitHub } = require('./intake.js');
+const { issueFromGitHub } = require('./intake.js');
+const { completeStageA } = require('./sufficiency.js');
 
 const repoRoot = path.join(__dirname, '..');
 
@@ -126,7 +128,7 @@ async function main() {
   const payload = await gh(`/repos/${args.repo}/issues/${args.issue}`, { token });
   const issue = issueFromGitHub(args.repo, payload);
   const gateInputs = buildGateInputs(args);
-  const result = classifyIssue({
+  const result = completeStageA({
     issue,
     tenant,
     scan: gateInputs.scan,
@@ -149,10 +151,10 @@ async function main() {
   }
 
   process.stderr.write(`${JSON.stringify({
-    task: 'Issue-loop Stage A deterministic intake',
+    task: 'Issue-loop Stage A intake and sufficiency',
     inputs: [`issue=${args.repo}#${args.issue}`, `post=${args.post}`, `scan=${args.scanStatus || 'UNSCANNED'}`, `budget=${args.budgetState || 'unverified'}`],
-    actions: [result.tier, ...result.reasons],
-    risks: result.tier === 'PENDING_SUFFICIENCY' ? ['sufficiency model not yet invoked'] : [],
+    actions: [result.tier, ...(result.reasons || [])],
+    risks: result.mode === 'heuristic' ? ['sufficiency is heuristic until the Stage A model is wired'] : [],
     result: result.label,
   })}\n`);
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

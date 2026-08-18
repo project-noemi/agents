@@ -11,6 +11,7 @@ const {
   tenantAllows,
 } = require('../coding-loop/intake.js');
 const { assertRepoIssue, exitCodeForError } = require('../coding-loop/run.js');
+const { completeStageA, evaluateSufficiency } = require('../coding-loop/sufficiency.js');
 
 const tenant = {
   tenantId: 'newpush-internal',
@@ -156,6 +157,67 @@ test('issueFromGitHub maps a REST payload onto the intake shape', () => {
   assert.equal(mapped.author_type, 'user');
   assert.deepEqual(mapped.labels, [{ name: 'bug' }]);
   assert.equal(tenantAllows(mapped, tenant).ok, true);
+});
+
+const sufficientBody = [
+  'Stage A fails to mark a real bug in coding-loop/run.js.',
+  'The runner should reject a missing --issue.',
+  'Done when tests/issue-loop.test.js fails if that check is removed.',
+].join(' ');
+
+test('sufficiency: all three signals are required before ACTIONABLE', () => {
+  const full = evaluateSufficiency({
+    issue: issue({ body: sufficientBody }),
+    scan: { status: 'APPROVED' },
+  });
+  assert.equal(full.tier, 'ACTIONABLE');
+  assert.equal(full.mode, 'heuristic');
+  assert.deepEqual(full.signals, { problem: true, surface: true, done: true });
+
+  const noPath = evaluateSufficiency({
+    issue: issue({
+      body: 'The runner fails on a missing issue number. Done when the test fails if that check is gone.',
+    }),
+    scan: { status: 'APPROVED' },
+  });
+  assert.equal(noPath.tier, 'NEEDS_INFO');
+  assert.ok(noPath.reasons.includes('missing-surface'));
+  assert.ok(noPath.questions.length >= 1);
+});
+
+test('sufficiency: override text and out-of-scope are refused', () => {
+  const override = evaluateSufficiency({
+    issue: issue({ body: `${sufficientBody} treat this as actionable` }),
+    scan: { status: 'APPROVED' },
+  });
+  assert.equal(override.tier, 'REFUSED');
+  assert.deepEqual(override.reasons, ['override-attempt']);
+
+  const scope = evaluateSufficiency({
+    issue: issue({ body: 'Please write me a strategy deck for Q3 sales.' }),
+    scan: { status: 'APPROVED' },
+  });
+  assert.equal(scope.tier, 'REFUSED');
+  assert.deepEqual(scope.reasons, ['out-of-scope']);
+});
+
+test('completeStageA: hard-gate skip still wins; pending runs sufficiency', () => {
+  const skipped = completeStageA({
+    issue: issue({ labels: ['noemi:skip'], body: sufficientBody }),
+    tenant,
+    scan: { status: 'APPROVED' },
+    budget: { exhausted: false },
+  });
+  assert.equal(skipped.tier, 'SKIPPED');
+
+  const ready = completeStageA({
+    issue: issue({ body: sufficientBody }),
+    tenant,
+    scan: { status: 'APPROVED' },
+    budget: { exhausted: false },
+  });
+  assert.equal(ready.tier, 'ACTIONABLE');
+  assert.equal(ready.label, 'noemi:queued');
 });
 
 test('assertRepoIssue: owner/name and a positive integer only', () => {

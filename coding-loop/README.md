@@ -21,7 +21,7 @@ Slack / Datto chatbot, a different product.
 
 ```
 Issue opened in your orgs
-        → coding-loop/run.js   (Stage A: skip / refuse / needs-info / queued)
+        → coding-loop/run.js   (Stage A: skip / refuse / needs-info / sufficiency)
         → plan + plan red-team (Stage B / B′, later)
         → noemi-agent PR       (Stage C)
         → noemi-reviewer-bot   (Stage D, already in this repo)
@@ -109,14 +109,17 @@ later; it is not a second GitHub repository.
 ## Stage A today
 
 Hard gates: `noemi:skip`, bot authors, empty/template body, tenant, scan,
-budget. See `coding-loop/intake.js`.
+budget (`coding-loop/intake.js`). Then sufficiency (`coding-loop/sufficiency.js`):
+observable problem, in-scope path, checkable done condition. All three are
+required. The pass is a conservative heuristic until Fable is wired; it
+still never defaults to `ACTIONABLE`.
 
 ```bash
-node coding-loop/run.js --repo owner/name --issue N
+node coding-loop/run.js --repo owner/name --issue N --scan-status APPROVED --budget-ok
 ```
 
 ## Next in this section
 
-Sufficiency model, plan + plan red-team, then optional Mastra webhook —
+Stage B / B′ (plan + plan red-team), then optional Mastra webhook —
 still under `coding-loop/`, still generalized in this blueprint, first
 live-fired from `{company}-agents`.

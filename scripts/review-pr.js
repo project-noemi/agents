@@ -557,7 +557,7 @@ async function callGeminiOnce(model, prompt, token, cfg, fetchImpl) {
   }
 }
 
-async function callGemini(model, prompt, token, cfg, fetchImpl = fetch) {
+async function callGemini(model, prompt, token, cfg, fetchImpl) {
   return withRetry(
     () => callGeminiOnce(model, prompt, token, cfg, fetchImpl),
     {

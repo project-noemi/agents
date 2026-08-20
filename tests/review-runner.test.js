@@ -657,3 +657,123 @@ test('gh() end to end: a 404 response throws without any retry', async () => {
         global.fetch = realFetch;
     }
 });
+
+test('geminiFetchTimeoutMs defaults to 10 minutes, not undici 5', () => {
+    const { geminiFetchTimeoutMs } = require('../scripts/review-pr.js');
+    const prev = process.env.GEMINI_FETCH_TIMEOUT_MS;
+    delete process.env.GEMINI_FETCH_TIMEOUT_MS;
+    try {
+        assert.equal(geminiFetchTimeoutMs(), 600000);
+        process.env.GEMINI_FETCH_TIMEOUT_MS = '120000';
+        assert.equal(geminiFetchTimeoutMs(), 120000);
+    } finally {
+        if (prev === undefined) delete process.env.GEMINI_FETCH_TIMEOUT_MS;
+        else process.env.GEMINI_FETCH_TIMEOUT_MS = prev;
+    }
+});
+
+test('isTransientGeminiError: headers timeout is not retried; ECONNRESET and 503 are', () => {
+    const { isTransientGeminiError } = require('../scripts/review-pr.js');
+    const timeout = new TypeError('fetch failed');
+    timeout.cause = { code: 'UND_ERR_HEADERS_TIMEOUT' };
+    assert.equal(isTransientGeminiError(timeout), false);
+
+    const reset = new TypeError('fetch failed');
+    reset.cause = { code: 'ECONNRESET' };
+    assert.equal(isTransientGeminiError(reset), true);
+
+    assert.equal(isTransientGeminiError(Object.assign(new Error('down'), { status: 503 })), true);
+    assert.equal(isTransientGeminiError(Object.assign(new Error('nope'), { status: 404 })), false);
+});
+
+test('callGemini: headers-timeout TypeError is not retried and names the cause', async () => {
+    const { callGemini } = require('../scripts/review-pr.js');
+    const prev = process.env.GEMINI_RETRY_BASE_MS;
+    process.env.GEMINI_RETRY_BASE_MS = '1';
+    let calls = 0;
+    const fetchImpl = async () => {
+        calls += 1;
+        const err = new TypeError('fetch failed');
+        err.cause = { code: 'UND_ERR_HEADERS_TIMEOUT' };
+        throw err;
+    };
+    const cfg = { backend: 'generativelanguage', project: '', location: 'global' };
+    try {
+        await assert.rejects(
+            () => callGemini('models/x', 'hi', 'tok', cfg, fetchImpl),
+            (err) => /UND_ERR_HEADERS_TIMEOUT/.test(err.message),
+        );
+        assert.equal(calls, 1);
+    } finally {
+        if (prev === undefined) delete process.env.GEMINI_RETRY_BASE_MS;
+        else process.env.GEMINI_RETRY_BASE_MS = prev;
+    }
+});
+
+test('callGemini: ECONNRESET is retried then thrown with the cause code', async () => {
+    const { callGemini } = require('../scripts/review-pr.js');
+    const prev = process.env.GEMINI_RETRY_BASE_MS;
+    process.env.GEMINI_RETRY_BASE_MS = '1';
+    let calls = 0;
+    const fetchImpl = async () => {
+        calls += 1;
+        const err = new TypeError('fetch failed');
+        err.cause = { code: 'ECONNRESET' };
+        throw err;
+    };
+    const cfg = { backend: 'generativelanguage', project: '', location: 'global' };
+    try {
+        await assert.rejects(
+            () => callGemini('models/x', 'hi', 'tok', cfg, fetchImpl),
+            (err) => err.status === 503 && /ECONNRESET/.test(err.message),
+        );
+        assert.ok(calls >= 2);
+    } finally {
+        if (prev === undefined) delete process.env.GEMINI_RETRY_BASE_MS;
+        else process.env.GEMINI_RETRY_BASE_MS = prev;
+    }
+});
+
+test('geminiPost: inactivity longer than timeout names UND_ERR_HEADERS_TIMEOUT', async () => {
+    const http = require('node:http');
+    const { geminiPost } = require('../scripts/review-pr.js');
+    const server = http.createServer(() => { /* never respond */ });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const { port } = server.address();
+    try {
+        await assert.rejects(
+            () => geminiPost(`http://127.0.0.1:${port}/`, { token: 'x', body: '{}', timeoutMs: 50 }),
+            (err) => err.cause && err.cause.code === 'UND_ERR_HEADERS_TIMEOUT',
+        );
+    } finally {
+        server.close();
+    }
+});
+
+test('callGemini: HTTP 503 is retried; a later JSON body is parsed', async () => {
+    const { callGemini } = require('../scripts/review-pr.js');
+    const prev = process.env.GEMINI_RETRY_BASE_MS;
+    process.env.GEMINI_RETRY_BASE_MS = '1';
+    let calls = 0;
+    const fetchImpl = async () => {
+        calls += 1;
+        if (calls === 1) {
+            return { ok: false, status: 503, text: async () => 'busy' };
+        }
+        return {
+            ok: true,
+            json: async () => ({
+                candidates: [{ content: { parts: [{ text: '{"findings":[],"rationale":"ok"}' }] } }],
+            }),
+        };
+    };
+    const cfg = { backend: 'generativelanguage', project: '', location: 'global' };
+    try {
+        const out = await callGemini('models/x', 'hi', 'tok', cfg, fetchImpl);
+        assert.deepEqual(out, { findings: [], rationale: 'ok' });
+        assert.equal(calls, 2);
+    } finally {
+        if (prev === undefined) delete process.env.GEMINI_RETRY_BASE_MS;
+        else process.env.GEMINI_RETRY_BASE_MS = prev;
+    }
+});

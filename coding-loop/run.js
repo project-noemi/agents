@@ -26,6 +26,7 @@ const { critiquePlanLive } = require('./critic.js');
 const { assertWriterKey, draftChanges } = require('./writer.js');
 const { scanIssueBody } = require('./scan.js');
 const { prepareReview } = require('./stage-d.js');
+const { resolveProfile } = require('./profile.js');
 
 const repoRoot = path.join(__dirname, '..');
 
@@ -43,6 +44,7 @@ function parseArgs(argv) {
     scan: false,
     scanStatus: null,
     budgetState: null,
+    profile: 'code',
   };
   for (let i = 0; i < argv.length; i += 1) {
     switch (argv[i]) {
@@ -58,10 +60,12 @@ function parseArgs(argv) {
       case '--scan-status': args.scanStatus = argv[++i]; break;
       case '--budget-ok': args.budgetState = 'ok'; break;
       case '--budget-exhausted': args.budgetState = 'exhausted'; break;
+      case '--profile': args.profile = argv[++i]; break;
       case '--help':
-        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--implement] [--open-pr] [--live-critic] [--tenant path] (--scan | --scan-status APPROVED|BLOCKED|REDACTED) (--budget-ok | --budget-exhausted)\n'
+        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--implement] [--open-pr] [--live-critic] [--profile code|spec] [--tenant path] (--scan | --scan-status APPROVED|BLOCKED|REDACTED) (--budget-ok | --budget-exhausted)\n'
           + 'Omitting both --scan and --scan-status, or omitting the budget assertion, classifies the issue as REFUSED (fail closed).\n'
           + '--scan runs coding-loop/scan.js on the fetched issue; it is not implied by omitting --scan-status.\n'
+          + '--profile spec constrains Stage B/C to markdown under agents/, skills/, docs/agents/ (writing personas and skills).\n'
           + '--implement prepares a noemi-agent PR envelope.\n'
           + '--open-pr (with --implement) drafts files via Grok and opens the PR as noemi-agent.\n'
           + '--live-critic runs Gemini Pro for Stage B′; without it B′ is structural only.\n');
@@ -143,7 +147,7 @@ async function implementFromPlan({ args, issue, plan }) {
   const prepared = prepareImplementation({ issue, plan, branches });
   if (!args.openPr || prepared.status !== 'ready') return prepared;
 
-  const drafted = await draftChanges({ issue, plan, env: process.env });
+  const drafted = await draftChanges({ issue, plan, env: process.env, profile: args.profile });
   if (drafted.status === 'refused') {
     return {
       ...prepared,
@@ -173,6 +177,7 @@ async function main() {
   }
   try {
     assertRepoIssue(args.repo, args.issue);
+    resolveProfile(args.profile);
   } catch (err) {
     process.stderr.write(`✖ ${err.message}\n`);
     process.exit(2);
@@ -224,6 +229,7 @@ async function main() {
     budget: gateInputs.budget,
     routing: loadRouting(repoRoot),
     critic: args.liveCritic ? critiquePlanLive : undefined,
+    profile: args.profile,
   });
 
   if (args.post && intake.tier !== 'SKIPPED') {
@@ -263,6 +269,7 @@ async function main() {
       `openPr=${args.openPr}`,
       `liveCritic=${args.liveCritic}`,
       `scan=${args.scanStatus || (args.scan ? 'local' : 'UNSCANNED')}`,
+      `profile=${args.profile || 'code'}`,
       `budget=${args.budgetState || 'unverified'}`,
     ],
     actions: [intake.tier, plan.status, implementation && implementation.status, ...(intake.reasons || [])].filter(Boolean),

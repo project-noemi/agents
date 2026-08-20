@@ -29,6 +29,7 @@
     "security/pii-scan",
     "orchestration/dispatch-coordinate",
     "orchestration/governed-loop",
-    "orchestration/issue-plan"
+    "orchestration/issue-plan",
+    "orchestration/spec-author"
   ]
 }

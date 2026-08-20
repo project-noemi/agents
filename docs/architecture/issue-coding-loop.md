@@ -32,8 +32,31 @@ Organizations run the loop from a private `{company}-agents` copy (NewPush:
 Do not invert that flow: do not design the general loop only in the private
 copy and paste a sanitized tree back later.
 
-Recorded as Decision [2026-08-16-0004]; host split as Decision [2026-08-20-0006].
+Recorded as Decision [2026-08-16-0004]; host split as Decision [2026-08-20-0006];
+spec profile as Decision [2026-08-20-0007].
 Labs: [`../examples/coding-loop-labs/README.md`](../examples/coding-loop-labs/README.md).
+
+## Spec profile — writing agents and skills
+
+The same loop deploys for **personas and skills**. It is not a second host and
+not a second identity. `--profile spec` (default remains `code`) constrains
+Stage B/C to `agents/`, `skills/`, and `docs/agents/`.
+
+| | `code` (default) | `spec` |
+|---|---|---|
+| Stage C persona loaded | coding (Architect / Grok implementer) | **Skill:** `orchestration/spec-author` plus `docs/AGENT_TEMPLATE.md` or `skills/SKILL_TEMPLATE.md` |
+| Allowed paths | any except carve-outs | **markdown** under `agents/`, `skills/`, `docs/agents/` |
+| Forbidden | `.github/workflows/**`, CODEOWNERS, identity register | those, plus non-markdown under the prefixes (JSON companions), `skills-dist/`, `GEMINI.md`, `CLAUDE.md`, the templates themselves |
+| Oracle | the test named in the issue | `audit-repo.js` + `npm test` (placeholders fail) |
+| Identities | unchanged: conductor comments, `noemi-agent` opens, reviewer finds, human merges | same |
+| Host | CLI / Actions / later Mastra | same |
+
+Pickup stays `code` unless a caller passes `--profile spec`. A spec issue that
+names `coding-loop/run.js` is `profile-path` → refused, not a back door into
+the runner.
+
+Generated context is still `node scripts/generate_all.js` after the spec
+lands — the writer must not emit `GEMINI.md` by hand.
 
 ## Product loop vs orchestration host
 

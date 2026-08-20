@@ -77,7 +77,8 @@ function selectGrokModel(ids, { pin } = {}) {
   throw httpError('No Grok model available in the xAI catalogue', 503);
 }
 
-function validateFiles(files, plan) {
+function validateFiles(files, plan, profile) {
+  const { pathAllowedByProfile } = require('./profile.js');
   if (!Array.isArray(files) || files.length === 0) {
     return { ok: false, reason: 'writer-empty' };
   }
@@ -92,6 +93,9 @@ function validateFiles(files, plan) {
     }
     if (isCarvedOut(filePath)) {
       return { ok: false, reason: 'writer-carve-out' };
+    }
+    if (!pathAllowedByProfile(filePath, profile)) {
+      return { ok: false, reason: 'writer-profile-path' };
     }
     if (!allowed.has(filePath)) {
       return { ok: false, reason: 'writer-path-not-in-plan' };
@@ -158,13 +162,23 @@ async function callGrokJson({ model, messages, apiKey, fetchImpl = fetch, effort
   return parseJsonObject(text);
 }
 
-function buildWriterPrompt({ issue, plan }) {
+function buildWriterPrompt({ issue, plan, profile }) {
+  const { resolveProfile } = require('./profile.js');
+  const resolved = resolveProfile(profile && profile.id ? profile.id : profile);
   const allow = (plan.files || []).map((file) => `- ${file}`).join('\n');
+  const specLines = resolved.id === 'spec'
+    ? [
+      resolved.templateHint,
+      'Skill: orchestration/spec-author. Mandatory sections must be substantive. No placeholders.',
+      'Do not write GEMINI.md, CLAUDE.md, or skills-dist/ — generate_all.js owns those.',
+    ]
+    : [];
   return [
     'Implement ONLY the accepted plan. Return JSON only:',
     '{"summary":"...","files":[{"path":"...","content":"..."}]}',
     'Every path must be in the allow-list. Send complete file contents, not patches.',
     'Do not invent paths. Do not touch governance carve-outs. Do not include secrets.',
+    ...specLines,
     '',
     `Issue: ${(issue && issue.title) || ''}`,
     '',
@@ -177,7 +191,7 @@ function buildWriterPrompt({ issue, plan }) {
   ].join('\n');
 }
 
-async function draftChanges({ issue, plan, env = process.env, callModel, fetchImpl } = {}) {
+async function draftChanges({ issue, plan, env = process.env, callModel, fetchImpl, profile } = {}) {
   if (!plan || plan.status !== 'accepted') {
     return { status: 'refused', reason: 'plan-not-accepted', files: [] };
   }
@@ -191,7 +205,7 @@ async function draftChanges({ issue, plan, env = process.env, callModel, fetchIm
         model: chosen.id,
         messages: [
           { role: 'system', content: 'You are noemi-agent implementing one accepted plan. JSON only.' },
-          { role: 'user', content: buildWriterPrompt({ issue, plan }) },
+          { role: 'user', content: buildWriterPrompt({ issue, plan, profile }) },
         ],
         apiKey,
         fetchImpl,
@@ -201,7 +215,7 @@ async function draftChanges({ issue, plan, env = process.env, callModel, fetchIm
 
   const reply = await withRetry(invoke, modelRetryOptions());
   const files = reply && Array.isArray(reply.files) ? reply.files : [];
-  const checked = validateFiles(files, plan);
+  const checked = validateFiles(files, plan, profile);
   if (!checked.ok) {
     return { status: 'refused', reason: checked.reason, files: [], model: reply && reply.model };
   }

@@ -486,6 +486,8 @@ test('coding-loop workflow is reusable and does not default budget to ok', () =>
   // Pickup must assert the local scanner. Hardcoding APPROVED would fail open.
   assert.match(yml, / --scan /);
   assert.doesNotMatch(yml, /--scan-status/);
+  assert.match(yml, /--profile/);
+  assert.doesNotMatch(yml, /--profile spec/);
   assert.match(caller, /project-noemi\/agents\/\.github\/workflows\/coding-loop\.yml@main/);
   assert.match(caller, /issues:/);
 });
@@ -781,8 +783,81 @@ test('parseArgs: --live-critic and --open-pr are off by default', () => {
   const bare = parseArgs([]);
   assert.equal(bare.liveCritic, false);
   assert.equal(bare.openPr, false);
+  assert.equal(bare.profile, 'code');
   const live = parseArgs(['--live-critic', '--implement', '--open-pr']);
   assert.equal(live.liveCritic, true);
   assert.equal(live.implement, true);
   assert.equal(live.openPr, true);
+  const spec = parseArgs(['--profile', 'spec']);
+  assert.equal(spec.profile, 'spec');
+});
+
+test('profile spec: only agents/, skills/, docs/agents/ — not code or generated context', () => {
+  const {
+    pathAllowedByProfile, pathsOutsideProfile, resolveProfile,
+  } = require('../coding-loop/profile.js');
+  const spec = resolveProfile('spec');
+  assert.equal(pathAllowedByProfile('agents/product/doc.md', spec), true);
+  assert.equal(pathAllowedByProfile('skills/orchestration/spec-author.md', spec), true);
+  assert.equal(pathAllowedByProfile('docs/agents/product/doc/README.md', spec), true);
+  assert.equal(pathAllowedByProfile('coding-loop/run.js', spec), false);
+  assert.equal(pathAllowedByProfile('skills-dist/spec-author/SKILL.md', spec), false);
+  assert.equal(pathAllowedByProfile('GEMINI.md', spec), false);
+  assert.equal(pathAllowedByProfile('skills/SKILL_TEMPLATE.md', spec), false);
+  assert.equal(pathAllowedByProfile('.github/workflows/pwn.yml', spec), false);
+  // JSON under an allowed prefix is still out: spec writes markdown contracts.
+  assert.equal(pathAllowedByProfile('agents/guardian/jailbreak-monitor-agent.json', spec), false);
+  assert.equal(pathAllowedByProfile('skills/model-fusion-consensus/definition.json', spec), false);
+  assert.deepEqual(
+    pathsOutsideProfile(['agents/foo.md', 'coding-loop/run.js'], 'spec'),
+    ['coding-loop/run.js'],
+  );
+  assert.throws(() => resolveProfile('mastra'), /code\|spec/);
+  assert.equal(resolveProfile(undefined).id, 'code');
+  assert.equal(pathAllowedByProfile('coding-loop/run.js', 'code'), true);
+});
+
+test('draftPlan spec profile refuses a code path; writer spec profile refuses it too', async () => {
+  const { draftPlan } = require('../coding-loop/plan.js');
+  const { draftChanges } = require('../coding-loop/writer.js');
+  const intake = evaluateSufficiency({
+    issue: issue({ body: sufficientBody }),
+    scan: { status: 'APPROVED' },
+  });
+  const codeOnSpec = draftPlan({
+    issue: issue({ body: sufficientBody }),
+    intake,
+    profile: 'spec',
+  });
+  assert.equal(codeOnSpec.status, 'refused');
+  assert.equal(codeOnSpec.reason, 'profile-path');
+  assert.notEqual(codeOnSpec.status, 'accepted');
+
+  const specBody = [
+    'Add a skill at skills/orchestration/spec-author.md so the spec loop has a procedure.',
+    'Done when verification fails if Refusal Criteria is missing.',
+  ].join(' ');
+  const specIntake = evaluateSufficiency({
+    issue: issue({ body: specBody }),
+    scan: { status: 'APPROVED' },
+  });
+  assert.equal(specIntake.tier, 'ACTIONABLE');
+  const specDraft = draftPlan({
+    issue: issue({ body: specBody }),
+    intake: specIntake,
+    profile: 'spec',
+  });
+  assert.equal(specDraft.status, 'draft');
+  assert.ok(specDraft.files.includes('skills/orchestration/spec-author.md'));
+
+  const slipped = await draftChanges({
+    issue: issue({ body: specBody }),
+    plan: { status: 'accepted', files: specDraft.files, plan: specDraft.plan },
+    profile: 'spec',
+    callModel: async () => ({
+      files: [{ path: 'coding-loop/run.js', content: 'module.exports = {};\n' }],
+    }),
+  });
+  assert.equal(slipped.status, 'refused');
+  assert.ok(['writer-profile-path', 'writer-path-not-in-plan'].includes(slipped.reason));
 });

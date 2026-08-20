@@ -58,7 +58,7 @@ function formatPlan({ goal, files, tests, risks, stops }) {
   ].join('\n');
 }
 
-function draftPlan({ issue, intake, scan, routing } = {}) {
+function draftPlan({ issue, intake, scan, routing, profile } = {}) {
   if (!intake || intake.tier !== 'ACTIONABLE') {
     return {
       status: 'refused',
@@ -74,6 +74,22 @@ function draftPlan({ issue, intake, scan, routing } = {}) {
 
   const text = issueText(issue, scan);
   const files = extractPaths(text);
+  const { pathsOutsideProfile, resolveProfile } = require('./profile.js');
+  const resolved = resolveProfile(profile);
+  const outside = pathsOutsideProfile(files, resolved);
+  if (outside.length > 0) {
+    return {
+      status: 'refused',
+      plan: '',
+      cycles: 0,
+      verdict: 'pending',
+      findings: [],
+      label: 'noemi:wont-act',
+      mode: 'heuristic',
+      reason: 'profile-path',
+      files: outside,
+    };
+  }
   const goal = firstParagraph(text) || String((issue && issue.title) || '').trim();
   const tests = intake.signals && intake.signals.done
     ? 'Keep the check named in the issue. The change is wrong if that check would still pass.'

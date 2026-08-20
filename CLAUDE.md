@@ -299,7 +299,7 @@ Summaries only: **read the full spec before applying one** — success criteria,
 <!-- SKILLS_INJECTIONS_START -->
 ## Active Skills
 
-12 reusable skills available. Agents reference these in their Workflow sections.
+13 reusable skills available. Agents reference these in their Workflow sections.
 Summaries only: **read the full skill spec before executing it** — the Procedure, Boundaries, and Refusal Criteria that govern execution live in the spec, not here.
 All skills, always: adhere to the defined Boundaries and **never exceed authorized tool usage**; each skill's hard gates (`Ask First` / `Never`) are reproduced below verbatim.
 
@@ -386,6 +386,13 @@ All skills, always: adhere to the defined Boundaries and **never exceed authoriz
 - **Purpose:** Produce a checkable implementation plan for an actionable GitHub issue, then run that plan through a Gemini Pro red-team cycle until the plan is accepted or `planRedTeam.maxCycles` is hit.
 - **Ask First:** Raising `cycle_limit` above the routing default for one
 - **Never:** Dispatch `noemi-agent`. Post as `noemi-reviewer-bot`. Treat a
+
+### Spec Author — Orchestration Skill
+
+- **Spec:** `skills/orchestration/spec-author.md`
+- **Purpose:** Produce a new or revised agent persona or reusable skill that can pass `scripts/audit-repo.js` and `npm test`.
+- **Ask First:** A new `agents/{domain}/` directory that does not yet exist
+- **Never:** Hand-write `GEMINI.md`, `CLAUDE.md`, or `skills-dist/`. Open a
 <!-- SKILLS_INJECTIONS_END -->
 
 <!-- MCP_INJECTIONS_START -->

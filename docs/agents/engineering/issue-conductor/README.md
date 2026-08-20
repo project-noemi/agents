@@ -23,6 +23,7 @@ The `noemi-conductor` GitHub identity is **planned, not provisioned**.
 | Plan skill | `skills/orchestration/issue-plan.md` |
 | Decision | [2026-08-16-0004], host split [2026-08-20-0006] |
 | Labs | `docs/examples/coding-loop-labs/README.md` |
+| Spec profile | `--profile spec` — agents and skills only ([2026-08-20-0007]) |
 
 ## What it is not
 

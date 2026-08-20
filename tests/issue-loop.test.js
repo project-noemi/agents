@@ -483,6 +483,9 @@ test('coding-loop workflow is reusable and does not default budget to ok', () =>
   assert.match(yml, /coding-loop\/run\.js/);
   assert.match(yml, /CODING_LOOP_BUDGET_OK/);
   assert.doesNotMatch(yml, /--budget-ok"/);
+  // Pickup must assert the local scanner. Hardcoding APPROVED would fail open.
+  assert.match(yml, / --scan /);
+  assert.doesNotMatch(yml, /--scan-status/);
   assert.match(caller, /project-noemi\/agents\/\.github\/workflows\/coding-loop\.yml@main/);
   assert.match(caller, /issues:/);
 });
@@ -490,7 +493,8 @@ test('coding-loop workflow is reusable and does not default budget to ok', () =>
 test('run.js: nothing asserted means nothing granted — both gates fail closed by default', () => {
   // The critical review finding: parseArgs defaulted scanStatus to APPROVED
   // and main() hardcoded budget exhausted:false — fail-open by omission.
-  const { parseArgs, buildGateInputs } = require('../coding-loop/run.js');
+  const { parseArgs, buildGateInputs, resolveScanInput } = require('../coding-loop/run.js');
+  const { scanIssueBody } = require('../coding-loop/scan.js');
   const bare = buildGateInputs(parseArgs([]));
   assert.equal(bare.scan, null, 'no --scan-status must mean UNSCANNED, never APPROVED');
   assert.equal(bare.budget, null, 'no budget assertion must mean UNVERIFIED, never ok');
@@ -504,6 +508,35 @@ test('run.js: nothing asserted means nothing granted — both gates fail closed 
 
   const spent = buildGateInputs(parseArgs(['--budget-exhausted']));
   assert.deepEqual(spent.budget, { exhausted: true });
+
+  // Production path (review finding on #428): main() used resolveScanInput, not
+  // only buildGateInputs. A clean body would APPROVE if the local scanner ran
+  // just because --scan-status was omitted — that is the fail-open this forbids.
+  const clean = issue();
+  assert.equal(
+    scanIssueBody(`${clean.title}\n${clean.body}`).status,
+    'APPROVED',
+    'the local scanner would approve this body; omission must still be null',
+  );
+  assert.equal(parseArgs([]).scan, false);
+  assert.equal(
+    resolveScanInput(parseArgs([]), clean),
+    null,
+    'main() must not run the local scanner because --scan-status was omitted',
+  );
+  assert.equal(resolveScanInput(parseArgs(['--scan']), clean).status, 'APPROVED');
+  assert.equal(
+    resolveScanInput(
+      parseArgs(['--scan']),
+      issue({ body: '-----BEGIN RSA PRIVATE KEY-----\nMII\n' }),
+    ).status,
+    'BLOCKED',
+  );
+  assert.deepEqual(
+    resolveScanInput(parseArgs(['--scan-status', 'BLOCKED', '--scan']), clean),
+    { status: 'BLOCKED' },
+    '--scan-status wins when both are set',
+  );
 });
 
 test('critiquePlanLive: structural fail does not call Gemini', async () => {

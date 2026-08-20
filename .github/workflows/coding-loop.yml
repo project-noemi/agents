@@ -68,4 +68,4 @@ jobs:
           if [[ -n "${AGENT_GH_TOKEN:-}" ]]; then
             extra+=(--implement)
           fi
-          node coding-loop/run.js --repo "$REPO" --issue "$ISSUE" "${extra[@]}"
+          node coding-loop/run.js --repo "$REPO" --issue "$ISSUE" --scan "${extra[@]}"

@@ -31,14 +31,16 @@ const repoRoot = path.join(__dirname, '..');
 
 function parseArgs(argv) {
   // No permissive defaults: security gates fail CLOSED. A scan status exists
-  // only if a scanner produced one, and budget capacity exists only if the
-  // caller checked it — the CLI asserting either by default was a critical
-  // review finding (fail-open by omission).
+  // only if a scanner produced one (--scan-status, or --scan which runs the
+  // local scanner), and budget capacity exists only if the caller checked it
+  // — filling either in because the flag was omitted was a critical review
+  // finding (fail-open by omission).
   const args = {
     post: false,
     implement: false,
     openPr: false,
     liveCritic: false,
+    scan: false,
     scanStatus: null,
     budgetState: null,
   };
@@ -52,12 +54,14 @@ function parseArgs(argv) {
       case '--live-critic': args.liveCritic = true; break;
       case '--heuristic-critic': args.liveCritic = false; break;
       case '--tenant': args.tenantPath = argv[++i]; break;
+      case '--scan': args.scan = true; break;
       case '--scan-status': args.scanStatus = argv[++i]; break;
       case '--budget-ok': args.budgetState = 'ok'; break;
       case '--budget-exhausted': args.budgetState = 'exhausted'; break;
       case '--help':
-        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--implement] [--open-pr] [--live-critic] [--tenant path] --scan-status APPROVED|BLOCKED|REDACTED (--budget-ok | --budget-exhausted)\n'
-          + 'Omitting --scan-status or the budget assertion classifies the issue as REFUSED (fail closed).\n'
+        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--implement] [--open-pr] [--live-critic] [--tenant path] (--scan | --scan-status APPROVED|BLOCKED|REDACTED) (--budget-ok | --budget-exhausted)\n'
+          + 'Omitting both --scan and --scan-status, or omitting the budget assertion, classifies the issue as REFUSED (fail closed).\n'
+          + '--scan runs coding-loop/scan.js on the fetched issue; it is not implied by omitting --scan-status.\n'
           + '--implement prepares a noemi-agent PR envelope.\n'
           + '--open-pr (with --implement) drafts files via Grok and opens the PR as noemi-agent.\n'
           + '--live-critic runs Gemini Pro for Stage B′; without it B′ is structural only.\n');
@@ -98,6 +102,22 @@ function buildGateInputs(args) {
     scan: args.scanStatus ? { status: args.scanStatus } : null,
     budget: args.budgetState ? { exhausted: args.budgetState === 'exhausted' } : null,
   };
+}
+
+/**
+ * Scan result for classifyIssue. `--scan-status` is a precomputed result.
+ * `--scan` runs the local scanner on the fetched issue. Omitting both
+ * leaves `null` so the classifier refuses (unscanned-body). This is the
+ * function `main()` uses — do not "helpfully" scan when neither flag is set.
+ */
+function resolveScanInput(args, issue) {
+  if (args && args.scanStatus) {
+    return { status: args.scanStatus };
+  }
+  if (args && args.scan) {
+    return scanIssueBody(`${(issue && issue.title) || ''}\n${(issue && issue.body) || ''}`);
+  }
+  return null;
 }
 
 function loadTenant(relPath) {
@@ -196,13 +216,11 @@ async function main() {
   const payload = await gh(`/repos/${args.repo}/issues/${args.issue}`, { token });
   const issue = issueFromGitHub(args.repo, payload);
   const gateInputs = buildGateInputs(args);
-  if (!gateInputs.scan) {
-    gateInputs.scan = scanIssueBody(`${issue.title || ''}\n${issue.body || ''}`);
-  }
+  const scan = resolveScanInput(args, issue);
   const { intake, plan } = await completeThroughStageB({
     issue,
     tenant,
-    scan: gateInputs.scan,
+    scan,
     budget: gateInputs.budget,
     routing: loadRouting(repoRoot),
     critic: args.liveCritic ? critiquePlanLive : undefined,
@@ -244,7 +262,7 @@ async function main() {
       `implement=${args.implement}`,
       `openPr=${args.openPr}`,
       `liveCritic=${args.liveCritic}`,
-      `scan=${args.scanStatus || 'UNSCANNED'}`,
+      `scan=${args.scanStatus || (args.scan ? 'local' : 'UNSCANNED')}`,
       `budget=${args.budgetState || 'unverified'}`,
     ],
     actions: [intake.tier, plan.status, implementation && implementation.status, ...(intake.reasons || [])].filter(Boolean),
@@ -273,5 +291,5 @@ if (require.main === module) {
 }
 
 module.exports = {
-  parseArgs, buildGateInputs, loadTenant, assertRepoIssue, exitCodeForError, implementFromPlan,
+  parseArgs, buildGateInputs, resolveScanInput, loadTenant, assertRepoIssue, exitCodeForError, implementFromPlan,
 };

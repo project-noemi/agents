@@ -115,8 +115,13 @@ required. The pass is a conservative heuristic until Fable is wired; it
 still never defaults to `ACTIONABLE`.
 
 ```bash
+node coding-loop/run.js --repo owner/name --issue N --scan --budget-ok
+# or, if an upstream scanner already produced a result:
 node coding-loop/run.js --repo owner/name --issue N --scan-status APPROVED --budget-ok
 ```
+
+Omitting both `--scan` and `--scan-status` is REFUSED (fail closed). `--scan`
+is not implied by leaving `--scan-status` off.
 
 An `ACTIONABLE` issue gets a Stage B plan and Stage B′
 (`coding-loop/plan.js`). Structural critique always runs (headings, files,

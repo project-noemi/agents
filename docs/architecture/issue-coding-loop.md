@@ -141,8 +141,9 @@ Reuse the existing fleet reviewer (`scripts/review-pr.js` /
 
 Pickup is the reusable workflow `.github/workflows/coding-loop.yml` and
 `templates/ci/coding-loop-caller.yml`. Budget is fail-closed
-(`vars.CODING_LOOP_BUDGET_OK`). Omit `--scan-status` and the runner scans
-the fetched body (`coding-loop/scan.js`).
+(`vars.CODING_LOOP_BUDGET_OK`). Pass `--scan` to run `coding-loop/scan.js`
+on the fetched body, or `--scan-status` for a precomputed result. Omitting
+both classifies the issue as REFUSED (fail closed).
 
 On `develop`, Cross-Model PR Review is **required to complete** and remains
 advisory on the verdict (Decision [2026-08-17-0001]). A GitHub outage that

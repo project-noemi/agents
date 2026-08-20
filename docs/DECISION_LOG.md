@@ -1122,3 +1122,9 @@
 - **Decision:** `callGemini`'s optional `fetchImpl` has **no default**. Production (`main` calls with four arguments) goes through `geminiPost` / `https.request`. Tests pass an explicit function. `typeof fetchImpl === 'function'` remains the test seam inside `callGeminiOnce`. Defaulting `fetchImpl = fetch` would send production back through undici's 300s cap and undo [2026-08-20-0002].
 - **Context:** Review of #443 (merged 16:20 UTC) found `callGemini(..., fetchImpl = fetch)` so Node's global `fetch` (a function) always won. The follow-up #428 review after that merge still died as `TypeError: fetch failed` with no cause code, matching the old path.
 - **Impact:** `callGemini.length` is 5. A regression test forbids restoring the default.
+
+## [2026-08-20-0005] Omitting --scan-status Does Not Run the Local Scanner
+
+- **Decision:** `coding-loop/run.js` treats a missing scan assertion as `UNSCANNED` → `REFUSED`. The local scanner (`coding-loop/scan.js`) runs only when the caller passes `--scan`. `--scan-status` remains the precomputed-result flag. Pickup (`.github/workflows/coding-loop.yml`) passes `--scan` explicitly. This supersedes the "omit `--scan-status` and the runner scans" clause of [2026-08-18-0008].
+- **Context:** Review of #428 found `main()` overrode `buildGateInputs`'s `null` scan with `scanIssueBody(...)`, which returns `APPROVED` on ordinary issue text. Help text and the fail-closed test (`nothing asserted means nothing granted`) described omission as `REFUSED`; only the helper was tested, so production failed open.
+- **Impact:** `resolveScanInput` is the function `main()` uses. The existing fail-closed test now covers that path. The reusable workflow asserts `--scan` and still does not hardcode `--scan-status APPROVED`.

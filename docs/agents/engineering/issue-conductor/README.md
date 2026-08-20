@@ -5,10 +5,11 @@ the operated orgs is triaged, specified, planned, and independently
 red-teamed before `noemi-agent` is allowed to open a PR.
 
 This repository holds the spec and the **Coding Loop** section
-(`coding-loop/`). The first framework is Mastra, run from that section
-when a webhook is added. Do not host the loop in
-`newpush/newpush-mastra-orchestration` (MSP Slack agent) and do not
-open a second `project-noemi` repo for it.
+(`coding-loop/`). The current host is the Node CLI plus the reusable
+Actions workflow. Mastra may host a webhook in that section later; it is
+not required to classify an issue (Decision [2026-08-20-0006]). Do not host
+the loop in `newpush/newpush-mastra-orchestration` (MSP Slack agent) and do
+not open a second `project-noemi` repo for it.
 The `noemi-conductor` GitHub identity is **planned, not provisioned**.
 
 | Item | Location |
@@ -20,7 +21,8 @@ The `noemi-conductor` GitHub identity is **planned, not provisioned**.
 | Internal tenant | `tenants/internal.json` |
 | Intake skill | `skills/classification/issue-intake.md` |
 | Plan skill | `skills/orchestration/issue-plan.md` |
-| Decision | [2026-08-16-0004] |
+| Decision | [2026-08-16-0004], host split [2026-08-20-0006] |
+| Labs | `docs/examples/coding-loop-labs/README.md` |
 
 ## What it is not
 

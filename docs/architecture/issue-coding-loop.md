@@ -11,16 +11,20 @@ block `noemi-agent` PRs. A new `project-noemi` repo is **not** required: the
 fleet reviewer already runs from this tree (`scripts/review-pr.js`). The loop
 follows the same pattern.
 
-Mastra is the first *framework* inside `coding-loop/` when a long-running
-webhook is added. Stage A today is `coding-loop/run.js` (intake then fail-closed sufficiency).
+The **product loop** (verdicts: skip, refuse, needs-info, accepted, carved-out)
+lives in `coding-loop/*.js` plus the personas, skills, and
+`docs/model-routing.json`. A **host** (CLI, GitHub Actions, later Mastra, n8n,
+Temporal) only triggers, persists, and resumes. Mastra is a *candidate* host
+for a long-running webhook and Fable tool-use — not a runtime you must deploy
+to use the loop (Decision [2026-08-20-0006]). The NewPush Slack/Datto Mastra
+tree remains a different product.
+
+Stage A today is `coding-loop/run.js` (intake then fail-closed sufficiency).
 Stage B drafts a plan (`coding-loop/plan.js`). Stage B′ is structural
 (headings, files, no skip-red-team) and, with `--live-critic`, Gemini Pro.
 `accepted` only on B′ pass; fail at `planRedTeam.maxCycles` is `needs-info`.
 A critic outage is retried, then re-queued — never treated as a pass.
 `--implement --open-pr` drafts with Grok and opens a `noemi-agent` PR.
-Personas, skills, and
-`docs/model-routing.json` stay the source of truth; the section must not
-vendor a private copy.
 
 Organizations run the loop from a private `{company}-agents` copy (NewPush:
 `newpush/newpush-agents`) and sync **from** this repo. How to do that is
@@ -28,7 +32,39 @@ Organizations run the loop from a private `{company}-agents` copy (NewPush:
 Do not invert that flow: do not design the general loop only in the private
 copy and paste a sanitized tree back later.
 
-Recorded as Decision [2026-08-16-0004].
+Recorded as Decision [2026-08-16-0004]; host split as Decision [2026-08-20-0006].
+Labs: [`../examples/coding-loop-labs/README.md`](../examples/coding-loop-labs/README.md).
+
+## Product loop vs orchestration host
+
+This repository owns **verdicts**. A host owns **trigger, persistence, and
+resume**. The split is the same as the fleet reviewer (`scripts/review-pr.js`
+vs `.github/workflows/ai-review.yml`).
+
+| Layer | Owns | Must not |
+|---|---|---|
+| Product (`coding-loop/*.js`, skills, `docs/model-routing.json`) | skip / refuse / needs-info / accepted / carve-out; identity checks; model family contract | grow a job queue, webhook server, or conversation memory |
+| Host (CLI `run.js` `main()`, Actions `coding-loop.yml`, later Mastra/n8n/Temporal) | when the loop starts, where labels are stored, how a run is re-queued | re-encode `classifyIssue`, default a missing scan to `APPROVED`, post as the wrong identity |
+
+**Current host:** Node CLI plus the reusable workflow
+`.github/workflows/coding-loop.yml` (callers pin `@main` after CalVer). Pickup
+passes `--scan` explicitly; omitting `--scan` and `--scan-status` is `REFUSED`.
+
+**Plug a different host** (preference order):
+
+1. Import the functions as tools/steps (`classifyIssue`, `scanIssueBody`,
+   `completeThroughStageB`, `draftChanges` with injected `callModel`,
+   `openImplementationPr` with injected `ghImpl`).
+2. Exec `node coding-loop/run.js` with explicit `--scan` / `--budget-ok`
+   (what Actions does).
+3. Do **not** copy the gates into the framework. That is lock-in.
+
+If swapping the 40-line host requires editing `intake.js`, the architecture
+has failed. Lab 6 in the labs guide is that test.
+
+Adopt Mastra (under `coding-loop/`, not the Slack tree) when you need a
+long-running webhook or Fable-with-tools. Do not adopt it to get skip/bot/scan
+— those already exist.
 
 ## Identities
 
@@ -183,9 +219,10 @@ stage family:
    cheaper, shallower model.
 
 Families and defaults live in `docs/model-routing.json`. Changing models is a
-PR to that file, not a Mastra deploy. The Gemini resolver already exists
-(`scripts/resolve-gemini-model.js`). Anthropic and xAI resolvers are Mastra
-work and must implement this same selection contract.
+PR to that file, not a host-framework deploy. The Gemini resolver already exists
+(`scripts/resolve-gemini-model.js`). The xAI resolver lives in
+`coding-loop/writer.js`. An Anthropic resolver for Fable is still missing and
+must implement this same selection contract, regardless of host.
 
 ## Labels
 
@@ -201,9 +238,11 @@ work and must implement this same selection contract.
 
 ## Spec load rule
 
-Each Mastra run fetches `agents/`, `skills/`, and `docs/model-routing.json`
+Each host run fetches `agents/`, `skills/`, and `docs/model-routing.json`
 from a **pinned SHA or tag**. Customer tenants must not track a mutable
-branch. The internal MVP may track `develop` until the first tag exists.
+branch. The internal MVP may track `develop` until the loop’s first CalVer
+tag that contains `coding-loop.yml` exists. Fleet callers that pin `@main`
+must wait for that promotion.
 
 ## Entitlements
 
@@ -231,3 +270,5 @@ metering are schema fields, not implemented product.
 - Auto-merge of coding PRs
 - A second Gemini reviewer beside `noemi-reviewer-bot`
 - Acting on issues in customer orgs we do not operate
+- Reimplementing a workflow engine, webhook server, or agent memory (that is
+  host software; use Mastra/n8n/Temporal rather than growing `coding-loop/`)

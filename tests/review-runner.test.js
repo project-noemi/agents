@@ -700,6 +700,13 @@ test('gh() end to end: a 404 response throws without any retry', async () => {
     }
 });
 
+test('callGemini does not default the test seam to global fetch', () => {
+    const { callGemini } = require('../scripts/review-pr.js');
+    // Function.length stops at the first default. A default of `fetch` would
+    // make this 4 and send production through undici's 300s cap again.
+    assert.equal(callGemini.length, 5);
+});
+
 test('geminiFetchTimeoutMs defaults to 10 minutes, not undici 5', () => {
     const { geminiFetchTimeoutMs } = require('../scripts/review-pr.js');
     const prev = process.env.GEMINI_FETCH_TIMEOUT_MS;

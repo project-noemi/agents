@@ -4,13 +4,16 @@
   "description": "Project NoéMI Gmail Executive Assistant Cloud Run Tool",
   "main": "server.js",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "test": "vitest run",
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^5.2.1",
-    "google-auth-library": "^11.0.0",
+    "google-auth-library": "^11.0.2",
     "googleapis": "^174.0.1"
   },
   "devDependencies": {

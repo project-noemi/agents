@@ -551,6 +551,17 @@ function discoverSkills(baseDir) {
  *  installers copy files out of the release-train-promoted branch. */
 const SKILL_DIST_REPO_URL = 'https://github.com/project-noemi/agents';
 const SKILL_DIST_REF = 'main';
+// SPDX identifier stamped into artifact frontmatter (agentskills.io `license`
+// field) and interpolated into the provenance blockquote.
+const SKILL_DIST_LICENSE = 'FSL-1.1-Apache-2.0';
+// Prose marker that must appear at the top of LICENSE for each identifier the
+// catalogue may stamp. buildSkillsDist refuses to build when the current
+// identifier has no registered marker, or when the marker is absent from the
+// LICENSE text — structurally coupling the frontmatter claim to the licence
+// on disk so the two cannot drift apart.
+const SKILL_DIST_LICENSE_MARKERS = {
+    'FSL-1.1-Apache-2.0': /Functional Source License, Version 1\.1, Apache 2\.0/
+};
 
 /** AGENTS.md sections that travel with every published skill. A foreign
  *  agent has none of this repository's generated context, so the SecretOps
@@ -631,6 +642,10 @@ function buildSkillDistFile({ slug, content, sourceRelPath, mandateSections }) {
         '---',
         `name: ${slug}`,
         `description: ${yamlQuote(description)}`,
+        `license: ${SKILL_DIST_LICENSE}`,
+        'metadata:',
+        '  author: project-noemi',
+        `  governance: ${yamlQuote('NoéMI 4D')}`,
         '---',
         '',
         '> **Governance: NoéMI 4D** — this skill ships with Refusal Criteria, hard',
@@ -641,7 +656,7 @@ function buildSkillDistFile({ slug, content, sourceRelPath, mandateSections }) {
         `> in [project-noemi/agents](${SKILL_DIST_REPO_URL}) by \`node scripts/generate_all.js\`.`,
         '>',
         '> **License:** Functional Source License, Version 1.1, Apache 2.0 Future',
-        `> License (FSL-1.1-Apache-2.0) — see [LICENSE](${SKILL_DIST_REPO_URL}/blob/${SKILL_DIST_REF}/LICENSE)`,
+        `> License (${SKILL_DIST_LICENSE}) — see [LICENSE](${SKILL_DIST_REPO_URL}/blob/${SKILL_DIST_REF}/LICENSE)`,
         '> before redistribution or commercial use.',
         '',
         `# ${title}`,
@@ -661,6 +676,63 @@ function buildSkillDistFile({ slug, content, sourceRelPath, mandateSections }) {
 /** Placeholder marker that disqualifies a skill from publication. */
 const SKILL_DIST_PLACEHOLDER = /\bTBD\b/;
 
+// Substantive Compliance (CLAUDE.md · Coding Standards): a line whose entire
+// content is a filler word — optionally as a bulleted, bold-labelled value —
+// marks a mandatory section as unfinished even when it avoids the literal
+// "TBD". Anchored to the whole line so prose that merely mentions the word
+// (e.g. pii-scan's "typed placeholders") never matches.
+const PLACEHOLDER_FILLER_LINE = /^\s*(?:[-*]\s+)?(?:\*\*[^*\n]+\*\*[:.]?\s*)?(TODO|FIXME|placeholder)\.?\s*$/im;
+
+/**
+ * Scan the named mandatory sections of a persona/skill spec for placeholder
+ * content (Decision [2026-08-18-0002]). Shares SKILL_DIST_PLACEHOLDER with
+ * the skills-dist builder so the audit gate and the publication withhold can
+ * never disagree about what counts as a placeholder.
+ *
+ * Heading matching mirrors scripts/audit-repo.js: case-insensitive, and a
+ * parenthesised suffix is tolerated ("Rules & Constraints (4D Diligence)"
+ * satisfies "Rules & Constraints" per Decision [2026-07-05-0010]). Fenced
+ * code blocks are stripped before scanning — the canonical Audit Log JSON
+ * skeleton ("task": "...") is the mandated shape, not a placeholder.
+ *
+ * @param {string} markdown Full spec content.
+ * @param {string[]} sectionNames Mandatory section headings to scan.
+ * @returns {{section: string, marker: string}[]} One entry per violating section.
+ */
+function findPlaceholderViolations(markdown, sectionNames) {
+    const violations = [];
+    const headings = [...markdown.matchAll(/^(#{2,4})\s+(.+)$/gm)];
+    for (const name of sectionNames) {
+        const nameLower = name.toLowerCase();
+        for (let index = 0; index < headings.length; index += 1) {
+            const headingLower = headings[index][2].trim().toLowerCase();
+            if (headingLower !== nameLower && !headingLower.startsWith(`${nameLower} (`)) {
+                continue;
+            }
+            const level = headings[index][1].length;
+            const bodyStart = headings[index].index + headings[index][0].length;
+            let bodyEnd = markdown.length;
+            for (let next = index + 1; next < headings.length; next += 1) {
+                if (headings[next][1].length <= level) {
+                    bodyEnd = headings[next].index;
+                    break;
+                }
+            }
+            const body = markdown.slice(bodyStart, bodyEnd).replace(/```[\s\S]*?```/g, '');
+            if (SKILL_DIST_PLACEHOLDER.test(body)) {
+                violations.push({ section: headings[index][2].trim(), marker: 'TBD' });
+            } else {
+                const filler = body.match(PLACEHOLDER_FILLER_LINE);
+                if (filler) {
+                    violations.push({ section: headings[index][2].trim(), marker: filler[1] });
+                }
+            }
+            break;
+        }
+    }
+    return violations;
+}
+
 /**
  * Build every skills-dist artifact in memory, sorted by slug for determinism.
  * Slug = source basename; a collision between domains fails loudly rather
@@ -679,10 +751,14 @@ function buildSkillsDist({ skillsDir, agentsMdPath, repoRoot }) {
     // artifact. Verify the identifier against the ACTUAL license file at build
     // time: if the repository ever relicenses, generation fails loudly instead
     // of publishing a stale legal claim (review finding on this pipeline).
+    const licenseMarker = SKILL_DIST_LICENSE_MARKERS[SKILL_DIST_LICENSE];
+    if (!licenseMarker) {
+        throw new Error(`No LICENSE prose marker is registered for '${SKILL_DIST_LICENSE}' — register one in SKILL_DIST_LICENSE_MARKERS before stamping it into skills-dist artifacts.`);
+    }
     const licensePath = path.join(repoRoot, 'LICENSE');
     if (!fs.existsSync(licensePath)
-        || !/Functional Source License, Version 1\.1, Apache 2\.0/.test(fs.readFileSync(licensePath, 'utf8').slice(0, 500))) {
-        throw new Error('LICENSE no longer matches the FSL-1.1-Apache-2.0 identifier stamped into skills-dist artifacts — update the provenance template before regenerating.');
+        || !licenseMarker.test(fs.readFileSync(licensePath, 'utf8').slice(0, 500))) {
+        throw new Error(`LICENSE no longer matches the ${SKILL_DIST_LICENSE} identifier stamped into skills-dist artifacts — update the provenance template before regenerating.`);
     }
 
     const sections = extractTopLevelSections(fs.readFileSync(agentsMdPath, 'utf8'));
@@ -754,6 +830,7 @@ module.exports = {
     extractProhibitionParagraphs,
     extractSectionBody,
     extractTopLevelSections,
+    findPlaceholderViolations,
     firstSentences,
     injectBetween,
     rewriteRelativeLinks,

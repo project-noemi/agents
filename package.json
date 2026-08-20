@@ -20,5 +20,8 @@
     "test:update-fixtures": "node scripts/update-golden-fixtures.js",
     "validate": "npm run audit && npm test",
     "validate:full": "npm run validate && npm run test:sync && npm run test:e2e"
+  },
+  "devDependencies": {
+    "skills-ref": "^0.1.5"
   }
 }

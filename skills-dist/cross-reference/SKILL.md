@@ -1,6 +1,10 @@
 ---
 name: cross-reference
 description: "Verify that a claimed action actually occurred by checking it against an authoritative source of truth. This skill addresses the trust gap between what an agent _reports_ it did and what _actually happened_ in the target system."
+license: FSL-1.1-Apache-2.0
+metadata:
+  author: project-noemi
+  governance: "NoéMI 4D"
 ---
 
 > **Governance: NoéMI 4D** — this skill ships with Refusal Criteria, hard

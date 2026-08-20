@@ -1,6 +1,10 @@
 ---
 name: structured-report
 description: "Generate a standardized, machine-readable report from agent activity data."
+license: FSL-1.1-Apache-2.0
+metadata:
+  author: project-noemi
+  governance: "NoéMI 4D"
 ---
 
 > **Governance: NoéMI 4D** — this skill ships with Refusal Criteria, hard

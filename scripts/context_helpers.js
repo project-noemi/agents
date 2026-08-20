@@ -661,6 +661,63 @@ function buildSkillDistFile({ slug, content, sourceRelPath, mandateSections }) {
 /** Placeholder marker that disqualifies a skill from publication. */
 const SKILL_DIST_PLACEHOLDER = /\bTBD\b/;
 
+// Substantive Compliance (CLAUDE.md · Coding Standards): a line whose entire
+// content is a filler word — optionally as a bulleted, bold-labelled value —
+// marks a mandatory section as unfinished even when it avoids the literal
+// "TBD". Anchored to the whole line so prose that merely mentions the word
+// (e.g. pii-scan's "typed placeholders") never matches.
+const PLACEHOLDER_FILLER_LINE = /^\s*(?:[-*]\s+)?(?:\*\*[^*\n]+\*\*[:.]?\s*)?(TODO|FIXME|placeholder)\.?\s*$/im;
+
+/**
+ * Scan the named mandatory sections of a persona/skill spec for placeholder
+ * content (Decision [2026-08-18-0002]). Shares SKILL_DIST_PLACEHOLDER with
+ * the skills-dist builder so the audit gate and the publication withhold can
+ * never disagree about what counts as a placeholder.
+ *
+ * Heading matching mirrors scripts/audit-repo.js: case-insensitive, and a
+ * parenthesised suffix is tolerated ("Rules & Constraints (4D Diligence)"
+ * satisfies "Rules & Constraints" per Decision [2026-07-05-0010]). Fenced
+ * code blocks are stripped before scanning — the canonical Audit Log JSON
+ * skeleton ("task": "...") is the mandated shape, not a placeholder.
+ *
+ * @param {string} markdown Full spec content.
+ * @param {string[]} sectionNames Mandatory section headings to scan.
+ * @returns {{section: string, marker: string}[]} One entry per violating section.
+ */
+function findPlaceholderViolations(markdown, sectionNames) {
+    const violations = [];
+    const headings = [...markdown.matchAll(/^(#{2,4})\s+(.+)$/gm)];
+    for (const name of sectionNames) {
+        const nameLower = name.toLowerCase();
+        for (let index = 0; index < headings.length; index += 1) {
+            const headingLower = headings[index][2].trim().toLowerCase();
+            if (headingLower !== nameLower && !headingLower.startsWith(`${nameLower} (`)) {
+                continue;
+            }
+            const level = headings[index][1].length;
+            const bodyStart = headings[index].index + headings[index][0].length;
+            let bodyEnd = markdown.length;
+            for (let next = index + 1; next < headings.length; next += 1) {
+                if (headings[next][1].length <= level) {
+                    bodyEnd = headings[next].index;
+                    break;
+                }
+            }
+            const body = markdown.slice(bodyStart, bodyEnd).replace(/```[\s\S]*?```/g, '');
+            if (SKILL_DIST_PLACEHOLDER.test(body)) {
+                violations.push({ section: headings[index][2].trim(), marker: 'TBD' });
+            } else {
+                const filler = body.match(PLACEHOLDER_FILLER_LINE);
+                if (filler) {
+                    violations.push({ section: headings[index][2].trim(), marker: filler[1] });
+                }
+            }
+            break;
+        }
+    }
+    return violations;
+}
+
 /**
  * Build every skills-dist artifact in memory, sorted by slug for determinism.
  * Slug = source basename; a collision between domains fails loudly rather
@@ -754,6 +811,7 @@ module.exports = {
     extractProhibitionParagraphs,
     extractSectionBody,
     extractTopLevelSections,
+    findPlaceholderViolations,
     firstSentences,
     injectBetween,
     rewriteRelativeLinks,

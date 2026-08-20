@@ -552,9 +552,16 @@ function discoverSkills(baseDir) {
 const SKILL_DIST_REPO_URL = 'https://github.com/project-noemi/agents';
 const SKILL_DIST_REF = 'main';
 // SPDX identifier stamped into artifact frontmatter (agentskills.io `license`
-// field). buildSkillsDist verifies the repository LICENSE still matches this
-// identifier at build time, so the claim can never outlive the licence text.
+// field) and interpolated into the provenance blockquote.
 const SKILL_DIST_LICENSE = 'FSL-1.1-Apache-2.0';
+// Prose marker that must appear at the top of LICENSE for each identifier the
+// catalogue may stamp. buildSkillsDist refuses to build when the current
+// identifier has no registered marker, or when the marker is absent from the
+// LICENSE text — structurally coupling the frontmatter claim to the licence
+// on disk so the two cannot drift apart.
+const SKILL_DIST_LICENSE_MARKERS = {
+    'FSL-1.1-Apache-2.0': /Functional Source License, Version 1\.1, Apache 2\.0/
+};
 
 /** AGENTS.md sections that travel with every published skill. A foreign
  *  agent has none of this repository's generated context, so the SecretOps
@@ -744,10 +751,14 @@ function buildSkillsDist({ skillsDir, agentsMdPath, repoRoot }) {
     // artifact. Verify the identifier against the ACTUAL license file at build
     // time: if the repository ever relicenses, generation fails loudly instead
     // of publishing a stale legal claim (review finding on this pipeline).
+    const licenseMarker = SKILL_DIST_LICENSE_MARKERS[SKILL_DIST_LICENSE];
+    if (!licenseMarker) {
+        throw new Error(`No LICENSE prose marker is registered for '${SKILL_DIST_LICENSE}' — register one in SKILL_DIST_LICENSE_MARKERS before stamping it into skills-dist artifacts.`);
+    }
     const licensePath = path.join(repoRoot, 'LICENSE');
     if (!fs.existsSync(licensePath)
-        || !/Functional Source License, Version 1\.1, Apache 2\.0/.test(fs.readFileSync(licensePath, 'utf8').slice(0, 500))) {
-        throw new Error('LICENSE no longer matches the FSL-1.1-Apache-2.0 identifier stamped into skills-dist artifacts — update the provenance template before regenerating.');
+        || !licenseMarker.test(fs.readFileSync(licensePath, 'utf8').slice(0, 500))) {
+        throw new Error(`LICENSE no longer matches the ${SKILL_DIST_LICENSE} identifier stamped into skills-dist artifacts — update the provenance template before regenerating.`);
     }
 
     const sections = extractTopLevelSections(fs.readFileSync(agentsMdPath, 'utf8'));

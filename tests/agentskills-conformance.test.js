@@ -31,9 +31,23 @@ function builtFiles() {
     }).files;
 }
 
-test('frontmatter carries the spec license field, verified against LICENSE at build time', () => {
+test('frontmatter license claim is consistent with the repository LICENSE', () => {
+    // Pin BOTH ends of the claim independently of the implementation: whatever
+    // identifier the artifacts declare must be a licence this test recognises
+    // in the LICENSE text itself. A frontmatter-only string match would keep
+    // passing even if the emitted identifier drifted from the actual licence
+    // (review finding on this PR) — the claim is verified, not asserted.
+    const KNOWN_LICENSE_MARKERS = {
+        'FSL-1.1-Apache-2.0': /Functional Source License, Version 1\.1, Apache 2\.0/
+    };
+    const licenseText = fs.readFileSync(path.join(repoRoot, 'LICENSE'), 'utf8').slice(0, 500);
     for (const file of builtFiles()) {
-        assert.match(file.content, /^license: FSL-1\.1-Apache-2\.0$/m, `${file.slug}: license field`);
+        const claim = (file.content.match(/^license: (.+)$/m) || [])[1];
+        assert.ok(claim, `${file.slug}: frontmatter must carry a license field`);
+        const marker = KNOWN_LICENSE_MARKERS[claim];
+        assert.ok(marker,
+            `${file.slug}: claims unrecognised license '${claim}' — register its marker here only after verifying LICENSE really changed`);
+        assert.match(licenseText, marker, `${file.slug}: claims '${claim}' but LICENSE does not match it`);
     }
 });
 

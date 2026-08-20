@@ -241,7 +241,7 @@ Summaries only: **read the full spec before applying one** — success criteria,
 <!-- SKILLS_INJECTIONS_START -->
 ## Active Skills
 
-11 reusable skills available. Agents reference these in their Workflow sections.
+12 reusable skills available. Agents reference these in their Workflow sections.
 Summaries only: **read the full skill spec before executing it** — the Procedure, Boundaries, and Refusal Criteria that govern execution live in the spec, not here.
 All skills, always: adhere to the defined Boundaries and **never exceed authorized tool usage**; each skill's hard gates (`Ask First` / `Never`) are reproduced below verbatim.
 
@@ -314,6 +314,13 @@ All skills, always: adhere to the defined Boundaries and **never exceed authoriz
 - **Purpose:** Delegate work to one or more sub-agents and aggregate their outputs into a unified result.
 - **Ask First:** Overriding a sub-agent's output to resolve a conflict. Re-dispatching to a sub-agent after a consistency failure.
 - **Never:** Modify a sub-agent's output without flagging it. Dispatch to an agent spec that doesn't exist. Skip consistency checks.
+
+### Governed Loop — Orchestration Skill
+
+- **Spec:** `skills/orchestration/governed-loop.md`
+- **Purpose:** Run an agent loop that is aligned to a standing mission without becoming ungovernable: every iteration has a machine-checkable done-condition, a bounded budget, an escalation path, and an audit trail, and the loop's own outputs can never re-enter it as inputs.
+- **Ask First:** Raising any budget above its routing default. Resuming a mission a human paused. Processing an item the recursion_guard flagged. Running a second remediation round on the same item.
+- **Never:** Let loop output re-enter the loop as intake. Mark an iteration complete on its own report without an authoritative-source check. Extend a budget autonomously when it exhausts. Delete or truncate the escalation evidence trail. Terminate the mission silently — exhaustion and pause both escalate.
 
 ### Issue Plan — Orchestration Skill
 

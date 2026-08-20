@@ -7,6 +7,7 @@ Skills for coordinating work across multiple agents.
 | Skill | Spec | Used By |
 |-------|------|---------|
 | [Dispatch & Coordinate](../../../skills/orchestration/dispatch-coordinate.md) | Delegate tasks to sub-agents and aggregate outputs | Video Content Manager, Issue Conductor |
+| [Governed Loop](../../../skills/orchestration/governed-loop.md) | Run a mission-aligned loop with machine-checkable done-conditions, budgets, recursion guards, and escalation | Doc run, Admin Override Watch, calibration watch, PR merge gate |
 | [Issue Plan](../../../skills/orchestration/issue-plan.md) | Draft an implementation plan and red-team it until pass or cycle limit | Issue Conductor |
 
 ## Pattern

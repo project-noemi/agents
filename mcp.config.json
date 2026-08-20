@@ -28,6 +28,7 @@
     "security/hmac-sign-submit",
     "security/pii-scan",
     "orchestration/dispatch-coordinate",
+    "orchestration/governed-loop",
     "orchestration/issue-plan"
   ]
 }

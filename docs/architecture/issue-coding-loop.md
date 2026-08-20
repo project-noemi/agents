@@ -45,8 +45,8 @@ Stage B/C to `agents/`, `skills/`, and `docs/agents/`.
 | | `code` (default) | `spec` |
 |---|---|---|
 | Stage C persona loaded | coding (Architect / Grok implementer) | **Skill:** `orchestration/spec-author` plus `docs/AGENT_TEMPLATE.md` or `skills/SKILL_TEMPLATE.md` |
-| Allowed paths | any except carve-outs | `agents/`, `skills/`, `docs/agents/` only |
-| Forbidden | `.github/workflows/**`, CODEOWNERS, identity register | those, plus `skills-dist/`, `GEMINI.md`, `CLAUDE.md`, the templates themselves |
+| Allowed paths | any except carve-outs | **markdown** under `agents/`, `skills/`, `docs/agents/` |
+| Forbidden | `.github/workflows/**`, CODEOWNERS, identity register | those, plus non-markdown under the prefixes (JSON companions), `skills-dist/`, `GEMINI.md`, `CLAUDE.md`, the templates themselves |
 | Oracle | the test named in the issue | `audit-repo.js` + `npm test` (placeholders fail) |
 | Identities | unchanged: conductor comments, `noemi-agent` opens, reviewer finds, human merges | same |
 | Host | CLI / Actions / later Mastra | same |

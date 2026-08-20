@@ -20,16 +20,19 @@ const PROFILES = {
   },
   spec: {
     id: 'spec',
+    // Markdown contracts only. JSON companions under agents/ or skills/
+    // (jailbreak-monitor-agent.json, model-fusion definition.json, …) are
+    // the dual-format layer in Decision [2026-07-13-0005], not this profile.
     allowPrefixes: ['agents/', 'skills/', 'docs/agents/'],
+    requireMarkdown: true,
     denyPrefixes: ['skills-dist/'],
     denyExact: [
       'skills/SKILL_TEMPLATE.md',
       'docs/AGENT_TEMPLATE.md',
       'GEMINI.md',
       'CLAUDE.md',
-      'agents/guardian/jailbreak-monitor-agent.json',
     ],
-    templateHint: 'Fill docs/AGENT_TEMPLATE.md or skills/SKILL_TEMPLATE.md. No TBD. Do not write generated GEMINI.md, CLAUDE.md, or skills-dist/.',
+    templateHint: 'Fill docs/AGENT_TEMPLATE.md or skills/SKILL_TEMPLATE.md. Markdown only. Do not write generated GEMINI.md, CLAUDE.md, or skills-dist/.',
   },
 };
 
@@ -57,7 +60,10 @@ function pathAllowedByProfile(filePath, profile) {
     return false;
   }
   if (!resolved.allowPrefixes) return true;
-  return resolved.allowPrefixes.some((prefix) => normalized.startsWith(prefix));
+  const under = resolved.allowPrefixes.some((prefix) => normalized.startsWith(prefix));
+  if (!under) return false;
+  if (resolved.requireMarkdown) return normalized.endsWith('.md');
+  return true;
 }
 
 function pathsOutsideProfile(paths, profile) {

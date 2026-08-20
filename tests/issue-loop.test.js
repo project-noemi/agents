@@ -805,6 +805,9 @@ test('profile spec: only agents/, skills/, docs/agents/ — not code or generate
   assert.equal(pathAllowedByProfile('GEMINI.md', spec), false);
   assert.equal(pathAllowedByProfile('skills/SKILL_TEMPLATE.md', spec), false);
   assert.equal(pathAllowedByProfile('.github/workflows/pwn.yml', spec), false);
+  // JSON under an allowed prefix is still out: spec writes markdown contracts.
+  assert.equal(pathAllowedByProfile('agents/guardian/jailbreak-monitor-agent.json', spec), false);
+  assert.equal(pathAllowedByProfile('skills/model-fusion-consensus/definition.json', spec), false);
   assert.deepEqual(
     pathsOutsideProfile(['agents/foo.md', 'coding-loop/run.js'], 'spec'),
     ['coding-loop/run.js'],

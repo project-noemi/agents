@@ -65,7 +65,7 @@ function parseArgs(argv) {
         process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--implement] [--open-pr] [--live-critic] [--profile code|spec] [--tenant path] (--scan | --scan-status APPROVED|BLOCKED|REDACTED) (--budget-ok | --budget-exhausted)\n'
           + 'Omitting both --scan and --scan-status, or omitting the budget assertion, classifies the issue as REFUSED (fail closed).\n'
           + '--scan runs coding-loop/scan.js on the fetched issue; it is not implied by omitting --scan-status.\n'
-          + '--profile spec constrains Stage B/C to agents/, skills/, docs/agents/ (writing personas and skills).\n'
+          + '--profile spec constrains Stage B/C to markdown under agents/, skills/, docs/agents/ (writing personas and skills).\n'
           + '--implement prepares a noemi-agent PR envelope.\n'
           + '--open-pr (with --implement) drafts files via Grok and opens the PR as noemi-agent.\n'
           + '--live-critic runs Gemini Pro for Stage B′; without it B′ is structural only.\n');

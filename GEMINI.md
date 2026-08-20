@@ -43,6 +43,7 @@ If no specific agent specification matches the request:
 ## 📂 Key Directories
 *   `agents/`: Source of truth for agent definitions.
 *   `skills/`: Reusable task definitions that agents compose into their workflows.
+*   `skills-dist/`: Generated `SKILL.md` publication artifacts built from `skills/` by `scripts/generate_all.js` (byte-determinism enforced by the audit — never edit by hand).
 *   `docs/tool-usages/`: Specialized guides for tools (e.g., n8n, git).
 *   `docs/agents/`: Documentation mirroring the `agents/` structure.
 

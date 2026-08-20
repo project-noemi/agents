@@ -36,6 +36,7 @@ infisical run --env=dev -- [command]
 - `agents/` — **Source of truth** for all agent specifications, organized by domain (`coding/`, `guardian/`, `marketing/`, etc.)
 - `docs/` — Documentation mirroring `agents/` structure, plus framework docs (REQUIREMENTS.md, METHODOLOGY.md, GOVERNANCE.md)
 - `skills/` — Reusable task definitions that agents compose into their workflows
+- `skills-dist/` — Generated `SKILL.md` publication artifacts (one folder per skill, built from `skills/` by `scripts/generate_all.js`; byte-determinism enforced by the audit — never edit by hand)
 - `mcp-protocols/` — One `.md` file per MCP integration (Slack, Gmail, Google Suite, n8n, etc.)
 - `value-lenses/` — Value Lens framework specs consulted for trade-off decisions (summarized into generated context; read the full spec before applying a lens)
 - `operating-profiles/` — Operating Profile specs adapting agent tone/cadence to organizational contexts (summarized into generated context; read the full spec before adopting a profile)

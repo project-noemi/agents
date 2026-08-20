@@ -17,6 +17,11 @@ on:
         description: 'Issue number'
         required: true
         type: string
+      profile:
+        description: 'code (default) or spec (agents and skills only)'
+        required: false
+        type: string
+        default: code
   workflow_call:
     inputs:
       repo:
@@ -29,6 +34,11 @@ on:
         required: false
         type: string
         default: main
+      profile:
+        description: 'code (default) or spec (agents and skills only)'
+        required: false
+        type: string
+        default: code
 
 permissions:
   contents: read
@@ -56,6 +66,7 @@ jobs:
           ISSUE: ${{ inputs.issue || github.event.issue.number }}
           REPO: ${{ inputs.repo || github.repository }}
           BUDGET_OK: ${{ vars.CODING_LOOP_BUDGET_OK }}
+          PROFILE: ${{ inputs.profile || 'code' }}
         run: |
           set -euo pipefail
           extra=()
@@ -68,4 +79,4 @@ jobs:
           if [[ -n "${AGENT_GH_TOKEN:-}" ]]; then
             extra+=(--implement)
           fi
-          node coding-loop/run.js --repo "$REPO" --issue "$ISSUE" --scan "${extra[@]}"
+          node coding-loop/run.js --repo "$REPO" --issue "$ISSUE" --scan --profile "$PROFILE" "${extra[@]}"

@@ -35,6 +35,11 @@ The CLI and the Actions caller are the current **host**. Mastra is optional
 later (webhook / Fable), not a prerequisite. Labs:
 `docs/examples/coding-loop-labs/README.md`.
 
+To write **personas and skills** with the same loop, pass `--profile spec`
+(Decision [2026-08-20-0007]). Only `agents/`, `skills/`, and `docs/agents/`
+are in play; `audit-repo.js` is the oracle. Default `--profile code` is
+unchanged.
+
 ## Build your own (checklist)
 
 ### 1. Make the private copy

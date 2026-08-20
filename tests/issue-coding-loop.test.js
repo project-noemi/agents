@@ -74,6 +74,7 @@ test('issue-conductor skill references resolve to files on disk', () => {
     'classification/issue-intake',
     'orchestration/issue-plan',
     'orchestration/dispatch-coordinate',
+    'orchestration/spec-author',
     'security/pii-scan',
   ];
   for (const ref of expected) {

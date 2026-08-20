@@ -25,12 +25,13 @@ real issue.”
 
 - a private `{company}-agents` copy of this blueprint
 - `tenants/` filled with **your** orgs and spend caps
-- a dry Stage A run: `node coding-loop/run.js --repo org/name --issue N`
+- a dry Stage A run: `node coding-loop/run.js --repo org/name --issue N --scan --budget-ok`
 - a clear next step for labels (`--post`), Gemini B′ (`--live-critic`), and
   opening a producer PR (`--implement --open-pr`)
 
-You will **not** yet have org-wide pickup, a sufficiency model, or a
-provisioned conductor App. Those stay later on purpose.
+You will **not** yet have org-wide pickup, Fable sufficiency, or a
+provisioned conductor App. The heuristic may return `ACTIONABLE`. Those
+stay later on purpose. You do **not** need Mastra for this dry run.
 
 ## What You Are Not Doing
 
@@ -86,18 +87,19 @@ Do not hardcode your org name into `coding-loop/`.
 
 ```bash
 export GH_TOKEN=…   # read is enough for a dry run
-node coding-loop/run.js --repo your-org/your-repo --issue N
+node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok
 ```
 
-Expect one of `SKIPPED`, `NEEDS_INFO`, `REFUSED`, or
-`PENDING_SUFFICIENCY`. You will **not** see `ACTIONABLE` — sufficiency is
-a later model call.
+Expect one of `SKIPPED`, `NEEDS_INFO`, `REFUSED`, or heuristic
+`ACTIONABLE`. Omitting `--scan` / `--scan-status` or the budget assertion
+is `REFUSED`. Fable is not wired; the heuristic still must not default to
+`ACTIONABLE`.
 
 ## Step 5: Post Only With A Conductor Token
 
 ```bash
 export CONDUCTOR_GH_TOKEN=…   # issues: write; no Contents write
-node coding-loop/run.js --repo your-org/your-repo --issue N --post
+node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok --post
 ```
 
 If `CONDUCTOR_GH_TOKEN` is missing, the command exits. Producer and
@@ -126,11 +128,14 @@ infisical run --env=dev -- node coding-loop/run.js \
 That requires `AGENT_GH_TOKEN` and `XAI_API_KEY`. Do not open PRs with
 the conductor token.
 
-Architecture: [`../architecture/issue-coding-loop.md`](../architecture/issue-coding-loop.md).
+Architecture: [`../architecture/issue-coding-loop.md`](../architecture/issue-coding-loop.md)
+(product loop vs host). Labs:
+[`coding-loop-labs/README.md`](coding-loop-labs/README.md).
 
 ## What To Read Next
 
 1. [`../../coding-loop/README.md`](../../coding-loop/README.md) — full operator checklist
-2. [`../UPSTREAM_SYNC.md`](../UPSTREAM_SYNC.md) — keep the private copy honest
-3. [`../MACHINE_IDENTITY.md`](../MACHINE_IDENTITY.md) — conductor / producer / reviewer
-4. [`builder-first-30-minutes.md`](builder-first-30-minutes.md) — only if you also want a Docker home
+2. [`coding-loop-labs/README.md`](coding-loop-labs/README.md) — Layer A / Layer B exercises
+3. [`../UPSTREAM_SYNC.md`](../UPSTREAM_SYNC.md) — keep the private copy honest
+4. [`../MACHINE_IDENTITY.md`](../MACHINE_IDENTITY.md) — conductor / producer / reviewer
+5. [`builder-first-30-minutes.md`](builder-first-30-minutes.md) — only if you also want a Docker home

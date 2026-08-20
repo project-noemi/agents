@@ -29,7 +29,11 @@ Issue opened in your orgs
 ```
 
 Identities stay split: conductor comments, producer opens PRs, reviewer
-never approves. See `docs/architecture/issue-coding-loop.md`.
+never approves. See `docs/architecture/issue-coding-loop.md`
+(**Product loop vs orchestration host**, Decision [2026-08-20-0006]).
+The CLI and the Actions caller are the current **host**. Mastra is optional
+later (webhook / Fable), not a prerequisite. Labs:
+`docs/examples/coding-loop-labs/README.md`.
 
 ## Build your own (checklist)
 
@@ -72,17 +76,19 @@ Contents write.
 From the repo root, with a read token in the environment:
 
 ```bash
-node coding-loop/run.js --repo your-org/your-repo --issue N
+node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok
 ```
 
-You should see `SKIPPED`, `NEEDS_INFO`, `REFUSED`, or
-`PENDING_SUFFICIENCY` — never `ACTIONABLE`. Sufficiency (the model call)
-is not in this slice yet.
+Omitting both `--scan` and `--scan-status`, or omitting the budget
+assertion, is `REFUSED` (fail closed). You should see `SKIPPED`,
+`NEEDS_INFO`, `REFUSED`, or — when the three sufficiency signals are
+present — `ACTIONABLE` from the **heuristic** (`mode: heuristic`). Fable is
+not wired yet; the heuristic must not default to `ACTIONABLE`.
 
 To apply the label (and post questions when the body is empty):
 
 ```bash
-CONDUCTOR_GH_TOKEN=… node coding-loop/run.js --repo your-org/your-repo --issue N --post
+CONDUCTOR_GH_TOKEN=… node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok --post
 ```
 
 ### 5. Turn on pickup only after the brake exists
@@ -94,9 +100,11 @@ Even if the policy is “every new issue”:
 - cap concurrency and daily spend
 - start on **one** repo, then one org
 
-Wire the GitHub issue webhook (or an Actions `issues: opened` job) to
-`coding-loop/run.js`. Mastra can host that webhook **inside this section**
-later; it is not a second GitHub repository.
+Install `templates/ci/coding-loop-caller.yml` (Actions host) after
+`project-noemi/agents@main` has `coding-loop.yml`, or pin
+`tooling-ref: develop` for an internal MVP. Mastra can host a long-running
+webhook **inside this section** later; it is not a second GitHub repository
+and it is not required to classify the first issue.
 
 ### 6. Keep the private copy honest
 

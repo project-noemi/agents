@@ -1,6 +1,10 @@
 ---
 name: hmac-sign-submit
 description: "Sign an outgoing payload with HMAC-SHA256 and submit it to a receiving API that verifies agent identity and payload integrity."
+license: FSL-1.1-Apache-2.0
+metadata:
+  author: project-noemi
+  governance: "NoéMI 4D"
 ---
 
 > **Governance: NoéMI 4D** — this skill ships with Refusal Criteria, hard

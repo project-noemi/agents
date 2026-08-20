@@ -1,6 +1,10 @@
 ---
 name: dispatch-coordinate
 description: "Delegate work to one or more sub-agents and aggregate their outputs into a unified result."
+license: FSL-1.1-Apache-2.0
+metadata:
+  author: project-noemi
+  governance: "NoéMI 4D"
 ---
 
 > **Governance: NoéMI 4D** — this skill ships with Refusal Criteria, hard

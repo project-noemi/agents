@@ -1,6 +1,10 @@
 ---
 name: pre-flight-check
 description: "Validate that preconditions are met before executing a state-changing action."
+license: FSL-1.1-Apache-2.0
+metadata:
+  author: project-noemi
+  governance: "NoéMI 4D"
 ---
 
 > **Governance: NoéMI 4D** — this skill ships with Refusal Criteria, hard

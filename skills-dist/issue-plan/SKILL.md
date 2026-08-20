@@ -1,6 +1,10 @@
 ---
 name: issue-plan
 description: "Produce a checkable implementation plan for an actionable GitHub issue, then run that plan through a Gemini Pro red-team cycle until the plan is accepted or `planRedTeam.maxCycles` is hit."
+license: FSL-1.1-Apache-2.0
+metadata:
+  author: project-noemi
+  governance: "NoéMI 4D"
 ---
 
 > **Governance: NoéMI 4D** — this skill ships with Refusal Criteria, hard

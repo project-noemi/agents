@@ -551,6 +551,10 @@ function discoverSkills(baseDir) {
  *  installers copy files out of the release-train-promoted branch. */
 const SKILL_DIST_REPO_URL = 'https://github.com/project-noemi/agents';
 const SKILL_DIST_REF = 'main';
+// SPDX identifier stamped into artifact frontmatter (agentskills.io `license`
+// field). buildSkillsDist verifies the repository LICENSE still matches this
+// identifier at build time, so the claim can never outlive the licence text.
+const SKILL_DIST_LICENSE = 'FSL-1.1-Apache-2.0';
 
 /** AGENTS.md sections that travel with every published skill. A foreign
  *  agent has none of this repository's generated context, so the SecretOps
@@ -631,6 +635,10 @@ function buildSkillDistFile({ slug, content, sourceRelPath, mandateSections }) {
         '---',
         `name: ${slug}`,
         `description: ${yamlQuote(description)}`,
+        `license: ${SKILL_DIST_LICENSE}`,
+        'metadata:',
+        '  author: project-noemi',
+        `  governance: ${yamlQuote('NoéMI 4D')}`,
         '---',
         '',
         '> **Governance: NoéMI 4D** — this skill ships with Refusal Criteria, hard',
@@ -641,7 +649,7 @@ function buildSkillDistFile({ slug, content, sourceRelPath, mandateSections }) {
         `> in [project-noemi/agents](${SKILL_DIST_REPO_URL}) by \`node scripts/generate_all.js\`.`,
         '>',
         '> **License:** Functional Source License, Version 1.1, Apache 2.0 Future',
-        `> License (FSL-1.1-Apache-2.0) — see [LICENSE](${SKILL_DIST_REPO_URL}/blob/${SKILL_DIST_REF}/LICENSE)`,
+        `> License (${SKILL_DIST_LICENSE}) — see [LICENSE](${SKILL_DIST_REPO_URL}/blob/${SKILL_DIST_REF}/LICENSE)`,
         '> before redistribution or commercial use.',
         '',
         `# ${title}`,

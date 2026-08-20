@@ -10,6 +10,7 @@ const {
     discoverAgents,
     extractAgentHeadings,
     extractTopLevelSections,
+    findPlaceholderViolations,
     buildSkillsDist
 } = require('./context_helpers');
 
@@ -83,6 +84,14 @@ function auditFile(filePath, requiredSections) {
     });
     if (missing.length > 0) {
         fail(`${relativePath} is missing required sections: ${missing.join(', ')}`);
+    }
+
+    // Substantive Compliance (CLAUDE.md · Coding Standards, Decision [2026-08-18-0002]):
+    // mandatory sections must carry substantive, role-specific content; placeholder
+    // markers in them fail the audit. Templates are exempt by construction — skill
+    // discovery skips SKILL_TEMPLATE.md and docs/AGENT_TEMPLATE.md is never audited.
+    for (const violation of findPlaceholderViolations(content, requiredSections)) {
+        fail(`${relativePath} '${violation.section}' contains placeholder content ('${violation.marker}') — mandatory sections must be substantive (Substantive Compliance).`);
     }
 
     // Check mandatory Refusal Criteria subsection under Rules & Constraints (Decision [2026-04-13])

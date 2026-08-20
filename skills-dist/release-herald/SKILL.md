@@ -1,6 +1,10 @@
 ---
 name: release-herald
 description: "Turn a **week of changes** (the commits and date-versioned `YYYY.MM.DD` releases from the past week) into a user-facing **currency digest**: a set of feature highlights written in benefit language, the week's governance provenance, and a matching LinkedIn/social post."
+license: FSL-1.1-Apache-2.0
+metadata:
+  author: project-noemi
+  governance: "NoéMI 4D"
 ---
 
 > **Governance: NoéMI 4D** — this skill ships with Refusal Criteria, hard

@@ -36,6 +36,11 @@
  *                      fix per the findings (one round), push, re-run the gate
  *   ARMED_AUTOMERGE    verdict passing + checks green; auto-merge armed —
  *                      a human code-owner approval completes the merge
+ *   DRAFT_HELD         terminal: the PR is a draft the machine identity did not
+ *                      author, so the gate takes NO action on it — no reopen,
+ *                      no remediation order, no escalation issue, no un-drafting.
+ *                      A human's not-ready signal outranks automation entirely;
+ *                      the author marks it ready when they choose
  *   ESCALATED          terminal: red checks, second failing review, or an
  *                      unexpected state — an escalation issue was filed;
  *                      do NOT merge, do NOT retry
@@ -55,8 +60,46 @@ const { latestVerdict, REVIEWER_LOGINS } = require('./calibration-watch.js');
 
 const API = 'https://api.github.com';
 const REVIEW_CHECK_NAME = 'Cross-Model PR Review';
+/** Verdicts that end the run: --poll must not spin on any of these. */
+const TERMINAL_VERDICTS = [
+  'ARMED_AUTOMERGE', 'ESCALATED', 'REMEDIATE', 'PR_CLOSED', 'ALREADY_MERGED', 'DRAFT_HELD',
+];
+
 const POLL_INTERVAL_MS = 60_000;
 const POLL_DEADLINE_MS = 30 * 60_000;
+
+/**
+ * The machine identity whose drafts this gate may ready, pinned to the identity
+ * register (docs/MACHINE_IDENTITY.md — `noemi-agent`, user id 311935378).
+ *
+ * DELIBERATELY NOT CONFIGURABLE. Reading these from AGENT_GH_EXPECTED_LOGIN
+ * (plus a new AGENT_GH_EXPECTED_ID) was considered and rejected: that variable
+ * already means something else — it asserts which account a *token* must
+ * resolve to, and the repository documents setting it to `noemi-reviewer` for
+ * reviewer flows (docs/MACHINE_IDENTITY.md:141, docs/examples/cross-model-
+ * review-setup.md) — so a reviewer-configured session would have silently
+ * retargeted, or with a mismatched id wholly disabled, this rule. An
+ * environment variable that widens who may override a human's draft signal is
+ * a privilege switch, not configuration: changing the identity is a reviewed
+ * code change alongside the register.
+ *
+ * Both the login and the immutable numeric id must agree: logins can be renamed
+ * and the freed name reclaimed, so the id is what actually pins the identity
+ * (the same reasoning that binds the WIF pool to immutable org ids), while
+ * requiring the login too means a stale pin fails closed to DRAFT_HELD rather
+ * than silently widening the rule.
+ */
+const AGENT_LOGIN = 'noemi-agent';
+const AGENT_USER_ID = 311935378;
+
+/** @param {{login?: string, id?: number}} user PR author from the REST payload. */
+function isAgentAuthored(user) {
+  // Number.isInteger is applied to the RAW value, so it rejects string
+  // look-alikes on its own ("311935378 " would survive a Number() coercion but
+  // fails here) — no separate type check is needed, and none is implied.
+  const login = (user?.login || '').toLowerCase();
+  return login === AGENT_LOGIN && Number.isInteger(user?.id) && user.id === AGENT_USER_ID;
+}
 
 // ---------------------------------------------------------------------------
 // Pure decision logic (unit-tested)
@@ -89,6 +132,7 @@ function decideVerdict(state) {
   const {
     prState, merged, checks, review, reviewHalted,
     reviewCheckRunning, reviewCheckConcluded, remediationAttempted,
+    draft, agentAuthored,
   } = state;
 
   // PR state precedes every heuristic. A human-closed PR looks exactly like an
@@ -102,6 +146,25 @@ function decideVerdict(state) {
   }
   if (prState !== 'open') {
     return { verdict: 'PR_CLOSED', reason: 'a human closed this PR; the gate stops and never reopens it' };
+  }
+
+  // Someone else's draft is hands-off ENTIRELY, which is why this sits with the
+  // PR-state checks rather than beside the arming step: draft is the author's
+  // "not ready" declaration, and every downstream branch of this function
+  // authorizes an intrusive act on the pull request — RETRIGGERED close/reopens
+  // it, REMEDIATE orders an agent to push commits onto it, ESCALATED files a
+  // public issue against it, ARMED_AUTOMERGE takes it out of draft. Guarding
+  // only the last of those would still leave automation editing and publicly
+  // escalating a person's work in progress. The machine identity's own drafts
+  // are process artifacts and continue through every branch as before (the
+  // scheduled Doc run opens its PRs as drafts, though those are owner-authored
+  // until the machine token is injected — docs/REQUIREMENTS.md, §7 gap).
+  if (draft && !agentAuthored) {
+    return {
+      verdict: 'DRAFT_HELD',
+      reason: 'PR is a draft authored by someone other than the machine identity — '
+        + 'the author\'s not-ready signal stands; the gate takes no action on it at all',
+    };
   }
 
   // Hard-red checks escalate regardless of the review: a failing test suite is
@@ -265,6 +328,8 @@ async function collectState(repo, prNumber, remediationAttempted) {
       reviewCheckRunning,
       reviewCheckConcluded,
       remediationAttempted,
+      draft: Boolean(pr.draft),
+      agentAuthored: isAgentAuthored(pr.user),
     },
   };
 }
@@ -277,15 +342,48 @@ async function retriggerReview(repo, prNumber) {
   await api(`/repos/${repo}/pulls/${prNumber}`, { method: 'PATCH', body: JSON.stringify({ state: 'open' }) });
 }
 
-async function armAutoMerge(repo, prId) {
-  const query = `mutation($id:ID!){ enablePullRequestAutoMerge(input:{pullRequestId:$id, mergeMethod:MERGE}){ clientMutationId } }`;
+async function graphql(query, variables, label) {
   const res = await fetch(`${API}/graphql`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, variables: { id: prId } }),
+    body: JSON.stringify({ query, variables }),
   });
   const body = await res.json();
-  if (body.errors) throw new Error(`enablePullRequestAutoMerge: ${JSON.stringify(body.errors).slice(0, 300)}`);
+  if (body.errors) throw new Error(`${label}: ${JSON.stringify(body.errors).slice(0, 300)}`);
+  return body.data;
+}
+
+async function armAutoMerge(repo, pr) {
+  // GraphQL refuses to arm auto-merge on a draft ("Pull request is a draft",
+  // hit live on PR #435 — scheduled Doc-run PRs open as drafts). For the
+  // machine identity's OWN drafts, a passing verdict plus green checks is
+  // exactly the state "ready for review" claims, so the gate readies it rather
+  // than escalating a solved state.
+  //
+  // The authorship condition is re-checked HERE, at the mutation itself, and
+  // not merely upstream in decideVerdict: this function is exported, so the
+  // guarantee "automation never un-drafts someone else's pull request" must
+  // hold for any caller, not only for one that happens to consult the verdict
+  // first. Refusing loudly beats silently readying a person's work in progress.
+  const isDraft = Boolean(pr.draft);
+  if (isDraft && !isAgentAuthored(pr.user)) {
+    throw new Error(
+      `refusing to ready draft PR #${pr.number} for auto-merge: authored by `
+      + `'${pr.user?.login || '(unknown)'}', not the machine identity — draft is the author's signal`
+    );
+  }
+  if (isDraft) {
+    await graphql(
+      'mutation($id:ID!){ markPullRequestReadyForReview(input:{pullRequestId:$id}){ clientMutationId } }',
+      { id: pr.node_id },
+      'markPullRequestReadyForReview'
+    );
+  }
+  await graphql(
+    'mutation($id:ID!){ enablePullRequestAutoMerge(input:{pullRequestId:$id, mergeMethod:MERGE}){ clientMutationId } }',
+    { id: pr.node_id },
+    'enablePullRequestAutoMerge'
+  );
 }
 
 async function fileEscalation(repo, prNumber, reason, review) {
@@ -339,19 +437,23 @@ async function main() {
     }
 
     if (verdict === 'ARMED_AUTOMERGE') {
-      await armAutoMerge(repo, pr.node_id);
+      // A draft reaching ARMED is agent-authored (DRAFT_HELD intercepts every
+      // other draft), and armAutoMerge re-verifies that for itself.
+      await armAutoMerge(repo, pr);
     }
     if (verdict === 'ESCALATED') {
       await fileEscalation(repo, prNumber, reason, state.review);
     }
 
-    const terminal = ['ARMED_AUTOMERGE', 'ESCALATED', 'REMEDIATE', 'PR_CLOSED', 'ALREADY_MERGED'].includes(verdict);
+    const terminal = TERMINAL_VERDICTS.includes(verdict);
     if (terminal || !poll || Date.now() > deadline) {
       process.stderr.write(`${JSON.stringify({
         task: 'PR merge gate',
         inputs: [`pr=#${prNumber}`, `remediation_attempted=${remediationAttempted}`],
         actions: [retriggered ? 'retriggered review via close/reopen' : 'no retrigger needed', `verdict=${verdict}`],
-        risks: verdict === 'ARMED_AUTOMERGE' ? ['merge completes on human approval'] : [],
+        risks: verdict === 'ARMED_AUTOMERGE' ? ['merge completes on human approval']
+          : verdict === 'DRAFT_HELD' ? ['a green PR waits indefinitely until its author marks it ready']
+            : [],
         result: reason,
       })}\n`);
       process.stdout.write(`${JSON.stringify({
@@ -363,7 +465,10 @@ async function main() {
   }
 }
 
-module.exports = { decideVerdict, apiAll, isReviewerLogin, REVIEW_CHECK_NAME };
+module.exports = {
+  decideVerdict, apiAll, isReviewerLogin, isAgentAuthored, armAutoMerge, collectState,
+  REVIEW_CHECK_NAME, TERMINAL_VERDICTS,
+};
 
 if (require.main === module) {
   main().catch((err) => {

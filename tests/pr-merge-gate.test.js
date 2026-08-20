@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const { decideVerdict } = require('../scripts/pr-merge-gate.js');
 
@@ -193,4 +195,187 @@ test('verdict origin is exact-match too: a lookalike PASSING review cannot arm t
     }
     const real = latestVerdict([{ login: 'noemi-reviewer-bot[bot]', body: PASSING_BODY }]);
     assert.ok(real && real.failing === false, 'the genuine bot login is trusted');
+});
+
+test('a foreign draft is hands-off: no reopen, no remediation order, no escalation, no un-drafting', () => {
+    // Draft is the AUTHOR's not-ready declaration. The first fix guarded only
+    // the un-drafting step, which still let the gate close/reopen a human's
+    // work in progress (RETRIGGERED), order an agent to push commits onto it
+    // (REMEDIATE), and file a public issue against it (ESCALATED). The guard
+    // now sits with the PR-state checks so EVERY intrusive branch is bypassed.
+    const foreignDraft = { draft: true, agentAuthored: false };
+
+    const scenarios = [
+        ['all green', { checks: GREEN, review: PASS, reviewCheckRunning: false, reviewCheckConcluded: 'success' }],
+        ['review absent (would RETRIGGER: close/reopen)', { checks: GREEN, review: null, reviewCheckRunning: false, reviewCheckConcluded: null }],
+        ['review failing (would REMEDIATE: push commits)', { checks: GREEN, review: FAIL, reviewCheckRunning: false, reviewCheckConcluded: 'success' }],
+        ['checks red (would ESCALATE: file an issue)', { checks: { pending: [], failing: ['Docker Smoke Validation'] }, review: PASS, reviewCheckRunning: false, reviewCheckConcluded: 'success' }],
+    ];
+    for (const [label, rest] of scenarios) {
+        const v = decideVerdict({ ...OPEN, remediationAttempted: false, ...foreignDraft, ...rest });
+        assert.equal(v.verdict, 'DRAFT_HELD', `${label}: expected DRAFT_HELD, got ${v.verdict}`);
+        assert.match(v.reason, /takes no action on it at all/);
+    }
+
+    // A merged or human-closed PR still reports its own terminal state: the
+    // draft guard must not mask those, since they are not intrusions.
+    assert.equal(decideVerdict({ ...OPEN, merged: true, ...foreignDraft, checks: GREEN, review: PASS }).verdict, 'ALREADY_MERGED');
+    assert.equal(decideVerdict({ ...OPEN, prState: 'closed', ...foreignDraft, checks: GREEN, review: PASS }).verdict, 'PR_CLOSED');
+
+    // The bot's OWN drafts are process artifacts and still flow through every
+    // branch, including the ready-up.
+    const own = { draft: true, agentAuthored: true };
+    assert.equal(decideVerdict({ ...OPEN, ...own, checks: GREEN, review: PASS, reviewCheckRunning: false, remediationAttempted: false }).verdict, 'ARMED_AUTOMERGE');
+    assert.equal(decideVerdict({ ...OPEN, ...own, checks: GREEN, review: FAIL, reviewCheckRunning: false, remediationAttempted: false }).verdict, 'REMEDIATE');
+});
+
+test('every verdict that needs no further polling is terminal', () => {
+    // Membership in this list is what stops the 30-minute poll loop mandated for
+    // scheduled runs; a verdict missing from it is re-polled to the deadline and
+    // reports nothing actionable. Asserted against the exported list rather than
+    // a source-line regex, which any reformatting would silently break.
+    const { TERMINAL_VERDICTS } = require('../scripts/pr-merge-gate.js');
+    for (const verdict of ['ARMED_AUTOMERGE', 'ESCALATED', 'REMEDIATE', 'PR_CLOSED', 'ALREADY_MERGED', 'DRAFT_HELD']) {
+        assert.ok(TERMINAL_VERDICTS.includes(verdict), `${verdict} must be terminal`);
+    }
+    for (const verdict of ['WAIT_CHECKS', 'RETRIGGERED']) {
+        assert.ok(!TERMINAL_VERDICTS.includes(verdict), `${verdict} must keep polling`);
+    }
+});
+
+test('agent authorship requires BOTH the pinned login and the immutable user id', () => {
+    const { isAgentAuthored } = require('../scripts/pr-merge-gate.js');
+    assert.equal(isAgentAuthored({ login: 'noemi-agent', id: 311935378 }), true);
+    assert.equal(isAgentAuthored({ login: 'NoeMI-Agent', id: 311935378 }), true,
+        'GitHub logins are case-insensitive');
+
+    // A reclaimed login (account renamed, name taken by someone else) must not
+    // inherit the bot's draft privilege — this is why the id is pinned.
+    assert.equal(isAgentAuthored({ login: 'noemi-agent', id: 999999 }), false);
+    // ...and an id match with a different login fails closed too, so a stale
+    // pin can never silently widen the rule.
+    assert.equal(isAgentAuthored({ login: 'someone-else', id: 311935378 }), false);
+
+    for (const impostor of [
+        { login: 'noemi-agent-2', id: 311935378 }, { login: 'not-noemi-agent', id: 311935378 },
+        { login: 'noemi-agent[bot]', id: 311935378 }, { login: '', id: 311935378 },
+        {}, null, undefined, { login: 'noemi-agent' }, { id: 311935378 },
+        { login: 'noemi-agent', id: '311935378 ' }, { login: 'noemi-agent', id: '311935378' },
+        { login: 'noemi-agent', id: 311935378.5 },
+    ]) {
+        assert.equal(isAgentAuthored(impostor), false,
+            `${JSON.stringify(impostor)} must not pass as the machine identity`);
+    }
+});
+
+test('the identity pin matches the register, and no environment variable can retarget it', () => {
+    // The pin is duplicated between code and docs by necessity; this test is
+    // what keeps them honest. docs/MACHINE_IDENTITY.md is the register.
+    const gateSrc = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'pr-merge-gate.js'), 'utf8');
+    const register = fs.readFileSync(path.join(__dirname, '..', 'docs', 'MACHINE_IDENTITY.md'), 'utf8');
+
+    const pinnedId = (gateSrc.match(/^const AGENT_USER_ID = (\d+);$/m) || [])[1];
+    const pinnedLogin = (gateSrc.match(/^const AGENT_LOGIN = '([^']+)';$/m) || [])[1];
+    assert.ok(pinnedId && pinnedLogin, 'identity constants must be literal, not computed');
+    // Match the identity TABLE ROW, not any occurrence: the id also appears
+    // inside the bot's noreply commit address, which would make a bare
+    // includes() pass even after the register's own pin changed.
+    const idRow = new RegExp(`^\\|[^|]*GitHub user ID[^|]*\\|\\s*\`?${pinnedId}\`?\\s*\\|`, 'm');
+    assert.match(register, idRow,
+        `docs/MACHINE_IDENTITY.md has no 'GitHub user ID' row for ${pinnedId} — the pin drifted from the register`);
+    assert.match(register, new RegExp(`\\b${pinnedLogin}\\b`),
+        `register does not name pinned login ${pinnedLogin}`);
+
+    // AGENT_GH_EXPECTED_LOGIN already means "which account must this TOKEN
+    // resolve to" and the repo documents setting it to noemi-reviewer, so
+    // reading it here would let a reviewer-configured session retarget — or
+    // silently disable — the draft rule. It must not be consulted at all.
+    assert.doesNotMatch(gateSrc, /process\.env\.AGENT_GH_EXPECTED/,
+        'the draft-authorship pin must not be environment-configurable');
+});
+
+test('armAutoMerge itself refuses to un-draft a foreign PR, not just its caller', async () => {
+    // armAutoMerge is exported: the guarantee has to hold for any caller, not
+    // only one that consults decideVerdict first.
+    const { armAutoMerge } = require('../scripts/pr-merge-gate.js');
+    const realFetch = global.fetch;
+    const realToken = process.env.AGENT_GH_TOKEN;
+    process.env.AGENT_GH_TOKEN = 'test-token';
+    const mutations = [];
+    global.fetch = async (url, opts) => {
+        const q = JSON.parse(opts.body).query;
+        mutations.push((q.match(/(markPullRequestReadyForReview|enablePullRequestAutoMerge)/) || [])[1]);
+        return { json: async () => ({ data: { clientMutationId: null } }) };
+    };
+    try {
+        const human = { number: 7, node_id: 'PR_human', draft: true, user: { login: 'WSwarm', id: 12345 } };
+        await assert.rejects(() => armAutoMerge('o/r', human), /refusing to ready draft PR #7/);
+        assert.deepEqual(mutations, [], 'no mutation may be issued for a foreign draft');
+
+        // The bot's own draft: ready-up first, then arm.
+        mutations.length = 0;
+        await armAutoMerge('o/r', { number: 8, node_id: 'PR_bot', draft: true, user: { login: 'noemi-agent', id: 311935378 } });
+        assert.deepEqual(mutations, ['markPullRequestReadyForReview', 'enablePullRequestAutoMerge']);
+
+        // A non-draft needs no ready-up regardless of author.
+        mutations.length = 0;
+        await armAutoMerge('o/r', { number: 9, node_id: 'PR_ready', draft: false, user: { login: 'WSwarm', id: 12345 } });
+        assert.deepEqual(mutations, ['enablePullRequestAutoMerge']);
+    } finally {
+        global.fetch = realFetch;
+        if (realToken === undefined) delete process.env.AGENT_GH_TOKEN; else process.env.AGENT_GH_TOKEN = realToken;
+    }
+});
+
+test('collectState wires the REST payload into the draft guard (the production path)', async () => {
+    // The pure logic was covered but its only production wiring was not: if
+    // collectState stopped deriving draft/agentAuthored from the payload, every
+    // decideVerdict test would still pass while the live gate readied human
+    // drafts again. This exercises the real fetch path end to end.
+    const { collectState } = require('../scripts/pr-merge-gate.js');
+    const realFetch = global.fetch;
+    const realToken = process.env.AGENT_GH_TOKEN;
+    process.env.AGENT_GH_TOKEN = 'test-token';
+
+    const respond = (body) => ({ ok: true, status: 200, json: async () => body, text: async () => '' });
+    const withPr = (pr) => async (url) => {
+        if (url.includes('/check-runs')) {
+            return respond({ check_runs: [{ name: 'Cross-Model PR Review', status: 'completed', conclusion: 'success' }] });
+        }
+        if (url.includes('/comments')) return respond([]);
+        return respond(pr);
+    };
+
+    try {
+        global.fetch = withPr({
+            number: 1, head: { sha: 'abc' }, state: 'open', merged: false,
+            draft: true, user: { login: 'WSwarm', id: 12345 },
+        });
+        const human = await collectState('o/r', 1, false);
+        assert.equal(human.state.draft, true, 'draft must come from the payload');
+        assert.equal(human.state.agentAuthored, false, 'a human author is not the machine identity');
+        assert.equal(decideVerdict(human.state).verdict, 'DRAFT_HELD');
+
+        global.fetch = withPr({
+            number: 2, head: { sha: 'def' }, state: 'open', merged: false,
+            draft: true, user: { login: 'noemi-agent', id: 311935378 },
+        });
+        const bot = await collectState('o/r', 2, false);
+        assert.equal(bot.state.agentAuthored, true, 'the machine identity must be recognised');
+        // The bot's own draft is NOT held: it flows through the normal branches,
+        // so this fixture (review run succeeded, no parseable verdict comment)
+        // lands on the format-drift escalation exactly as a non-draft would.
+        assert.equal(decideVerdict(bot.state).verdict, 'ESCALATED',
+            'the machine identity\'s draft must not be short-circuited by draft handling');
+
+        global.fetch = withPr({
+            number: 3, head: { sha: 'ghi' }, state: 'open', merged: false,
+            user: { login: 'noemi-agent', id: 311935378 },
+        });
+        const nonDraft = await collectState('o/r', 3, false);
+        assert.equal(nonDraft.state.draft, false, 'a missing draft field is not a draft');
+    } finally {
+        global.fetch = realFetch;
+        if (realToken === undefined) delete process.env.AGENT_GH_TOKEN; else process.env.AGENT_GH_TOKEN = realToken;
+    }
 });

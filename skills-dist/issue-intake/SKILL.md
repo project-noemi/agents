@@ -1,6 +1,10 @@
 ---
 name: issue-intake
 description: "Classify a newly opened GitHub issue for the issue-coding loop: whether the conductor should skip, refuse, ask for information, or treat the issue as actionable."
+license: FSL-1.1-Apache-2.0
+metadata:
+  author: project-noemi
+  governance: "NoéMI 4D"
 ---
 
 > **Governance: NoéMI 4D** — this skill ships with Refusal Criteria, hard

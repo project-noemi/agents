@@ -12,7 +12,13 @@ fleet reviewer already runs from this tree (`scripts/review-pr.js`). The loop
 follows the same pattern.
 
 Mastra is the first *framework* inside `coding-loop/` when a long-running
-webhook is added. Stage A today is `coding-loop/run.js`. Personas, skills, and
+webhook is added. Stage A today is `coding-loop/run.js` (intake then fail-closed sufficiency).
+Stage B drafts a plan (`coding-loop/plan.js`). Stage B′ is structural
+(headings, files, no skip-red-team) and, with `--live-critic`, Gemini Pro.
+`accepted` only on B′ pass; fail at `planRedTeam.maxCycles` is `needs-info`.
+A critic outage is retried, then re-queued — never treated as a pass.
+`--implement --open-pr` drafts with Grok and opens a `noemi-agent` PR.
+Personas, skills, and
 `docs/model-routing.json` stay the source of truth; the section must not
 vendor a private copy.
 
@@ -121,13 +127,23 @@ Default `maxCycles` is 3 (`docs/model-routing.json` → `planRedTeam`).
 `agents/coding/architect/core.md` (or a more specific coding persona) running
 as `noemi-agent`. Label `noemi:in-progress`. Open a PR against `develop` (then
 `dev`). Never against `main` when an integration branch exists (Decision
-[2026-08-16-0003]).
+[2026-08-16-0003]). `--implement` prepares the envelope (`opened: false`).
+`--implement --open-pr` calls Grok (`coding-loop/writer.js`) and opens the
+PR with `AGENT_GH_TOKEN` (`coding-loop/dispatch.js`). Pickup does not open
+PRs just because the producer token is present.
 
 ### Stage D — PR red-team
 
 Reuse the existing fleet reviewer (`scripts/review-pr.js` /
 `noemi-reviewer-bot[bot]`). Do not add a second Gemini reviewer. Label
 `noemi:review`. Humans still own approval and merge.
+`coding-loop/stage-d.js` only delegates once a PR URL exists.
+
+Pickup is the reusable workflow `.github/workflows/coding-loop.yml` and
+`templates/ci/coding-loop-caller.yml`. Budget is fail-closed
+(`vars.CODING_LOOP_BUDGET_OK`). Pass `--scan` to run `coding-loop/scan.js`
+on the fetched body, or `--scan-status` for a precomputed result. Omitting
+both classifies the issue as REFUSED (fail closed).
 
 On `develop`, Cross-Model PR Review is **required to complete** and remains
 advisory on the verdict (Decision [2026-08-17-0001]). A GitHub outage that

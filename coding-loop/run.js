@@ -2,45 +2,69 @@
 'use strict';
 
 /**
- * Stage A entry for the issue-coding loop.
- *
- * Runs the deterministic intake gates (skip / bot / empty / tenant / scan /
- * budget). Does not call a model and does not mark ACTIONABLE.
+ * Issue-coding loop entry (Stages A–C).
  *
  * USAGE
  *   node coding-loop/run.js --repo org/name --issue 12
  *   node coding-loop/run.js --repo org/name --issue 12 --post
+ *   node coding-loop/run.js --repo org/name --issue 12 --implement
+ *   node coding-loop/run.js --repo org/name --issue 12 --implement --open-pr
  *
- * --post applies the conductor label. It requires CONDUCTOR_GH_TOKEN and
- * refuses AGENT_GH_TOKEN / REVIEWER_* so identities stay split.
- * Without --post the classification is printed and nothing is written.
+ * --post requires CONDUCTOR_GH_TOKEN.
+ * --implement / --open-pr require AGENT_GH_TOKEN.
+ * --open-pr also requires XAI_API_KEY and calls Grok, then opens the PR.
+ * --live-critic requires ADC (GCP_ACCESS_TOKEN or gcloud) and calls Gemini.
  */
 
 const fs = require('fs');
 const path = require('path');
 const { gh } = require('../scripts/github-client.js');
-const { classifyIssue, issueFromGitHub } = require('./intake.js');
+const { issueFromGitHub } = require('./intake.js');
+const { completeThroughStageB, loadRouting } = require('./plan.js');
+const { assertProducerToken, openImplementationPr, prepareImplementation } = require('./dispatch.js');
+const { critiquePlanLive } = require('./critic.js');
+const { assertWriterKey, draftChanges } = require('./writer.js');
+const { scanIssueBody } = require('./scan.js');
+const { prepareReview } = require('./stage-d.js');
 
 const repoRoot = path.join(__dirname, '..');
 
 function parseArgs(argv) {
   // No permissive defaults: security gates fail CLOSED. A scan status exists
-  // only if a scanner produced one, and budget capacity exists only if the
-  // caller checked it — the CLI asserting either by default was a critical
-  // review finding (fail-open by omission).
-  const args = { post: false, scanStatus: null, budgetState: null };
+  // only if a scanner produced one (--scan-status, or --scan which runs the
+  // local scanner), and budget capacity exists only if the caller checked it
+  // — filling either in because the flag was omitted was a critical review
+  // finding (fail-open by omission).
+  const args = {
+    post: false,
+    implement: false,
+    openPr: false,
+    liveCritic: false,
+    scan: false,
+    scanStatus: null,
+    budgetState: null,
+  };
   for (let i = 0; i < argv.length; i += 1) {
     switch (argv[i]) {
       case '--repo': args.repo = argv[++i]; break;
       case '--issue': args.issue = argv[++i]; break;
       case '--post': args.post = true; break;
+      case '--implement': args.implement = true; break;
+      case '--open-pr': args.openPr = true; break;
+      case '--live-critic': args.liveCritic = true; break;
+      case '--heuristic-critic': args.liveCritic = false; break;
       case '--tenant': args.tenantPath = argv[++i]; break;
+      case '--scan': args.scan = true; break;
       case '--scan-status': args.scanStatus = argv[++i]; break;
       case '--budget-ok': args.budgetState = 'ok'; break;
       case '--budget-exhausted': args.budgetState = 'exhausted'; break;
       case '--help':
-        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--tenant path] --scan-status APPROVED|BLOCKED|REDACTED (--budget-ok | --budget-exhausted)\n'
-          + 'Omitting --scan-status or the budget assertion classifies the issue as REFUSED (fail closed).\n');
+        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--implement] [--open-pr] [--live-critic] [--tenant path] (--scan | --scan-status APPROVED|BLOCKED|REDACTED) (--budget-ok | --budget-exhausted)\n'
+          + 'Omitting both --scan and --scan-status, or omitting the budget assertion, classifies the issue as REFUSED (fail closed).\n'
+          + '--scan runs coding-loop/scan.js on the fetched issue; it is not implied by omitting --scan-status.\n'
+          + '--implement prepares a noemi-agent PR envelope.\n'
+          + '--open-pr (with --implement) drafts files via Grok and opens the PR as noemi-agent.\n'
+          + '--live-critic runs Gemini Pro for Stage B′; without it B′ is structural only.\n');
         process.exit(0);
         break;
       default:
@@ -80,6 +104,22 @@ function buildGateInputs(args) {
   };
 }
 
+/**
+ * Scan result for classifyIssue. `--scan-status` is a precomputed result.
+ * `--scan` runs the local scanner on the fetched issue. Omitting both
+ * leaves `null` so the classifier refuses (unscanned-body). This is the
+ * function `main()` uses — do not "helpfully" scan when neither flag is set.
+ */
+function resolveScanInput(args, issue) {
+  if (args && args.scanStatus) {
+    return { status: args.scanStatus };
+  }
+  if (args && args.scan) {
+    return scanIssueBody(`${(issue && issue.title) || ''}\n${(issue && issue.body) || ''}`);
+  }
+  return null;
+}
+
 function loadTenant(relPath) {
   const file = path.resolve(repoRoot, relPath || 'tenants/internal.json');
   return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -98,6 +138,33 @@ function readToken() {
     || '';
 }
 
+async function implementFromPlan({ args, issue, plan }) {
+  const branches = ['develop', 'dev', 'main'];
+  const prepared = prepareImplementation({ issue, plan, branches });
+  if (!args.openPr || prepared.status !== 'ready') return prepared;
+
+  const drafted = await draftChanges({ issue, plan, env: process.env });
+  if (drafted.status === 'refused') {
+    return {
+      ...prepared,
+      status: 'refused',
+      reason: drafted.reason,
+      opened: false,
+      writer: 'grok',
+      model: drafted.model || null,
+    };
+  }
+  return openImplementationPr({
+    repo: args.repo,
+    issue,
+    plan,
+    branches,
+    token: process.env.AGENT_GH_TOKEN,
+    files: drafted.files,
+    model: drafted.model,
+  });
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.repo || !args.issue) {
@@ -111,9 +178,32 @@ async function main() {
     process.exit(2);
   }
 
+  if (args.openPr && !args.implement) {
+    process.stderr.write('✖ --open-pr requires --implement.\n');
+    process.exit(2);
+  }
+
   if (args.post && !conductorToken()) {
     process.stderr.write('✖ --post requires CONDUCTOR_GH_TOKEN. Refusing AGENT_GH_TOKEN / reviewer tokens (identity split).\n');
     process.exit(2);
+  }
+
+  if (args.implement) {
+    try {
+      assertProducerToken(process.env);
+    } catch (err) {
+      process.stderr.write(`✖ ${err.message}\n`);
+      process.exit(2);
+    }
+  }
+
+  if (args.openPr) {
+    try {
+      assertWriterKey(process.env);
+    } catch (err) {
+      process.stderr.write(`✖ ${err.message}\n`);
+      process.exit(2);
+    }
   }
 
   const token = args.post ? conductorToken() : readToken();
@@ -126,36 +216,67 @@ async function main() {
   const payload = await gh(`/repos/${args.repo}/issues/${args.issue}`, { token });
   const issue = issueFromGitHub(args.repo, payload);
   const gateInputs = buildGateInputs(args);
-  const result = classifyIssue({
+  const scan = resolveScanInput(args, issue);
+  const { intake, plan } = await completeThroughStageB({
     issue,
     tenant,
-    scan: gateInputs.scan,
+    scan,
     budget: gateInputs.budget,
+    routing: loadRouting(repoRoot),
+    critic: args.liveCritic ? critiquePlanLive : undefined,
   });
 
-  if (args.post && result.tier !== 'SKIPPED') {
+  if (args.post && intake.tier !== 'SKIPPED') {
+    const label = (plan.status === 'accepted' || plan.status === 'needs-info')
+      ? plan.label
+      : intake.label;
     await gh(`/repos/${args.repo}/issues/${args.issue}/labels`, {
       token: conductorToken(),
       method: 'POST',
-      body: { labels: [result.label] },
+      body: { labels: [label] },
     });
-    if (result.questions.length > 0) {
+    const comment = plan.status === 'accepted'
+      ? plan.plan
+      : plan.status === 'needs-info'
+        ? ['Plan red-team did not pass:', ...(plan.findings || []).map((f) => `- ${f.claim}`)].join('\n')
+        : (intake.questions || []).map((q) => `- ${q}`).join('\n');
+    if (comment) {
       await gh(`/repos/${args.repo}/issues/${args.issue}/comments`, {
         token: conductorToken(),
         method: 'POST',
-        body: { body: result.questions.map((q) => `- ${q}`).join('\n') },
+        body: { body: comment },
       });
     }
   }
 
+  const implementation = args.implement
+    ? await implementFromPlan({ args, issue, plan })
+    : null;
+  const review = prepareReview({ implementation });
+
   process.stderr.write(`${JSON.stringify({
-    task: 'Issue-loop Stage A deterministic intake',
-    inputs: [`issue=${args.repo}#${args.issue}`, `post=${args.post}`, `scan=${args.scanStatus || 'UNSCANNED'}`, `budget=${args.budgetState || 'unverified'}`],
-    actions: [result.tier, ...result.reasons],
-    risks: result.tier === 'PENDING_SUFFICIENCY' ? ['sufficiency model not yet invoked'] : [],
-    result: result.label,
+    task: 'Issue-loop Stage A through Stage C',
+    inputs: [
+      `issue=${args.repo}#${args.issue}`,
+      `post=${args.post}`,
+      `implement=${args.implement}`,
+      `openPr=${args.openPr}`,
+      `liveCritic=${args.liveCritic}`,
+      `scan=${args.scanStatus || (args.scan ? 'local' : 'UNSCANNED')}`,
+      `budget=${args.budgetState || 'unverified'}`,
+    ],
+    actions: [intake.tier, plan.status, implementation && implementation.status, ...(intake.reasons || [])].filter(Boolean),
+    risks: [
+      intake.mode === 'heuristic' ? 'sufficiency is heuristic until the Stage A model is wired' : null,
+      plan.mode === 'heuristic' && plan.status === 'accepted' ? 'Stage B′ used the structural critic; pass --live-critic for Gemini' : null,
+      plan.status === 'needs-info' ? 'Stage B′ hit the cycle limit' : null,
+      implementation && implementation.status === 'ready' && implementation.opened !== true
+        ? 'Stage C envelope ready; pass --open-pr to draft with Grok and open as noemi-agent'
+        : null,
+    ].filter(Boolean),
+    result: (implementation && implementation.label) || plan.label || intake.label,
   })}\n`);
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ intake, plan, implementation, review }, null, 2)}\n`);
 }
 
 function exitCodeForError(err) {
@@ -169,4 +290,6 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parseArgs, buildGateInputs, loadTenant, assertRepoIssue, exitCodeForError };
+module.exports = {
+  parseArgs, buildGateInputs, resolveScanInput, loadTenant, assertRepoIssue, exitCodeForError, implementFromPlan,
+};

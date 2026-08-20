@@ -21,9 +21,9 @@ Slack / Datto chatbot, a different product.
 
 ```
 Issue opened in your orgs
-        → coding-loop/run.js   (Stage A: skip / refuse / needs-info / queued)
-        → plan + plan red-team (Stage B / B′, later)
-        → noemi-agent PR       (Stage C)
+        → coding-loop/run.js   (Stage A + Stage B draft)
+        → plan red-team        (Stage B′, structural or --live-critic Gemini)
+        → noemi-agent PR       (Stage C, --implement [--open-pr])
         → noemi-reviewer-bot   (Stage D, already in this repo)
         → human merge
 ```
@@ -109,14 +109,38 @@ later; it is not a second GitHub repository.
 ## Stage A today
 
 Hard gates: `noemi:skip`, bot authors, empty/template body, tenant, scan,
-budget. See `coding-loop/intake.js`.
+budget (`coding-loop/intake.js`). Then sufficiency (`coding-loop/sufficiency.js`):
+observable problem, in-scope path, checkable done condition. All three are
+required. The pass is a conservative heuristic until Fable is wired; it
+still never defaults to `ACTIONABLE`.
 
 ```bash
-node coding-loop/run.js --repo owner/name --issue N
+node coding-loop/run.js --repo owner/name --issue N --scan --budget-ok
+# or, if an upstream scanner already produced a result:
+node coding-loop/run.js --repo owner/name --issue N --scan-status APPROVED --budget-ok
 ```
 
-## Next in this section
+Omitting both `--scan` and `--scan-status` is REFUSED (fail closed). `--scan`
+is not implied by leaving `--scan-status` off.
 
-Sufficiency model, plan + plan red-team, then optional Mastra webhook —
-still under `coding-loop/`, still generalized in this blueprint, first
-live-fired from `{company}-agents`.
+An `ACTIONABLE` issue gets a Stage B plan and Stage B′
+(`coding-loop/plan.js`). Structural critique always runs (headings, files,
+no skip-red-team). `--live-critic` then calls Gemini Pro (ADC, same
+selection rule as the fleet reviewer). Pass → `accepted`. Fail at
+`planRedTeam.maxCycles` → `needs-info`. A Gemini 429/5xx is retried, then
+thrown so the host re-queues — it is not an `accepted` plan.
+
+`--implement` prepares a Stage C envelope (`coding-loop/dispatch.js`) for
+`noemi-agent` on `develop` (then `dev`). `AGENT_GH_TOKEN` is required; the
+conductor token is refused.
+
+`--implement --open-pr` drafts files with Grok (`XAI_API_KEY`, Fetch-on-Demand)
+and opens the PR as `noemi-agent`. It refuses paths outside the plan,
+governance carve-outs, and secret-shaped content. It does not approve or
+merge. Tests inject the model and GitHub clients; they do not open live PRs.
+
+Pickup: install `templates/ci/coding-loop-caller.yml` and set
+`CODING_LOOP_BUDGET_OK=true` only when the daily cap is real. The reusable
+workflow prepares the envelope; opening a PR is a separate producer
+invocation with `AGENT_GH_TOKEN` and `XAI_API_KEY`. Stage D delegates to
+the fleet reviewer when a PR URL exists (`coding-loop/stage-d.js`).

@@ -1,0 +1,71 @@
+# Coding loop pickup — reusable. Thin callers live in
+# templates/ci/coding-loop-caller.yml. Logic is coding-loop/run.js.
+#
+# Does not approve, merge, or write code. Conductor comments only when
+# CONDUCTOR_GH_TOKEN is injected. Budget is fail-closed: set
+# vars.CODING_LOOP_BUDGET_OK=true to assert capacity.
+name: Coding Loop
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: 'owner/name (defaults to this repository)'
+        required: false
+        type: string
+      issue:
+        description: 'Issue number'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      repo:
+        required: false
+        type: string
+      issue:
+        required: false
+        type: string
+      tooling-ref:
+        required: false
+        type: string
+        default: main
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  intake:
+    name: Stage A–C prepare
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: project-noemi/agents
+          ref: ${{ inputs.tooling-ref || 'main' }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run coding loop
+        env:
+          GH_TOKEN: ${{ secrets.CONDUCTOR_GH_TOKEN || github.token }}
+          CONDUCTOR_GH_TOKEN: ${{ secrets.CONDUCTOR_GH_TOKEN }}
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          ISSUE: ${{ inputs.issue || github.event.issue.number }}
+          REPO: ${{ inputs.repo || github.repository }}
+          BUDGET_OK: ${{ vars.CODING_LOOP_BUDGET_OK }}
+        run: |
+          set -euo pipefail
+          extra=()
+          if [[ "${BUDGET_OK}" == "true" ]]; then
+            extra+=(--budget-ok)
+          fi
+          if [[ -n "${CONDUCTOR_GH_TOKEN:-}" ]]; then
+            extra+=(--post)
+          fi
+          if [[ -n "${AGENT_GH_TOKEN:-}" ]]; then
+            extra+=(--implement)
+          fi
+          node coding-loop/run.js --repo "$REPO" --issue "$ISSUE" --scan "${extra[@]}"

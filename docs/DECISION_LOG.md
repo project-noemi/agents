@@ -1044,12 +1044,53 @@
 - **Context:** Phase 1 found all other 32 `Answer:` fields blank. The reality check on `develop` (`f26c5f5`) passed in full: `npm run validate` green (audit gate + 162/162 tests, up from 99 on 2026-08-15 — merge-gate, admin-override-watch, calibration-watch, issue-loop, and reviewer-retry suites), deterministic regeneration, zero `TODO (Doc)`/`FIXME`. The 2026-08-16/17 merge burst (#398–#422) shipped five owner-directed subsystems already decision-logged by their interactive sessions ([2026-08-16-0001..0004], [2026-08-17-0001..0003]), so this run recorded no duplicate decisions and instead verified their claims against the tree. A third decision-ID collision was flagged while still in flight: PR #423 minted `[2026-08-17-0003]`, already claimed on `develop` by the issue-loop retry decision — flagged on the PR at 01:15 UTC and recorded as evidence on the [2026-08-14] minting question. The flag did not prevent the merge: #423 merged as-is at 02:53 UTC (merge `2800ecd`), putting two `[2026-08-17-0003]` headings live on `develop`. **The corrective renumbering ships in this run's PR**: the owner's conflict-resolving merge of `develop` into this branch (merge `d7755d3`, 02:54 UTC) applied the proposed renumber of the Coding Loop entry to `[2026-08-17-0004]`, so merging this PR heals the live duplicate.
 - **Impact:** `docs/CLARIFICATIONS.md`: two questions removed (closed), five evidence updates in place ([2026-08-15] promotion, [2026-08-12] ×2, [2026-08-14], [2026-08-09] — the machine-token gap reaches its ninth consecutive scheduled run and now also blocks the mandatory `pr-merge-gate.js` finalization of Decision [2026-08-17-0002]), two new questions added ([2026-08-18] issue-coding-loop requirements coverage and spec-library boundary; [2026-08-18] fragmented model-selection policy). Backlog 34 − 2 + 2 = 34. `templates/context/CLAUDE.template.md`: `tenants/` added to the Repository Layout (factual drift; context regenerated). `REQUIREMENTS.md`: Known Limitations updated (token gap, decision-ID collisions, new issue-loop coverage entry).
 
-
 ## [2026-08-18-0002] Substantive Compliance Placeholder Gate Implemented in the Audit
 
 - **Decision:** Implement the CLAUDE.md Coding Standards mandate that `scripts/audit-repo.js` fail on placeholder content in mandatory sections. Scope: `\bTBD\b` anywhere in a mandatory section — the same regex as the skills-dist publication withhold (`SKILL_DIST_PLACEHOLDER`), shared via one constant so the audit gate and the withhold can never disagree — plus whole-line filler values (`TODO`, `FIXME`, `placeholder`) that avoid the literal TBD. Fenced code blocks are exempt: the canonical Audit Log JSON skeleton (`"task": "..."`) is the mandated shape, not a placeholder. Templates are exempt by construction (`SKILL_TEMPLATE.md` is skipped by discovery; `docs/AGENT_TEMPLATE.md` is never audited). Placeholders in optional sections are tolerated per the standard's own scoping to mandatory sections.
 - **Context:** The mandate predates this entry, but the check was never built. Seven skills carried `TBD` in Data Inventory and Refusal Criteria for months and were caught only at publication time (the skills-dist withhold in PR #430), never by the audit; PR #431 completed their content. This gate closes the loop so the gap cannot reopen silently: prose that merely mentions placeholders (e.g. pii-scan's "typed placeholders") does not match, pinned by test.
 - **Impact:** `scripts/context_helpers.js` gains `findPlaceholderViolations()` (exported); `scripts/audit-repo.js#auditFile` fails per violating section for every persona and skill; `tests/substantive-compliance.test.js` adds 9 tests including a live-fleet sweep pinning zero violations and an end-to-end spawn test planting a violating skill and asserting audit exit 1.
+
+## [2026-08-18-0004] Stage A Sufficiency Is a Fail-Closed Heuristic Until Fable Is Wired
+
+- **Decision:** After the deterministic intake gates, Stage A runs `coding-loop/sufficiency.js`. An issue is `ACTIONABLE` only when three signals are present: observable problem, in-scope path, checkable done condition. Missing any → `NEEDS_INFO` with the matching question. Override language and out-of-scope requests are `REFUSED`. This pass is explicitly `mode: heuristic`; it does not call Fable yet and must not default to `ACTIONABLE`.
+- **Context:** PR #423 shipped hard gates that stop at `PENDING_SUFFICIENCY`. The next stage of the loop is sufficiency, then plan. A model resolver for Anthropic is not in this repo yet. `[2026-08-18-0001]` is already claimed by merged PR #425.
+- **Impact:** `completeStageA()` chains intake then sufficiency. `coding-loop/run.js` uses that chain. Stage B / B′ remains next.
+
+## [2026-08-18-0005] Stage B Drafts Are Never Accepted Without B′
+
+- **Decision:** `coding-loop/plan.js` drafts a five-section plan (goal, files, tests, risks, stop conditions) only from an `ACTIONABLE` Stage A result. Status is `draft` or `refused`. It is **never** `accepted` until Stage B′ (Gemini Pro plan red-team) passes. Issue text that says to skip red-team, ship the draft, or code while planning is ignored.
+- **Context:** Sufficiency on #428 made `ACTIONABLE` possible. The next cheap halt is a plan the conductor can post without starting Stage C on a rejected idea.
+- **Impact:** `completeThroughStageB()` returns `{ intake, plan }`. `--post` applies `noemi:planned` and the draft body only when status is `draft`.
+
+## [2026-08-18-0006] Stage B′ Is a Structural Plan Red-Team Until Gemini Is Wired
+
+- **Decision:** After the Stage B draft, `runPlanRedTeam` critiques premise/framing only: required headings, at least one concrete file, no skip-red-team instruction. A pass sets `status: accepted`. A fail retries up to `planRedTeam.maxCycles` (default 3) and then sets `needs-info`. It does not invent files to clear a fail. Gemini Pro remains the intended critic; this slice is `mode: heuristic`.
+- **Context:** #428 already drafted plans but left them unaccepted. Continuing the loop requires a cheap halt before Stage C.
+- **Impact:** `completeThroughStageB` runs B′. `--post` writes `noemi:planned` only on accept and `noemi:needs-info` on cycle-limit fail.
+
+## [2026-08-18-0007] Stage C Prepares a Producer PR Envelope and Does Not Write Code Yet
+
+- **Decision:** `coding-loop/dispatch.js` prepares a `noemi-agent` PR (base `develop` then `dev`, never `main` when those exist) only from an `accepted` plan. It does **not** write implementation files (Grok is unwired) and does **not** open the PR from the helper. `--implement` requires `AGENT_GH_TOKEN` and refuses the conductor token. Stage D remains the existing fleet reviewer once a PR exists.
+- **Context:** Plan stages A–B′ on #428 can now accept a plan. Starting Stage C by opening empty or conductor-authored PRs would collapse identities or spam the fleet.
+- **Impact:** `prepareImplementation` returns `ready` + `opened: false`, or `refused` (`plan-not-accepted` / `no-integration-branch`).
+
+## [2026-08-18-0008] Coding-Loop Pickup Is a Reusable Workflow; Scan and Stage D Are Local Helpers
+
+- **Decision:** Pickup is `.github/workflows/coding-loop.yml` (`workflow_call` / `workflow_dispatch`) plus `templates/ci/coding-loop-caller.yml` at `@main`, same shape as the fleet reviewer. Budget stays fail-closed (`vars.CODING_LOOP_BUDGET_OK`). If `--scan-status` is omitted, `coding-loop/scan.js` scans the fetched body and **blocks** private keys / cloud tokens / SSN-shaped values (not email). Stage D (`coding-loop/stage-d.js`) only **delegates** to `noemi-reviewer-bot` once a PR URL exists; it never approves.
+- **Context:** #428 already prepared Stage C without opening a PR. The loop still needed a host path and a scan that does not default to APPROVED.
+- **Impact:** Callers opt in via the thin workflow. This repo does not run the loop on every issue until a caller is installed and the budget var is set.
+
+## [2026-08-18-0009] Stage B′ Calls Gemini Pro When Asked and Never Accepts on Outage
+
+- **Decision:** `coding-loop/critic.js` is the live Stage B′ critic. Structural critique still runs first. `--live-critic` then calls Gemini Pro (ADC, `scripts/resolve-gemini-model.js` preview-Pro-first). Findings use the same severity rubric as the fleet reviewer; unknown severities coerce up. 429/5xx retry via `withRetry`; exhaustion throws so the host re-queues. Unparseable JSON is a 502, not a pass. Without `--live-critic` the structural critic remains (mode `heuristic`).
+- **Context:** #428 already accepted plans on structural B′ only. The owner asked to add the live Gemini critic rather than leave it as a later slice.
+- **Impact:** `completeThroughStageB` is async and accepts an injected `critic`. Unit tests inject `callModel` and never hit Gemini.
+
+## [2026-08-18-0010] Stage C May Open a noemi-agent PR from a Grok Draft
+
+- **Decision:** `--implement --open-pr` drafts files with Grok (`XAI_API_KEY`, Fetch-on-Demand, highest preview then stable, optional `XAI_CODE_MODEL` pin) and opens the PR as `noemi-agent` against `develop` then `dev`. Paths outside the plan, governance carve-outs, and secret-shaped contents are refused. The token must resolve to `AGENT_GH_EXPECTED_LOGIN`. An existing head branch is refused, not overwritten. Conductor/reviewer tokens cannot open. Tests inject the writer and `gh()`; they do not open live PRs. The reusable pickup workflow still only prepares the envelope.
+- **Context:** #428 prepared Stage C without a writer. The owner asked to add the Grok open-PR path on the same PR.
+- **Impact:** `coding-loop/writer.js` + `openImplementationPr`. `--open-pr` without `--implement` or without `XAI_API_KEY` exits 2.
 
 ## [2026-08-19-0001] Scheduled Doc Run: Skills Half of the Substantive-Remediation Question Resolved by Action; Skills-Distribution Surface Recorded as Ungoverned and Live-Stranded; `skills-dist/` Layout Drift Fixed
 
@@ -1081,3 +1122,9 @@
 - **Decision:** `callGemini`'s optional `fetchImpl` has **no default**. Production (`main` calls with four arguments) goes through `geminiPost` / `https.request`. Tests pass an explicit function. `typeof fetchImpl === 'function'` remains the test seam inside `callGeminiOnce`. Defaulting `fetchImpl = fetch` would send production back through undici's 300s cap and undo [2026-08-20-0002].
 - **Context:** Review of #443 (merged 16:20 UTC) found `callGemini(..., fetchImpl = fetch)` so Node's global `fetch` (a function) always won. The follow-up #428 review after that merge still died as `TypeError: fetch failed` with no cause code, matching the old path.
 - **Impact:** `callGemini.length` is 5. A regression test forbids restoring the default.
+
+## [2026-08-20-0005] Omitting --scan-status Does Not Run the Local Scanner
+
+- **Decision:** `coding-loop/run.js` treats a missing scan assertion as `UNSCANNED` → `REFUSED`. The local scanner (`coding-loop/scan.js`) runs only when the caller passes `--scan`. `--scan-status` remains the precomputed-result flag. Pickup (`.github/workflows/coding-loop.yml`) passes `--scan` explicitly. This supersedes the "omit `--scan-status` and the runner scans" clause of [2026-08-18-0008].
+- **Context:** Review of #428 found `main()` overrode `buildGateInputs`'s `null` scan with `scanIssueBody(...)`, which returns `APPROVED` on ordinary issue text. Help text and the fail-closed test (`nothing asserted means nothing granted`) described omission as `REFUSED`; only the helper was tested, so production failed open.
+- **Impact:** `resolveScanInput` is the function `main()` uses. The existing fail-closed test now covers that path. The reusable workflow asserts `--scan` and still does not hardcode `--scan-status APPROVED`.

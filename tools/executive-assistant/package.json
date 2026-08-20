@@ -4,6 +4,9 @@
   "description": "Project NoéMI Gmail Executive Assistant Cloud Run Tool",
   "main": "server.js",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "test": "vitest run",
     "start": "node server.js"

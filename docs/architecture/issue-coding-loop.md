@@ -69,9 +69,26 @@ vs `.github/workflows/ai-review.yml`).
 | Product (`coding-loop/*.js`, skills, `docs/model-routing.json`) | skip / refuse / needs-info / accepted / carve-out; identity checks; model family contract | grow a job queue, webhook server, or conversation memory |
 | Host (CLI `run.js` `main()`, Actions `coding-loop.yml`, later Mastra/n8n/Temporal) | when the loop starts, where labels are stored, how a run is re-queued | re-encode `classifyIssue`, default a missing scan to `APPROVED`, post as the wrong identity |
 
-**Current host:** Node CLI plus the reusable workflow
+**Fleet host (unattended):** Node CLI plus the reusable workflow
 `.github/workflows/coding-loop.yml` (callers pin `@main` after CalVer). Pickup
 passes `--scan` explicitly; omitting `--scan` and `--scan-status` is `REFUSED`.
+
+**Interactive host (no Mastra required):** Claude Code. Fable 5 or Opus 4.8
+is the session Orchestrator (`agents/engineering/orchestrator.md`). It
+**triggers Grok** through the existing plugin
+(`docs/tool-usages/grok-build-claude-code.md`: `/grok-build:check` then
+`/grok-build:delegate` for Stage C write work, `/grok-build:review` for a
+second-family look). Cheap mechanical work may use the `bulk` family in
+`docs/model-routing.json` — Gemini Flash (highest 3.x Flash in the catalogue:
+3.7 when listed, else 3.6) or Sonnet 5. Flash is **not** the fleet PR-review
+model (floor remains Pro). Lab examples stay pinned to Gemini 3.6 Flash.
+
+Mastra remains a *candidate* later host for a durable issue webhook. It is
+not how Fable/Opus learn to drive Grok. Classman curriculum delivery is out
+of this repository's purview.
+
+The `noemi-conductor` GitHub App is still planned, not provisioned. Do not
+post conductor comments as `noemi-agent` or the reviewer.
 
 **Plug a different host** (preference order):
 
@@ -242,10 +259,19 @@ stage family:
    cheaper, shallower model.
 
 Families and defaults live in `docs/model-routing.json`. Changing models is a
-PR to that file, not a host-framework deploy. The Gemini resolver already exists
-(`scripts/resolve-gemini-model.js`). The xAI resolver lives in
-`coding-loop/writer.js`. An Anthropic resolver for Fable is still missing and
-must implement this same selection contract, regardless of host.
+PR to that file, not a host-framework deploy.
+
+| Stage | Family | Host today |
+|---|---|---|
+| triage / plan | Fable 5 Max | Heuristic in `coding-loop/`; live Fable in Claude Code via Orchestrator `model` |
+| code | Grok latest, effort xHigh | CLI `XAI_API_KEY` (`writer.js`); interactive `/grok-build:delegate` |
+| redteam | Gemini Pro | `critic.js` / fleet `review-pr.js` |
+| bulk | Gemini Flash (highest 3.x) or Sonnet 5 | Claude Code Orchestrator; **not** fleet PR review |
+
+The Gemini resolver already exists (`scripts/resolve-gemini-model.js`). The
+xAI resolver lives in `coding-loop/writer.js`. An Anthropic resolver for
+unattended Fable in the CLI runner is still missing; until it exists, Fable
+runs only in Claude Code sessions.
 
 ## Labels
 

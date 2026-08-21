@@ -1,0 +1,26 @@
+# Coding loop — fleet caller.
+#
+# Delegates to project-noemi/agents so loop logic lives in one place.
+# Enable after vars.CODING_LOOP_BUDGET_OK=true and a conductor token exist.
+# Does not approve, merge, or write code.
+name: Coding Loop
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: 'Issue number'
+        required: true
+        type: string
+
+jobs:
+  loop:
+    uses: project-noemi/agents/.github/workflows/coding-loop.yml@main
+    permissions:
+      contents: read
+      issues: write
+    secrets: inherit
+    with:
+      issue: ${{ inputs.issue || github.event.issue.number }}

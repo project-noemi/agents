@@ -172,6 +172,7 @@ test('contributor guide documents the canonical validation and security flow', (
 test('root env template documents the shared Gemini runtime key', () => {
     const envTemplate = read('.env.template');
     assert.match(envTemplate, /^GEMINI_API_KEY=/m);
+    assert.match(envTemplate, /^XAI_API_KEY=/m);
 });
 
 test('repo pins the Node baseline consistently across CI, package metadata, and local version files', () => {

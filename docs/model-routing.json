@@ -27,6 +27,17 @@
       "provider": "google",
       "family": "gemini-pro",
       "selection": "highest-preview-then-stable"
+    },
+    "bulk": {
+      "provider": "google",
+      "family": "gemini-flash",
+      "selection": "highest-preview-then-stable",
+      "$comment": "Cheap mechanical work. Discover the highest 3.x Flash (3.7 when listed, else 3.6). Alternate: Anthropic sonnet-5 via Claude Code. Never use Flash for fleet PR review (floor remains Pro).",
+      "alternate": {
+        "provider": "anthropic",
+        "family": "sonnet-5",
+        "selection": "highest-preview-then-stable"
+      }
     }
   }
 }

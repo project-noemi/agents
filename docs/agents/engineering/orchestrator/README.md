@@ -6,7 +6,7 @@ The Orchestrator is the model-selection and delegation authority for Claude Code
 
 | Work category | Default model | Why |
 |---------------|---------------|-----|
-| Bulk / mechanical (clear-spec implementation, data analysis, migrations) | `gpt-5.5` | Cheap and token-efficient |
+| Bulk / mechanical (clear-spec implementation, data analysis, migrations) | `gpt-5.5`, or Gemini Flash / `sonnet-5` (`docs/model-routing.json` stage `bulk`) | Cheap; Flash is not the fleet PR-review model |
 | User-facing (UI, copy, API design) | Any model with **taste ≥ 7** (`sonnet-5`, `opus-4.8`, `fable-5`) | Taste is the binding constraint |
 | Review / verification | `fable-5` or `opus-4.8` (optionally `gpt-5.5` **or Grok Build** as a second perspective) | High intelligence for adversarial review |
 
@@ -30,6 +30,10 @@ Grok Build is **not** scored in the matrix above. It is a separate **peer bridge
 1. **Defaults, not limits.** If a cheaper model's output misses the bar, rerun with a smarter one without asking. Judge the output, not the price tag.
 2. **Conflict ordering:** for anything that ships, **intelligence > taste > cost**. Cost is a tie-breaker only.
 3. **Native mechanisms only.** No custom bash wrappers around model calls. Use Agent/Workflow model parameters, the Codex plugin, or the Grok Build plugin — not hand-rolled CLI glue that skips lifecycle tracking.
+
+## Issue-coding loop (interactive)
+
+Claude Code may host the loop without Mastra (Decision [2026-08-20-0008]). Fable 5 or Opus 4.8 orchestrates; Grok is triggered with `/grok-build:delegate` after `/grok-build:check` ([Grok Build ↔ Claude Code](../../../tool-usages/grok-build-claude-code.md)). Cheap steps may use Gemini Flash (highest 3.x Flash) or `sonnet-5`. Unattended pickup remains `coding-loop/run.js` + Actions.
 
 ## Delegation Mechanisms
 

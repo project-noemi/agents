@@ -46,6 +46,7 @@ One row per disagreement. Keep reasons short and concrete.
 
 | Date | PR | Model | Gate | Reviewer said | Human did | Direction | Reason |
 |---|---|---|---|---|---|---|---|
+| 2026-08-26 | #455 | publishers/google/models/gemini-3.1-pro-preview | framing | framing fail: The PR description claims 'No new questions raised' but the diff adds two new questions, including a major security finding about 'secrets: | **merged over** | reviewer misinterpreted | manual override because the PR was set up in my name |
 | 2026-08-26 | #457 | publishers/google/models/gemini-3.1-pro-preview | framing | framing fail: The PR description claims 'No new questions raised' and that the backlog is 'unchanged', but the diff against the base branch (`develop`) in | **merged over** | reviewer misinterpreted | manual override because the PR was set up in my name |
 | 2026-08-26 | #459 | publishers/google/models/gemini-3.1-pro-preview | framing | framing fail: The PR description explicitly claims "No new questions raised", but the diff adds two new questions. | **merged over** | reviewer misinterpreted | manual override because the PR was set up in my name |
 | 2026-08-20 | #443 | publishers/google/models/gemini-3.1-pro-preview | framing | framing fail: The PR claims to replace global fetch with https.request to fix the 5-minute timeout, but the implementation defaults to using fetch. | **merged over** | human error | reviewer was right, this code should not have been approved |

@@ -19,6 +19,6 @@
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.10",
     "supertest": "^7.0.0",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.11"
   }
 }

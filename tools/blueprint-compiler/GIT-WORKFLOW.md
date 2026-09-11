@@ -20,9 +20,9 @@ project branch, how to keep your work current, and how to land it. For *what* to
 | `feat/tools-blueprint-compiler` | **Your project branch.** Everything the team builds collects here. | Only by merging a reviewed pull request. |
 | `feat/compiler-<topic>` | Your own short-lived task branch. | Yes, this is where you work. |
 
-The project branch flows to `develop` through [PR #475](https://github.com/project-noemi/agents/pull/475),
-and `develop` reaches `main` through a release PR. You never need to touch either of those.
-Your world is the bottom two rows.
+The project branch reaches `develop` through a pull request at the end of the project, and
+`develop` reaches `main` through a release PR. You never need to touch either of those. Your
+world is the bottom two rows.
 
 ### Protection on the project branch
 

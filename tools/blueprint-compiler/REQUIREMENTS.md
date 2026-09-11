@@ -61,7 +61,7 @@ Autonomous Guardian review agent · Presidio PII sidecar · observability dashbo
 
 - Public target is `project-noemi/agents` under FSL-1.1-Apache-2.0 (auto-converts to Apache-2.0 after two years). No IP assignment. Commits under the student’s own name.
 - Node.js 24 baseline.
-- PRs target `develop`. `main` is release-only. Green pipeline or no merge. Gitleaks on every PR.
+- `main` is release-only. Green pipeline or no merge. (PR targeting and secret scanning changed — see A9 and A10.)
 - Personas keep the headings in `docs/AGENT_TEMPLATE.md`.
 - Client sets priorities. Team estimates. Two-week sprints. Weekly demo + planning with the client. Daily scrum and retrospective without the client.
 - Sprint 1 is small: environment green and one passing PR.
@@ -71,7 +71,7 @@ Autonomous Guardian review agent · Presidio PII sidecar · observability dashbo
 
 ## 4. Amendments agreed 1 September 2026
 
-Copying the proposal verbatim would send the team after a schema and a calendar that do not exist. These lines replace the stale ones.
+Copying the proposal verbatim would send the team after a schema and a calendar that do not exist. These lines replace the stale ones. A1–A8 were agreed 1 September 2026; **A9–A11 were added 11 September 2026** (Decision [2026-09-11-0001]) after the branch model was formalized.
 
 | # | Proposal said | Requirement now |
 |---|---|---|
@@ -83,6 +83,9 @@ Copying the proposal verbatim would send the team after a schema and a calendar 
 | A6 | Seven sprints + week-15 wrap by 18 December | Course calendar is **six sprints (24 Aug – 29 Nov) + Innovation Fair 8 December**. Same three MVP pieces, remapped. |
 | A7 | Invent the working method as you go | Use the existing **`coding-loop/`**. Do not invent a second agentic workflow. |
 | A8 | Students might work on a private NewPush copy | Working tree is public `project-noemi/agents`. `newpush/newpush-agents` is a sync target, not the student tree. |
+| A9 | PRs target `develop` | PRs target **`feat/tools-blueprint-compiler`**, this engagement's registered integration branch. It collects the semester and promotes to `develop` as one reviewed unit. GitHub defaults a new PR's base to `develop` — change it. The branch is registered in `docs/branch-model.json` with a profile in `engagements/mines-csci370-fall-2026.md`, and carries the same validation gate `develop` carries. Day-to-day commands: [GIT-WORKFLOW.md](GIT-WORKFLOW.md). |
+| A10 | Gitleaks on every PR | There is **no** Gitleaks workflow in this repository; that line was never true. GitHub secret scanning and push protection were enabled on 2026-09-11 (Decision [2026-09-11-0001]) and now block a detected credential at push time. This is not a reason to relax: the repository is **public**, so a credential that does land is exposed immediately, and because force-push is blocked on the integration branch, removing one needs a repository administrator. Credentials resolve at runtime — see [AGENTS.md](AGENTS.md). |
+| A11 | Keeping the branch current is implicit | The **team** merges `develop` into `feat/tools-blueprint-compiler` at least once per sprint, by merge and never by rebase (force-push is blocked, so history only moves forward). A draft PR to `develop` stays open for the engagement, running the full gate on every push while remaining unmergeable. |
 
 ---
 

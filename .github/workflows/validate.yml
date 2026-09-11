@@ -5,9 +5,11 @@ on:
     branches:
       - develop
       - main
-      # Mines CSCI 370 Field Session project branch. Students commit here for the
-      # whole semester and their PRs target it rather than develop, so it needs the
-      # same gate develop has or their work is unvalidated until PR #475 merges.
+      # Registered integration branches (docs/branch-model.json). These are
+      # long-lived branches that collect an engagement's work and promote it to
+      # develop as one unit, so they are governed as mainlines and carry the same
+      # gate develop carries. scripts/audit-repo.js (checkBranchModel) fails the
+      # audit if an active registration is missing from these filters.
       - feat/tools-blueprint-compiler
   pull_request:
     branches:

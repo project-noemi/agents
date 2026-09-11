@@ -30,3 +30,4 @@ Live providers (Gemini + Grok), skill resolution, and Mastra instantiation are l
 - [REQUIREMENTS.md](REQUIREMENTS.md) — Field Session requirements (proposal intent + 1 Sep 2026 amendments)
 - [ARCHITECTURE.md](ARCHITECTURE.md) — pipeline and IR
 - [AGENTS.md](AGENTS.md) — secrets, loop, and package contract
+- [GIT-WORKFLOW.md](GIT-WORKFLOW.md) — branch map, staying up to date, and opening PRs

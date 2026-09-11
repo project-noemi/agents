@@ -226,7 +226,7 @@ git branch -d feat/compiler-skill-resolver
 | `git push --force` to `feat/tools-blueprint-compiler` | Blocked by the ruleset. Use a pull request. |
 | `git push origin --delete feat/tools-blueprint-compiler` | Blocked by the ruleset. The branch is permanent for the semester. |
 | `git rebase` the project branch | Same rejection, plus a rewritten local history to clean up. |
-| Commit an API key, token, or `.env` value | Gitleaks runs on every PR and will fail it. Credentials are injected at runtime — see [AGENTS.md](AGENTS.md). |
+| Commit an API key, token, or `.env` value | This repository is **public**, so a pushed key is exposed the moment it lands — assume it is compromised and rotate it. Nothing scans for you automatically today. Credentials are injected at runtime — see [AGENTS.md](AGENTS.md). |
 | Commit `node_modules/` or coverage output | Bloats the repository and conflicts constantly. |
 | Open a PR against `develop` | Your work collects on the project branch first. |
 | Work directly on `feat/tools-blueprint-compiler` | Nobody can review it, and you will collide with teammates. |
@@ -248,6 +248,11 @@ git branch -d feat/compiler-skill-resolver
 When something looks unrecoverable, stop and ask before running another command. Git keeps
 almost everything for 90 days; the usual way work is actually lost is a second command typed
 in a hurry to fix the first.
+
+**One exception to "nothing is lost":** a secret pushed to the project branch cannot be
+scrubbed by the usual force-push, because force-push is blocked there. Removing it needs a
+repository admin to lift the ruleset first. Tell the client immediately rather than trying to
+fix it yourself — and rotate the credential, since it is public from the moment it lands.
 
 ---
 

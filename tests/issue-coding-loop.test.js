@@ -13,7 +13,7 @@ function readJson(relativePath) {
   return JSON.parse(read(relativePath));
 }
 
-const REQUIRED_STAGES = ['triage', 'plan', 'code', 'redteam'];
+const REQUIRED_STAGES = ['triage', 'plan', 'code', 'redteam', 'bulk'];
 const SKILL_REF_RE = /\*\*Skill:\*\*\s+`([^`]+)`/g;
 
 test('model-routing.json declares reviewer-style selection and a plan cycle limit', () => {
@@ -40,6 +40,11 @@ test('model-routing.json declares reviewer-style selection and a plan cycle limi
   assert.equal(routing.stages.code.effort, 'xhigh');
   assert.equal(routing.stages.redteam.provider, 'google');
   assert.equal(routing.stages.redteam.family, 'gemini-pro');
+  assert.equal(routing.stages.bulk.provider, 'google');
+  assert.equal(routing.stages.bulk.family, 'gemini-flash');
+  assert.equal(routing.stages.bulk.alternate.provider, 'anthropic');
+  assert.equal(routing.stages.bulk.alternate.family, 'sonnet-5');
+  assert.ok(!('model' in routing.stages.bulk), 'bulk must not hardcode a Flash slug');
 });
 
 test('internal tenant fixture matches the entitlements schema shape', () => {

@@ -20,7 +20,7 @@ Assign the right model to every unit of work in a Claude Code orchestration sess
 ## Rules & Constraints (4D Diligence)
 1. **Defaults, not limits:** The model rankings are defaults. You have standing permission to override them — if a cheaper model's output does not meet the bar, rerun or redo the work with a smarter model without asking. Judge the output, not the price tag. Escalating cost is cheaper than shipping mediocre work.
 2. **Conflict ordering:** For anything that ships, resolve conflicting axes in the order **intelligence > taste > cost**. Cost is a tie-breaker only.
-3. **Bulk/mechanical work** (clear-spec implementation, data analysis, migrations): default to `gpt-5.5` — it is cheap and token-efficient.
+3. **Bulk/mechanical work** (clear-spec implementation, data analysis, migrations): default to `gpt-5.5` (Codex plugin) **or** the coding-loop `bulk` family — Gemini Flash (highest 3.x Flash in the catalogue) or `sonnet-5`. Never use Flash for fleet PR review (Pro floor).
 4. **User-facing work** (UI, copy, API design): require a model with **taste ≥ 7**.
 5. **Reviews of plans/implementations:** default to `fable-5` or `opus-4.8`, optionally adding `gpt-5.5` (Codex) and/or Grok Build (`/grok-build:review` / `/grok-build:critique`) as independent second-family perspectives.
 6. **Never use Haiku.**
@@ -68,6 +68,7 @@ Rankings, higher = better. Cost reflects actual paid cost (not list price). Inte
 - For Claude models, set the Agent/Workflow `model` parameter.
 - For `gpt-5.5`, invoke the `openai/codex-plugin-cc` plugin's slash commands or `codex-cli-runtime` skills directly (see Tool Usage). Adopt configuration from `~/.codex/config.toml`.
 - For Grok Build review, critique, or write-capable rescue, invoke `/grok-build:*` (after `/grok-build:check`) or the `grok-build:grok-delegate` subagent. Prefer bridge `--background` for long work so stop owns both process trees.
+- When this session is hosting the **issue-coding loop** (`docs/architecture/issue-coding-loop.md`): Fable/Opus keep triage and plan; dispatch Stage C implementation with `/grok-build:delegate` (not a custom `curl` to xAI). Pass `--profile spec` when the issue is a persona or skill. Do not stand up Mastra for this.
 
 ### 4. Review and Escalate
 - Keep the closed-loop review gate enabled so outputs are challenged before finalizing.

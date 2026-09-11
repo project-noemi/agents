@@ -46,6 +46,7 @@ One row per disagreement. Keep reasons short and concrete.
 
 | Date | PR | Model | Gate | Reviewer said | Human did | Direction | Reason |
 |---|---|---|---|---|---|---|---|
+| 2026-09-11 | #493 | publishers/google/models/gemini-3.1-pro-preview | framing | framing fail: The PR introduces a breaking change by bumping the minimum Node.js version requirement to >=22.0.0 without disclosing this risk in the descr | **merged over** | PENDING-HUMAN | PENDING-HUMAN — edit this row, then approve |
 | 2026-09-11 | #496 | publishers/google/models/gemini-3.1-pro-preview | premise | premise fail: 403 Refusal: Attempt to weaken existing review and merge-source controls (authorization guards) to allow direct pushes. | **merged over** | reviewer wrong domain | Catch 22 the review looked at a branch that needed the PR before the review could work. |
 | 2026-09-08 | #480 | publishers/google/models/gemini-3.1-pro-preview | premise | premise fail: The PR introduces unnecessary, repetitive changes by appending daily execution logs to Markdown documentation. | **merged over** | reviewer too strict | docs only |
 | 2026-09-08 | #481 | publishers/google/models/gemini-3.1-pro-preview | framing | framing fail: ([2026-08-08]'s suite-still-red state is re-confirmed in run-status bullets only; its question body is untouched by this diff.) | **merged over** | reviewer too strict | docs only |

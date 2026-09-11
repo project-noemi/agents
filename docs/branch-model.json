@@ -1,0 +1,12 @@
+{
+  "$comment": "Promotion order and registered integration branches (Decision [2026-09-11-0001]). Rules are written in terms of position in `trunks`, never in terms of branch names, so introducing a staging or release line is a one-line edit here and requires no rewording of CONTRIBUTING.md or docs/REQUIREMENTS.md. scripts/branch-model.js is the reader; .github/workflows/require-valid-pr-target.yml is the gate; scripts/audit-repo.js checks this file against the real CI filters.",
+  "trunks": ["develop", "main"],
+  "integrationBranches": [
+    {
+      "branch": "feat/tools-blueprint-compiler",
+      "engagement": "mines-csci370-fall-2026",
+      "status": "active",
+      "endsOn": "2026-12-18"
+    }
+  ]
+}

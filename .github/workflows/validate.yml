@@ -5,10 +5,17 @@ on:
     branches:
       - develop
       - main
+      # Registered integration branches (docs/branch-model.json). These are
+      # long-lived branches that collect an engagement's work and promote it to
+      # develop as one unit, so they are governed as mainlines and carry the same
+      # gate develop carries. scripts/audit-repo.js (checkBranchModel) fails the
+      # audit if an active registration is missing from these filters.
+      - feat/tools-blueprint-compiler
   pull_request:
     branches:
       - develop
       - main
+      - feat/tools-blueprint-compiler
   workflow_dispatch:
 
 concurrency:

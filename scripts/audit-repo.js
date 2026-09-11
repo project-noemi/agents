@@ -19,6 +19,16 @@ const agentsDir = path.join(repoRoot, 'agents');
 const skillsDir = path.join(repoRoot, 'skills');
 const agentsMdPath = path.join(repoRoot, 'AGENTS.md');
 
+const REQUIRED_ENGAGEMENT_SECTIONS = [
+    'Engagement Metadata',
+    'Purpose',
+    'Contribution Deltas',
+    'Mainline-Parity Controls',
+    'What Does Not Change',
+    'Exit Criteria',
+    'Audit Notes'
+];
+
 let failed = false;
 
 function fail(message) {
@@ -386,6 +396,59 @@ function checkMergeGateInvariant() {
     }
 }
 
+function checkBranchModel() {
+    console.log('Auditing branch model (PR targets and registered integration branches)...');
+    const { loadBranchModel, validateModel, activeIntegrationBranches } = require('./branch-model');
+
+    let model;
+    try {
+        model = loadBranchModel();
+    } catch (error) {
+        fail(`docs/branch-model.json could not be read: ${error.message}`);
+        return;
+    }
+
+    for (const error of validateModel(model)) {
+        fail(`docs/branch-model.json: ${error}`);
+    }
+
+    const validatePath = path.join(repoRoot, '.github/workflows/validate.yml');
+    const validateContent = fs.existsSync(validatePath) ? fs.readFileSync(validatePath, 'utf8') : '';
+    const targetGatePath = path.join(repoRoot, '.github/workflows/require-valid-pr-target.yml');
+    if (!fs.existsSync(targetGatePath)) {
+        fail('.github/workflows/require-valid-pr-target.yml is missing; the branch model is declared but nothing enforces it.');
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    for (const entry of activeIntegrationBranches(model)) {
+        // An active integration branch is governed as a mainline. Its profile is
+        // the human contract; these are the machine-checkable halves.
+        const profilePath = path.join(repoRoot, 'engagements', `${entry.engagement}.md`);
+        if (!fs.existsSync(profilePath)) {
+            fail(`Integration branch "${entry.branch}" names engagement "${entry.engagement}", but engagements/${entry.engagement}.md does not exist.`);
+        } else {
+            const profile = fs.readFileSync(profilePath, 'utf8');
+            if (!profile.includes(entry.branch)) {
+                fail(`engagements/${entry.engagement}.md does not name its own integration branch "${entry.branch}".`);
+            }
+            for (const section of REQUIRED_ENGAGEMENT_SECTIONS) {
+                if (!new RegExp(`^##\\s+${section}\\s*$`, 'mi').test(profile)) {
+                    fail(`engagements/${entry.engagement}.md is missing the required "${section}" section.`);
+                }
+            }
+        }
+
+        if (!validateContent.includes(entry.branch)) {
+            fail(`Integration branch "${entry.branch}" is registered active but absent from .github/workflows/validate.yml; it would carry no validation gate.`);
+        }
+
+        if (entry.endsOn && entry.endsOn < today) {
+            fail(`Engagement "${entry.engagement}" ended on ${entry.endsOn} but is still registered active. Close it in docs/branch-model.json.`);
+        }
+    }
+}
+
 function main() {
     checkTemplates();
     checkInlineSafetyContract();
@@ -396,6 +459,7 @@ function main() {
     checkLicensingPosture();
     checkPhaseZeroKit();
     checkMergeGateInvariant();
+    checkBranchModel();
 
     if (failed) {
         process.exit(1);

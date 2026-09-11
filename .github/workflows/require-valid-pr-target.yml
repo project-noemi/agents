@@ -1,0 +1,47 @@
+name: Require valid PR target
+
+# Where a pull request may POINT. This is the companion to, and deliberately not
+# a replacement for, `require-develop-source.yml`, which governs who may enter
+# `main`. The two are orthogonal:
+#
+#   require-develop-source.yml  -> who may enter the release line   (PR source)
+#   require-valid-pr-target.yml -> where a contributor may aim      (PR target)
+#
+# Do NOT fold this logic into the develop-source gate. scripts/audit-repo.js
+# (checkMergeGateInvariant) fails CI on any condition there beyond the literal
+# develop comparison, and .github/CODEOWNERS pins that file to the repository
+# owner (Decision [2026-08-01-0002]).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+jobs:
+  check-target-branch:
+    runs-on: ubuntu-latest
+    steps:
+      # Check out the DEFAULT branch, never the pull request's own code. A gate
+      # that reads its own rules out of the branch it is judging can be switched
+      # off by the branch it is judging — and `pull_request` builds fork code.
+      # The default branch is also the single source of truth for the model, so
+      # registering an integration branch takes effect for every open PR at once
+      # without propagating the config onto each branch.
+      - name: Check out the branch model from the default branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Verify the pull request targets a permitted branch
+        run: |
+          node scripts/branch-model.js check-target \
+            "${{ github.event.pull_request.head.ref }}" \
+            "${{ github.event.pull_request.base.ref }}"

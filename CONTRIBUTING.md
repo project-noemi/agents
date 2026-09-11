@@ -141,9 +141,41 @@ npm run validate
 
 ## Branching Model
 
-This repository uses a two-branch flow:
+### Promotion order
 
-- **`develop`** — integration branch. All feature, fix, and docs PRs target `develop`. Reviews land here.
+Branches form an ordered **promotion line**, declared in
+[`docs/branch-model.json`](docs/branch-model.json). Today it is `develop → main`; a `staging`
+or release line can be inserted later by editing that list, and the rules below do not change
+when it is — they are written in terms of a branch's *position*, not its name.
+
+**Where a pull request may point:**
+
+1. A pull request may target the **lowest trunk** (`develop`), or a **registered integration
+   branch** listed in the branch model.
+2. A trunk above the lowest accepts a pull request **only from the trunk directly below it**.
+   That is the promotion step, and it is the only way work moves up the line.
+3. No contributor pull request targets a trunk above the lowest. Today that means never
+   `main`; once a `staging` line exists it will also mean never `staging`, with no change to
+   this rule.
+4. An unregistered branch is not a valid target. A long-lived branch that collects work must
+   be registered, because an unregistered one carries none of the controls of the trunk it
+   will eventually merge into.
+
+`Require valid PR target` enforces 1–4. `Require develop source` separately enforces that the
+release line is entered only from `develop` — that gate governs a pull request's *source*,
+this one governs its *target*, and they are deliberately kept apart.
+
+### Registered integration branches
+
+Some groups — a student cohort, a client team — collect work on a long-lived integration
+branch and promote it as one reviewed unit. Those branches are declared in
+[`engagements/`](engagements/), which records what differs for that group and which
+mainline-parity controls are in force. **If an engagement profile names you, it lists the
+rules that differ for you; everything it does not name still applies.**
+
+### The trunks
+
+- **`develop`** — lowest trunk and integration branch. Feature, fix, and docs PRs target `develop` unless an engagement profile places you on a registered integration branch. Reviews land here.
 - **`main`** — release branch. Only `develop` is promoted into `main`. Branch protection:
   - **PR required** — no direct pushes to `main` for anyone (including admins and bots; `enforce_admins` is on).
   - **`check-source-branch` required** — the `Require develop source` workflow must pass; the promotion PR head must be `develop` (never weaken this gate).
@@ -152,8 +184,8 @@ This repository uses a two-branch flow:
 
 When opening a pull request:
 
-1. Branch from `develop` and keep your branch current with `develop` to avoid conflicts on generated files (`CLAUDE.md`, `GEMINI.md`, golden fixtures).
-2. Set the PR base branch to `develop` — not `main`. PRs to `main` from any source other than `develop` are blocked by CI.
+1. Branch from `develop` — or from your registered integration branch if an engagement profile places you on one — and keep it current to avoid conflicts on generated files (`CLAUDE.md`, `GEMINI.md`, golden fixtures).
+2. Set the PR base branch to `develop`, or to your registered integration branch — never `main`. Both the target rule and the develop-source gate are enforced by CI.
 3. Maintainers promote with a `develop` → `main` PR (not a direct push), for example:
 
 ```bash

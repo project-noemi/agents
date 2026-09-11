@@ -5,10 +5,15 @@ on:
     branches:
       - develop
       - main
+      # Mines CSCI 370 Field Session project branch. Students commit here for the
+      # whole semester and their PRs target it rather than develop, so it needs the
+      # same gate develop has or their work is unvalidated until PR #475 merges.
+      - feat/tools-blueprint-compiler
   pull_request:
     branches:
       - develop
       - main
+      - feat/tools-blueprint-compiler
   workflow_dispatch:
 
 concurrency:

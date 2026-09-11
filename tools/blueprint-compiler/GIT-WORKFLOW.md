@@ -154,8 +154,11 @@ cd tools/blueprint-compiler && npm test && cd ../..
 git push origin feat/tools-blueprint-compiler
 ```
 
-Coordinate before running this — it is a team-lead or client action, not something to do
-mid-sprint on your own. Everyone else then re-syncs their task branch with §4.
+**This is the team's job, not the client's.** The project branch has to keep tracking
+`develop` for the whole semester — if it is left alone it silently falls behind the rest of
+the repository, and the longer that runs the worse the eventual conflict gets. Do it at least
+once a sprint, and always right after a sprint demo. Announce it in the daily scrum first so
+nobody is mid-push, then everyone re-syncs their task branch with §4.
 
 Never run `git rebase` on `feat/tools-blueprint-compiler`. The ruleset will reject the push,
 and you will have rewritten your local history for nothing.

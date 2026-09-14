@@ -15,6 +15,7 @@ Agents (who)  →  compose  →  Skills (what)  →  use  →  MCP Protocols (ho
 | [Reporting](reporting/) | Structured Report, Alert & Notify | Standardized report generation; Slack/email delivery |
 | [Security](security/) | HMAC Sign & Submit, PII Scan | Cryptographic payload signing; data privacy scanning |
 | [Orchestration](orchestration/) | Dispatch & Coordinate, Issue Plan | Sub-agent delegation; issue plan plus plan red-team cycle |
+| [Operations](operations/) | Rotary Meeting Minutes, Rotary Annual Calendar, Rotary Speaker Brief | Evidence-based club records, year planning, and programme preparation |
 
 ## How Skills Work
 

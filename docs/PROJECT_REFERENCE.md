@@ -779,6 +779,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/examples/build-your-coding-loop.md`](examples/build-your-coding-loop.md) | Coder quick start: deploy an issue → PR loop on your `{company}-agents` copy |
 | [`coding-loop/`](../coding-loop/) | In-repo Coding Loop runtime (Stage A runner + operator checklist) |
 | [`docs/examples/`](examples/) | Example implementations (Docker sandbox, RFP Responder, Video Automation) |
+| [`docs/examples/rotary-club-operations.md`](examples/rotary-club-operations.md) | Rotary Explorer / Builder path: direct NotebookLM access, source coverage, governed operations persona, and synthetic exercises |
 | [`docs/examples/cross-model-review-setup.md`](examples/cross-model-review-setup.md) | Beginner walkthrough: machine identities, Gemini key options, and vault-backed CI for cross-model review |
 
 ---

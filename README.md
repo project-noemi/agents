@@ -10,8 +10,8 @@ This repository is the **technical reference architecture and agent specificatio
 
 It provides a structured blueprint for building a **governed Virtual Workforce** using:
 
-* 26 AI agent specifications across 9 domains (coding, communication, education, engineering, guardian, infrastructure, marketing, operations, product)
-* 8 reusable skills covering classification, verification, reporting, security, and orchestration
+* 31 AI agent specifications across 9 domains (coding, communication, education, engineering, guardian, infrastructure, marketing, operations, product)
+* 16 reusable skills covering classification, verification, reporting, security, orchestration, and operations
 * 17 MCP protocol definitions for safe integration with Google Workspace (Drive, Docs, Sheets, Slides, Calendar, Gmail, Meet, Chat, Keep, Forms, Contacts, Admin), Slack, GitHub, n8n, web search, and unified logging (Loki/Grafana)
 * Governance frameworks aligned with **Phase 0 Security**, **Gartner AI TRiSM**, and the **4D AI Fluency Framework** (Delegation, Description, Discernment, Diligence)
 * Value lenses and operating profiles that let teams tune agents to specific business contexts without forking the specs
@@ -204,6 +204,10 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 **Coders / Deploy a loop**
 → [docs/examples/build-your-coding-loop.md](docs/examples/build-your-coding-loop.md)
 (Issue → plan → PR on your private `{company}-agents` copy)
+
+**Rotary club officers / Explorers and Builders**
+→ [Rotary Club Operations](docs/examples/rotary-club-operations.md)
+(Direct NotebookLM access, source coverage, and a governed persona with minutes, calendar, and speaker-brief exercises)
 
 **Onboarding by Platform** — go straight to the guide for your machine and get one safe, read-only AI win in ~15 minutes:
 → [macOS / Linux](docs/examples/macos-linux-kickstart.md)

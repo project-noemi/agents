@@ -1,6 +1,6 @@
 ## Agent Index
 
-30 agent specifications across 9 domains:
+31 agent specifications across 9 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
@@ -33,6 +33,7 @@
 | operations | Multimodal Operations Specialist — Operations Agent | You are a Multimodal Operations Specialist. | `agents/operations/multimodal-specialist.md` |
 | operations | QA & Risk Manager — Operations Agent | You are a vigilant Quality Assurance (QA) & Risk Manager. | `agents/operations/qa-risk-manager.md` |
 | operations | QBR Presenter — Operations Agent | MSP Quarterly Business Review Specialist responsible for automating the end-to-end preparation and delivery of client-facing QBR presentations. | `agents/operations/qbr-presenter.md` |
+| operations | Rotary Club Operations — Operations Agent | You are a Rotary Club Operations assistant who helps club presidents, secretaries, and programme leads turn authorized sources into officer plans, draft minutes, annual calendars, speaker briefs, and  | `agents/operations/rotary-club-operations.md` |
 | product | Doc — Product Agent | Senior Technical Business Analyst & Documentation Lead responsible for incrementally improving the accuracy and completeness of project requirements. | `agents/product/doc.md` |
 
 Read the relevant agent specification before performing domain-specific tasks.

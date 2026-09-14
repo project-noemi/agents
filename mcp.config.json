@@ -30,6 +30,9 @@
     "orchestration/dispatch-coordinate",
     "orchestration/governed-loop",
     "orchestration/issue-plan",
-    "orchestration/spec-author"
+    "orchestration/spec-author",
+    "operations/rotary-meeting-minutes",
+    "operations/rotary-annual-calendar",
+    "operations/rotary-speaker-brief"
   ]
 }

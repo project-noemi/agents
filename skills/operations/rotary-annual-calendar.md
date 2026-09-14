@@ -10,7 +10,7 @@ Build a reviewable July–June club-operations calendar with officer ownership, 
 - **cadence** — Club-approved meeting and board recurrence rules, timezone, exceptions, and preparation lead times; missing values remain proposed assumptions.
 - **priorities** — Intended project and programme outcomes with owning roles and dependencies.
 - **obligations** — RI, district, club, or association items, each with source scope, source version/date, locator, due date if known, and verification status.
-- **source_status** — Access and verification status for both canonical notebooks and any current notices.
+- **source_status** — Access and verification status for both organization knowledge sources and any current notices.
 - **language** — English by default, or the requested working language.
 
 ## Procedure
@@ -49,10 +49,10 @@ Build a reviewable July–June club-operations calendar with officer ownership, 
 ## Data Inventory
 
 - **Inputs:** Planning year, cadence, priorities, role ownership, aggregate capacity constraints, and current-source references. Public examples must contain no real member schedules or private club events.
-- **Source of truth:** [Club-president notebook](https://notebooklm.google.com/notebook/79991b67-2486-4b44-a512-d161437750c4) for role and calendar context; [club-pattern notebook](https://notebook.google.com/notebook/ebe34c2c-d14f-4004-9eaa-d2bf27450686) for generalized annual preparation patterns. The relevant current RI/district/club document controls the actual obligation and date.
+- **Source of truth:** Organization-specific knowledge bases (e.g., NotebookLM notebooks, document repositories) for role and calendar context; containing role definitions, calendar context, and generalized preparation patterns. Deployment examples specify exact sources and access methods for generalized annual preparation patterns. The relevant current RI/district/club document controls the actual obligation and date.
 - **Outputs:** Draft annual calendar, evidence references appropriate to the audience, and unresolved verification tasks.
-- **State:** Ephemeral planning context only. No persistent member availability store, notebook replication, or external calendar writes.
-- **Access:** Tool-agnostic; an authorized human may query the notebooks directly. When content is unavailable, use supplied inputs and label the plan as generalized and notebook-unverified.
+- **State:** Ephemeral planning context only. No persistent member availability store, source replication, or external calendar writes.
+- **Access:** Tool-agnostic; an authorized human may query knowledge sources directly via their native interfaces. When content is unavailable, use supplied inputs and label the plan as generalized and source-unverified.
 
 ## Rules & Constraints (4D Diligence)
 
@@ -80,7 +80,7 @@ Emit separately to `stderr` or the host's audit channel. Validate strings for `t
 ```json
 {
   "task": "rotary-annual-calendar",
-  "inputs": ["synthetic annual planning brief", "notebooks: not consulted"],
+  "inputs": ["synthetic annual planning brief", "knowledge sources: not consulted"],
   "actions": ["built twelve-month plan", "checked year rollover", "isolated unscheduled obligations"],
   "risks": ["current district notices unavailable"],
   "result": "draft calendar returned for president and secretary review"

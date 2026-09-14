@@ -10,7 +10,7 @@ Prepare a practical speaker-session brief from an approved programme objective a
 - **speaker** — Approved public biography and topic scope if available; otherwise use `Guest Speaker` and identify what needs confirmation.
 - **venue_options** — Candidate labels and known capacity, accessibility, AV, catering, availability, cost/currency, and cancellation terms, with evidence and confirmation status.
 - **constraints** — Mandatory requirements, topic boundaries, approved budget if any, recording/publicity permission status, and timing allocation.
-- **source_status** — Notebook access status and approved source references for any factual recommendation.
+- **source_status** — Knowledge-source access status and approved source references for any factual recommendation.
 
 ## Procedure
 
@@ -44,10 +44,10 @@ Synthetic timing example:
 ## Data Inventory
 
 - **Inputs:** Approved session purpose, language, timing, biography, non-identifying venue facts, and logistical requirements. Do not copy private speaker directories, personal numbers, or member-linked health/access needs into public examples.
-- **Source of truth:** [Club-president notebook](https://notebooklm.google.com/notebook/79991b67-2486-4b44-a512-d161437750c4) for speaker and venue knowledge; [club-pattern notebook](https://notebook.google.com/notebook/ebe34c2c-d14f-4004-9eaa-d2bf27450686) for generalized programme practices. Actual price, availability, consent, and suitability require current evidence for the session.
+- **Source of truth:** Organization-specific knowledge bases (e.g., NotebookLM notebooks, document repositories) for speaker and venue knowledge; containing role definitions, calendar context, and generalized preparation patterns. Deployment examples specify exact sources and access methods for generalized programme practices. Actual price, availability, consent, and suitability require current evidence for the session.
 - **Outputs:** Draft brief, running order, venue comparison, and confirmation list. Only synthetic or reviewed non-identifying versions belong in git.
-- **State:** Ephemeral. No CRM, booking database, notebook export, or retained guest/member profiles.
-- **Access:** Tool-agnostic. Users with access may chat with the notebooks directly; no automated NotebookLM integration is required or implied. Report when neither source was consulted.
+- **State:** Ephemeral. No CRM, booking database, source export, or retained guest/member profiles.
+- **Access:** Tool-agnostic. Users with access may query knowledge sources directly via their native interfaces; no automated NotebookLM integration is required or implied. Report when neither source was consulted.
 
 ## Rules & Constraints (4D Diligence)
 
@@ -75,7 +75,7 @@ Emit separately to `stderr` or the host's audit channel. Validate strings for `t
 ```json
 {
   "task": "rotary-speaker-brief",
-  "inputs": ["synthetic session brief", "notebooks: not consulted"],
+  "inputs": ["synthetic session brief", "knowledge sources: not consulted"],
   "actions": ["drafted running order", "verified duration total", "listed venue confirmations"],
   "risks": ["speaker biography and venue requirements unconfirmed"],
   "result": "draft returned to programme lead; no booking or invitation"

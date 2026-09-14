@@ -10,7 +10,7 @@ Draft evidence-linked meeting minutes and an action register for Rotary club and
 - **notes** — Authorized notes or extracts, each with a source ID. Public exercises must use synthetic material.
 - **rules** — Applicable meeting authority, record requirements, and review process with source references; may be absent for a general draft.
 - **language** — Output language, English by default; preserve ambiguous original terms alongside translations.
-- **source_status** — Whether each canonical notebook was consulted, with underlying document version and locator for any factual claim taken from it.
+- **source_status** — Whether each organization knowledge source was consulted, with underlying document version and locator for any factual claim taken from it.
 
 ## Procedure
 
@@ -43,10 +43,10 @@ Use ISO dates when supplied unambiguously; keep an ambiguous date null and retai
 ## Data Inventory
 
 - **Inputs:** Authorized meeting metadata, notes, applicable rules, language, and source-status information. Treat original minutes and attendance lists as private; they must not enter public git history.
-- **Source of truth:** [Club-president notebook](https://notebooklm.google.com/notebook/79991b67-2486-4b44-a512-d161437750c4) for governance context and [club-pattern notebook](https://notebook.google.com/notebook/ebe34c2c-d14f-4004-9eaa-d2bf27450686) for generalized recording and follow-up patterns. Supplied evidence from the particular meeting determines what actually happened; historical patterns never fill missing facts.
+- **Source of truth:** Organization-specific knowledge bases (e.g., NotebookLM notebooks, document repositories) for governance context and containing role definitions, calendar context, and generalized preparation patterns. Deployment examples specify exact sources and access methods for generalized recording and follow-up patterns. Supplied evidence from the particular meeting determines what actually happened; historical patterns never fill missing facts.
 - **Outputs:** Draft record, evidence links safe for the intended audience, action register, and unknowns. Public examples use synthetic roles and events only.
-- **State:** Ephemeral. No autonomous notebook export, member register, or persistent minutes archive. Official retention belongs to the club's approved private system.
-- **Access:** Tool-agnostic; authorized humans may query the notebooks directly and supply approved extracts. Inaccessible notebooks remain explicitly unconsulted.
+- **State:** Ephemeral. No autonomous source export, member register, or persistent minutes archive. Official retention belongs to the club's approved private system.
+- **Access:** Tool-agnostic; authorized humans may query knowledge sources directly via their native interfaces and supply approved extracts. Inaccessible sources remain explicitly unconsulted.
 
 ## Rules & Constraints (4D Diligence)
 
@@ -74,7 +74,7 @@ Emit separately to `stderr` or the host's audit channel. Validate the five field
 ```json
 {
   "task": "rotary-meeting-minutes",
-  "inputs": ["synthetic meeting notes", "notebooks: not consulted"],
+  "inputs": ["synthetic meeting notes", "knowledge sources: not consulted"],
   "actions": ["mapped evidence", "separated proposals and decisions", "checked contradictions"],
   "risks": ["meeting formalities require human verification"],
   "result": "draft and action register returned for secretary review"

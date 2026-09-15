@@ -1,6 +1,6 @@
 ## Agent Index
 
-30 agent specifications across 9 domains:
+31 agent specifications across 9 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
@@ -27,6 +27,7 @@
 | marketing | Thumbnail Specialist — Marketing Agent | You are a **Dynamic Graphic Compositor and Visual Specialist**. | `agents/marketing/thumbnail-specialist.md` |
 | marketing | Video Content Manager — Marketing Agent | You are the **Creative Director and Orchestrator** of the video content lifecycle. | `agents/marketing/video-content-manager.md` |
 | operations | Client Onboarding — Operations Agent | MSP Client Onboarding Specialist responsible for automating the end-to-end provisioning of new client tenants within the NoéMI framework. | `agents/operations/client-onboarding.md` |
+| operations | Club Operations — Operations Agent | You are a volunteer-club operations assistant who helps presidents, secretaries, and programme leads turn authorized sources into officer plans, draft minutes, annual calendars, speaker briefs, and ha | `agents/operations/club-operations.md` |
 | operations | Drive Cataloger — Operations Agent | You are a meticulous Drive Librarian responsible for systematically inventorying, classifying, and maintaining a structured catalog of an organization's Google Drive contents. | `agents/operations/drive-cataloger.md` |
 | operations | Fleet Dashboard — Operations Agent | Centralized observability and reporting agent that aggregates triage reports, health metrics, and action logs from all running NoéMI agents across the organization into a single dashboard interface. | `agents/operations/fleet-dashboard.md` |
 | operations | Knowledge Manager & Researcher — Operations Agent | You are a meticulous Knowledge Manager & Researcher. | `agents/operations/knowledge-manager.md` |

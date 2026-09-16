@@ -153,7 +153,9 @@ governance carve-outs, and secret-shaped content. It does not approve or
 merge. Tests inject the model and GitHub clients; they do not open live PRs.
 
 Pickup: install `templates/ci/coding-loop-caller.yml` and set
-`CODING_LOOP_BUDGET_OK=true` only when the daily cap is real. The reusable
-workflow prepares the envelope; opening a PR is a separate producer
-invocation with `AGENT_GH_TOKEN` and `XAI_API_KEY`. Stage D delegates to
-the fleet reviewer when a PR URL exists (`coding-loop/stage-d.js`).
+`CODING_LOOP_BUDGET_OK=true` only when the daily cap is real. Optional
+`CODING_LOOP_LIVE_CRITIC=true` plus org WIF (same vars as the fleet
+reviewer) passes `--live-critic`; unset, Stage B′ stays structural. The
+reusable workflow prepares the envelope; opening a PR is a separate
+producer invocation with `AGENT_GH_TOKEN` and `XAI_API_KEY`. Stage D
+delegates to the fleet reviewer when a PR URL exists (`coding-loop/stage-d.js`).

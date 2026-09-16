@@ -2,6 +2,7 @@
 #
 # Delegates to project-noemi/agents so loop logic lives in one place.
 # Enable after vars.CODING_LOOP_BUDGET_OK=true and a conductor token exist.
+# Optional: vars.CODING_LOOP_LIVE_CRITIC=true plus org WIF for Gemini B′.
 # Does not approve, merge, or write code.
 name: Coding Loop
 

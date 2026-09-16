@@ -3,7 +3,9 @@
 #
 # Does not approve, merge, or write code. Conductor comments only when
 # CONDUCTOR_GH_TOKEN is injected. Budget is fail-closed: set
-# vars.CODING_LOOP_BUDGET_OK=true to assert capacity.
+# vars.CODING_LOOP_BUDGET_OK=true to assert capacity. Live Gemini B′ is
+# fail-closed too: set vars.CODING_LOOP_LIVE_CRITIC=true and org WIF
+# (same vars as the fleet reviewer). Unset, Stage B′ stays structural.
 name: Coding Loop
 
 on:
@@ -43,6 +45,7 @@ on:
 permissions:
   contents: read
   issues: write
+  id-token: write          # WIF for --live-critic; unused when that var is unset
 
 jobs:
   intake:
@@ -58,6 +61,35 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Check live-critic configuration
+        id: critic
+        env:
+          LIVE: ${{ vars.CODING_LOOP_LIVE_CRITIC }}
+          WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          GCP_SA: ${{ vars.GCP_SERVICE_ACCOUNT }}
+        run: |
+          if [[ "${LIVE}" != "true" ]]; then
+            echo "wanted=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          missing=()
+          [[ -z "${WIF_PROVIDER}" ]] && missing+=(GCP_WIF_PROVIDER)
+          [[ -z "${GCP_SA}" ]] && missing+=(GCP_SERVICE_ACCOUNT)
+          if (( ${#missing[@]} )); then
+            echo "::error title=live-critic requested without WIF::Missing: ${missing[*]}. Unset CODING_LOOP_LIVE_CRITIC or set the same org WIF vars as the fleet reviewer."
+            exit 1
+          fi
+          echo "wanted=true" >> "$GITHUB_OUTPUT"
+
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        if: steps.critic.outputs.wanted == 'true'
+        id: gcpauth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+
       - name: Run coding loop
         env:
           GH_TOKEN: ${{ secrets.CONDUCTOR_GH_TOKEN || github.token }}
@@ -66,12 +98,24 @@ jobs:
           ISSUE: ${{ inputs.issue || github.event.issue.number }}
           REPO: ${{ inputs.repo || github.repository }}
           BUDGET_OK: ${{ vars.CODING_LOOP_BUDGET_OK }}
+          LIVE_CRITIC: ${{ vars.CODING_LOOP_LIVE_CRITIC }}
           PROFILE: ${{ inputs.profile || 'code' }}
+          GCP_ACCESS_TOKEN: ${{ steps.gcpauth.outputs.access_token }}
+          GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT || 'project-noemi' }}
+          GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'global' }}
+          GEMINI_BACKEND: ${{ vars.GEMINI_BACKEND || 'vertex' }}
         run: |
           set -euo pipefail
           extra=()
           if [[ "${BUDGET_OK}" == "true" ]]; then
             extra+=(--budget-ok)
+          fi
+          if [[ "${LIVE_CRITIC}" == "true" ]]; then
+            if [[ -z "${GCP_ACCESS_TOKEN:-}" ]]; then
+              echo "::error title=live-critic without ADC::WIF did not yield GCP_ACCESS_TOKEN."
+              exit 1
+            fi
+            extra+=(--live-critic)
           fi
           if [[ -n "${CONDUCTOR_GH_TOKEN:-}" ]]; then
             extra+=(--post)

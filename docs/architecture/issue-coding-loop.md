@@ -217,7 +217,10 @@ Reuse the existing fleet reviewer (`scripts/review-pr.js` /
 
 Pickup is the reusable workflow `.github/workflows/coding-loop.yml` and
 `templates/ci/coding-loop-caller.yml`. Budget is fail-closed
-(`vars.CODING_LOOP_BUDGET_OK`). Pass `--scan` to run `coding-loop/scan.js`
+(`vars.CODING_LOOP_BUDGET_OK`). Live Gemini B′ is fail-closed
+(`vars.CODING_LOOP_LIVE_CRITIC`); unset, Stage B′ stays structural. When
+the var is true, pickup federates via the same org WIF as the fleet
+reviewer and passes `--live-critic`. Pass `--scan` to run `coding-loop/scan.js`
 on the fetched body, or `--scan-status` for a precomputed result. Omitting
 both classifies the issue as REFUSED (fail closed).
 

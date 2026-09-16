@@ -483,6 +483,11 @@ test('coding-loop workflow is reusable and does not default budget to ok', () =>
   assert.match(yml, /coding-loop\/run\.js/);
   assert.match(yml, /CODING_LOOP_BUDGET_OK/);
   assert.doesNotMatch(yml, /--budget-ok"/);
+  // Live Gemini B′ is opt-in. Hardcoding --live-critic would call Vertex on
+  // every pickup; omitting the var gate would fail open on ADC.
+  assert.match(yml, /CODING_LOOP_LIVE_CRITIC/);
+  assert.match(yml, /--live-critic/);
+  assert.match(yml, /google-github-actions\/auth@v2/);
   // Pickup must assert the local scanner. Hardcoding APPROVED would fail open.
   assert.match(yml, / --scan /);
   assert.doesNotMatch(yml, /--scan-status/);

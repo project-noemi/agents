@@ -3,25 +3,34 @@
 /**
  * Shared provider fallback utility.
  *
- * This utility does not know anything about Gemini, Grok, or Mock.
- * The caller supplies the providers and the order in which they
- * should be attempted.
+ * Retry behavior belongs to http.js / withRetry().
+ * This utility is responsible only for switching to the
+ * next configured provider after a provider-availability error.
  *
- * Example:
+ * Fallback-worthy errors:
+ *   - 429: rate limited
+ *   - 5xx: provider/server failure
+ *   - TypeError: network/fetch failure
  *
- * runWithFallbacks({
- *   preferred: 'gemini',
- *   fallbacks: ['mock'],
- *   providers: {
- *     gemini: () => callGemini(),
- *     mock: () => callMock(),
- *   },
- *  input is temp incase we want to pass parameter into the function calls of providers
- * });
- *
- * The fallback list is intentionally supplied by the caller.
- * A future IR / compile layer can provide that policy later.
+ * Other errors are thrown immediately because they generally
+ * represent bad configuration, invalid input, validation errors,
+ * or programming errors rather than temporary provider failure.
  */
+
+function isFallbackError(err) {
+  if (!err) return false;
+
+  if (Number.isInteger(err.status)) {
+    if (err.status === 429) return true;
+
+    if (err.status >= 500 && err.status < 600) {
+      return true;
+    }
+  }
+
+  return err.name === 'TypeError';
+}
+
 async function runWithFallbacks({
   preferred,
   fallbacks = [],
@@ -37,13 +46,13 @@ async function runWithFallbacks({
     ...fallbacks,
   ].filter(Boolean);
 
-  let lastError = null;
+  let lastFallbackError = null;
 
   for (const providerName of order) {
     const provider = providers[providerName];
 
-    // Provider is configured in the policy but unavailable
-    // in the current environment.
+    // The policy can name a provider that is not configured
+    // in the current environment. Skip it and continue.
     if (typeof provider !== 'function') {
       continue;
     }
@@ -51,12 +60,16 @@ async function runWithFallbacks({
     try {
       return await provider(input);
     } catch (error) {
-      lastError = error;
+      if (!isFallbackError(error)) {
+        throw error;
+      }
+
+      lastFallbackError = error;
     }
   }
 
-  if (lastError) {
-    throw lastError;
+  if (lastFallbackError) {
+    throw lastFallbackError;
   }
 
   throw new Error(
@@ -65,5 +78,6 @@ async function runWithFallbacks({
 }
 
 module.exports = {
+  isFallbackError,
   runWithFallbacks,
 };

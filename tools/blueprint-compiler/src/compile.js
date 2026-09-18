@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { parseBlueprint } from "./parse.js";
 import { validateBlueprint } from "./validate.js";
 import { runMock } from "./providers/mock.js";
+import { runGemini } from "./providers/gemini.js";
 import { runWithFallbacks } from "./providers/fallback.js";
 
 /**
@@ -26,6 +27,7 @@ export async function compileFile(filePath, opts = {}) {
 
   const providers = {
     mock: (input) => runMock(ir, input),
+    gemini: (input) => runGemini(ir, input),
   };
 
   const run = await runWithFallbacks({

@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Shared provider fallback utility.
  *
@@ -17,7 +15,7 @@
  * or programming errors rather than temporary provider failure.
  */
 
-function isFallbackError(err) {
+export function isFallbackError(err) {
   if (!err) return false;
 
   if (Number.isInteger(err.status)) {
@@ -31,7 +29,7 @@ function isFallbackError(err) {
   return err.name === 'TypeError';
 }
 
-async function runWithFallbacks({
+export async function runWithFallbacks({
   preferred,
   fallbacks = [],
   providers,
@@ -76,8 +74,3 @@ async function runWithFallbacks({
     'No available providers could handle the request.'
   );
 }
-
-module.exports = {
-  isFallbackError,
-  runWithFallbacks,
-};

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { parseBlueprint } from "./parse.js";
 import { validateBlueprint } from "./validate.js";
 import { runMock } from "./providers/mock.js";
-import { runWithFallbacks } from "./providers-loop/fallback.js";
+import { runWithFallbacks } from "./providers/fallback.js";
 
 /**
  * @param {string} filePath

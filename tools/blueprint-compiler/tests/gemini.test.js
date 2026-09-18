@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { runGemini } from "../src/providers/gemini.js";
+import { withEnv, withFetch } from "../src/fake-network.js";
 
 const ir = {
   id: "coding/architect",
@@ -8,29 +9,6 @@ const ir = {
   sections: { Role: "Keep structure sound.\nReview diffs for drift." },
   skills: ["verification/pre-flight-check"],
 };
-
-function withEnv(vars, fn) {
-  const saved = {};
-  for (const key of Object.keys(vars)) {
-    saved[key] = process.env[key];
-    if (vars[key] === undefined) delete process.env[key];
-    else process.env[key] = vars[key];
-  }
-  return fn().finally(() => {
-    for (const key of Object.keys(saved)) {
-      if (saved[key] === undefined) delete process.env[key];
-      else process.env[key] = saved[key];
-    }
-  });
-}
-
-function withFetch(stub, fn) {
-  const original = globalThis.fetch;
-  globalThis.fetch = stub;
-  return fn().finally(() => {
-    globalThis.fetch = original;
-  });
-}
 
 test("missing GEMINI_API_KEY fails closed without ever calling fetch", async () => {
   await withEnv({ GEMINI_API_KEY: undefined }, () =>

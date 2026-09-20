@@ -141,6 +141,10 @@ npm run validate
 
 ## Branching Model
 
+### Branch Naming
+
+For comprehensive branch naming rules (types, format, examples), see the **[Branch Naming](docs/DEV_AGENT_PROMPT.md#branch-naming)** section in `docs/DEV_AGENT_PROMPT.md` — the fleet-wide canonical reference. Quick summary: use `<type>/<area>-<slice>` with lowercase and hyphens only (no dots, no underscores, no spaces).
+
 ### Promotion order
 
 Branches form an ordered **promotion line**, declared in

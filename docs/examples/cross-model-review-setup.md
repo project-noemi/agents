@@ -233,8 +233,10 @@ non-secrets harder to audit.
 ⚠️ `GCP_WIF_PROVIDER` takes the project **number**, not the project ID. Using the
 ID fails with a message that does not mention which field is wrong.
 
-The workflow requires **all six** and skips with a notice naming the missing
-ones — so a partial rollout is safe, but a green job does not mean a review ran.
+The workflow requires **all six** and fails visibly when any are missing. Fork
+PRs cannot access organization variables (GitHub security model), so they fail
+with a clear error. Maintainers can trigger reviews on fork PRs manually via
+`workflow_dispatch` — see **Fork Pull Requests** below.
 
 ## Enable the API
 
@@ -512,7 +514,85 @@ than no review, because you would trust it.
 
 ---
 
-# Part 6 — How a review actually goes
+# Part 6 — Fork Pull Requests
+
+GitHub withholds organization and repository Actions variables from workflows
+triggered by fork pull requests on the `pull_request` event. This prevents
+malicious fork PRs from exfiltrating secrets via workflow code.
+
+When a fork PR arrives, the AI review workflow:
+
+1. Detects missing configuration variables
+2. **Fails visibly** with an error explaining the fork limitation
+3. Posts no green check that could be mistaken for a completed review
+
+### Automatic trigger via label (preferred)
+
+The **preferred path** for fork PRs: add the `ai-review` label after reviewing
+the code. This triggers the advisory review in a privileged context:
+
+1. Fork PR arrives
+2. Automatic review fails visibly (GitHub withholds variables from fork PRs)
+3. **You review the code**
+4. **You add the 'ai-review' label** (trust signal)
+5. Label addition triggers the advisory review in base-repo context
+6. Advisory runs with access to credentials and posts findings
+
+**Why label-gated instead of approval-gated?** GitHub withholds secrets and
+variables from `pull_request_review` events on fork PRs ([GitHub docs](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#using-secrets-in-a-workflow)),
+so an approval cannot auto-trigger a privileged review. The label gate uses
+`pull_request_target: [labeled]` which **does** have access to credentials, and
+is safe because label addition is maintainer-only and the workflow never checks
+out PR code.
+
+**What happens after the advisory runs:**
+
+- **No blocking findings:** Label remains, PR proceeds normally
+- **Blocking findings (critical/high):** The workflow **removes the `ai-review` label**
+  as a signal. Review the advisory comment posted by @noemi-reviewer-bot, then
+  either request changes or **re-add the label** after the contributor addresses
+  findings (or if you accept them). This ensures findings are seen without making
+  the advisory a required check (phase 1 is advisory-only).
+- **Advisory halts or fails:** Label remains (a halt/error is not a verdict)
+
+### Manual trigger (when needed)
+
+If you want to see the advisory **before** approving, or if the auto-trigger
+fails, you can run the review manually via `workflow_dispatch`:
+
+1. Go to **Actions** → **AI Review (advisory)**
+2. Click **Run workflow**
+3. Select the base branch (`develop` or `main`)
+4. Enter the PR number
+5. Run
+
+The `workflow_dispatch` path runs in the base repository context with full
+access to configuration variables. This is safe because:
+
+- The workflow **never checks out the PR head code** — only the tooling
+  repository (`project-noemi/agents`) at a pinned, trusted ref
+- The diff is fetched over the **GitHub API** as read-only data
+- Review scripts come from the base repo, not from the PR, so a malicious PR
+  cannot rewrite its own reviewer
+
+**Note:** When the automatic review fails and posts instructions, those
+instructions include the direct workflow URL pre-filled with the correct branch
+and PR number — click through and confirm rather than manually entering values.
+
+### Edge case: workflow modification
+
+A fork PR that modifies `.github/workflows/ai-review.yml` will be reviewed under
+the **base branch's version** of that file, not the PR's version. The carve-out
+gate detects changes to the workflow and halts with escalation to human review.
+CODEOWNERS requires owner approval for workflow files, ensuring a human sees the
+diff before it merges.
+
+See `docs/AI_REVIEW_GOVERNANCE.md` § Fork Pull Requests for the complete
+security analysis and approval-dismissal state machine.
+
+---
+
+# Part 7 — How a review actually goes
 
 The reviewer works in three gates, **in order**, and stops at the first failure.
 
@@ -557,7 +637,7 @@ what was actually found.
 
 ---
 
-# Part 7 — What the AI is never allowed to touch
+# Part 8 — What the AI is never allowed to touch
 
 Some files are excluded from AI review entirely:
 
@@ -577,7 +657,7 @@ editing the merge gate to unblock its own pull requests.
 
 ---
 
-# Fleet deployment — every repository, one reviewer
+# Part 9 — Fleet deployment — every repository, one reviewer
 
 One repository proves the loop; the fleet is where it pays. The design keeps
 review logic in exactly one place:

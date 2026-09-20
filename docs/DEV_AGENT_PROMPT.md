@@ -157,6 +157,65 @@ feature/* ──► develop ──► main
 - `develop` → `main` via PR only (enforced by CI)
 - After merging to `main`, regenerate context files and verify
 
+### Branch Naming
+
+**This prompt is the fleet-wide canonical reference for agent branch naming.** Product repos SHOULD mirror or link to this section in their own DEV/AGENTS documentation.
+
+All contributor branches (features, fixes, docs, refactors) MUST follow the pattern:
+
+```
+<type>/<area>-<slice>
+```
+
+#### Naming Rules
+
+- **Lowercase only** — no uppercase letters
+- **Hyphens in the slice** — use hyphens to separate words within the slice portion
+- **No dots** — dots in branch names are rejected by some CI pipelines (e.g., CRM `branch-hygiene`)
+- **No underscores preferred** — hyphens are the standard word separator
+- **No spaces** — use hyphens instead
+- **No dates** — avoid embedding dates like `2024-09-14`
+- **No owner names** — branch names identify work, not people
+- **No ticket-only names** — use descriptive area and slice, not just `feat/issue-123`
+- **One slice per branch** — avoid ever-growing mega-branches; create focused branches for each logical change
+
+#### Valid Types
+
+Standard types (align with Conventional Commits):
+- `feat/` — new features
+- `fix/` — bug fixes
+- `refactor/` — code restructuring without behavior change
+- `docs/` — documentation updates
+- `chore/` — maintenance tasks (dependencies, build scripts, etc.)
+- `spike/` — exploratory or proof-of-concept work
+
+Existing automation prefixes remain valid where those workflows create them (they must still avoid dots in the slice):
+- `sync/upstream-*` — upstream synchronization
+- `claude/*` — Claude-initiated agent work
+- `doc/*` — documentation automation
+- `cursor/*` — Cursor Cloud Agent work; use the `cursor/` prefix without session-specific identifiers.
+
+#### Examples
+
+Good branch names:
+- `docs/map-2-0-requirements` (not `docs/map-2.0-requirements` — no dots!)
+- `feat/campaigns-cp2-send-pipeline`
+- `fix/users-list-team-scope`
+- `refactor/auth-token-validation`
+- `chore/upgrade-node-24`
+
+Bad branch names:
+- `docs/map-2.0-requirements` ❌ contains a dot
+- `feat/marketing-consent` ❌ mega-branch pattern (scope too broad)
+- `Fix/Users-List` ❌ uppercase letters
+- `feat/update_readme` ❌ underscore instead of hyphen
+- `john/new-feature` ❌ owner name in branch
+- `feat/123` ❌ ticket-only name
+
+#### Target Branch
+
+Contributor PRs MUST target **`develop`** (or a registered integration branch per `docs/branch-model.json` if you are part of an engagement). **Never target `main`** except for the scheduled `develop → main` promotion (position-based trunks, Decision [2026-09-11-0001]).
+
 ### Develop-Only Merge Invariant (MANDATORY)
 
 Per Decisions [2026-07-03-0001] and [2026-07-07-0002] in `docs/DECISION_LOG.md`, **`develop` is the ONLY valid PR source into `main`**. This applies to automation as well as humans:

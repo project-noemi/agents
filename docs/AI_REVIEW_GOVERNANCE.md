@@ -201,6 +201,173 @@ comment, commit message, or test fixture directing the reviewer to skip a gate,
 lower a severity, suppress a finding, or approve is itself a `critical` finding
 and is reported as such.
 
+## Fork Pull Requests
+
+GitHub's security model withholds repository and organization Actions variables
+and secrets from workflows triggered by fork pull requests on the `pull_request`,
+`pull_request_review`, and `pull_request_review_comment` events ([GitHub docs](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#using-secrets-in-a-workflow)).
+This prevents malicious fork PRs from exfiltrating secrets via workflow code.
+
+**Critical implication:** An approval-triggered `pull_request_review` workflow on
+a fork PR **cannot access Infisical/GCP credentials** and will fail with the same
+empty-vars restriction as `pull_request`. Auto-trigger-on-approval is not viable
+for fork PRs without using `pull_request_target`, which requires careful gating.
+
+When the AI review workflow runs on a fork PR via `pull_request`, configuration
+variables (`INFISICAL_PROJECT_ID`, etc.) are empty, and **the review fails
+visibly** rather than silently succeeding with no review performed. A green
+check with no comment would be indistinguishable from a completed review and
+is the failure mode this gate prevents.
+
+### Reviewing fork PRs safely
+
+Fork PRs can be reviewed using **`workflow_dispatch`** after the PR is opened:
+
+1. Go to Actions → AI Review (advisory)
+2. Click "Run workflow"
+3. Select the base branch (`develop` or `main`)
+4. Enter the PR number
+5. Run
+
+The `workflow_dispatch` path runs in the **base repository context** with full
+access to configuration, but remains safe because:
+
+- The workflow **never checks out the PR head code** — only the tooling
+  repository (`project-noemi/agents`) at a pinned, trusted ref
+- The diff is fetched over the **GitHub API** as read-only data
+- Review scripts come from the base repo, not from the PR, so a malicious PR
+  cannot rewrite the reviewer that judges it
+
+### Split-check pattern: fork notice vs. privileged advisory
+
+The workflow defines **two jobs with distinct check names** to prevent race
+conditions and silent pass-through:
+
+1. **"AI Review (fork notice)"** — Unprivileged, runs on `pull_request` when
+   config unavailable (fork PRs). Fails visibly with instructions. **NOT** a
+   required check on `develop`.
+
+2. **"AI Review (advisory)"** — Privileged, runs actual review on in-repo
+   `pull_request` (with config), `pull_request_target: [labeled]` (ai-review
+   label), and `workflow_dispatch`. **IS REQUIRED** on `develop` branch protection.
+
+**Why split:** A single-job workflow with conditional steps would show green when
+skipped on fork PRs, defeating the "no silent pass" requirement. The split also
+prevents the race condition where a fork PR could merge while the label-gated
+advisory is still pending — GitHub blocks merge while the required "AI Review
+(advisory)" check is running.
+
+**Branch protection requirement:** `develop` branch protection MUST require the
+"AI Review (advisory)" check (exact name). Fork PRs cannot merge until a
+maintainer adds the `ai-review` label and the advisory completes. In-repo
+branches receive the advisory automatically via `pull_request`.
+
+### Label-gated privileged review (preferred path)
+
+**Design rationale:** Three safe options exist for privileged fork PR review:
+(1) label gate via `pull_request_target: [labeled]`, (2) `workflow_run` after
+approval with API trust check, or (3) `workflow_dispatch` as primary path. Label
+gate is chosen as the **lightest design** because it is the most discoverable
+(visible in PR UI like any other label), requires no separate trust-checking
+logic, and integrates naturally into the PR workflow (review code → add label).
+`workflow_dispatch` remains available as a fallback.
+
+When a maintainer adds the **`ai-review` label** to a fork PR, the "AI Review
+(advisory)" job **automatically triggers** in the base repository context via
+`pull_request_target: types: [labeled]`:
+
+1. Fork PR arrives → automatic review fails visibly (no variables)
+2. Maintainer reviews the code
+3. **Maintainer adds 'ai-review' label** (trust signal)
+4. Label addition triggers the advisory review in base context
+5. Advisory runs with access to Infisical/GCP credentials
+6. Advisory findings posted as a comment
+
+**Why label-gated instead of approval-gated?** GitHub withholds secrets/variables
+from `pull_request_review` on fork PRs (same restriction as `pull_request`), so
+approval cannot auto-trigger a privileged review. The label gate uses
+`pull_request_target: [labeled]` which **does** have access to secrets/variables,
+but is safe because:
+
+- Label addition is a **maintainer-only action** (requires triage permission)
+- Job condition verifies `github.event.label.name == 'ai-review'` (no other labels)
+- Does NOT trigger on open/synchronize (avoids unconstrained `pull_request_target`)
+- Workflow still never checks out PR head code (only tooling repo at pinned ref)
+- Diff fetched via API only (read-only data, never executed)
+- Review scripts from tooling repo, not from PR under review
+
+### Dismissal of approvals on blocking findings
+
+When the privileged advisory review finds **blocking findings** (critical or high
+severity), the workflow **dismisses all existing approving reviews** on that PR:
+
+1. Advisory completes with blocking findings
+2. Workflow queries PR for approving reviews
+3. Each approval is dismissed via GitHub API with message: "Advisory AI review
+   found N blocking finding(s) after this approval. Review advisory comment by
+   @noemi-reviewer-bot and re-approve when findings are addressed or accepted."
+4. PR becomes non-mergeable (branch protection requires approval on `develop`)
+5. Maintainer reads advisory findings, then either:
+   - Requests changes from contributor, or
+   - Re-approves after determining findings are addressed or acceptable
+
+**Why dismiss approvals?** Phase 1 is advisory-only — the "AI Review (advisory)"
+check itself **succeeds even when findings exist** (it posts findings and a human
+decides what to do). Without approval dismissal, a PR with an approval made
+*before* the advisory ran would remain mergeable despite blocking findings.
+Dismissing the approval creates the merge gate: someone must explicitly re-approve
+*after* seeing the advisory, which is the informed-decision point.
+
+**When dismissal applies:**
+- Label-gated review (`pull_request_target: [labeled]`): dismisses + removes label
+- Manual dispatch (`workflow_dispatch`): dismisses (keeps label if present)
+- In-repo `pull_request`: dismisses if approvals exist
+
+**Non-dismissal outcomes:**
+- **No blocking findings:** Approvals stand, label remains, PR mergeable
+- **Advisory halts:** Approvals stand (carve-out, Sentinel spec missing —
+  escalation, not a verdict)
+- **Advisory fails:** Approvals stand (API error, timeout — technical failure,
+  not a review verdict)
+
+**Recommended GitHub setting:** Enable "Dismiss stale pull request approvals when
+new commits are pushed" on `develop` branch protection. This ensures approvals
+are dismissed when a contributor pushes fixes, so the re-approval after advisory
+is also re-approval after changes.
+
+### Residual risks
+
+**1. Fork PR modifying `.github/workflows/ai-review.yml`:**
+   - **Risk:** The carve-out check runs under the base branch's version of the
+     workflow, not the PR's version
+   - **Mitigation:** The carve-out gate detects changes to this file and halts
+     with escalation to human review. Additionally, CODEOWNERS requires owner
+     approval for workflow files, and that approval cannot come from a bot — a
+     human must see the diff before it merges
+   - **Severity:** Low — requires both defeating the carve-out gate AND bypassing
+     human code-owner review
+
+**2. Label removal abuse:**
+   - **Risk:** A malicious fork PR could craft a diff that causes the advisory to
+     spuriously report blocking findings, triggering removal of the `ai-review`
+     label
+   - **Mitigation:** The advisory reviews code content, not code execution, so a
+     malicious diff would need to defeat the Gemini reviewer's detection of
+     injection attempts (prompt injection is itself a critical finding). Label
+     removal is visible in the PR timeline, and the maintainer can re-add the
+     label to re-run the review or use workflow_dispatch
+   - **Severity:** Low — requires defeating cross-model adversarial review, and
+     the maintainer can override by re-adding the label
+
+**3. Label gate bypass via non-maintainer:**
+   - **Risk:** A non-maintainer (external contributor) could add a label that
+     triggers privileged review
+   - **Mitigation:** GitHub's permissions model restricts label addition on fork
+     PRs to users with triage permission or higher. External contributors cannot
+     add labels to their own fork PRs in the base repository. The job condition
+     also explicitly checks `github.event.label.name == 'ai-review'`
+   - **Severity:** Prevented by GitHub's permission model
+
 ## Audit
 
 Every review records:
@@ -273,6 +440,19 @@ protection. It:
 ```bash
 bash scripts/setup-branch-protection.sh
 ```
+
+**REQUIRED:** After running the script, manually add "AI Review (advisory)" as a
+required status check on `develop` branch protection (GitHub UI: Settings →
+Branches → `develop` → Edit → Require status checks → search "AI Review
+(advisory)" → check it → Save). This activates the fork PR race-condition
+protection: fork PRs cannot merge while the advisory is pending, and cannot merge
+if no advisory ever ran. The unprivileged "AI Review (fork notice)" check is
+**NOT** required (it fails on fork PRs by design).
+
+The setup script does not add this automatically because the check must exist
+(have run at least once) before it can be required, and a fresh deployment has no
+runs yet. After the first in-repo PR receives an advisory review, the check
+becomes visible and can be required.
 
 Before requiring code-owner reviews on `develop`, decide the co-owner question.
 With a single owner and `require_code_owner_reviews` enabled, a PR authored by

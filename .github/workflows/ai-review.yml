@@ -5,9 +5,45 @@
 # Approval stays with a human until phase 2 is authorised by the evidence
 # described in the governance doc.
 #
-# This workflow is intentionally NOT a required status check. A review that can
-# block a merge is a gate; phase 1 is an advisory signal being calibrated. Do
-# not add it to branch protection contexts before phase 2.
+# REQUIRED CHECK SPLIT: This workflow defines TWO jobs with distinct names:
+#   - "AI Review (fork notice)" — unprivileged, fails on fork PRs (NOT required)
+#   - "AI Review (advisory)" — privileged, runs actual review (IS REQUIRED on develop)
+# The split prevents race conditions: fork PRs cannot merge while the privileged
+# advisory is pending/running, and cannot merge if no privileged advisory ever ran.
+# Branch protection on `develop` MUST require "AI Review (advisory)" (exact name).
+#
+# FORK PR HANDLING: This workflow triggers on `pull_request`,
+# `pull_request_target` (labeled only), and `workflow_dispatch`. Fork PRs
+# receive special handling due to GitHub's security model:
+#
+# CRITICAL: GitHub withholds repository/org secrets and variables from
+# pull_request, pull_request_review, and pull_request_review_comment events
+# on fork PRs (https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#using-secrets-in-a-workflow).
+# This means pull_request_review CANNOT auto-trigger privileged review on fork
+# approval — it has the same empty-vars restriction as pull_request.
+#
+# Fork PR flow:
+#
+# 1. On `pull_request` (fork PR arrives/updates): Configuration unavailable, so
+#    "AI Review (fork notice)" FAILS VISIBLY. Error message instructs maintainers
+#    to add 'ai-review' label (preferred) or use workflow_dispatch (fallback).
+#
+# 2. On `pull_request_target: [labeled]` with label='ai-review': MAINTAINER-GATED
+#    privileged review. "AI Review (advisory)" runs in base repository context
+#    with access to secrets/variables. On blocking findings, dismisses approvals
+#    and removes label.
+#
+# 3. On `workflow_dispatch`: Manual trigger (base context, privileged). "AI Review
+#    (advisory)" runs; on blocking findings, dismisses approvals but keeps label.
+#
+# LABEL GATE SAFETY: The pull_request_target: [labeled] trigger ONLY fires when
+# a maintainer adds the 'ai-review' label, and the job condition verifies
+# github.event.label.name == 'ai-review'. This prevents:
+#   - Auto-review on open/sync (would be unconstrained pull_request_target)
+#   - Review triggered by non-maintainer labels (label addition is privileged)
+#   - Malicious fork triggering privileged review without maintainer action
+# The workflow still NEVER checks out PR head code (only project-noemi/agents
+# at pinned ref), fetches diff via API only, and uses tooling-repo scripts.
 #
 # FLEET DEPLOYMENT: this is a REUSABLE workflow (workflow_call). Other
 # repositories run the reviewer through a thin caller — see
@@ -30,6 +66,8 @@ name: AI Review (advisory)
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  pull_request_target:
+    types: [labeled]
   workflow_dispatch:
     inputs:
       pr:
@@ -62,27 +100,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  review:
-    name: Cross-Model PR Review
+  # Unprivileged fork notice: runs on pull_request when config unavailable.
+  # Fails visibly to prevent silent green. NOT a required check.
+  fork-notice:
+    name: AI Review (fork notice)
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
-      # ALWAYS the tooling repo at a pinned ref — never the PR head. The runner
-      # fetches the diff over the API, so nothing from the reviewed PR's working
-      # tree is needed or wanted: scripts taken from the PR would let a PR
-      # rewrite its own reviewer. (The caller's thin workflow file remains the
-      # caller's responsibility; the carve-out halts on changes to it.)
-      - uses: actions/checkout@v4
-        with:
-          repository: project-noemi/agents
-          ref: ${{ inputs.tooling-ref || 'main' }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
-      # Skip cleanly until the reviewer is provisioned. A workflow that goes red
-      # on every pull request teaches people to ignore it before it has ever
-      # been useful, and an advisory signal nobody reads is worse than none.
       - name: Check reviewer configuration
         id: config
         env:
@@ -98,17 +122,90 @@ jobs:
           [[ -z "${GCP_SA}"       ]] && missing+=(GCP_SERVICE_ACCOUNT)
           if (( ${#missing[@]} )); then
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=AI review skipped::Missing Actions variables: ${missing[*]}. Set them at the organization level. See docs/examples/cross-model-review-setup.md."
+            echo "missing=${missing[*]}" >> "$GITHUB_OUTPUT"
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Federation, not a key. This organization's policy disallows both API
-      # keys and service-account keys, so a short-lived federated token is the
-      # only available mechanism — and the strongest one: nothing durable to
-      # leak or rotate.
-      - name: Authenticate to Google Cloud (Workload Identity Federation)
+      # Fail visibly when configuration is unavailable (fork PRs). This job
+      # does NOT run on pull_request_target or workflow_dispatch, so it only
+      # fails for unprivileged fork PRs. The "AI Review (advisory)" job will
+      # run the actual review once the ai-review label is added.
+      - name: Fail on missing configuration
+        if: steps.config.outputs.configured == 'false'
+        run: |
+          echo "::error title=AI review unavailable (fork PR)::Missing Actions variables: ${{ steps.config.outputs.missing }}. GitHub withholds secrets/variables from pull_request on fork PRs. Maintainers: add the 'ai-review' label to trigger the privileged 'AI Review (advisory)' check, or use workflow_dispatch. For in-repo branches: set variables at the organization level. See docs/AI_REVIEW_GOVERNANCE.md § Fork Pull Requests."
+          exit 1
+
+      # If config IS available (in-repo branch), this job succeeds and lets
+      # the "AI Review (advisory)" job run the actual review.
+      - name: Config available
         if: steps.config.outputs.configured == 'true'
+        run: |
+          echo "::notice title=Config available::In-repo branch with config; the 'AI Review (advisory)' job will run the full review."
+
+  # Privileged advisory: runs on in-repo pull_request (with config),
+  # pull_request_target: [labeled] (ai-review label), and workflow_dispatch.
+  # This is the job that MUST be required on `develop` branch protection.
+  advisory:
+    name: AI Review (advisory)
+    runs-on: ubuntu-latest
+    # Run when:
+    # 1. pull_request AND config available (in-repo branch), OR
+    # 2. pull_request_target with ai-review label, OR
+    # 3. workflow_dispatch, OR
+    # 4. workflow_call
+    # The fork-notice job handles the unprivileged pull_request path.
+    if: |
+      (github.event_name == 'pull_request' && vars.INFISICAL_PROJECT_ID != '') ||
+      (github.event_name == 'pull_request_target' && github.event.label.name == 'ai-review') ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'workflow_call'
+    steps:
+      # Resolve PR number from event or input
+      - name: Resolve PR number and trigger context
+        id: pr
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request_target" ]]; then
+            echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+            echo "is_label_gated=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "number=${{ github.event.pull_request.number || inputs.pr }}" >> "$GITHUB_OUTPUT"
+            echo "is_label_gated=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ALWAYS the tooling repo at a pinned ref — never the PR head.
+      - uses: actions/checkout@v4
+        with:
+          repository: project-noemi/agents
+          ref: ${{ inputs.tooling-ref || 'main' }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # Double-check config (should be available if we reached this job)
+      - name: Check reviewer configuration
+        id: config
+        env:
+          PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+          IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
+          WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          GCP_SA: ${{ vars.GCP_SERVICE_ACCOUNT }}
+        run: |
+          missing=()
+          [[ -z "${PROJECT_ID}"   ]] && missing+=(INFISICAL_PROJECT_ID)
+          [[ -z "${IDENTITY_ID}"  ]] && missing+=(INFISICAL_IDENTITY_ID)
+          [[ -z "${WIF_PROVIDER}" ]] && missing+=(GCP_WIF_PROVIDER)
+          [[ -z "${GCP_SA}"       ]] && missing+=(GCP_SERVICE_ACCOUNT)
+          if (( ${#missing[@]} )); then
+            echo "::error title=Privileged advisory misconfiguration::This job should only run when config is available, but variables are missing: ${missing[*]}. Check job conditions."
+            exit 1
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      # Federation, not a key.
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
         id: gcpauth
         uses: google-github-actions/auth@v2
         with:
@@ -117,30 +214,20 @@ jobs:
           token_format: access_token
 
       - name: Install Infisical CLI
-        if: steps.config.outputs.configured == 'true'
         run: |
           curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
           sudo apt-get install -y infisical
           infisical --version
 
-      # GitHub proves its own identity to Infisical and receives short-lived
-      # access. Universal Auth would require storing a client secret here, which
-      # reintroduces the two-places-to-rotate problem that vault-only storage
-      # exists to avoid.
       - name: Authenticate to Infisical via OIDC
-        if: steps.config.outputs.configured == 'true'
         env:
           IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
-          # Must match the audience configured on the Infisical identity's OIDC
-          # auth method. A mismatch fails with 401 "OIDC audience not allowed",
-          # which names the cause but not which side to change — it is this
-          # value, or the identity's allowed-audience field.
           OIDC_AUDIENCE: ${{ vars.INFISICAL_OIDC_AUDIENCE || 'infisical' }}
         run: |
           JWT=$(curl -sH "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${OIDC_AUDIENCE}" | jq -r .value)
           if [[ -z "$JWT" || "$JWT" == "null" ]]; then
-            echo "::error title=OIDC token unavailable::Could not mint a GitHub identity token. Confirm 'id-token: write' permission."
+            echo "::error title=OIDC token unavailable::Could not mint a GitHub identity token."
             exit 1
           fi
           TOKEN=$(infisical login --method=oidc-auth \
@@ -148,15 +235,7 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
 
-      # PREFERRED fleet credential: a GitHub App installation token, minted
-      # fresh for this run. The App ID may come from the Actions variable
-      # REVIEWER_APP_ID or, if that is empty, from Infisical in the same
-      # project as REVIEWER_APP_PRIVATE_KEY (the noemi-agents vault). A live
-      # 2026-08-15 run skipped minting because it only looked at vars, while
-      # the ID already lived in Infisical — Fetch-on-Demand is the source of
-      # truth. If neither source has an ID, fall back to the PAT chain.
       - name: Resolve reviewer App ID
-        if: steps.config.outputs.configured == 'true'
         id: appid
         env:
           PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
@@ -172,22 +251,19 @@ jobs:
             echo "REVIEWER_APP_ID=$APP_ID" >> "$GITHUB_ENV"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Reviewer App ID unset::No vars.REVIEWER_APP_ID and no Infisical REVIEWER_APP_ID. Falling back to the PAT."
           fi
 
       - name: Fetch reviewer app key
-        if: steps.config.outputs.configured == 'true' && steps.appid.outputs.present == 'true'
+        if: steps.appid.outputs.present == 'true'
         env:
           PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
         run: |
           KEY=$(infisical secrets get REVIEWER_APP_PRIVATE_KEY \
             --projectId="$PROJECT_ID" --env=dev --plain)
           if [[ -z "$KEY" ]]; then
-            echo "::error title=App key missing::REVIEWER_APP_ID is resolved but REVIEWER_APP_PRIVATE_KEY is not in Infisical project ${PROJECT_ID}."
+            echo "::error title=App key missing::REVIEWER_APP_ID resolved but REVIEWER_APP_PRIVATE_KEY missing."
             exit 1
           fi
-          # ::add-mask:: masks single values; a PEM is multiline, so mask each
-          # line or the key appears in the log the first time anything echoes it.
           while IFS= read -r line; do echo "::add-mask::$line"; done <<< "$KEY"
           {
             echo "REVIEWER_APP_KEY<<__PEM_EOF__"
@@ -196,72 +272,102 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Mint reviewer app token
-        if: steps.config.outputs.configured == 'true' && steps.appid.outputs.present == 'true'
+        if: steps.appid.outputs.present == 'true'
         id: apptoken
         uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ env.REVIEWER_APP_ID }}
           private-key: ${{ env.REVIEWER_APP_KEY }}
-          # Defaults to the installation for this repository's owner — exactly
-          # the per-org selection the PAT path had to do by hand.
 
-      # review-pr.js owns the carve-out check and refuses to invoke a model on a
-      # governance-critical diff, so no model call happens before that decision.
-      # Reviewer credential preference: app token, then per-org PAT, then the
-      # home-org PAT (see the runner's header).
       - name: Run three-gate review
-        if: steps.config.outputs.configured == 'true'
+        id: review
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
-          # Empty when the app is not configured; the runner then falls back to
-          # the PAT chain resolved from the vault. Distinct name on purpose:
-          # `infisical run` injects the whole project, and a stored PAT under
-          # the same name would silently shadow a minted app token.
           REVIEWER_APP_TOKEN: ${{ steps.apptoken.outputs.token }}
-          # Thoroughness over newest-Flash. Flash is not an adequate review
-          # model (Decision [2026-08-15-0003]). An org var may raise this, not
-          # lower it — the CLI also passes --floor pro.
           GEMINI_REVIEW_FLOOR: ${{ vars.GEMINI_REVIEW_FLOOR || 'pro' }}
           INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
-          # Resolves on all triggers: the event on pull_request, the input on
-          # dispatch and on workflow_call.
-          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr }}
-          # Short-lived, federated. Never a stored credential.
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
           GCP_ACCESS_TOKEN: ${{ steps.gcpauth.outputs.access_token }}
           GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT || 'project-noemi' }}
-          # global, not a region: the publisher catalogue is global and regional
-          # availability lags it (gemini-3.x 404s in us-central1).
           GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'global' }}
           GEMINI_BACKEND: ${{ vars.GEMINI_BACKEND || 'vertex' }}
-          # Prefer Pro inside the floor. Combined with floor=pro this is
-          # belt-and-suspenders if a newer Flash is later ranked above Pro.
           GEMINI_PREFER_PRO: ${{ vars.GEMINI_PREFER_PRO || '1' }}
-          # Discover unless an explicit pin is set. `auto` is discovery.
-          # Decision [2026-08-16-0002]: highest Pro preview, else stable Pro.
           GEMINI_REVIEW_MODEL: ${{ vars.GEMINI_REVIEW_MODEL || 'auto' }}
           GEMINI_ALLOW_PREVIEW: ${{ vars.GEMINI_ALLOW_PREVIEW || '1' }}
           GEMINI_PREFER_PREVIEW_PRO: ${{ vars.GEMINI_PREFER_PREVIEW_PRO || '1' }}
-          # Sentinel spec is always taken from this checkout (project-noemi/agents).
           REVIEW_TOOLING_REF: ${{ inputs.tooling-ref || 'develop' }}
         run: |
-          # The halt signal is a MARKER FILE, not an exit code. `infisical run`
-          # collapses its child's exit code (a 3 surfaces as 1 — verified live),
-          # so a by-design halt and a wrapper failure are indistinguishable by
-          # code alone. The runner writes REVIEW_HALT_FILE only on an
-          # intentional halt; a wrapper that failed before reaching the runner
-          # cannot have written it.
           export REVIEW_HALT_FILE="$RUNNER_TEMP/ai-review-halt"
-          rm -f "$REVIEW_HALT_FILE"
+          export REVIEW_FINDINGS_FILE="$RUNNER_TEMP/ai-review-findings.json"
+          rm -f "$REVIEW_HALT_FILE" "$REVIEW_FINDINGS_FILE"
           set +e
           infisical run --projectId="$INFISICAL_PROJECT_ID" --env=dev -- \
             node scripts/review-pr.js --pr "$PR_NUMBER" --floor pro --prefer-pro --prefer-preview-pro --allow-preview
           code=$?
           set -e
           if [[ -f "$REVIEW_HALT_FILE" ]]; then
-            echo "::notice title=Review halted::$(cat "$REVIEW_HALT_FILE") — escalated to human review by design. See the PR comment."
+            echo "::notice title=Review halted::$(cat "$REVIEW_HALT_FILE") — escalated to human review by design."
             exit 0
           fi
           if [[ $code -ne 0 ]]; then
-            echo "::error title=Review failed::review-pr.js or its wrapper exited ${code}. No review was performed."
+            echo "::error title=Review failed::review-pr.js exited ${code}. No review was performed."
+            exit $code
           fi
-          exit $code
+          # Phase 1: succeed even when findings exist (advisory-only)
+          if [[ -f "$REVIEW_FINDINGS_FILE" ]]; then
+            echo "has_blocking_findings=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_blocking_findings=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
+      # Dismiss approvals when blocking findings exist. This is the merge gate:
+      # PR cannot merge until someone re-approves after seeing the advisory.
+      - name: Dismiss approvals if blocking findings
+        if: always() && steps.review.outputs.has_blocking_findings == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          FINDINGS_FILE: ${{ runner.temp }}/ai-review-findings.json
+        run: |
+          BLOCKING_COUNT=$(jq -r '.blocking_count // 0' "$FINDINGS_FILE")
+          if (( BLOCKING_COUNT == 0 )); then
+            echo "::notice title=No blocking findings::Advisory completed with no blocking findings."
+            exit 0
+          fi
+          
+          # Dismiss all approving reviews
+          REVIEWS=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}/reviews" \
+            --jq '[.[] | select(.state == "APPROVED") | {id: .id, user: .user.login}]')
+          
+          DISMISSED=0
+          echo "$REVIEWS" | jq -c '.[]' | while read -r review; do
+            REVIEW_ID=$(echo "$review" | jq -r '.id')
+            USER=$(echo "$review" | jq -r '.user')
+            gh api --method PUT \
+              "repos/${{ github.repository }}/pulls/${PR_NUMBER}/reviews/${REVIEW_ID}/dismissals" \
+              -f message="Advisory AI review found ${BLOCKING_COUNT} blocking finding(s) (critical or high severity) after this approval. Please review the advisory comment posted by @noemi-reviewer-bot and re-approve when findings are addressed or accepted. See docs/AI_REVIEW_GOVERNANCE.md" \
+              -f event=DISMISS || true
+            echo "Dismissed approval from ${USER} (review ${REVIEW_ID})"
+            DISMISSED=$((DISMISSED + 1))
+          done
+          
+          if (( DISMISSED > 0 )); then
+            echo "::warning title=Approvals dismissed::Dismissed ${DISMISSED} approval(s) due to ${BLOCKING_COUNT} blocking finding(s). Re-approve after reviewing advisory."
+          else
+            echo "::notice title=No approvals to dismiss::No existing approvals found on this PR."
+          fi
+
+      # Remove label if this was label-gated (secondary signal after dismissal)
+      - name: Remove label if label-gated review with blocking findings
+        if: |
+          always() &&
+          steps.pr.outputs.is_label_gated == 'true' &&
+          steps.review.outputs.has_blocking_findings == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh api --method DELETE \
+            "repos/${{ github.repository }}/issues/${PR_NUMBER}/labels/ai-review" || true
+          echo "::notice title=Label removed::Removed 'ai-review' label as secondary signal after dismissing approvals."

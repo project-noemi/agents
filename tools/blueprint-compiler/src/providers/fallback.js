@@ -8,25 +8,31 @@
  * Fallback-worthy errors:
  *   - 429: rate limited
  *   - 5xx: provider/server failure
- *   - TypeError: network/fetch failure
+ *   - TypeError: fetch failed (network failure)
+ *   - TimeoutError: request timed out
  *
  * Other errors are thrown immediately because they generally
  * represent bad configuration, invalid input, validation errors,
  * or programming errors rather than temporary provider failure.
  */
 
+// Node's fetch (undici) reports every connection-level failure -- refused, DNS,
+// reset, TLS -- as TypeError("fetch failed"). Other TypeErrors (invalid URL, or a
+// plain bug like reading a property of undefined) are ours to fix, not transient.
+function isNetworkFailure(err) {
+  return err.name === 'TypeError' && err.message === 'fetch failed';
+}
+
 export function isFallbackError(err) {
   if (!err) return false;
 
   if (Number.isInteger(err.status)) {
     if (err.status === 429) return true;
-
-    if (err.status >= 500 && err.status < 600) {
-      return true;
-    }
+    if (err.status >= 500 && err.status < 600) return true;
   }
 
-  return err.name === 'TypeError';
+  // TimeoutError: AbortSignal.timeout() fired.
+  return isNetworkFailure(err) || err.name === 'TimeoutError';
 }
 
 export async function runWithFallbacks({
@@ -34,6 +40,7 @@ export async function runWithFallbacks({
   fallbacks = [],
   providers,
   input,
+  onFallback
 }) {
   if (!providers || typeof providers !== 'object') {
     throw new Error('No providers were supplied.');
@@ -46,31 +53,22 @@ export async function runWithFallbacks({
 
   let lastFallbackError = null;
 
-  for (const providerName of order) {
+    for (const providerName of order) {
     const provider = providers[providerName];
-
-    // The policy can name a provider that is not configured
-    // in the current environment. Skip it and continue.
-    if (typeof provider !== 'function') {
-      continue;
-    }
+    if (typeof provider !== 'function') continue;
 
     try {
       return await provider(input);
     } catch (error) {
-      if (!isFallbackError(error)) {
-        throw error;
-      }
-
+      if (!isFallbackError(error)) throw error;
       lastFallbackError = error;
+      onFallback?.({ provider: providerName, error });
     }
   }
 
-  if (lastFallbackError) {
-    throw lastFallbackError;
-  }
+  if (lastFallbackError) throw lastFallbackError;   // <- this line must be here
 
-  throw new Error(
-    'No available providers could handle the request.'
-  );
+  const err = new Error('No available providers could handle the request.');
+  err.code = 'PROVIDER';
+  throw err;
 }

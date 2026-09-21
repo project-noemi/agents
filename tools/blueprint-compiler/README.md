@@ -1,25 +1,56 @@
 # Blueprint Compiler
 
-Isolated package that turns a NoéMI Markdown persona into a Blueprint IR and (in Sprint 1) a mock completion.
+Turns a NoéMI Markdown persona into a Blueprint IR and runs it on a configured
+model provider (mock and Gemini today; Grok next), falling back to the next
+provider when one is unavailable.
 
-This is not the fleet spec library. Specs live in `agents/`, `skills/`, and `mcp-protocols/`. This package *reads* them.
+This is not the fleet spec library. Specs live in `agents/`, `skills/`, and
+`mcp-protocols/`. This package *reads* them.
+
+## Quick start (offline)
 
 ```bash
 cd tools/blueprint-compiler
-npm test
+npm test        # offline: every network call is faked
 node src/cli.js compile fixtures/architect.core.md --provider mock --prompt "hello"
 ```
 
-No network. No API keys. Node.js ≥ 24.
+## Live providers
 
-## Sprint 1
+Keys are injected at runtime and never written to disk. Do not add a `.env` file.
 
-- Parse `##` headings into `ir.sections`
-- Extract `**Skill:** \`category/name\`` onto `ir.skills`
-- Fail closed when a required heading or `### Refusal Criteria` is missing
-- Run the mock provider
+```bash
+infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --provider gemini
+op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.core.md
+```
 
-Live providers (Gemini + Grok), skill resolution, and Mastra instantiation are later sprints. See [REQUIREMENTS.md](REQUIREMENTS.md).
+| Variable | Purpose | Default |
+|---|---|---|
+| `NOEMI_PREFERRED_PROVIDER` | Provider used when `--provider` is omitted | `mock` |
+| `NOEMI_FALLBACK_PROVIDERS` | Comma-separated, tried in order after the preferred one fails | none |
+| `GEMINI_API_KEY` | Required for `gemini` | none |
+| `GEMINI_MODEL` | Gemini model | `gemini-2.5-flash` |
+| `GEMINI_TIMEOUT_MS` | Per-request timeout | `30000` |
+
+## Fallback behaviour
+
+Moves to the next provider on: HTTP 429, HTTP 5xx, network failure, timeout.
+Fails immediately on: a missing key, any other 4xx, an unknown preferred
+provider. Misconfiguration should be loud, not hidden by another provider.
+`run.provider` names the provider that actually answered, and the stderr audit
+record's `risks` lists what failed first.
+
+## Status
+
+| Sprint | State |
+|---|---|
+| 1 | Parse, validate, mock provider |
+| 2 | Config-driven selection, Gemini, fallback (Grok in progress) |
+| 3+ | Skill/MCP resolution, Mastra. See REQUIREMENTS.md |
+
+## Testing without the network
+
+Shared fakes live in `tests/helpers/fake-network.js`. Reuse them for new providers.
 
 ## Why it lives here
 

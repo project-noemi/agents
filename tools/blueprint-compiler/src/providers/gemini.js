@@ -13,6 +13,7 @@
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta";
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 /**
  * Bad configuration (missing/invalid key). Deliberately carries no `status`
@@ -39,6 +40,7 @@ function httpError(message, status) {
 }
 
 export async function runGemini(ir, prompt) {
+  const timeoutMs = Number(process.env.GEMINI_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS;
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw configError(
@@ -56,7 +58,7 @@ export async function runGemini(ir, prompt) {
   ].join("\n");
 
   const started = Date.now();
-  const url = `${API_BASE}/models/${model}:generateContent?key=${apiKey}`;
+  const url = `${API_BASE}/models/${model}:generateContent`;
 
   // A network failure (DNS, TLS, connection reset) makes fetch itself throw
   // a TypeError. fallback.js already treats err.name === "TypeError" as
@@ -64,10 +66,11 @@ export async function runGemini(ir, prompt) {
   // caught and rewrapped here.
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: `${context}\n\n${prompt}` }] }],
     }),
+    signal: AbortSignal.timeout(timeoutMs),
   });
 
   if (!response.ok) {

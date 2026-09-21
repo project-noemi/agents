@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { runGemini } from "../src/providers/gemini.js";
-import { withEnv, withFetch } from "../src/fake-network.js";
+import {
+  withEnv,
+  withFetch,
+  recordFetch,
+  jsonResponse,
+  geminiBody,
+  timeoutFailure,
+} from "./helpers/fake-network.js";
 
 const ir = {
   id: "coding/architect",
@@ -40,8 +47,13 @@ test("a successful call returns the mock.js-shaped result with real usage", asyn
     { GEMINI_API_KEY: "test-key", GEMINI_MODEL: "gemini-2.5-flash" },
     () =>
       withFetch(
-        async (url) => {
-          assert.match(String(url), /^https:\/\/generativelanguage\.googleapis\.com\/v1beta\/models\/gemini-2\.5-flash:generateContent\?key=test-key$/);
+        async (url, init) => {
+          assert.equal(
+            String(url),
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+          );
+          assert.equal(init.headers["x-goog-api-key"], "test-key");
+          assert.ok(!String(url).includes("test-key"), "key must never appear in the URL");
           return {
             ok: true,
             json: async () => ({
@@ -127,5 +139,23 @@ test("a raw network failure (fetch throwing TypeError) propagates unmodified", a
         );
       }
     )
+  );
+});
+
+test("every request carries a timeout signal so a hung call can fall back", async () => {
+  const fake = recordFetch(async () => jsonResponse(geminiBody("ok")));
+  await withEnv({ GEMINI_API_KEY: "test-key" }, () =>
+    withFetch(fake, async () => {
+      await runGemini(ir, "hello");
+      assert.ok(fake.calls[0].init.signal instanceof AbortSignal);
+    })
+  );
+});
+
+test("a timeout propagates as TimeoutError (fallback-eligible)", async () => {
+  await withEnv({ GEMINI_API_KEY: "test-key" }, () =>
+    withFetch(timeoutFailure(), async () => {
+      await assert.rejects(() => runGemini(ir, "hello"), (err) => err.name === "TimeoutError");
+    })
   );
 });

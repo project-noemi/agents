@@ -5,6 +5,7 @@ import test from "node:test";
 import { compileFile } from "../src/compile.js";
 import { parseBlueprint } from "../src/parse.js";
 import { validateBlueprint } from "../src/validate.js";
+import { withEnv } from "./helpers/fake-network.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const fixture = (name) => join(root, "..", "fixtures", name);
@@ -63,10 +64,21 @@ test("derives id from agents/{domain}/{name} paths, not the clone folder name", 
   assert.equal(fromFixtureInThisClone.id, "coding/architect");
 });
 
-test("refuses unknown providers in Sprint 1", async () => {
+test("refuses an unknown preferred provider", async () => {
   const result = await compileFile(fixture("architect.core.md"), {
     provider: "anthropic",
   });
   assert.equal(result.ok, false);
   assert.equal(result.errors[0].code, "PROVIDER");
 });
+
+
+test("a misspelled preferred provider fails closed even when a fallback is configured", async () => {
+  await withEnv({ NOEMI_FALLBACK_PROVIDERS: "mock" }, async () => {
+    const result = await compileFile(fixture("architect.core.md"), { provider: "gemni" });
+    assert.equal(result.ok, false);
+    assert.equal(result.errors[0].code, "PROVIDER");
+    assert.match(result.errors[0].message, /gemni/);
+  });
+});
+

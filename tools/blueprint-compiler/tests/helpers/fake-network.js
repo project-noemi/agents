@@ -40,3 +40,16 @@ export const networkFailure = (msg = "fetch failed") => async () => { throw new 
 export const timeoutFailure = () => async () => {
   throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
 };
+export const xaiBody = (text, usage = { prompt_tokens: 1, completion_tokens: 1 }) => ({
+  choices: [{ index: 0, message: { role: "assistant", content: text }, finish_reason: "stop" }],
+  usage,
+});
+
+// Route a fake fetch by hostname so one test can fake several providers at once.
+// { "api.x.ai": handler, "generativelanguage.googleapis.com": handler }
+export const routeFetch = (byHost) => async (url, init) => {
+  const host = new URL(String(url)).host;
+  const handler = byHost[host];
+  if (!handler) throw new Error(`unexpected request to ${host}`);
+  return handler(url, init);
+};

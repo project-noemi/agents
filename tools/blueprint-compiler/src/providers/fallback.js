@@ -66,7 +66,7 @@ export async function runWithFallbacks({
     }
   }
 
-  if (lastFallbackError) throw lastFallbackError;   // <- this line must be here
+  if (lastFallbackError) throw lastFallbackError; 
 
   const err = new Error('No available providers could handle the request.');
   err.code = 'PROVIDER';

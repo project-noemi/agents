@@ -1,7 +1,7 @@
 # Blueprint Compiler
 
 Turns a NoéMI Markdown persona into a Blueprint IR and runs it on a configured
-model provider (mock and Gemini today; Grok next), falling back to the next
+model provider (`mock`, `gemini`, and `xai` for Grok), falling back to the next
 provider when one is unavailable.
 
 This is not the fleet spec library. Specs live in `agents/`, `skills/`, and
@@ -21,6 +21,7 @@ Keys are injected at runtime and never written to disk. Do not add a `.env` file
 
 ```bash
 infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --provider gemini
+infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --provider xai
 op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.core.md
 ```
 
@@ -31,7 +32,14 @@ op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.co
 | `GEMINI_API_KEY` | Required for `gemini` | none |
 | `GEMINI_MODEL` | Gemini model | `gemini-2.5-flash` |
 | `GEMINI_TIMEOUT_MS` | Per-request timeout | `30000` |
+| `XAI_API_KEY` | Required for `xai` (Grok) | none |
+| `XAI_MODEL` | xAI model | `grok-4.6` |
+| `XAI_TIMEOUT_MS` | Per-request timeout | `30000` |
 
+Provider names for `--provider`, `NOEMI_PREFERRED_PROVIDER` and
+`NOEMI_FALLBACK_PROVIDERS` are `mock`, `gemini` and `xai`. `xai` is the
+provider name used in `docs/model-routing.json`; `grok` is not an alias. (That
+file calls Google's provider `google`; this package's name for it is `gemini`.)
 ## Fallback behaviour
 
 Moves to the next provider on: HTTP 429, HTTP 5xx, network failure, timeout.
@@ -45,7 +53,7 @@ record's `risks` lists what failed first.
 | Sprint | State |
 |---|---|
 | 1 | Parse, validate, mock provider |
-| 2 | Config-driven selection, Gemini, fallback (Grok in progress) |
+| 2 | Config-driven selection, Gemini + xAI (Grok), fallback |
 | 3+ | Skill/MCP resolution, Mastra. See REQUIREMENTS.md |
 
 ## Testing without the network

@@ -3,6 +3,7 @@ import { parseBlueprint } from "./parse.js";
 import { validateBlueprint } from "./validate.js";
 import { runMock } from "./providers/mock.js";
 import { runGemini } from "./providers/gemini.js";
+import { runXai } from "./providers/xai.js";
 import { isFallbackError, runWithFallbacks } from "./providers/fallback.js";
 
 const isProviderError = (e) =>
@@ -45,6 +46,7 @@ export async function compileFile(filePath, opts = {}) {
   const providers = {
     mock: (input) => runMock(ir, input),
     gemini: (input) => runGemini(ir, input),
+    xai: (input) => runXai(ir, input),
   };
 
   if (typeof providers[preferred] !== "function") {
@@ -66,13 +68,4 @@ export async function compileFile(filePath, opts = {}) {
     if (!isProviderError(err)) throw err;   // real bugs still throw
     return { ok: false, errors: [toCompileError(err)] };
   }
-
-  const run = await runWithFallbacks({
-    preferred,
-    fallbacks,
-    providers,
-    input: opts.prompt ?? "Hello from the Blueprint Compiler.",
-  });
-
-  return { ok: true, ir, run };
 }

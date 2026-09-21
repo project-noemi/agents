@@ -45,11 +45,15 @@ export const xaiBody = (text, usage = { prompt_tokens: 1, completion_tokens: 1 }
   usage,
 });
 
-// Route a fake fetch by hostname so one test can fake several providers at once.
-// { "api.x.ai": handler, "generativelanguage.googleapis.com": handler }
-export const routeFetch = (byHost) => async (url, init) => {
-  const host = new URL(String(url)).host;
-  const handler = byHost[host];
-  if (!handler) throw new Error(`unexpected request to ${host}`);
-  return handler(url, init);
+// Both live providers share one gateway host, so route by URL prefix instead.
+export const GATEWAY_XAI = "https://ai-gw.newpush.com/v1/";
+export const GATEWAY_GEMINI = "https://ai-gw.newpush.com/google/";
+
+// Route a fake fetch by URL prefix so one test can fake several providers at once.
+// { [GATEWAY_XAI]: handler, [GATEWAY_GEMINI]: handler }
+export const routeFetch = (byPrefix) => async (url, init) => {
+  const href = String(url);
+  const prefix = Object.keys(byPrefix).find((p) => href.startsWith(p));
+  if (!prefix) throw new Error(`unexpected request to ${href}`);
+  return byPrefix[prefix](url, init);
 };

@@ -27,7 +27,7 @@ See `src/ir.js` and REQUIREMENTS.md §5. `id` is `{domain}/{name}` derived from 
 
 ## Provider policy
 
-Configuration, not code. Sprint 1 ships only `mock`. Sprint 2 adds Gemini + Grok (xAI) behind Fetch-on-Demand env vars resolved by `infisical run` / `op run`. Never `dotenv`.
+Configuration, not code. Sprint 1 ships only `mock`. Sprint 2 adds Gemini + Grok (xAI), both called through NewPush's generative AI gateway with one virtual key (`AI_GW_API_KEY`) resolved by `infisical run` / `op run`. Provider credentials stay with NewPush. Never `dotenv`.
 
 Fallback triggers later: timeout, 429 after backoff, 5xx, missing key. A mock-only environment must still complete `npm test`.
 

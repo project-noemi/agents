@@ -1,8 +1,13 @@
 /**
- * Sprint 2 provider. Calls the Gemini API with a key resolved from
+ * Sprint 2 provider. Calls Gemini through NewPush's generative AI gateway
+ * (Google-native surface: generateContent) with a virtual key resolved from
  * process.env at call time -- never parsed from a .env file (AGENTS.md
  * section Secrets & Configuration). Injected at runtime via `infisical run`
  * or `op run`; this file must never see a real key at rest.
+ *
+ * The virtual key is a NewPush credential, not a Google one: it is sent as a
+ * Bearer token to the gateway and never to generativelanguage.googleapis.com.
+ * Provider credentials stay with NewPush.
  *
  * Mirrors mock.js's signature and return shape so compile.js can treat
  * every provider interchangeably.
@@ -11,8 +16,11 @@
  * @param {string} prompt
  */
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
-const API_BASE = "https://generativelanguage.googleapis.com/v1beta";
+// Google-native ids carry no `google/` prefix (that form is for the gateway's
+// OpenAI surface only). Pinned rather than a *-latest alias, per the gateway
+// guide; the gemini-2.5-* line retires 20 Oct 2026.
+const DEFAULT_MODEL = "gemini-3.8-flash";
+const DEFAULT_GATEWAY = "https://ai-gw.newpush.com";
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 /**
@@ -31,7 +39,8 @@ function configError(message) {
 /**
  * Provider-side failure with an HTTP status. fallback.js's
  * isFallbackError() reads err.status directly: 429 and 5xx are
- * fallback-worthy, everything else (4xx auth/validation errors) is not.
+ * fallback-worthy, everything else (401 bad key, 403 model not allowed or
+ * budget exhausted) is not.
  */
 function httpError(message, status) {
   const err = new Error(message);
@@ -41,15 +50,17 @@ function httpError(message, status) {
 
 export async function runGemini(ir, prompt) {
   const timeoutMs = Number(process.env.GEMINI_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS;
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.AI_GW_API_KEY;
   if (!apiKey) {
     throw configError(
-      "GEMINI_API_KEY is not set. Inject it at runtime via `infisical run` " +
-        "or `op run` -- see AGENTS.md. Never place it in a .env file."
+      "AI_GW_API_KEY is not set. Inject the NewPush AI gateway virtual key at " +
+        "runtime via `infisical run` or `op run` -- see AGENTS.md. Never place " +
+        "it in a .env file."
     );
   }
 
-  const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  const gateway = (process.env.AI_GW_BASE_URL || DEFAULT_GATEWAY).replace(/\/+$/, "");
+  const model = (process.env.GEMINI_MODEL || DEFAULT_MODEL).replace(/^google\//, "");
   const role = (ir.sections.Role ?? "").split("\n")[0];
   const context = [
     `You are compiling and running the NoéMI persona "${ir.title}".`,
@@ -58,7 +69,7 @@ export async function runGemini(ir, prompt) {
   ].join("\n");
 
   const started = Date.now();
-  const url = `${API_BASE}/models/${model}:generateContent`;
+  const url = `${gateway}/google/v1beta/models/${model}:generateContent`;
 
   // A network failure (DNS, TLS, connection reset) makes fetch itself throw
   // a TypeError. fallback.js already treats err.name === "TypeError" as
@@ -66,7 +77,10 @@ export async function runGemini(ir, prompt) {
   // caught and rewrapped here.
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: `${context}\n\n${prompt}` }] }],
     }),
@@ -76,7 +90,7 @@ export async function runGemini(ir, prompt) {
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     throw httpError(
-      `Gemini API returned ${response.status}: ${body.slice(0, 300)}`,
+      `NewPush AI gateway (gemini) returned ${response.status}: ${body.slice(0, 300)}`,
       response.status
     );
   }

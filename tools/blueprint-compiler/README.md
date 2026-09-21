@@ -17,6 +17,12 @@ node src/cli.js compile fixtures/architect.core.md --provider mock --prompt "hel
 
 ## Live providers
 
+Both live providers go through NewPush's generative AI gateway: `gemini` uses
+the Google-native surface (`/google/v1beta/models/{model}:generateContent`) and
+`xai` uses the OpenAI-compatible surface (`/v1/chat/completions`). One gateway
+virtual key authenticates both as `Authorization: Bearer`. It is not a Google or
+xAI credential; never send it to those providers directly.
+
 Keys are injected at runtime and never written to disk. Do not add a `.env` file.
 
 ```bash
@@ -29,12 +35,16 @@ op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.co
 |---|---|---|
 | `NOEMI_PREFERRED_PROVIDER` | Provider used when `--provider` is omitted | `mock` |
 | `NOEMI_FALLBACK_PROVIDERS` | Comma-separated, tried in order after the preferred one fails | none |
-| `GEMINI_API_KEY` | Required for `gemini` | none |
-| `GEMINI_MODEL` | Gemini model | `gemini-2.5-flash` |
+| `AI_GW_API_KEY` | NewPush gateway virtual key. Required for `gemini` and `xai` | none |
+| `AI_GW_BASE_URL` | Gateway origin (override for forks or staging) | `https://ai-gw.newpush.com` |
+| `GEMINI_MODEL` | Gemini model, Google-native id (a `google/` prefix is stripped) | `gemini-3.8-flash` |
 | `GEMINI_TIMEOUT_MS` | Per-request timeout | `30000` |
-| `XAI_API_KEY` | Required for `xai` (Grok) | none |
-| `XAI_MODEL` | xAI model | `grok-4.6` |
+| `XAI_MODEL` | Grok model (`xai/` is added if missing) | `xai/grok-4.6` |
 | `XAI_TIMEOUT_MS` | Per-request timeout | `30000` |
+
+A 401 from the gateway means the virtual key is missing or invalid; a 403 means
+the model is not allowed on the key or its budget / rate limit is spent. Both
+fail closed. Ask your NewPush contact about keys, models, and limits.
 
 Provider names for `--provider`, `NOEMI_PREFERRED_PROVIDER` and
 `NOEMI_FALLBACK_PROVIDERS` are `mock`, `gemini` and `xai`. `xai` is the

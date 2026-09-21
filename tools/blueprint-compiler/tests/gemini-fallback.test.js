@@ -17,7 +17,7 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 const persona = join(here, "..", "fixtures", "architect.core.md");
 
-const geminiThenMock = { GEMINI_API_KEY: "test-key", NOEMI_FALLBACK_PROVIDERS: "mock" };
+const geminiThenMock = { AI_GW_API_KEY: "test-key", AI_GW_BASE_URL: undefined, NOEMI_FALLBACK_PROVIDERS: "mock" };
 
 for (const [label, stub] of [
   ["HTTP 503", () => async () => errorResponse(503)],
@@ -61,8 +61,8 @@ test("gemini 403 fails closed even with a fallback configured", async () => {
   );
 });
 
-test("missing GEMINI_API_KEY fails closed even with a fallback configured", async () => {
-  await withEnv({ ...geminiThenMock, GEMINI_API_KEY: undefined }, () =>
+test("missing AI_GW_API_KEY fails closed even with a fallback configured", async () => {
+  await withEnv({ ...geminiThenMock, AI_GW_API_KEY: undefined }, () =>
     withFetch(() => { throw new Error("fetch must not run"); }, async () => {
       const result = await compileFile(persona, { provider: "gemini" });
       assert.equal(result.ok, false);
@@ -72,7 +72,7 @@ test("missing GEMINI_API_KEY fails closed even with a fallback configured", asyn
 });
 
 test("gemini failing with no fallback returns a structured error, not a throw", async () => {
-  await withEnv({ GEMINI_API_KEY: "k", NOEMI_FALLBACK_PROVIDERS: undefined }, () =>
+  await withEnv({ AI_GW_API_KEY: "k", NOEMI_FALLBACK_PROVIDERS: undefined }, () =>
     withFetch(async () => errorResponse(503), async () => {
       const result = await compileFile(persona, { provider: "gemini" });
       assert.equal(result.ok, false);
@@ -92,7 +92,7 @@ test("config alone (no explicit provider) selects gemini and its fallbacks", asy
 });
 
 test("a timeout with no fallback returns a string error code, not DOMException's numeric 23", async () => {
-  await withEnv({ GEMINI_API_KEY: "k", NOEMI_FALLBACK_PROVIDERS: undefined }, () =>
+  await withEnv({ AI_GW_API_KEY: "k", NOEMI_FALLBACK_PROVIDERS: undefined }, () =>
     withFetch(timeoutFailure(), async () => {
       const result = await compileFile(persona, { provider: "gemini" });
       assert.equal(result.ok, false);

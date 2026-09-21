@@ -1,20 +1,25 @@
 /**
- * Sprint 2 provider. Calls the xAI (Grok) API with a key resolved from
+ * Sprint 2 provider. Calls xAI (Grok) through NewPush's generative AI
+ * gateway (OpenAI-compatible surface) with a virtual key resolved from
  * process.env at call time -- never parsed from a .env file (AGENTS.md
  * section Secrets & Configuration). Injected at runtime via `infisical run`
  * or `op run`; this file must never see a real key at rest.
  *
+ * The virtual key is a NewPush credential, not an xAI one: it is sent as a
+ * Bearer token to the gateway and never to api.x.ai. Provider credentials
+ * stay with NewPush. Grok is only served on the gateway's OpenAI surface:
+ * POST {gateway}/v1/chat/completions.
+ *
  * Mirrors mock.js's and gemini.js's signature and return shape so compile.js
- * can treat every provider interchangeably. xAI's API is OpenAI-compatible:
- * POST {API_BASE}/chat/completions with a Bearer token, the same endpoint
- * coding-loop/writer.js already uses for Stage C.
+ * can treat every provider interchangeably.
  *
  * @param {import("../ir.js").BlueprintIR} ir
  * @param {string} prompt
  */
 
-const DEFAULT_MODEL = "grok-4.6";
-const API_BASE = "https://api.x.ai/v1";
+// On the gateway's OpenAI surface the model is always `provider/id`.
+const DEFAULT_MODEL = "xai/grok-4.6";
+const DEFAULT_GATEWAY = "https://ai-gw.newpush.com";
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 /**
@@ -33,7 +38,8 @@ function configError(message) {
 /**
  * Provider-side failure with an HTTP status. fallback.js's
  * isFallbackError() reads err.status directly: 429 and 5xx are
- * fallback-worthy, everything else (4xx auth/validation errors) is not.
+ * fallback-worthy, everything else (401 bad key, 403 model not allowed or
+ * budget exhausted) is not.
  */
 function httpError(message, status) {
   const err = new Error(message);
@@ -43,15 +49,20 @@ function httpError(message, status) {
 
 export async function runXai(ir, prompt) {
   const timeoutMs = Number(process.env.XAI_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS;
-  const apiKey = process.env.XAI_API_KEY;
+  const apiKey = process.env.AI_GW_API_KEY;
   if (!apiKey) {
     throw configError(
-      "XAI_API_KEY is not set. Inject it at runtime via `infisical run` " +
-        "or `op run` -- see AGENTS.md. Never place it in a .env file."
+      "AI_GW_API_KEY is not set. Inject the NewPush AI gateway virtual key at " +
+        "runtime via `infisical run` or `op run` -- see AGENTS.md. Never place " +
+        "it in a .env file."
     );
   }
 
-  const model = process.env.XAI_MODEL || DEFAULT_MODEL;
+  const gateway = (process.env.AI_GW_BASE_URL || DEFAULT_GATEWAY).replace(/\/+$/, "");
+  // Accept a bare `grok-4.6` from config, but always send `xai/grok-4.6`:
+  // the gateway rejects bare ids on its OpenAI surface.
+  const configured = process.env.XAI_MODEL || DEFAULT_MODEL;
+  const model = configured.startsWith("xai/") ? configured : `xai/${configured}`;
   const role = (ir.sections.Role ?? "").split("\n")[0];
   const context = [
     `You are compiling and running the NoéMI persona "${ir.title}".`,
@@ -60,7 +71,7 @@ export async function runXai(ir, prompt) {
   ].join("\n");
 
   const started = Date.now();
-  const url = `${API_BASE}/chat/completions`;
+  const url = `${gateway}/v1/chat/completions`;
 
   // A network failure (DNS, TLS, connection reset) makes fetch itself throw
   // a TypeError, and a timeout throws a TimeoutError. Both are left to
@@ -84,7 +95,7 @@ export async function runXai(ir, prompt) {
   if (!response.ok) {
     const body = await response.text().catch(() => "");
     throw httpError(
-      `xAI API returned ${response.status}: ${body.slice(0, 300)}`,
+      `NewPush AI gateway (xai) returned ${response.status}: ${body.slice(0, 300)}`,
       response.status
     );
   }

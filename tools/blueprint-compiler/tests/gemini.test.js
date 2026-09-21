@@ -17,8 +17,8 @@ const ir = {
   skills: ["verification/pre-flight-check"],
 };
 
-test("missing GEMINI_API_KEY fails closed without ever calling fetch", async () => {
-  await withEnv({ GEMINI_API_KEY: undefined }, () =>
+test("missing AI_GW_API_KEY fails closed without ever calling fetch", async () => {
+  await withEnv({ AI_GW_API_KEY: undefined }, () =>
     withFetch(
       () => {
         throw new Error("fetch should not have been called");
@@ -27,7 +27,7 @@ test("missing GEMINI_API_KEY fails closed without ever calling fetch", async () 
         await assert.rejects(
           () => runGemini(ir, "hello"),
           (err) => {
-            assert.match(err.message, /GEMINI_API_KEY is not set/);
+            assert.match(err.message, /AI_GW_API_KEY is not set/);
             assert.equal(err.code, "PROVIDER_CONFIG");
             // No .status and not a TypeError -- fallback.js's isFallbackError()
             // must treat this as NOT fallback-worthy, so a missing key fails
@@ -44,15 +44,16 @@ test("missing GEMINI_API_KEY fails closed without ever calling fetch", async () 
 
 test("a successful call returns the mock.js-shaped result with real usage", async () => {
   await withEnv(
-    { GEMINI_API_KEY: "test-key", GEMINI_MODEL: "gemini-2.5-flash" },
+    { AI_GW_API_KEY: "test-key", AI_GW_BASE_URL: undefined, GEMINI_MODEL: undefined },
     () =>
       withFetch(
         async (url, init) => {
           assert.equal(
             String(url),
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+            "https://ai-gw.newpush.com/google/v1beta/models/gemini-3.8-flash:generateContent"
           );
-          assert.equal(init.headers["x-goog-api-key"], "test-key");
+          assert.equal(init.headers.Authorization, "Bearer test-key");
+          assert.equal(init.headers["x-goog-api-key"], undefined, "no Google-style key header");
           assert.ok(!String(url).includes("test-key"), "key must never appear in the URL");
           return {
             ok: true,
@@ -67,7 +68,7 @@ test("a successful call returns the mock.js-shaped result with real usage", asyn
         async () => {
           const result = await runGemini(ir, "hello");
           assert.equal(result.provider, "gemini");
-          assert.equal(result.model, "gemini-2.5-flash");
+          assert.equal(result.model, "gemini-3.8-flash");
           assert.equal(result.output, "hello from gemini");
           assert.equal(result.usage.inputTokens, 42);
           assert.equal(result.usage.outputTokens, 7);
@@ -79,9 +80,40 @@ test("a successful call returns the mock.js-shaped result with real usage", asyn
   );
 });
 
+test("a google/-prefixed model is sent bare on the Google-native surface", async () => {
+  const fake = recordFetch(async () => jsonResponse(geminiBody("ok")));
+  await withEnv(
+    { AI_GW_API_KEY: "test-key", AI_GW_BASE_URL: undefined, GEMINI_MODEL: "google/gemini-3.1-pro-preview" },
+    () =>
+      withFetch(fake, async () => {
+        const result = await runGemini(ir, "hello");
+        assert.equal(
+          fake.calls[0].url,
+          "https://ai-gw.newpush.com/google/v1beta/models/gemini-3.1-pro-preview:generateContent"
+        );
+        assert.equal(result.model, "gemini-3.1-pro-preview");
+      })
+  );
+});
+
+test("AI_GW_BASE_URL overrides the gateway origin", async () => {
+  const fake = recordFetch(async () => jsonResponse(geminiBody("ok")));
+  await withEnv(
+    { AI_GW_API_KEY: "test-key", AI_GW_BASE_URL: "https://gw.example.test/", GEMINI_MODEL: undefined },
+    () =>
+      withFetch(fake, async () => {
+        await runGemini(ir, "hello");
+        assert.equal(
+          fake.calls[0].url,
+          "https://gw.example.test/google/v1beta/models/gemini-3.8-flash:generateContent"
+        );
+      })
+  );
+});
+
 test("429 and 5xx responses throw a fallback-eligible error carrying .status", async () => {
   for (const status of [429, 500, 503]) {
-    await withEnv({ GEMINI_API_KEY: "test-key" }, () =>
+    await withEnv({ AI_GW_API_KEY: "test-key" }, () =>
       withFetch(
         async () => ({
           ok: false,
@@ -103,7 +135,7 @@ test("429 and 5xx responses throw a fallback-eligible error carrying .status", a
 });
 
 test("a 4xx auth/validation error throws with .status but is not retried by design", async () => {
-  await withEnv({ GEMINI_API_KEY: "bad-key" }, () =>
+  await withEnv({ AI_GW_API_KEY: "bad-key" }, () =>
     withFetch(
       async () => ({
         ok: false,
@@ -124,7 +156,7 @@ test("a 4xx auth/validation error throws with .status but is not retried by desi
 });
 
 test("a raw network failure (fetch throwing TypeError) propagates unmodified", async () => {
-  await withEnv({ GEMINI_API_KEY: "test-key" }, () =>
+  await withEnv({ AI_GW_API_KEY: "test-key" }, () =>
     withFetch(
       async () => {
         throw new TypeError("fetch failed");
@@ -144,7 +176,7 @@ test("a raw network failure (fetch throwing TypeError) propagates unmodified", a
 
 test("every request carries a timeout signal so a hung call can fall back", async () => {
   const fake = recordFetch(async () => jsonResponse(geminiBody("ok")));
-  await withEnv({ GEMINI_API_KEY: "test-key" }, () =>
+  await withEnv({ AI_GW_API_KEY: "test-key" }, () =>
     withFetch(fake, async () => {
       await runGemini(ir, "hello");
       assert.ok(fake.calls[0].init.signal instanceof AbortSignal);
@@ -153,7 +185,7 @@ test("every request carries a timeout signal so a hung call can fall back", asyn
 });
 
 test("a timeout propagates as TimeoutError (fallback-eligible)", async () => {
-  await withEnv({ GEMINI_API_KEY: "test-key" }, () =>
+  await withEnv({ AI_GW_API_KEY: "test-key" }, () =>
     withFetch(timeoutFailure(), async () => {
       await assert.rejects(() => runGemini(ir, "hello"), (err) => err.name === "TimeoutError");
     })

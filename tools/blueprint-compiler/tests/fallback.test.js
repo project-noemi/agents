@@ -335,7 +335,7 @@ test('status boundaries: 499 and 600 are not fallback-worthy', () => {
 });
 
 test('a PROVIDER_CONFIG error is not fallback-worthy (fail closed)', () => {
-  const err = new Error('GEMINI_API_KEY is not set');
+  const err = new Error('AI_GW_API_KEY is not set');
   err.code = 'PROVIDER_CONFIG';
   assert.strictEqual(isFallbackError(err), false);
 });

@@ -59,7 +59,7 @@
 const { latestVerdict, REVIEWER_LOGINS } = require('./calibration-watch.js');
 
 const API = 'https://api.github.com';
-const REVIEW_CHECK_NAME = 'Cross-Model PR Review';
+const REVIEW_CHECK_NAME = 'AI Review (advisory)';
 /** Verdicts that end the run: --poll must not spin on any of these. */
 const TERMINAL_VERDICTS = [
   'ARMED_AUTOMERGE', 'ESCALATED', 'REMEDIATE', 'PR_CLOSED', 'ALREADY_MERGED', 'DRAFT_HELD',

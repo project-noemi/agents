@@ -42,6 +42,10 @@ const REQUIRED_TEMPLATE_MARKERS = [
     'MCP_INJECTIONS'
 ];
 
+// CLAUDE.md and GEMINI.md are generated pointers, not injected catalogs
+// (Decision [2026-09-22-0001]). Hosts that honor `@path` includes load AGENTS.md.
+const CONTEXT_POINTER = '@AGENTS.md\n';
+
 function parseCliArgs(argv) {
     let configOverride = null;
 
@@ -615,15 +619,47 @@ function demoteHeadings(markdown, levels = 1) {
 }
 
 /**
- * Compose one SKILL.md from a canonical skill spec.
- * Layout: frontmatter → provenance/governance blockquote → canonical H1 →
- * Global Mandates → the remainder of the canonical body, links rewritten.
+ * Agent Skills description: what the skill does *and* when to use it
+ * (agentskills.io, max 1024 characters).
  */
-function buildSkillDistFile({ slug, content, sourceRelPath, mandateSections }) {
-    const description = firstSentences(extractSectionBody(content, 'Purpose'));
-    if (!description) {
+function skillDistDescription(content, sourceRelPath) {
+    const purpose = firstSentences(extractSectionBody(content, 'Purpose'));
+    if (!purpose) {
         throw new Error(`${sourceRelPath}: no Purpose section to derive a description from.`);
     }
+    let description = purpose.trim();
+    if (!/use when/i.test(description)) {
+        description = `${description.replace(/\.$/, '')}. Use when the task matches this skill's Purpose and Inputs.`;
+    }
+    if (description.length > 1024) {
+        description = `${description.slice(0, 1021)}...`;
+    }
+    return description;
+}
+
+function skillDistMandatesMarkdown(mandateSections) {
+    const mandates = mandateSections
+        .map((section) => `## ${section.title}\n\n${demoteHeadings(section.body, 1).trim()}`)
+        .join('\n\n');
+    return [
+        '# Global Mandates',
+        '',
+        'These repository-wide mandates travel with the skill and bind regardless of',
+        'the host agent\'s own context. Load this file before executing the skill.',
+        '',
+        mandates,
+        ''
+    ].join('\n');
+}
+
+/**
+ * Compose one SKILL.md from a canonical skill spec.
+ * Layout: frontmatter → provenance/governance blockquote → canonical H1 →
+ * pointer to references/mandates.md (progressive disclosure) → remainder of
+ * the canonical body, links rewritten.
+ */
+function buildSkillDistFile({ slug, content, sourceRelPath, mandateSections }) {
+    const description = skillDistDescription(content, sourceRelPath);
 
     const rewritten = rewriteRelativeLinks(content.trim(), sourceRelPath);
     const titleMatch = rewritten.match(/^#\s+(.+)$/m);
@@ -634,11 +670,7 @@ function buildSkillDistFile({ slug, content, sourceRelPath, mandateSections }) {
 
     const sourceUrl = `${SKILL_DIST_REPO_URL}/blob/${SKILL_DIST_REF}/${sourceRelPath.split(path.sep).join('/')}`;
 
-    const mandates = mandateSections
-        .map((section) => `### ${section.title}\n\n${demoteHeadings(section.body, 2).trim()}`)
-        .join('\n\n');
-
-    return [
+    const skillMd = [
         '---',
         `name: ${slug}`,
         `description: ${yamlQuote(description)}`,
@@ -663,14 +695,17 @@ function buildSkillDistFile({ slug, content, sourceRelPath, mandateSections }) {
         '',
         '## Global Mandates',
         '',
-        'These repository-wide mandates travel with the skill and bind regardless of',
-        'the host agent\'s own context:',
-        '',
-        mandates,
+        'Before executing this skill, read [references/mandates.md](references/mandates.md).',
+        'Those SecretOps and error-handling rules bind regardless of the host agent\'s context.',
         '',
         afterTitle,
         ''
     ].join('\n');
+
+    return {
+        skillMd,
+        mandatesMd: skillDistMandatesMarkdown(mandateSections)
+    };
 }
 
 /** Placeholder marker that disqualifies a skill from publication. */
@@ -791,26 +826,34 @@ function buildSkillsDist({ skillsDir, agentsMdPath, repoRoot }) {
             continue;
         }
 
+        const built = buildSkillDistFile({
+            slug,
+            content,
+            sourceRelPath,
+            mandateSections
+        });
         files.push({
             slug,
             sourceRelPath,
             relPath: path.join('skills-dist', slug, 'SKILL.md'),
-            content: buildSkillDistFile({
-                slug,
-                content,
-                sourceRelPath,
-                mandateSections
-            })
+            content: built.skillMd
+        });
+        files.push({
+            slug,
+            sourceRelPath,
+            relPath: path.join('skills-dist', slug, 'references', 'mandates.md'),
+            content: built.mandatesMd
         });
     }
 
     return {
-        files: files.sort((left, right) => left.slug.localeCompare(right.slug)),
+        files: files.sort((left, right) => (left.relPath < right.relPath ? -1 : left.relPath > right.relPath ? 1 : 0)),
         withheld: withheld.sort((left, right) => left.slug.localeCompare(right.slug))
     };
 }
 
 module.exports = {
+    CONTEXT_POINTER,
     INLINE_FULL_PROTOCOLS,
     REQUIRED_AGENT_SECTIONS,
     REQUIRED_GLOBAL_SECTIONS,

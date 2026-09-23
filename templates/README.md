@@ -8,6 +8,7 @@ Project NoeMI keeps the final generated outputs at the top level:
 - `CLAUDE.md`
 
 Those stay in the root because local agentic clients consume them directly.
+Each is a generated `@AGENTS.md` pointer (Decision [2026-09-22-0001]); catalogs are not injected.
 
 The source templates live here instead so the repo root stays focused on:
 

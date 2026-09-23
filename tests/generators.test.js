@@ -4,6 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { CONTEXT_POINTER } = require('../scripts/context_helpers');
 
 const repoRoot = path.join(__dirname, '..');
 const geminiPath = path.join(repoRoot, 'GEMINI.md');
@@ -50,18 +51,8 @@ test('config override rewrites context outputs and can be restored', () => {
     try {
         runNode(['scripts/generate_all.js', `--config=${tempConfigPath}`]);
 
-        const gemini = read(geminiPath);
-        const claude = read(claudePath);
-
-        assert.match(gemini, /### Github Protocol/);
-        assert.doesNotMatch(gemini, /### Slack Protocol/);
-        assert.match(gemini, /Risk Triage — Classification Skill/);
-        assert.doesNotMatch(gemini, /Alert & Notify/);
-
-        assert.match(claude, /### Github Protocol/);
-        assert.doesNotMatch(claude, /### Slack Protocol/);
-        assert.match(claude, /Risk Triage — Classification Skill/);
-        assert.doesNotMatch(claude, /Alert & Notify/);
+        assert.equal(read(geminiPath), CONTEXT_POINTER, 'config override must not fatten GEMINI.md');
+        assert.equal(read(claudePath), CONTEXT_POINTER, 'config override must not fatten CLAUDE.md');
     } finally {
         runNode(['scripts/generate_all.js']);
         fs.rmSync(tempDir, { recursive: true, force: true });

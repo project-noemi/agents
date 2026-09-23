@@ -18,6 +18,7 @@
     "test:e2e": "node --test --test-concurrency=1 tests/e2e/*.test.js",
     "test:sync": "bash scripts/test-sync-upstream.sh",
     "test:update-fixtures": "node scripts/update-golden-fixtures.js",
+    "test:skill-utility": "node --test --test-concurrency=1 tests/skill-utility-eval.test.js",
     "validate": "npm run audit && npm test",
     "validate:full": "npm run validate && npm run test:sync && npm run test:e2e"
   },

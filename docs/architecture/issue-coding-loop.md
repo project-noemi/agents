@@ -224,7 +224,7 @@ reviewer and passes `--live-critic`. Pass `--scan` to run `coding-loop/scan.js`
 on the fetched body, or `--scan-status` for a precomputed result. Omitting
 both classifies the issue as REFUSED (fail closed).
 
-On `develop`, Cross-Model PR Review is **required to complete** and remains
+On `develop`, AI Review (advisory) is **required to complete** and remains
 advisory on the verdict (Decision [2026-08-17-0001]). A GitHub outage that
 fails the comment POST is not a review. The runner retries transient GitHub
 errors (429 / 5xx) via `scripts/resilience_helpers.js` until the post

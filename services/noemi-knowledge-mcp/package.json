@@ -1,0 +1,32 @@
+{
+  "name": "@project-noemi/noemi-knowledge-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remote MCP knowledge server for Project NoéMI (mcp.noemi.newpush.com)",
+  "type": "module",
+  "scripts": {
+    "build:corpus": "node scripts/build-corpus.mjs",
+    "dev": "npm run build:corpus && wrangler dev",
+    "deploy": "npm run build:corpus && wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build:corpus && vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.23.0",
+    "agents": "^0.2.0",
+    "zod": "^3.25.0"
+  },
+  "overrides": {
+    "@modelcontextprotocol/sdk": "1.23.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260921.1",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.34.0"
+  }
+}

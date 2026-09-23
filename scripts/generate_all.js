@@ -3,25 +3,17 @@
 const fs = require('fs');
 const path = require('path');
 const {
-    buildAgentIndex,
-    buildFrameworkSection,
-    buildGlobalMandates,
-    buildMcpSection,
-    buildSkillsSection,
+    CONTEXT_POINTER,
     buildSkillsDist,
     discoverAgents,
-    injectBetween,
     parseCliArgs,
     readConfig
 } = require('./context_helpers');
 
 const defaultConfigPath = path.join(__dirname, '../mcp.config.json');
-const protocolsDir = path.join(__dirname, '../mcp-protocols');
-const skillsDir = path.join(__dirname, '../skills');
 const agentsMdPath = path.join(__dirname, '../AGENTS.md');
 const agentsDir = path.join(__dirname, '../agents');
-const valueLensesDir = path.join(__dirname, '../value-lenses');
-const operatingProfilesDir = path.join(__dirname, '../operating-profiles');
+const skillsDir = path.join(__dirname, '../skills');
 
 const repoRoot = path.join(__dirname, '..');
 const skillsDistDir = path.join(repoRoot, 'skills-dist');
@@ -39,46 +31,11 @@ const TARGETS = [
     }
 ];
 
-function generate(target, config, agents) {
-    console.log(`Generating modular ${target.name}.md...`);
-
-    if (!fs.existsSync(target.template)) {
-        console.error(`Error: Template not found -> ${target.template}`);
-        return false;
-    }
-
-    const templateContent = fs.readFileSync(target.template, 'utf8');
-    let finalContent = templateContent;
-
+function generate(target) {
+    console.log(`Generating ${target.name}.md as an AGENTS.md pointer...`);
     try {
-        finalContent = injectBetween(finalContent, '<!-- GLOBAL_MANDATES_START -->', '<!-- GLOBAL_MANDATES_END -->', buildGlobalMandates(agentsMdPath));
-        finalContent = injectBetween(finalContent, '<!-- AGENT_INDEX_START -->', '<!-- AGENT_INDEX_END -->', buildAgentIndex(agents));
-        finalContent = injectBetween(
-            finalContent,
-            '<!-- VALUE_LENS_INJECTIONS_START -->',
-            '<!-- VALUE_LENS_INJECTIONS_END -->',
-            buildFrameworkSection(
-                valueLensesDir,
-                'Value Lenses',
-                'The following Value Lenses are part of the NoéMI framework layer. Agents should consult the lens that matches the engagement context (e.g., performance-efficiency, care-continuity) when making trade-off decisions.'
-            )
-        );
-        finalContent = injectBetween(
-            finalContent,
-            '<!-- OPERATING_PROFILE_INJECTIONS_START -->',
-            '<!-- OPERATING_PROFILE_INJECTIONS_END -->',
-            buildFrameworkSection(
-                operatingProfilesDir,
-                'Operating Profiles',
-                'The following Operating Profiles describe how agents should adapt their tone, cadence, and escalation behavior to different organizational contexts.',
-                true
-            )
-        );
-        finalContent = injectBetween(finalContent, '<!-- SKILLS_INJECTIONS_START -->', '<!-- SKILLS_INJECTIONS_END -->', buildSkillsSection(config.activeSkills, skillsDir));
-        finalContent = injectBetween(finalContent, '<!-- MCP_INJECTIONS_START -->', '<!-- MCP_INJECTIONS_END -->', buildMcpSection(config.activeMcps, protocolsDir));
-
-        fs.writeFileSync(target.output, finalContent, 'utf8');
-        console.log(`Successfully generated ${target.output} with ${agents.length} agents, ${config.activeSkills.length} skills, and ${config.activeMcps.length} MCPs.`);
+        fs.writeFileSync(target.output, CONTEXT_POINTER, 'utf8');
+        console.log(`Successfully generated ${target.output} (${JSON.stringify(CONTEXT_POINTER.trim())}).`);
         return true;
     } catch (error) {
         console.error(`Error generating ${target.name}.md: ${error.message}`);
@@ -127,16 +84,29 @@ function generateSkillsDist() {
                 console.log(`  pruned stale skills-dist/${entry.name}/`);
                 continue;
             }
-            for (const inner of fs.readdirSync(entryPath, { withFileTypes: true })) {
-                if (inner.name !== 'SKILL.md') {
-                    fs.rmSync(path.join(entryPath, inner.name), { recursive: true, force: true });
-                    console.log(`  pruned stray skills-dist/${entry.name}/${inner.name}`);
+            const walk = (dir) => {
+                for (const inner of fs.readdirSync(dir, { withFileTypes: true })) {
+                    const innerPath = path.join(dir, inner.name);
+                    const rel = path.relative(repoRoot, innerPath);
+                    if (inner.isDirectory()) {
+                        walk(innerPath);
+                        if (fs.existsSync(innerPath) && fs.readdirSync(innerPath).length === 0) {
+                            fs.rmSync(innerPath, { recursive: true, force: true });
+                        }
+                        continue;
+                    }
+                    if (!expected.has(rel)) {
+                        fs.rmSync(innerPath, { force: true });
+                        console.log(`  pruned stray ${rel}`);
+                    }
                 }
-            }
+            };
+            walk(entryPath);
         }
     }
 
-    console.log(`Successfully generated skills-dist/ with ${files.length} SKILL.md file(s)`
+    const skillCount = files.filter((file) => path.basename(file.relPath) === 'SKILL.md').length;
+    console.log(`Successfully generated skills-dist/ with ${skillCount} SKILL.md file(s)`
         + (withheld.length ? ` (${withheld.length} withheld pending substantive completion).` : '.'));
     return true;
 }
@@ -160,7 +130,7 @@ function run() {
 
     let success = true;
     for (const target of TARGETS) {
-        if (!generate(target, config, agents)) {
+        if (!generate(target)) {
             success = false;
         }
     }

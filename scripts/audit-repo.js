@@ -5,8 +5,7 @@ const path = require('path');
 const {
     REQUIRED_AGENT_SECTIONS,
     REQUIRED_GLOBAL_SECTIONS,
-    REQUIRED_TEMPLATE_MARKERS,
-    buildGlobalMandates,
+    CONTEXT_POINTER,
     discoverAgents,
     extractAgentHeadings,
     extractTopLevelSections,
@@ -67,12 +66,8 @@ function checkTemplates() {
             continue;
         }
         const content = fs.readFileSync(templatePath, 'utf8');
-        for (const marker of REQUIRED_TEMPLATE_MARKERS) {
-            const startTag = `<!-- ${marker}_START -->`;
-            const endTag = `<!-- ${marker}_END -->`;
-            if (!content.includes(startTag) || !content.includes(endTag)) {
-                fail(`${path.basename(templatePath)} missing marker pair: ${startTag} / ${endTag}`);
-            }
+        if (content !== CONTEXT_POINTER) {
+            fail(`${path.relative(repoRoot, templatePath)} must be exactly ${JSON.stringify(CONTEXT_POINTER)} (Decision [2026-09-22-0001]).`);
         }
     }
 }
@@ -201,26 +196,14 @@ function checkSkills() {
 }
 
 function checkGeneratedOutputs() {
-    let mandates;
-    try {
-        mandates = buildGlobalMandates(agentsMdPath);
-    } catch (error) {
-        fail(error.message);
-        return;
-    }
-
-    const mandateHeadings = [...mandates.matchAll(/^##\s+(.+)$/gm)].map((match) => match[1]);
-
     for (const outputPath of generatedOutputs) {
         if (!fs.existsSync(outputPath)) {
+            fail(`${path.basename(outputPath)} is missing — run \`npm run generate\`.`);
             continue;
         }
-
         const content = fs.readFileSync(outputPath, 'utf8');
-        for (const heading of mandateHeadings) {
-            if (!content.includes(`## ${heading}`)) {
-                fail(`${path.basename(outputPath)} is missing injected mandate heading: ${heading}`);
-            }
+        if (content !== CONTEXT_POINTER) {
+            fail(`${path.basename(outputPath)} must be exactly ${JSON.stringify(CONTEXT_POINTER)} (Decision [2026-09-22-0001]).`);
         }
     }
 }
@@ -232,11 +215,9 @@ function checkGeneratedOutputs() {
 const CANONICAL_LICENSE_ID = 'FSL-1.1-Apache-2.0';
 const CANONICAL_LICENSE_HEADER = 'Functional Source License, Version 1.1, Apache 2.0 Future License';
 
-// The github protocol carries the machine-identity PR-authorship rules and the
-// develop-only merge flow — the fleet's operational safety contract. Summary
-// injection (Decision [2026-08-13-0001]) keeps it fully inline via
-// INLINE_FULL_PROTOCOLS; this guard fails the audit if that invariant ever
-// silently degrades (e.g. a config or generator change drops the full body).
+// Machine-identity PR authorship lives in mcp-protocols/github.md. After
+// Decision [2026-09-22-0001], CLAUDE.md/GEMINI.md only point at AGENTS.md, so
+// the always-loaded contract is the pointer in AGENTS.md — not a pasted body.
 function checkInlineSafetyContract() {
     let config;
     try {
@@ -248,14 +229,9 @@ function checkInlineSafetyContract() {
     if (!Array.isArray(config.active_mcps) || !config.active_mcps.includes('github')) {
         return;
     }
-    for (const outputPath of generatedOutputs) {
-        if (!fs.existsSync(outputPath)) {
-            continue;
-        }
-        const content = fs.readFileSync(outputPath, 'utf8');
-        if (!content.includes('PR Authorship (Machine Identity)')) {
-            fail(`${path.basename(outputPath)}: github is an active MCP but its full protocol (PR Authorship / Machine Identity rules) is not inline — the always-loaded safety contract has been lost.`);
-        }
+    const agentsMd = fs.readFileSync(agentsMdPath, 'utf8');
+    if (!agentsMd.includes('mcp-protocols/github.md')) {
+        fail('AGENTS.md must point at mcp-protocols/github.md so machine-identity PR authorship stays on the load path after CLAUDE.md/GEMINI.md became pointers.');
     }
 }
 

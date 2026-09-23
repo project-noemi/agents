@@ -155,16 +155,18 @@ JSON
 # this value, EXPECTED_PROTECTION in scripts/audit-admin-overrides.js, and the
 # decision record in agreement.
 #
-# "Cross-Model PR Review" is required-but-advisory: required that it COMPLETES
+# "AI Review (advisory)" is required-but-advisory: required that it COMPLETES
 # (kills the review-posted-after-merge race), while its verdict stays advisory
 # — the job exits green on findings and on by-design halts.
+# Do not require "AI Review (fork notice)" (unprivileged probe) or the retired
+# job name "Cross-Model PR Review" (nothing posts that string anymore).
 DEVELOP_PAYLOAD=$(cat <<'JSON'
 {
   "required_status_checks": {
     "strict": true,
     "contexts": [
       "Audit, Generate, and Fast Tests",
-      "Cross-Model PR Review"
+      "AI Review (advisory)"
     ]
   },
   "enforce_admins": false,

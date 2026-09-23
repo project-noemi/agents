@@ -77,7 +77,7 @@ Run `node scripts/generate_all.js` when you change any of the following:
 - `templates/context/CLAUDE.template.md`
 - generator helper logic in `scripts/`
 
-Generated outputs are committed to the repo. CI checks that `GEMINI.md` and `CLAUDE.md` stay fresh.
+Generated outputs are committed to the repo. CI checks that `GEMINI.md` and `CLAUDE.md` stay the `@AGENTS.md` pointer (Decision [2026-09-22-0001]).
 
 ## Validation Expectations
 

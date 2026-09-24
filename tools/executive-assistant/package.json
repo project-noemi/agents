@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "express": "^5.2.1",
-    "google-auth-library": "^11.0.2",
+    "google-auth-library": "^11.1.0",
     "googleapis": "^180.0.0"
   },
   "devDependencies": {

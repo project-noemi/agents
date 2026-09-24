@@ -6,7 +6,7 @@ This guide covers the official Claude Code marketplace plugin:
 
 - **Upstream:** [xai-org/grok-build-plugin-cc](https://github.com/xai-org/grok-build-plugin-cc)
 - **Plugin id:** `grok-build@xai-grok-build`
-- **Version documented:** `0.2.x` (plugin metadata; re-check upstream after upgrades)
+- **Version documented:** `0.2.1` (plugin metadata; re-check [upstream](https://github.com/xai-org/grok-build-plugin-cc) after upgrades)
 
 ## What It Is
 
@@ -60,9 +60,11 @@ Use it when you want a **different model family** to challenge Claude's work, no
 
 | Surface | Default write policy |
 |---------|----------------------|
-| Bridge `run` CLI | **Read-only** (`--permission-mode plan` + `--sandbox read-only`) unless `--write` is passed |
-| `/grok-build:review` and `/grok-build:critique` | Always review-only (no fixes, no patches) |
-| `/grok-build:delegate` / `grok-build:grok-delegate` | **Write-capable by policy** (adds `--write`) unless the user asks for read-only / diagnosis-only |
+| Bridge `run` CLI | **Read-only sandbox** (`--sandbox read-only` + `--always-approve`) unless `--write` is passed |
+| `/grok-build:review` and `/grok-build:critique` | Always review-only (no fixes, no patches). Safety is the read-only sandbox, not an interactive Approve click |
+| `/grok-build:delegate` / `grok-build:grok-delegate` | **Write-capable by policy** (adds `--write`, no sandbox) unless the user asks for read-only / diagnosis-only |
+
+Headless runs have no human to click Approve. Upstream 0.2.1 therefore auto-approves tool calls and relies on `--sandbox read-only` for the read-only paths (see [xai-org/grok-build-plugin-cc#12](https://github.com/xai-org/grok-build-plugin-cc/issues/12)).
 
 Direct bridge calls stay conservative. The delegate path is intentionally more powerful so Grok can implement fixes.
 
@@ -75,7 +77,11 @@ Direct bridge calls stay conservative. The delegate path is intentionally more p
 | Authenticated Grok session | `grok models` succeeds |
 | Claude Code with plugin support | `/plugin` works in the session |
 
-**Phase 0 reminder:** do not put Grok API keys or session tokens in the repository. Authenticate through the Grok CLI login flow. If a downstream tool needs secrets, wrap launches with `op run` / `infisical run` as in [`secure-secret-management.md`](secure-secret-management.md).
+**Phase 0 reminder:** do not put Grok API keys or session tokens in the repository. Prefer interactive `grok` login so `grok models` succeeds. If you need an `XAI_API_KEY` for headless or CI, inject it with `op run` / `infisical run` ([`secure-secret-management.md`](secure-secret-management.md)). Project NoéMI can issue a **starter xAI API key from USD 1** — inquire at [noemi.newpush.com](https://noemi.newpush.com). Do not paste the key into chat.
+
+## Paste this into Claude Code
+
+If you want Claude to ask the right questions and install the plugin for you, copy the fence in [`../examples/grok-claude-plugin-prompt.md`](../examples/grok-claude-plugin-prompt.md) into a new Claude Code session.
 
 ## Install
 
@@ -152,10 +158,10 @@ Probe Node + Grok CLI availability and authentication.
 | `--model <model>` | Optional Grok model override |
 | `--effort low\|medium\|high` | Optional reasoning effort |
 
-Under the hood (conceptually):
+Under the hood (conceptually, plugin `0.2.1`):
 
 ```bash
-grok -p <prompt> --agent explore --permission-mode plan --sandbox read-only --cwd <ws> --output-format plain
+grok -p <prompt> --agent explore --always-approve --sandbox read-only --cwd <ws> --output-format plain
 ```
 
 **Constraints:**
@@ -196,7 +202,7 @@ Hand investigation or implementation to Grok via the `grok-build:grok-delegate` 
 | Flag | Purpose |
 |------|---------|
 | `--wait` / `--background` | Claude-side execution control (prefer bridge `--background` for long work) |
-| `--resume` | Continue the last stored Grok session (`grok -r <id>`) |
+| `--resume` / `--resume-last` | Continue the last stored Grok session (`grok -r <id>`) |
 | `--fresh` | Force a new Grok thread |
 | `--model` / `--effort` | Runtime selection only; not part of the task text |
 
@@ -358,7 +364,7 @@ State fallback when `CLAUDE_PLUGIN_DATA` is unset: `$TMPDIR/grok-cc-runs`.
 - Teams can confuse Claude background tasks with bridge background workers — prefer bridge `--background` for stop ownership  
 - Direct `node …/grok-bridge.mjs run` is read-only by default; forgetting `--write` (or the delegate path) yields plan-only behavior  
 - Review and critique intentionally refuse to fix; users may misread that as “the bridge cannot edit”  
-- Not a replacement for Phase 0 SecretOps or for pinned Gemini 2.5 Flash reference workflows in this repository  
+- Not a replacement for Phase 0 SecretOps or for pinned Gemini 3.6 Flash reference workflows in this repository  
 
 ## Troubleshooting
 
@@ -366,7 +372,7 @@ State fallback when `CLAUDE_PLUGIN_DATA` is unset: `$TMPDIR/grok-cc-runs`.
 |---------|-------------|
 | Plugin commands missing | `/plugin install grok-build@xai-grok-build` then `/reload-plugins` |
 | Check fails on `grok` | Install CLI; set `GROK_BINARY` if not on PATH |
-| Check fails on auth | Interactive `grok` login; confirm `grok models` |
+| Check fails on auth | Interactive `grok` login; confirm `grok models`. Need an API key? xAI console, or a Project NoéMI starter key from USD 1 ([noemi.newpush.com](https://noemi.newpush.com)); inject with `infisical run` / `op run`, never paste into chat |
 | Background run with no output | `/grok-build:runs` then `/grok-build:show <run-id>` |
 | Run will not die | `/grok-build:stop <run-id>` (kills agent + bridge trees) |
 | Delegate seems stuck | Ensure you used the subagent path, not a recursive skill/command re-entry |
@@ -378,10 +384,11 @@ State fallback when `CLAUDE_PLUGIN_DATA` is unset: `$TMPDIR/grok-cc-runs`.
 |---------|---------------------|
 | Interactive Claude Code co-work | Claude host models + optional Grok / Codex bridges |
 | Orchestrator routing matrix | Claude models + Codex (`gpt-5.5`) when that plugin is present; Grok as peer bridge for review/rescue |
-| Pinned lab / example / smoke workflows in this repo | Remain on **Gemini 2.5 Flash** per coding standards — the Grok bridge does not repoint them |
+| Pinned lab / example / smoke workflows in this repo | Remain on **Gemini 3.6 Flash** per coding standards — the Grok bridge does not repoint them |
 
 ## Recommended Next Docs
 
+- [`../examples/grok-claude-plugin-prompt.md`](../examples/grok-claude-plugin-prompt.md) — copy-paste prompt for Claude to install the plugin  
 - [`claude-code-local-workspace.md`](claude-code-local-workspace.md) — Claude Code as a local agentic workspace  
 - [`openai-codex-local-workspace.md`](openai-codex-local-workspace.md) — peer bridge pattern for OpenAI Codex  
 - [`agentic-local-workspaces.md`](agentic-local-workspaces.md) — Gemini / Claude / Codex taxonomy  
@@ -391,7 +398,7 @@ State fallback when `CLAUDE_PLUGIN_DATA` is unset: `$TMPDIR/grok-cc-runs`.
 
 ## Official References
 
-- [Grok Build ↔ Claude Code Bridge (upstream)](https://github.com/xai-org/grok-build-plugin-cc)  
+- [Grok Build ↔ Claude Code Bridge (upstream, 0.2.1)](https://github.com/xai-org/grok-build-plugin-cc)  
 - [xAI / Grok Build](https://x.ai)  
 - [Claude Code overview](https://docs.anthropic.com/en/docs/claude-code/overview)  
 - Agent persona: [`agents/engineering/orchestrator.md`](../../agents/engineering/orchestrator.md)  

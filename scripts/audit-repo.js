@@ -346,6 +346,14 @@ function checkPhaseZeroKit() {
 const MERGE_GATE_PATH = '.github/workflows/require-develop-source.yml';
 const CANONICAL_GATE_CONDITION = 'if [[ "${{ github.head_ref }}" != "develop" ]]; then';
 
+function checkBibleEdition() {
+    console.log('Auditing Bible edition stamp (CalVer, not SemVer)...');
+    const { checkBibleEditionFile } = require('./bible-edition');
+    for (const error of checkBibleEditionFile(repoRoot)) {
+        fail(error);
+    }
+}
+
 function checkMergeGateInvariant() {
     console.log('Auditing merge-gate invariant (develop is the only PR source into main)...');
     const gatePath = path.join(repoRoot, MERGE_GATE_PATH);
@@ -436,6 +444,7 @@ function main() {
     checkPhaseZeroKit();
     checkMergeGateInvariant();
     checkBranchModel();
+    checkBibleEdition();
 
     if (failed) {
         process.exit(1);

@@ -1307,3 +1307,15 @@
 - **Decision:** Keep Infisical `AGENT_GH_TOKEN` as the `noemi-agent` fine-grained PAT for `project-noemi/agents`. Add `AGENT_GH_TOKEN_CLASSIC` as a second secret (classic PAT, same GitHub user). `AGENT_GH_USE_CLASSIC=1|true|yes` selects classic. Missing classic is a hard fail; there is no fallback to `AGENT_GH_TOKEN`. Do not replace the fine-grained token. Do not mint the classic token as a human account.
 - **Context:** Fine-grained PATs are single resource-owner, so this identity 404s on `newpush/newpush-agents` while a classic PAT can see every org the user can. Replacing `AGENT_GH_TOKEN` would widen blast radius in every session that already injects it (Grok, scheduled Doc, merge-gate). Live-fire needs the wider token without changing home-repo authorship.
 - **Impact:** `scripts/agent-token.js` is the Node resolver; `scripts/agent-gh.sh` matches it. Coding-loop Stage C and `agent-pr.js` use the same rule. Vault inventory: `.env.template` `AGENT_GH_TOKEN_CLASSIC`.
+
+## [2026-09-24-0003] Bible edition is published CalVer, not SemVer 2.0
+
+- **Decision:** `docs/PROJECT_REFERENCE.md` stamps **`Edition YYYY.MM.DD`** matching a published CalVer tag. The April 2026 `Version 2.0` line is retired. Curriculum **v3.0** remains the workshop syllabus name and is not this stamp. The release job does not rewrite `main`, so the stamp is refreshed on `develop` during a narrative pass. Audit fails if the stamp is not that format, is not a real tag, or lags the latest tag by more than 45 days. Content may be edited any day; publication still rides `develop → main`.
+- **Context:** The Bible kept saying April 2026 after months of edits (through 2026-09-24). DEFCOL and other public deliveries would hand out a document that looks five months stale. Waiting for CalVer to *edit* would keep that lie; waiting for CalVer to *publish* is the existing release train.
+- **Impact:** `scripts/bible-edition.js` plus `scripts/audit-repo.js`. Validate CI fetches tags. Knowledge MCP corpus rebuilt from the updated Bible.
+
+## [2026-09-24-0004] Grok Claude plugin tracks upstream 0.2.1; starter keys from USD 1
+
+- **Decision:** Document the official `xai-org/grok-build-plugin-cc` plugin at **0.2.1**, including the headless permission change (`--always-approve` with `--sandbox read-only` as the safety boundary; no interactive Approve). Ship a copy-paste Claude prompt that asks OS, CLI, auth, and plugin state, then installs from that repo only. Interactive `grok` login is enough for the plugin. If someone needs an `XAI_API_KEY`, they may use the xAI console or a **Project NoéMI starter key from USD 1** (inquire at noemi.newpush.com). Keys are never pasted into chat; inject with Fetch-on-Demand.
+- **Context:** Cohort and DEFCOL users start in Claude Code and need a one-paste path. Official plugin README is the install contract. A missing key should not dump people into inventing curl wrappers.
+- **Impact:** `docs/examples/grok-claude-plugin-prompt.md` plus updates to `docs/tool-usages/grok-build-claude-code.md`.

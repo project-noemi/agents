@@ -213,6 +213,21 @@ If you accidentally open a PR against `main`, retarget it via the GitHub UI (Edi
 gh pr edit <num> --base develop
 ```
 
+### Fork pull requests
+
+External contributors open PRs from a fork. GitHub withholds Actions
+variables from `pull_request` on those PRs, so the required **AI Review
+(advisory)** check does not run until a maintainer adds the `ai-review`
+label **once**. After that:
+
+- later commits (including "Update branch") re-run the advisory automatically
+- the unprivileged "AI Review (fork notice)" check may warn; it is **not**
+  required and must not be treated as a merge blocker
+- a human still approves and merges
+
+See [`docs/AI_REVIEW_GOVERNANCE.md`](docs/AI_REVIEW_GOVERNANCE.md) § Fork Pull
+Requests.
+
 ## Pull Request Expectations
 
 Every PR should explain:

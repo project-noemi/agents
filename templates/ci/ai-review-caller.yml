@@ -16,9 +16,20 @@ name: AI Review (advisory)
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  pull_request_target:
+    # Labeled: first trust signal. Synchronize/reopened: re-run while the
+    # ai-review label remains. Do not add `opened` — that would be unconstrained
+    # pull_request_target on every fork PR. The job `if` is the second gate.
+    types: [labeled, synchronize, reopened]
 
 jobs:
   review:
+    # Caller-side gate: workflow_call always runs the reusable advisory job, so
+    # this `if` is what keeps unlabeled fork PRs from privileged review.
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name == 'ai-review') ||
+      (github.event_name == 'pull_request_target' && github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'ai-review'))
     # Pinned to @main: the release train promotes develop to main daily after
     # review, so the fleet consumes only human-reviewed reviewer code. A
     # @develop pin would let any merge to develop change review behavior

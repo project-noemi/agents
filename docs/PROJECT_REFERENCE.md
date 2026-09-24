@@ -1,8 +1,10 @@
 # Project NoéMI — Public Reference Guide
 
-**Version 2.0 | April 2026**
+**Edition 2026.09.23**
 
 > **"We help you future-proof your organization against AI, by using AI."**
+
+The edition is the last **published CalVer** of this framework (`YYYY.MM.DD` GitHub Release tag) at the time of the narrative pass. It is not SemVer. Workshop **curriculum v3.0** is the syllabus in [Chapter 9](#chapter-9-the-curriculum-what-gets-taught), not this stamp.
 
 ---
 
@@ -203,7 +205,7 @@ Durable mental models and abstract reasoning frameworks that remain valid regard
 
 ### Layer B (Dynamic Labs)
 
-Ephemeral technical exercises tied to specific tools and platforms. Updated per cohort, per model release, or per quarter. In v3.0, exclusively built on well known and reputable open-source technologies, assembled to be ready to go in the *NewPush Labs* open-source stack. They are the "how" that changes with the technology.
+Ephemeral technical exercises tied to specific tools and platforms. Updated per cohort, per model release, or per quarter. In curriculum v3.0 they are built on well-known open-source technologies, assembled to be ready to go in the *NewPush Labs* open-source stack. They are the "how" that changes with the technology.
 
 ### The Guardian Layer
 
@@ -227,7 +229,19 @@ The risk of infinite loops in autonomous multi-agent systems, where agents trigg
 
 ### Cross-Model Review
 
-The practice of having one model family produce work and a **different** model family review it. Two instances of the same model share training data and therefore share blind spots: a misreading made while writing is likely repeated while reviewing. "A second AI checked it" is only a real control if the second AI can fail differently from the first. In NoéMI, Claude produces and Gemini reviews.
+The practice of having one model family produce work and a **different** model family review it. Two instances of the same model share training data and therefore share blind spots: a misreading made while writing is likely repeated while reviewing. "A second AI checked it" is only a real control if the second AI can fail differently from the first. In NoéMI, a producing host (Claude Code, Gemini CLI, Codex, or Grok Build) writes; **Gemini** reviews. The required GitHub check is **AI Review (advisory)**.
+
+### CalVer
+
+Date-versioned releases (`YYYY.MM.DD`, UTC). A governance baseline uses a calendar date so "how current is this copy?" is readable without a SemVer lookup table. Quiet days mint nothing; a `feat` or `fix` on `develop` promotes to `main` and stamps a tag. See [`docs/RELEASE_PROCESS.md`](RELEASE_PROCESS.md).
+
+### Agent Skills
+
+Portable skill packages (`skills-dist/<slug>/SKILL.md`) in the [Agent Skills](https://agentskills.io) shape, with mandates in `references/mandates.md`. Hosts load `AGENTS.md` on demand; `CLAUDE.md` and `GEMINI.md` are the single-line pointer `@AGENTS.md`, not catalogs.
+
+### Coding Loop
+
+The in-repo issue → plan → implement → independently reviewed PR path (`coding-loop/`). Organizations run it from a private `{company}-agents` copy that syncs *from* this blueprint. It is not a second GitHub product repo.
 
 ### Producer–Reviewer Separation
 
@@ -590,7 +604,7 @@ v3.0 of the curriculum leverages the **NewPush Labs open-source stack**. This is
 Grok now covers both sides of the Gem / GPT job, and a local CLI stack:
 
 - **Custom Agents, Projects, and hosted Skills** on grok.com are the persona + persistent-knowledge surface. Load a NoéMI spec into the agent instruction box; put the rest of the file in a Project.
-- **Grok Build** (`grok`) is the local TUI / headless CLI: plan mode, subagents, worktrees, MCP, repo-local skills (`/skillify`), and `grok -p` for scripts. It reads this repository's `AGENTS.md` and `CLAUDE.md`. There is no generated `GROK.md`.
+- **Grok Build** (`grok`) is the local TUI / headless CLI: plan mode, subagents, worktrees, MCP, repo-local skills (`/skillify`), and `grok -p` for scripts. It reads this repository's `AGENTS.md`. `CLAUDE.md` and `GEMINI.md` are `@AGENTS.md` pointers, not generated catalogs. There is no generated `GROK.md`. Published Agent Skills live in `skills-dist/`.
 - **Grok Bot** (limited tiers) is an always-on teammate on a shared cloud computer. Treat it as a mutating orchestrator, not as a tenant boundary.
 
 They are vendor surfaces, not a new model baseline. See [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) and [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md).
@@ -747,6 +761,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/CLARIFICATIONS.md`](CLARIFICATIONS.md) | Clarifications and FAQs |
 | [`docs/AGENT_TEMPLATE.md`](AGENT_TEMPLATE.md) | Canonical template for all agent specifications |
 | [`docs/AI_REVIEW_GOVERNANCE.md`](AI_REVIEW_GOVERNANCE.md) | Cross-model review framework: the three gates, severity rubric, carve-out, and phased rollout |
+| [`docs/RELEASE_PROCESS.md`](RELEASE_PROCESS.md) | CalVer `YYYY.MM.DD` promotion, tagging, and the weekly human-gated digest |
 | [`docs/MACHINE_IDENTITY.md`](MACHINE_IDENTITY.md) | Machine identity register — separating producing and reviewing agents by credential |
 | [`docs/PHASE_ZERO_SECURITY_BASELINE.md`](PHASE_ZERO_SECURITY_BASELINE.md) | Client-side guide to Phase 0 security |
 | [`docs/phase-zero-assessment/`](phase-zero-assessment/) | Assessment kit: consent, findings, roadmap, and readiness rubric |
@@ -777,9 +792,14 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) | Grok Custom Agents, Projects, Skills, and Grok Bot as the Gems / Custom GPT equivalent |
 | [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md) | Grok Build CLI / TUI: per-platform install, first win, and Fetch-on-Demand launch |
 | [`docs/examples/build-your-coding-loop.md`](examples/build-your-coding-loop.md) | Coder quick start: deploy an issue → PR loop on your `{company}-agents` copy |
-| [`coding-loop/`](../coding-loop/) | In-repo Coding Loop runtime (Stage A runner + operator checklist) |
+| [`coding-loop/`](../coding-loop/) | In-repo Coding Loop runtime (Stages A–D: intake, plan, critic, writer, review) |
+| [`skills/`](../skills/) | Reusable skills (source of truth) |
+| [`skills-dist/`](../skills-dist/) | Published Agent Skills copies (`SKILL.md` + `references/mandates.md`) |
+| [`value-lenses/`](../value-lenses/) | Success-criteria overlays (how to judge outcomes) |
+| [`operating-profiles/`](../operating-profiles/) | Localized operating profiles (tone and cadence, not translation) |
+| [`services/noemi-knowledge-mcp/`](../services/noemi-knowledge-mcp/) | Queryable public doctrine MCP (Bible, governance, methodology, Phase 0, skills-dist) |
 | [`docs/examples/`](examples/) | Example implementations (Docker sandbox, RFP Responder, Video Automation) |
-| [`examples/rotary-club-operations/`](../examples/rotary-club-operations/) | Rotary Club Operations example: demonstrates generic club-ops adaptation for Rotary International workflows |
+| [`examples/rotary-club-operations/`](../examples/rotary-club-operations/) | Rotary-only example of generic club-operations skills; Rotary is not in the core registry |
 | [`docs/examples/cross-model-review-setup.md`](examples/cross-model-review-setup.md) | Beginner walkthrough: machine identities, Gemini key options, and vault-backed CI for cross-model review |
 
 ---

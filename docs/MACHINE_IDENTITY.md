@@ -40,9 +40,9 @@ identities have named owners (`docs/phase-zero-assessment/weighted-assessment-sp
 | **Status** | **Provisioned** 2026-08-02 |
 | **Purpose** | Open branches and pull requests on behalf of AI agents |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
-| **Credential type** | Fine-grained personal access token |
-| **Credential store** | Infisical — secret `AGENT_GH_TOKEN` |
-| **Repo permission** | `write` on `project-noemi/agents` |
+| **Credential type** | Fine-grained PAT (default) plus optional classic PAT (cross-org) |
+| **Credential store** | Infisical — secrets `AGENT_GH_TOKEN` and `AGENT_GH_TOKEN_CLASSIC` |
+| **Repo permission** | Fine-grained: `write` on `project-noemi/agents`. Classic: org-wide `repo` as the same `noemi-agent` user |
 | **Rotation** | 90 days, or immediately on suspected exposure |
 | **First rotation due** | 2026-10-31 |
 | **May approve PRs?** | **No.** Approval is a human-only act |
@@ -432,7 +432,14 @@ bash scripts/agent-gh.sh pr create --base develop \
 
 # Verify which identity a token resolves to
 bash scripts/agent-gh.sh whoami
+
+# Cross-org (live-fire, `{company}-agents`): classic PAT, same GitHub user.
+# Does not fall back to AGENT_GH_TOKEN if classic is missing.
+AGENT_GH_USE_CLASSIC=1 bash scripts/agent-gh.sh whoami
+AGENT_GH_USE_CLASSIC=1 bash scripts/agent-gh.sh api repos/newpush/newpush-agents --jq .full_name
 ```
+
+`AGENT_GH_TOKEN` stays the default fine-grained producer credential. `AGENT_GH_TOKEN_CLASSIC` is a second Infisical secret, minted as **`noemi-agent`** (never a human account). Set `AGENT_GH_USE_CLASSIC=1` per command; do not put that flag in the vault. Decision [2026-09-24-0002].
 
 Agents push branches and open PRs through this wrapper. Humans then review and
 merge with their own credentials — the separation is the point.

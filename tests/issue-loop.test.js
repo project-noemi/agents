@@ -399,6 +399,17 @@ test('Stage C: producer token is required; conductor is not enough', () => {
   assert.equal(assertProducerToken({ AGENT_GH_TOKEN: 'x' }), 'x');
 });
 
+test('Stage C: AGENT_GH_USE_CLASSIC does not fall back to AGENT_GH_TOKEN', () => {
+  assert.throws(
+    () => assertProducerToken({ AGENT_GH_USE_CLASSIC: '1', AGENT_GH_TOKEN: 'fine' }),
+    /Refusing to fall back to AGENT_GH_TOKEN/,
+  );
+  assert.equal(
+    assertProducerToken({ AGENT_GH_USE_CLASSIC: '1', AGENT_GH_TOKEN: 'fine', AGENT_GH_TOKEN_CLASSIC: 'classic' }),
+    'classic',
+  );
+});
+
 test('assertRepoIssue: owner/name and a positive integer only', () => {
   assert.doesNotThrow(() => assertRepoIssue('project-noemi/agents', '12'));
   assert.doesNotThrow(() => assertRepoIssue('newpush/on-call_app', '1'));
@@ -431,12 +442,26 @@ test('CLI --implement without AGENT_GH_TOKEN is refused (identity split)', () =>
   const script = path.join(__dirname, '..', 'coding-loop', 'run.js');
   const env = { ...process.env };
   delete env.AGENT_GH_TOKEN;
+  delete env.AGENT_GH_TOKEN_CLASSIC;
+  delete env.AGENT_GH_USE_CLASSIC;
   const result = spawnSync(process.execPath, [
     script, '--repo', 'project-noemi/agents', '--issue', '1', '--implement',
     '--scan-status', 'APPROVED', '--budget-ok',
   ], { env, encoding: 'utf8' });
   assert.equal(result.status, 2);
   assert.match(result.stderr, /AGENT_GH_TOKEN/);
+});
+
+test('CLI --implement with AGENT_GH_USE_CLASSIC and only AGENT_GH_TOKEN is refused', () => {
+  const script = path.join(__dirname, '..', 'coding-loop', 'run.js');
+  const env = { ...process.env, AGENT_GH_USE_CLASSIC: '1', AGENT_GH_TOKEN: 'fine' };
+  delete env.AGENT_GH_TOKEN_CLASSIC;
+  const result = spawnSync(process.execPath, [
+    script, '--repo', 'project-noemi/agents', '--issue', '1', '--implement',
+    '--scan-status', 'APPROVED', '--budget-ok',
+  ], { env, encoding: 'utf8' });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Refusing to fall back to AGENT_GH_TOKEN/);
 });
 
 test('CLI --post without CONDUCTOR_GH_TOKEN is refused (identity split)', () => {

@@ -4,13 +4,15 @@
  * Stage C (skills/orchestration/dispatch-coordinate.md, producer half).
  *
  * Prepares a noemi-agent pull-request envelope from an accepted Stage B′
- * plan. Opening requires AGENT_GH_TOKEN and explicit --open-pr; the
+ * plan. Opening requires AGENT_GH_TOKEN (or AGENT_GH_TOKEN_CLASSIC when
+ * AGENT_GH_USE_CLASSIC=1) and explicit --open-pr; the
  * conductor and reviewer tokens are refused. Never targets main when
  * develop/dev exist (Decision [2026-08-16-0003]). Never approves or merges.
  */
 
 const { pickIntegrationBranch } = require('../scripts/deploy-ai-review-lib.js');
 const { gh } = require('../scripts/github-client.js');
+const { resolveProducerToken } = require('../scripts/agent-token.js');
 const { isCarvedOut } = require('./writer.js');
 
 function slugIssue(issue) {
@@ -59,13 +61,7 @@ function prepareImplementation({ issue, plan, branches } = {}) {
 }
 
 function assertProducerToken(env) {
-  const agent = env && env.AGENT_GH_TOKEN;
-  if (!agent) {
-    const err = new Error('Stage C requires AGENT_GH_TOKEN. Conductor and reviewer tokens are refused.');
-    err.status = 400;
-    throw err;
-  }
-  return agent;
+  return resolveProducerToken(env).token;
 }
 
 async function openImplementationPr({

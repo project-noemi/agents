@@ -11,7 +11,8 @@
  *   node coding-loop/run.js --repo org/name --issue 12 --implement --open-pr
  *
  * --post requires CONDUCTOR_GH_TOKEN.
- * --implement / --open-pr require AGENT_GH_TOKEN.
+ * --implement / --open-pr require AGENT_GH_TOKEN (or AGENT_GH_TOKEN_CLASSIC
+ * when AGENT_GH_USE_CLASSIC=1).
  * --open-pr also requires XAI_API_KEY and calls Grok, then opens the PR.
  * --live-critic requires ADC (GCP_ACCESS_TOKEN or gcloud) and calls Gemini.
  */
@@ -22,6 +23,7 @@ const { gh } = require('../scripts/github-client.js');
 const { issueFromGitHub } = require('./intake.js');
 const { completeThroughStageB, loadRouting } = require('./plan.js');
 const { assertProducerToken, openImplementationPr, prepareImplementation } = require('./dispatch.js');
+const { resolveProducerToken } = require('../scripts/agent-token.js');
 const { critiquePlanLive } = require('./critic.js');
 const { assertWriterKey, draftChanges } = require('./writer.js');
 const { scanIssueBody } = require('./scan.js');
@@ -163,7 +165,7 @@ async function implementFromPlan({ args, issue, plan }) {
     issue,
     plan,
     branches,
-    token: process.env.AGENT_GH_TOKEN,
+    token: resolveProducerToken(process.env).token,
     files: drafted.files,
     model: drafted.model,
   });

@@ -230,7 +230,7 @@ Per Decisions [2026-07-03-0001] and [2026-07-07-0002] in `docs/DECISION_LOG.md`,
 Per the Product Owner directive of 2026-08-03 (Decision [2026-08-03-0002], Requirement §7; canonical runbook `docs/MACHINE_IDENTITY.md`), agent-initiated PRs MUST be authored by the `noemi-agent` machine identity — never with a human's credentials, which would make the PR unreviewable by that human (GitHub blocks author self-approval):
 
 - Where `gh` and a vault CLI are available, open PRs via `bash scripts/agent-gh.sh pr create ...`.
-- In containerized or remote sessions without `gh`, use `node scripts/agent-pr.js` (resolves `AGENT_GH_TOKEN` from process memory and speaks to the REST API directly).
+- In containerized or remote sessions without `gh`, use `node scripts/agent-pr.js` (resolves `AGENT_GH_TOKEN` from process memory and speaks to the REST API directly). Cross-org producer calls use `AGENT_GH_TOKEN_CLASSIC` only when `AGENT_GH_USE_CLASSIC=1` (no fallback).
 - Both paths verify the token against `AGENT_GH_EXPECTED_LOGIN` and refuse to act as any other account. If no machine-identity token resolves, STOP and surface the gap to the human — never fall back to opening the PR with human credentials.
 - Approving remains a human-only act. Merging remains a human-only act for `noemi-agent` / `noemi-reviewer`. The sole sanctioned exception is `noemi-release-bot` auto-merging `develop → main` promotion PRs opened by `.github/workflows/release.yml` (Decision [2026-08-14-0002], `docs/MACHINE_IDENTITY.md`).
 

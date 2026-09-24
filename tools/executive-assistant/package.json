@@ -13,11 +13,11 @@
   },
   "dependencies": {
     "express": "^5.2.1",
-    "google-auth-library": "^11.0.2",
-    "googleapis": "^180.0.0"
+    "google-auth-library": "^11.1.0",
+    "googleapis": "^181.0.0"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^5.0.0",
+    "@vitest/coverage-v8": "^5.0.1",
     "supertest": "^7.0.0",
     "vitest": "^5.0.0"
   }

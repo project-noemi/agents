@@ -94,6 +94,7 @@ Claude Code can stay the host workspace while a second model family challenges o
 | OpenAI Codex | `openai/codex-plugin-cc` | gpt-class bulk work, Codex review gate, rescue loops |
 
 Operator guide for Grok: [`grok-build-claude-code.md`](grok-build-claude-code.md).  
+Copy-paste install prompt: [`../examples/grok-claude-plugin-prompt.md`](../examples/grok-claude-plugin-prompt.md).  
 Routing policy: [`../agents/engineering/orchestrator/README.md`](../agents/engineering/orchestrator/README.md).
 
 ## Recommended Next Docs

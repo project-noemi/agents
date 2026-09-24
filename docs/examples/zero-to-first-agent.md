@@ -37,7 +37,7 @@ The goal is to build confidence and secure habits before complexity.
 Pick the local AI client you want to learn first:
 
 - **Gemini CLI** if your team expects Google-heavy workflows or a clean terminal-first path
-- **Claude Code CLI / app** if you want a strong co-work experience around repositories and documents
+- **Claude Code CLI / app** if you want a strong co-work experience around repositories and documents. To add Grok as a second-family reviewer inside Claude, paste [`grok-claude-plugin-prompt.md`](grok-claude-plugin-prompt.md) into a Claude Code session.
 - **OpenAI Codex CLI / app** if you want a strong local execution and review workflow
 - **Grok Build (`grok`)** if you want xAI's local TUI / headless CLI. Install on the platform you actually use, then continue this guide:
 

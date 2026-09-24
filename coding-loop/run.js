@@ -10,10 +10,10 @@
  *   node coding-loop/run.js --repo org/name --issue 12 --implement
  *   node coding-loop/run.js --repo org/name --issue 12 --implement --open-pr
  *
- * --post requires CONDUCTOR_GH_TOKEN.
+ * --post requires CONDUCTOR_GH_TOKEN or CONDUCTOR_APP_ID+CONDUCTOR_APP_PRIVATE_KEY.
  * --implement / --open-pr require AGENT_GH_TOKEN (or AGENT_GH_TOKEN_CLASSIC
  * when AGENT_GH_USE_CLASSIC=1).
- * --open-pr also requires XAI_API_KEY and calls Grok, then opens the PR.
+ * --open-pr also requires XAI_API_KEY or AI_GW_API_TOKEN+AI_GW_BASE_URL, then opens the PR.
  * --live-critic requires ADC (GCP_ACCESS_TOKEN or gcloud) and calls Gemini.
  */
 
@@ -26,6 +26,7 @@ const { assertProducerToken, openImplementationPr, prepareImplementation } = req
 const { resolveProducerToken } = require('../scripts/agent-token.js');
 const { critiquePlanLive } = require('./critic.js');
 const { assertWriterKey, draftChanges } = require('./writer.js');
+const { mintGithubAppInstallationToken } = require('../scripts/github-app-token.js');
 const { scanIssueBody } = require('./scan.js');
 const { prepareReview } = require('./stage-d.js');
 const { resolveProfile } = require('./profile.js');
@@ -131,16 +132,26 @@ function loadTenant(relPath) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-function conductorToken() {
-  const token = process.env.CONDUCTOR_GH_TOKEN;
-  if (token) return token;
+function conductorToken(env = process.env) {
+  return (env && env.CONDUCTOR_GH_TOKEN) || '';
+}
+
+async function resolveConductorToken(env = process.env, { owner } = {}) {
+  if (env && env.CONDUCTOR_GH_TOKEN) return env.CONDUCTOR_GH_TOKEN;
+  if (env && env.CONDUCTOR_APP_ID && env.CONDUCTOR_APP_PRIVATE_KEY) {
+    return mintGithubAppInstallationToken({
+      appId: env.CONDUCTOR_APP_ID,
+      privateKey: env.CONDUCTOR_APP_PRIVATE_KEY,
+      owner,
+    });
+  }
   return '';
 }
 
-function readToken() {
-  return conductorToken()
-    || process.env.GH_TOKEN
-    || process.env.GITHUB_TOKEN
+function readToken(env = process.env) {
+  return conductorToken(env)
+    || (env && env.GH_TOKEN)
+    || (env && env.GITHUB_TOKEN)
     || '';
 }
 
@@ -190,8 +201,16 @@ async function main() {
     process.exit(2);
   }
 
-  if (args.post && !conductorToken()) {
-    process.stderr.write('✖ --post requires CONDUCTOR_GH_TOKEN. Refusing AGENT_GH_TOKEN / reviewer tokens (identity split).\n');
+  const repoOwner = String(args.repo).split('/')[0];
+  let conductor = '';
+  try {
+    conductor = await resolveConductorToken(process.env, { owner: repoOwner });
+  } catch (err) {
+    process.stderr.write(`✖ ${err.message}\n`);
+    process.exit(2);
+  }
+  if (args.post && !conductor) {
+    process.stderr.write('✖ --post requires CONDUCTOR_GH_TOKEN or CONDUCTOR_APP_ID+CONDUCTOR_APP_PRIVATE_KEY. Refusing AGENT_GH_TOKEN / reviewer tokens (identity split).\n');
     process.exit(2);
   }
 
@@ -213,7 +232,7 @@ async function main() {
     }
   }
 
-  const token = args.post ? conductorToken() : readToken();
+  const token = args.post ? conductor : readToken();
   if (!token) {
     process.stderr.write('✖ Need a GitHub token to read the issue (CONDUCTOR_GH_TOKEN, GH_TOKEN, or GITHUB_TOKEN).\n');
     process.exit(2);
@@ -239,7 +258,7 @@ async function main() {
       ? plan.label
       : intake.label;
     await gh(`/repos/${args.repo}/issues/${args.issue}/labels`, {
-      token: conductorToken(),
+      token: conductor,
       method: 'POST',
       body: { labels: [label] },
     });
@@ -250,7 +269,7 @@ async function main() {
         : (intake.questions || []).map((q) => `- ${q}`).join('\n');
     if (comment) {
       await gh(`/repos/${args.repo}/issues/${args.issue}/comments`, {
-        token: conductorToken(),
+        token: conductor,
         method: 'POST',
         body: { body: comment },
       });

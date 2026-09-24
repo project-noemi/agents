@@ -6,15 +6,15 @@
 # described in the governance doc.
 #
 # REQUIRED CHECK SPLIT: This workflow defines TWO jobs with distinct names:
-#   - "AI Review (fork notice)" — unprivileged, fails on fork PRs (NOT required)
+#   - "AI Review (fork notice)" — unprivileged, warns on fork PRs (NOT required)
 #   - "AI Review (advisory)" — privileged, runs actual review (IS REQUIRED on develop)
 # The split prevents race conditions: fork PRs cannot merge while the privileged
 # advisory is pending/running, and cannot merge if no privileged advisory ever ran.
 # Branch protection on `develop` MUST require "AI Review (advisory)" (exact name).
 #
 # FORK PR HANDLING: This workflow triggers on `pull_request`,
-# `pull_request_target` (labeled only), and `workflow_dispatch`. Fork PRs
-# receive special handling due to GitHub's security model:
+# `pull_request_target` (labeled, synchronize, reopened), and `workflow_dispatch`.
+# Fork PRs receive special handling due to GitHub's security model:
 #
 # CRITICAL: GitHub withholds repository/org secrets and variables from
 # pull_request, pull_request_review, and pull_request_review_comment events
@@ -25,25 +25,28 @@
 # Fork PR flow:
 #
 # 1. On `pull_request` (fork PR arrives/updates): Configuration unavailable, so
-#    "AI Review (fork notice)" FAILS VISIBLY. Error message instructs maintainers
-#    to add 'ai-review' label (preferred) or use workflow_dispatch (fallback).
+#    "AI Review (fork notice)" WARNS and succeeds. It must not fail — a red
+#    non-required check makes mergeable fork PRs look blocked. Merge is still
+#    blocked because the required "AI Review (advisory)" check has not run.
 #
-# 2. On `pull_request_target: [labeled]` with label='ai-review': MAINTAINER-GATED
-#    privileged review. "AI Review (advisory)" runs in base repository context
-#    with access to secrets/variables. On blocking findings, dismisses approvals
-#    and removes label.
+# 2. On `pull_request_target` with the `ai-review` label (added once, then
+#    present on synchronize/reopened): MAINTAINER-GATED privileged review.
+#    "AI Review (advisory)" runs in base repository context. On blocking
+#    findings, dismisses approvals and KEEPS the label so the next push
+#    re-reviews without another maintainer click.
 #
 # 3. On `workflow_dispatch`: Manual trigger (base context, privileged). "AI Review
 #    (advisory)" runs; on blocking findings, dismisses approvals but keeps label.
 #
-# LABEL GATE SAFETY: The pull_request_target: [labeled] trigger ONLY fires when
-# a maintainer adds the 'ai-review' label, and the job condition verifies
-# github.event.label.name == 'ai-review'. This prevents:
-#   - Auto-review on open/sync (would be unconstrained pull_request_target)
-#   - Review triggered by non-maintainer labels (label addition is privileged)
-#   - Malicious fork triggering privileged review without maintainer action
-# The workflow still NEVER checks out PR head code (only project-noemi/agents
-# at pinned ref), fetches diff via API only, and uses tooling-repo scripts.
+# LABEL GATE SAFETY: Privileged jobs run only when a maintainer has added
+# `ai-review` (labeled) or that label is already on the PR (synchronize/reopened).
+# This prevents unconstrained pull_request_target on open/sync of unlabeled forks.
+# Label addition is privileged (triage). The workflow still NEVER checks out PR
+# head code (only project-noemi/agents at pinned ref), fetches diff via API only,
+# and uses tooling-repo scripts.
+#
+# CONCURRENCY: group includes github.event_name so the unprivileged pull_request
+# fork-notice run cannot cancel the privileged pull_request_target advisory.
 #
 # FLEET DEPLOYMENT: this is a REUSABLE workflow (workflow_call). Other
 # repositories run the reviewer through a thin caller — see
@@ -67,7 +70,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   pull_request_target:
-    types: [labeled]
+    types: [labeled, synchronize, reopened]
   workflow_dispatch:
     inputs:
       pr:
@@ -95,13 +98,14 @@ permissions:
 
 concurrency:
   # Repository-qualified: many repos call this workflow, and PR numbers collide
-  # across them.
-  group: ai-review-${{ github.repository }}-${{ github.event.pull_request.number || inputs.pr || github.ref }}
+  # across them. Event-qualified so pull_request (fork notice) cannot cancel
+  # pull_request_target (privileged advisory) on the same PR number.
+  group: ai-review-${{ github.repository }}-${{ github.event.pull_request.number || inputs.pr || github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
   # Unprivileged fork notice: runs on pull_request when config unavailable.
-  # Fails visibly to prevent silent green. NOT a required check.
+  # Warns, does not fail. NOT a required check. Missing advisory still blocks merge.
   fork-notice:
     name: AI Review (fork notice)
     runs-on: ubuntu-latest
@@ -127,15 +131,15 @@ jobs:
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Fail visibly when configuration is unavailable (fork PRs). This job
-      # does NOT run on pull_request_target or workflow_dispatch, so it only
-      # fails for unprivileged fork PRs. The "AI Review (advisory)" job will
-      # run the actual review once the ai-review label is added.
-      - name: Fail on missing configuration
+      # Warn when configuration is unavailable (fork PRs). Do NOT fail: this
+      # check is not required, and a red X makes mergeable fork PRs look blocked.
+      # Merge stays blocked until the required "AI Review (advisory)" check runs
+      # (maintainer adds the ai-review label once). This job does NOT run on
+      # pull_request_target or workflow_dispatch.
+      - name: Warn on missing configuration
         if: steps.config.outputs.configured == 'false'
         run: |
-          echo "::error title=AI review unavailable (fork PR)::Missing Actions variables: ${{ steps.config.outputs.missing }}. GitHub withholds secrets/variables from pull_request on fork PRs. Maintainers: add the 'ai-review' label to trigger the privileged 'AI Review (advisory)' check, or use workflow_dispatch. For in-repo branches: set variables at the organization level. See docs/AI_REVIEW_GOVERNANCE.md § Fork Pull Requests."
-          exit 1
+          echo "::warning title=AI review unavailable (fork PR)::Missing Actions variables: ${{ steps.config.outputs.missing }}. GitHub withholds secrets/variables from pull_request on fork PRs. Maintainers: add the 'ai-review' label once to run the required 'AI Review (advisory)' check; later pushes re-run it while the label remains. Fallback: workflow_dispatch. See docs/AI_REVIEW_GOVERNANCE.md § Fork Pull Requests."
 
       # If config IS available (in-repo branch), this job succeeds and lets
       # the "AI Review (advisory)" job run the actual review.
@@ -145,20 +149,22 @@ jobs:
           echo "::notice title=Config available::In-repo branch with config; the 'AI Review (advisory)' job will run the full review."
 
   # Privileged advisory: runs on in-repo pull_request (with config),
-  # pull_request_target: [labeled] (ai-review label), and workflow_dispatch.
-  # This is the job that MUST be required on `develop` branch protection.
+  # pull_request_target when the ai-review label is added or already present,
+  # and workflow_dispatch. This is the job that MUST be required on `develop`.
   advisory:
     name: AI Review (advisory)
     runs-on: ubuntu-latest
     # Run when:
     # 1. pull_request AND config available (in-repo branch), OR
-    # 2. pull_request_target with ai-review label, OR
-    # 3. workflow_dispatch, OR
-    # 4. workflow_call
+    # 2. pull_request_target labeled with ai-review, OR
+    # 3. pull_request_target synchronize/reopened AND ai-review already on the PR, OR
+    # 4. workflow_dispatch, OR
+    # 5. workflow_call
     # The fork-notice job handles the unprivileged pull_request path.
     if: |
       (github.event_name == 'pull_request' && vars.INFISICAL_PROJECT_ID != '') ||
-      (github.event_name == 'pull_request_target' && github.event.label.name == 'ai-review') ||
+      (github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name == 'ai-review') ||
+      (github.event_name == 'pull_request_target' && github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'ai-review')) ||
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'workflow_call'
     steps:
@@ -357,17 +363,4 @@ jobs:
           else
             echo "::notice title=No approvals to dismiss::No existing approvals found on this PR."
           fi
-
-      # Remove label if this was label-gated (secondary signal after dismissal)
-      - name: Remove label if label-gated review with blocking findings
-        if: |
-          always() &&
-          steps.pr.outputs.is_label_gated == 'true' &&
-          steps.review.outputs.has_blocking_findings == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ steps.pr.outputs.number }}
-        run: |
-          gh api --method DELETE \
-            "repos/${{ github.repository }}/issues/${PR_NUMBER}/labels/ai-review" || true
-          echo "::notice title=Label removed::Removed 'ai-review' label as secondary signal after dismissing approvals."
+          echo "::notice title=ai-review label kept::The label stays so the next push re-runs advisory without another maintainer click."

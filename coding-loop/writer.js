@@ -32,18 +32,48 @@ function isCarvedOut(filePath) {
   return normalized === '.github/workflows' || normalized.startsWith('.github/workflows/');
 }
 
-function assertWriterKey(env = process.env) {
-  const key = env && env.XAI_API_KEY;
-  if (!key) {
-    const err = new Error('Stage C --open-pr requires XAI_API_KEY (Fetch-on-Demand).');
-    err.status = 400;
-    throw err;
+function normalizeApiBase(url) {
+  const raw = String(url || '').trim().replace(/\/+$/, '');
+  if (!raw) return '';
+  return /\/v1$/i.test(raw) ? raw : `${raw}/v1`;
+}
+
+function resolveWriterAuth(env = process.env) {
+  if (env && env.XAI_API_KEY) {
+    return {
+      apiKey: env.XAI_API_KEY,
+      apiBase: normalizeApiBase(env.XAI_API_BASE) || XAI_API,
+      source: 'XAI_API_KEY',
+    };
   }
-  return key;
+  if (env && env.AI_GW_API_TOKEN) {
+    const apiBase = normalizeApiBase(env.AI_GW_BASE_URL || env.AI_GW_API_BASE);
+    if (!apiBase) {
+      const err = new Error(
+        'Stage C --open-pr via LiteLLM requires AI_GW_BASE_URL (OpenAI-compatible /v1). Refusing to send AI_GW_API_TOKEN to api.x.ai.',
+      );
+      err.status = 400;
+      throw err;
+    }
+    return { apiKey: env.AI_GW_API_TOKEN, apiBase, source: 'AI_GW_API_TOKEN' };
+  }
+  const err = new Error(
+    'Stage C --open-pr requires XAI_API_KEY, or AI_GW_API_TOKEN plus AI_GW_BASE_URL (Fetch-on-Demand).',
+  );
+  err.status = 400;
+  throw err;
+}
+
+function assertWriterKey(env = process.env) {
+  return resolveWriterAuth(env).apiKey;
+}
+
+function stripProviderPrefix(id) {
+  return String(id || '').replace(/^models\//, '').replace(/^(openai|xai|litellm)\//i, '');
 }
 
 function classifyGrok(id) {
-  const name = String(id || '').replace(/^models\//, '');
+  const name = stripProviderPrefix(id);
   if (!/^grok-/.test(name)) return null;
   if (/(?:vision|image|tts|audio|voice|realtime|video)/.test(name)) return null;
   const versionMatch = name.match(/grok-(\d+(?:\.\d+)?)/);
@@ -56,7 +86,7 @@ function classifyGrok(id) {
 function selectGrokModel(ids, { pin } = {}) {
   const classified = (Array.isArray(ids) ? ids : []).map(classifyGrok).filter(Boolean);
   if (pin && pin !== 'auto') {
-    const want = String(pin).replace(/^models\//, '');
+    const want = stripProviderPrefix(pin);
     const hit = classified.find((item) => item.id === want);
     if (!hit) {
       throw httpError(`Pinned XAI_CODE_MODEL '${want}' is not in the xAI catalogue`, 400);
@@ -127,8 +157,8 @@ function parseJsonObject(text) {
   }
 }
 
-async function listGrokModels({ apiKey, fetchImpl = fetch }) {
-  const res = await fetchImpl(`${XAI_API}/models`, {
+async function listGrokModels({ apiKey, apiBase = XAI_API, fetchImpl = fetch }) {
+  const res = await fetchImpl(`${apiBase}/models`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
   if (!res.ok) {
@@ -138,8 +168,15 @@ async function listGrokModels({ apiKey, fetchImpl = fetch }) {
   return (body.data || []).map((item) => item.id);
 }
 
-async function callGrokJson({ model, messages, apiKey, fetchImpl = fetch, effort = 'xhigh' }) {
-  const res = await fetchImpl(`${XAI_API}/chat/completions`, {
+async function callGrokJson({
+  model,
+  messages,
+  apiKey,
+  apiBase = XAI_API,
+  fetchImpl = fetch,
+  effort = 'xhigh',
+}) {
+  const res = await fetchImpl(`${apiBase}/chat/completions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -198,8 +235,8 @@ async function draftChanges({ issue, plan, env = process.env, callModel, fetchIm
   const invoke = typeof callModel === 'function'
     ? () => callModel({ issue, plan })
     : async () => {
-      const apiKey = assertWriterKey(env);
-      const ids = await listGrokModels({ apiKey, fetchImpl });
+      const auth = resolveWriterAuth(env);
+      const ids = await listGrokModels({ apiKey: auth.apiKey, apiBase: auth.apiBase, fetchImpl });
       const chosen = selectGrokModel(ids, { pin: env.XAI_CODE_MODEL || '' });
       const reply = await callGrokJson({
         model: chosen.id,
@@ -207,7 +244,8 @@ async function draftChanges({ issue, plan, env = process.env, callModel, fetchIm
           { role: 'system', content: 'You are noemi-agent implementing one accepted plan. JSON only.' },
           { role: 'user', content: buildWriterPrompt({ issue, plan, profile }) },
         ],
-        apiKey,
+        apiKey: auth.apiKey,
+        apiBase: auth.apiBase,
         fetchImpl,
       });
       return { ...reply, model: chosen.id };
@@ -237,7 +275,10 @@ module.exports = {
   classifyGrok,
   draftChanges,
   isCarvedOut,
+  normalizeApiBase,
   normalizeRepoPath,
+  resolveWriterAuth,
   selectGrokModel,
+  stripProviderPrefix,
   validateFiles,
 };

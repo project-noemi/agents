@@ -114,9 +114,11 @@ repo:
 - then one org, then the rest
 - keep Stage D on the existing fleet reviewer
 
-Gemini B′ (`--live-critic`) needs ADC (`GCP_ACCESS_TOKEN` or
-`gcloud auth application-default login`). Opening the implementation PR
-is a **producer** act, not pickup:
+Gemini B′ (`--live-critic`) needs **user ADC** on a laptop
+(`gcloud auth application-default login`, then `node scripts/gcp-token.js`)
+or **WIF** in Actions (same org variables as AI Review, plus
+`CODING_LOOP_LIVE_CRITIC=true`). `gcloud auth login` is not ADC. Opening the
+implementation PR is a **producer** act, not pickup:
 
 ```bash
 infisical run --env=dev -- node coding-loop/run.js \
@@ -125,8 +127,10 @@ infisical run --env=dev -- node coding-loop/run.js \
   --implement --open-pr
 ```
 
-That requires `AGENT_GH_TOKEN` and `XAI_API_KEY`. Do not open PRs with
-the conductor token.
+That requires `AGENT_GH_TOKEN` (or classic + `AGENT_GH_USE_CLASSIC=1`) and
+either `XAI_API_KEY` or LiteLLM `AI_GW_API_TOKEN` + `AI_GW_BASE_URL`. Do not
+open PRs with the conductor token. `--post` uses the `noemi-conductor` App
+(`CONDUCTOR_APP_ID` + `CONDUCTOR_APP_PRIVATE_KEY`).
 
 Architecture: [`../architecture/issue-coding-loop.md`](../architecture/issue-coding-loop.md)
 (product loop vs host). Labs:

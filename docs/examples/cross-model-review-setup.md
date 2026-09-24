@@ -112,6 +112,11 @@ Confirm it worked without printing the credential:
 node scripts/gcp-token.js        # expect: ADC token obtained via gcloud-adc
 ```
 
+`gcloud auth login` (user login) is **not** ADC. `gcloud auth list` can show an
+active account while `gcloud auth application-default print-access-token`
+still fails. Live `--live-critic` on a laptop uses the application-default
+credential only.
+
 This credential expires and needs re-running periodically. When it lapses, the
 tooling tells you exactly that rather than failing obscurely.
 

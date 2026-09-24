@@ -169,6 +169,8 @@ test('root env template documents the shared Gemini runtime key', () => {
     const envTemplate = read('.env.template');
     assert.match(envTemplate, /^GEMINI_API_KEY=/m);
     assert.match(envTemplate, /^XAI_API_KEY=/m);
+    assert.match(envTemplate, /^AI_GW_API_TOKEN=/m);
+    assert.match(envTemplate, /^AI_GW_BASE_URL=/m);
 });
 
 test('repo pins the Node baseline consistently across CI, package metadata, and local version files', () => {

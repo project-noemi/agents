@@ -147,8 +147,12 @@ thrown so the host re-queues — it is not an `accepted` plan.
 `noemi-agent` on `develop` (then `dev`). `AGENT_GH_TOKEN` is required; the
 conductor token is refused.
 
-`--implement --open-pr` drafts files with Grok (`XAI_API_KEY`, Fetch-on-Demand)
-and opens the PR as `noemi-agent`. It refuses paths outside the plan,
+`--implement --open-pr` drafts files with Grok. Auth is Fetch-on-Demand:
+`XAI_API_KEY` against `https://api.x.ai/v1`, **or** a LiteLLM universal key
+`AI_GW_API_TOKEN` plus `AI_GW_BASE_URL` (OpenAI-compatible `/v1`). A gateway
+token without a base URL is refused so it is never sent to api.x.ai. The
+writer still selects a `grok-*` model from `/models` (optional
+`XAI_CODE_MODEL` pin). It opens the PR as `noemi-agent`. It refuses paths outside the plan,
 governance carve-outs, and secret-shaped content. It does not approve or
 merge. Tests inject the model and GitHub clients; they do not open live PRs.
 
@@ -157,5 +161,32 @@ Pickup: install `templates/ci/coding-loop-caller.yml` and set
 `CODING_LOOP_LIVE_CRITIC=true` plus org WIF (same vars as the fleet
 reviewer) passes `--live-critic`; unset, Stage B′ stays structural. The
 reusable workflow prepares the envelope; opening a PR is a separate
-producer invocation with `AGENT_GH_TOKEN` and `XAI_API_KEY`. Stage D
-delegates to the fleet reviewer when a PR URL exists (`coding-loop/stage-d.js`).
+producer invocation with `AGENT_GH_TOKEN` (or `AGENT_GH_TOKEN_CLASSIC` +
+`AGENT_GH_USE_CLASSIC=1`) and `XAI_API_KEY` or `AI_GW_API_TOKEN`+`AI_GW_BASE_URL`.
+Stage D delegates to the fleet reviewer when a PR URL exists
+(`coding-loop/stage-d.js`). `--post` uses `CONDUCTOR_APP_ID` +
+`CONDUCTOR_APP_PRIVATE_KEY` (or `CONDUCTOR_GH_TOKEN`). See
+[`docs/MACHINE_IDENTITY.md`](../docs/MACHINE_IDENTITY.md) for the App.
+
+## Gemini B′: laptop ADC vs Actions WIF
+
+`--live-critic` never uses a Gemini API key. Org policy on `project-noemi`
+disallows API keys and service-account key files.
+
+**Laptop (this is what local live-fire needs):**
+
+```bash
+gcloud auth application-default login
+node scripts/gcp-token.js
+# expect: ADC token obtained via gcloud-adc  (it must not print the token)
+```
+
+`gcloud auth login` is not enough. `gcloud auth list` can show an account
+while ADC is still missing.
+
+**GitHub Actions pickup:** do not put a WIF token in Infisical. Reuse the
+fleet-reviewer org **variables**: `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`,
+`GOOGLE_CLOUD_PROJECT`. Set `CODING_LOOP_LIVE_CRITIC=true`. The reusable
+workflow mints `GCP_ACCESS_TOKEN` via `google-github-actions/auth`. One-time
+pool/provider setup: [`docs/examples/cross-model-review-setup.md`](../docs/examples/cross-model-review-setup.md)
+Part 1.

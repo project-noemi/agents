@@ -10,6 +10,8 @@ const { scanIssueBody } = require('./scan.js');
 const { httpError, modelRetryOptions } = require('./http.js');
 
 const XAI_API = 'https://api.x.ai/v1';
+const NEWPUSH_AI_GW_V1 = 'https://ai-gw.newpush.com/v1';
+const DEFAULT_GW_GROK_MODEL = 'xai/grok-4.6';
 const MAX_FILES = 20;
 const MAX_FILE_CHARS = 200000;
 
@@ -44,21 +46,23 @@ function resolveWriterAuth(env = process.env) {
       apiKey: env.XAI_API_KEY,
       apiBase: normalizeApiBase(env.XAI_API_BASE) || XAI_API,
       source: 'XAI_API_KEY',
+      pinDefault: '',
     };
   }
-  if (env && env.AI_GW_API_TOKEN) {
-    const apiBase = normalizeApiBase(env.AI_GW_BASE_URL || env.AI_GW_API_BASE);
-    if (!apiBase) {
-      const err = new Error(
-        'Stage C --open-pr via LiteLLM requires AI_GW_BASE_URL (OpenAI-compatible /v1). Refusing to send AI_GW_API_TOKEN to api.x.ai.',
-      );
-      err.status = 400;
-      throw err;
-    }
-    return { apiKey: env.AI_GW_API_TOKEN, apiBase, source: 'AI_GW_API_TOKEN' };
+  const gwKey = env && (env.AI_GW_API_TOKEN || env.AI_GW_API_KEY);
+  if (gwKey) {
+    const apiBase = normalizeApiBase(
+      env.AI_GW_BASE_URL || env.AI_GW_API_BASE || NEWPUSH_AI_GW_V1,
+    );
+    return {
+      apiKey: gwKey,
+      apiBase,
+      source: env.AI_GW_API_TOKEN ? 'AI_GW_API_TOKEN' : 'AI_GW_API_KEY',
+      pinDefault: DEFAULT_GW_GROK_MODEL,
+    };
   }
   const err = new Error(
-    'Stage C --open-pr requires XAI_API_KEY, or AI_GW_API_TOKEN plus AI_GW_BASE_URL (Fetch-on-Demand).',
+    'Stage C --open-pr requires XAI_API_KEY, or AI_GW_API_TOKEN / AI_GW_API_KEY (Fetch-on-Demand).',
   );
   err.status = 400;
   throw err;
@@ -73,23 +77,27 @@ function stripProviderPrefix(id) {
 }
 
 function classifyGrok(id) {
-  const name = stripProviderPrefix(id);
+  const apiId = String(id || '').replace(/^models\//, '');
+  const name = stripProviderPrefix(apiId);
   if (!/^grok-/.test(name)) return null;
   if (/(?:vision|image|tts|audio|voice|realtime|video)/.test(name)) return null;
   const versionMatch = name.match(/grok-(\d+(?:\.\d+)?)/);
   const generation = versionMatch ? parseFloat(versionMatch[1]) : 0;
   const preview = /preview|exp(erimental)?|-rc|beta/.test(name);
   const slim = /mini|fast|lite|nano/.test(name);
-  return { id: name, generation, preview, slim };
+  return { id: apiId, name, generation, preview, slim };
 }
 
 function selectGrokModel(ids, { pin } = {}) {
   const classified = (Array.isArray(ids) ? ids : []).map(classifyGrok).filter(Boolean);
   if (pin && pin !== 'auto') {
-    const want = stripProviderPrefix(pin);
-    const hit = classified.find((item) => item.id === want);
+    const wantRaw = String(pin).replace(/^models\//, '');
+    const wantName = stripProviderPrefix(wantRaw);
+    const hit = classified.find(
+      (item) => item.id === wantRaw || stripProviderPrefix(item.id) === wantName,
+    );
     if (!hit) {
-      throw httpError(`Pinned XAI_CODE_MODEL '${want}' is not in the xAI catalogue`, 400);
+      throw httpError(`Pinned XAI_CODE_MODEL '${wantRaw}' is not in the catalogue`, 400);
     }
     return hit;
   }
@@ -187,6 +195,7 @@ async function callGrokJson({
       messages,
       temperature: 0,
       reasoning_effort: effort,
+      max_tokens: Number(process.env.XAI_MAX_TOKENS || 16384),
     }),
   });
   if (!res.ok) {
@@ -237,7 +246,7 @@ async function draftChanges({ issue, plan, env = process.env, callModel, fetchIm
     : async () => {
       const auth = resolveWriterAuth(env);
       const ids = await listGrokModels({ apiKey: auth.apiKey, apiBase: auth.apiBase, fetchImpl });
-      const chosen = selectGrokModel(ids, { pin: env.XAI_CODE_MODEL || '' });
+      const chosen = selectGrokModel(ids, { pin: env.XAI_CODE_MODEL || auth.pinDefault || '' });
       const reply = await callGrokJson({
         model: chosen.id,
         messages: [
@@ -270,6 +279,8 @@ module.exports = {
   CARVE_OUT,
   MAX_FILES,
   XAI_API,
+  NEWPUSH_AI_GW_V1,
+  DEFAULT_GW_GROK_MODEL,
   assertWriterKey,
   buildWriterPrompt,
   classifyGrok,

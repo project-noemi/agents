@@ -128,9 +128,10 @@ infisical run --env=dev -- node coding-loop/run.js \
 ```
 
 That requires `AGENT_GH_TOKEN` (or classic + `AGENT_GH_USE_CLASSIC=1`) and
-either `XAI_API_KEY` or LiteLLM `AI_GW_API_TOKEN` + `AI_GW_BASE_URL`. Do not
-open PRs with the conductor token. `--post` uses the `noemi-conductor` App
-(`CONDUCTOR_APP_ID` + `CONDUCTOR_APP_PRIVATE_KEY`).
+either `XAI_API_KEY` or NewPush gateway `AI_GW_API_TOKEN` (see
+[`../tool-usages/newpush-ai-gateway.md`](../tool-usages/newpush-ai-gateway.md)).
+Do not open PRs with the conductor token. `--post` uses the `noemi-conductor`
+App (`CONDUCTOR_APP_ID` + `CONDUCTOR_APP_PRIVATE_KEY`).
 
 Architecture: [`../architecture/issue-coding-loop.md`](../architecture/issue-coding-loop.md)
 (product loop vs host). Labs:

@@ -640,7 +640,10 @@ test('selectGrokModel: highest preview then stable; missing pin fails closed', (
   assert.equal(preview.id, 'grok-4.6-preview');
   const stable = selectGrokModel(['grok-3', 'grok-4.6', 'grok-4']);
   assert.equal(stable.id, 'grok-4.6');
-  assert.throws(() => selectGrokModel(['grok-4.6'], { pin: 'grok-99' }), /not in the xAI catalogue/);
+  assert.throws(() => selectGrokModel(['grok-4.6'], { pin: 'grok-99' }), /not in the catalogue/);
+  const gw = selectGrokModel(['google/gemini-3.8-flash', 'xai/grok-4.6', 'xai/grok-build-0.1']);
+  assert.equal(gw.id, 'xai/grok-4.6');
+  assert.equal(selectGrokModel(['xai/grok-4.6'], { pin: 'xai/grok-4.6' }).id, 'xai/grok-4.6');
   assert.throws(() => selectGrokModel(['gpt-4']), /No Grok model/);
 });
 
@@ -813,20 +816,22 @@ test('CLI --open-pr without XAI_API_KEY or --implement is refused', () => {
   assert.throws(() => assertWriterKey({}), /XAI_API_KEY|AI_GW_API_TOKEN/);
 });
 
-test('writer auth: XAI_API_KEY uses api.x.ai; LiteLLM token needs a gateway base', () => {
-  const { resolveWriterAuth, classifyGrok, normalizeApiBase } = require('../coding-loop/writer.js');
+test('writer auth: XAI_API_KEY uses api.x.ai; gateway token defaults to NewPush /v1', () => {
+  const { resolveWriterAuth, classifyGrok, normalizeApiBase, NEWPUSH_AI_GW_V1 } = require('../coding-loop/writer.js');
   const xai = resolveWriterAuth({ XAI_API_KEY: 'xai', AI_GW_API_TOKEN: 'gw' });
   assert.equal(xai.source, 'XAI_API_KEY');
   assert.equal(xai.apiBase, 'https://api.x.ai/v1');
-  assert.throws(
-    () => resolveWriterAuth({ AI_GW_API_TOKEN: 'gw' }),
-    /AI_GW_BASE_URL/,
-  );
-  const gw = resolveWriterAuth({ AI_GW_API_TOKEN: 'gw', AI_GW_BASE_URL: 'https://llm.example.com' });
+  const gw = resolveWriterAuth({ AI_GW_API_TOKEN: 'gw' });
   assert.equal(gw.source, 'AI_GW_API_TOKEN');
-  assert.equal(gw.apiBase, 'https://llm.example.com/v1');
-  assert.equal(normalizeApiBase('https://llm.example.com/v1/'), 'https://llm.example.com/v1');
-  assert.equal(classifyGrok('xai/grok-4').id, 'grok-4');
+  assert.equal(gw.apiBase, NEWPUSH_AI_GW_V1);
+  assert.equal(gw.pinDefault, 'xai/grok-4.6');
+  const alias = resolveWriterAuth({ AI_GW_API_KEY: 'sk-gw' });
+  assert.equal(alias.source, 'AI_GW_API_KEY');
+  const custom = resolveWriterAuth({ AI_GW_API_TOKEN: 'gw', AI_GW_BASE_URL: 'https://llm.example.com' });
+  assert.equal(custom.apiBase, 'https://llm.example.com/v1');
+  assert.equal(normalizeApiBase('https://ai-gw.newpush.com/v1/'), 'https://ai-gw.newpush.com/v1');
+  assert.equal(classifyGrok('xai/grok-4.6').id, 'xai/grok-4.6');
+  assert.equal(classifyGrok('xai/grok-4.6').name, 'grok-4.6');
 });
 
 test('parseArgs: --live-critic and --open-pr are off by default', () => {

@@ -148,11 +148,12 @@ thrown so the host re-queues — it is not an `accepted` plan.
 conductor token is refused.
 
 `--implement --open-pr` drafts files with Grok. Auth is Fetch-on-Demand:
-`XAI_API_KEY` against `https://api.x.ai/v1`, **or** a LiteLLM universal key
-`AI_GW_API_TOKEN` plus `AI_GW_BASE_URL` (OpenAI-compatible `/v1`). A gateway
-token without a base URL is refused so it is never sent to api.x.ai. The
-writer still selects a `grok-*` model from `/models` (optional
-`XAI_CODE_MODEL` pin). It opens the PR as `noemi-agent`. It refuses paths outside the plan,
+`XAI_API_KEY` against `https://api.x.ai/v1`, **or** NewPush gateway
+`AI_GW_API_TOKEN` / `AI_GW_API_KEY` at `https://ai-gw.newpush.com/v1` (override
+`AI_GW_BASE_URL`). Gateway model ids are `provider/id`; the writer pins
+`xai/grok-4.6` unless `XAI_CODE_MODEL` is set. The virtual key is never sent
+to api.x.ai. See [`docs/tool-usages/newpush-ai-gateway.md`](../docs/tool-usages/newpush-ai-gateway.md).
+It opens the PR as `noemi-agent`. It refuses paths outside the plan,
 governance carve-outs, and secret-shaped content. It does not approve or
 merge. Tests inject the model and GitHub clients; they do not open live PRs.
 

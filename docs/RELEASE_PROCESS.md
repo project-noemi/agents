@@ -19,6 +19,12 @@ things run on two separate rhythms:
 Nobody hand-picks a version number, and nobody hand-writes a changelog. The date
 and the commit history are the source of truth.
 
+## Bible edition stamp
+
+`docs/PROJECT_REFERENCE.md` (the public "Bible") carries **`Edition YYYY.MM.DD`**, which must be a **published CalVer tag**, not SemVer (`2.0`) and not a month name (`April 2026`).
+
+The release job **does not rewrite `main`** (no branch write under `enforce_admins`). So the stamp is updated on `develop` during a narrative pass, using the last published tag at that time. `scripts/audit-repo.js` fails if the stamp is missing, is not a real tag, or lags the latest tag by more than 45 days (Decision [2026-09-24-0003]). Edit the Bible whenever the story drifts; do not wait for a promotion. A `docs` commit rides the next `feat`/`fix` release. Use `feat(reference):` only when the edition must be tagged before that train.
+
 ## Why date-based versioning (`YYYY.MM.DD`)
 
 The earlier version of this process used SemVer (`0.2.0`, `1.0.0`). For a

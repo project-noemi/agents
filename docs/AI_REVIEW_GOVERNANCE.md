@@ -214,10 +214,13 @@ empty-vars restriction as `pull_request`. Auto-trigger-on-approval is not viable
 for fork PRs without using `pull_request_target`, which requires careful gating.
 
 When the AI review workflow runs on a fork PR via `pull_request`, configuration
-variables (`INFISICAL_PROJECT_ID`, etc.) are empty, and **the review fails
-visibly** rather than silently succeeding with no review performed. A green
-check with no comment would be indistinguishable from a completed review and
-is the failure mode this gate prevents.
+variables (`INFISICAL_PROJECT_ID`, etc.) are empty. The unprivileged
+**"AI Review (fork notice)"** job **warns and succeeds**. It must not fail:
+that check is not required, and a red X makes a mergeable fork PR look blocked
+(Decision [2026-09-24-0001]). Merge is still blocked because the required
+**"AI Review (advisory)"** check has not run until a maintainer adds the
+`ai-review` label. A green *advisory* check with no review performed is the
+failure mode the split-check pattern prevents — not a green fork-notice.
 
 ### Reviewing fork PRs safely
 
@@ -244,12 +247,13 @@ The workflow defines **two jobs with distinct check names** to prevent race
 conditions and silent pass-through:
 
 1. **"AI Review (fork notice)"** — Unprivileged, runs on `pull_request` when
-   config unavailable (fork PRs). Fails visibly with instructions. **NOT** a
-   required check on `develop`.
+   config unavailable (fork PRs). Warns with instructions and **succeeds**.
+   **NOT** a required check on `develop`.
 
 2. **"AI Review (advisory)"** — Privileged, runs actual review on in-repo
-   `pull_request` (with config), `pull_request_target: [labeled]` (ai-review
-   label), and `workflow_dispatch`. **IS REQUIRED** on `develop` branch protection.
+   `pull_request` (with config), `pull_request_target` when the `ai-review`
+   label is added or already present (`labeled`, `synchronize`, `reopened`),
+   and `workflow_dispatch`. **IS REQUIRED** on `develop` branch protection.
 
 **Why split:** A single-job workflow with conditional steps would show green when
 skipped on fork PRs, defeating the "no silent pass" requirement. The split also
@@ -274,14 +278,18 @@ logic, and integrates naturally into the PR workflow (review code → add label)
 
 When a maintainer adds the **`ai-review` label** to a fork PR, the "AI Review
 (advisory)" job **automatically triggers** in the base repository context via
-`pull_request_target: types: [labeled]`:
+`pull_request_target`. The label is a **persistent trust signal**: later
+pushes re-run advisory while it remains. Maintainer work after the first
+label is approve-or-comment, not re-labeling.
 
-1. Fork PR arrives → automatic review fails visibly (no variables)
+1. Fork PR arrives → fork-notice warns (no variables); required advisory is pending
 2. Maintainer reviews the code
-3. **Maintainer adds 'ai-review' label** (trust signal)
+3. **Maintainer adds 'ai-review' label once** (trust signal)
 4. Label addition triggers the advisory review in base context
 5. Advisory runs with access to Infisical/GCP credentials
 6. Advisory findings posted as a comment
+7. Contributor pushes a fix (or maintainer updates from `develop`) → advisory
+   re-runs automatically; no label bounce
 
 **Why label-gated instead of approval-gated?** GitHub withholds secrets/variables
 from `pull_request_review` on fork PRs (same restriction as `pull_request`), so
@@ -290,11 +298,15 @@ approval cannot auto-trigger a privileged review. The label gate uses
 but is safe because:
 
 - Label addition is a **maintainer-only action** (requires triage permission)
-- Job condition verifies `github.event.label.name == 'ai-review'` (no other labels)
-- Does NOT trigger on open/synchronize (avoids unconstrained `pull_request_target`)
+- Job condition verifies `github.event.label.name == 'ai-review'` on `labeled`,
+  or that the PR already has `ai-review` on `synchronize`/`reopened`
+- Does NOT trigger privileged review on unlabeled `opened`/`synchronize`
+  (avoids unconstrained `pull_request_target`)
 - Workflow still never checks out PR head code (only tooling repo at pinned ref)
 - Diff fetched via API only (read-only data, never executed)
 - Review scripts from tooling repo, not from PR under review
+- Concurrency group includes `github.event_name` so fork-notice cannot cancel
+  the privileged advisory on the same PR number
 
 ### Dismissal of approvals on blocking findings
 
@@ -319,7 +331,8 @@ Dismissing the approval creates the merge gate: someone must explicitly re-appro
 *after* seeing the advisory, which is the informed-decision point.
 
 **When dismissal applies:**
-- Label-gated review (`pull_request_target: [labeled]`): dismisses + removes label
+- Label-gated review (`pull_request_target`): dismisses; **keeps** the `ai-review`
+  label so the next push re-runs advisory (Decision [2026-09-24-0001])
 - Manual dispatch (`workflow_dispatch`): dismisses (keeps label if present)
 - In-repo `pull_request`: dismisses if approvals exist
 
@@ -347,17 +360,15 @@ is also re-approval after changes.
    - **Severity:** Low — requires both defeating the carve-out gate AND bypassing
      human code-owner review
 
-**2. Label removal abuse:**
-   - **Risk:** A malicious fork PR could craft a diff that causes the advisory to
-     spuriously report blocking findings, triggering removal of the `ai-review`
-     label
-   - **Mitigation:** The advisory reviews code content, not code execution, so a
-     malicious diff would need to defeat the Gemini reviewer's detection of
-     injection attempts (prompt injection is itself a critical finding). Label
-     removal is visible in the PR timeline, and the maintainer can re-add the
-     label to re-run the review or use workflow_dispatch
-   - **Severity:** Low — requires defeating cross-model adversarial review, and
-     the maintainer can override by re-adding the label
+**2. Label persistence after blocking findings:**
+   - **Risk:** Keeping `ai-review` after a blocking finding means the next push
+     automatically re-runs privileged review. A noisy or injected finding no
+     longer forces a maintainer to re-add the label, which is the intended
+     throughput trade (Decision [2026-09-24-0001]).
+   - **Mitigation:** Dismissal of approvals remains the merge gate. The label
+     means "this fork is trusted to be reviewed," not "this revision passed."
+     Maintainers can still remove the label to stop automatic re-review.
+   - **Severity:** Low — privileged path still never checks out PR head code
 
 **3. Label gate bypass via non-maintainer:**
    - **Risk:** A non-maintainer (external contributor) could add a label that
@@ -365,7 +376,8 @@ is also re-approval after changes.
    - **Mitigation:** GitHub's permissions model restricts label addition on fork
      PRs to users with triage permission or higher. External contributors cannot
      add labels to their own fork PRs in the base repository. The job condition
-     also explicitly checks `github.event.label.name == 'ai-review'`
+     also requires `github.event.label.name == 'ai-review'` on `labeled` and the
+     label already present on `synchronize`/`reopened`
    - **Severity:** Prevented by GitHub's permission model
 
 ## Audit
@@ -447,7 +459,7 @@ Branches → `develop` → Edit → Require status checks → search "AI Review
 (advisory)" → check it → Save). This activates the fork PR race-condition
 protection: fork PRs cannot merge while the advisory is pending, and cannot merge
 if no advisory ever ran. The unprivileged "AI Review (fork notice)" check is
-**NOT** required (it fails on fork PRs by design).
+**NOT** required (it warns on fork PRs and succeeds; Decision [2026-09-24-0001]).
 
 The setup script does not add this automatically because the check must exist
 (have run at least once) before it can be required, and a fresh deployment has no

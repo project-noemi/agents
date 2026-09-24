@@ -41,3 +41,6 @@ If any item was skipped, explain why:
 ## Notes for Reviewers
 
 - 
+
+Fork PRs: a maintainer adds the `ai-review` label **once**; later pushes re-run
+advisory while it remains. Ignore "AI Review (fork notice)" — it is not required.

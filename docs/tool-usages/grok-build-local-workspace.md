@@ -65,7 +65,9 @@ $env:GROK_VERSION="0.1.42"; irm https://x.ai/cli/install.ps1 | iex
 grok update
 ```
 
-Do not commit an `XAI_API_KEY` or paste one into a repo file. First launch opens a browser to sign in with grok.com. For CI or a machine without a browser, inject `XAI_API_KEY` at runtime through `infisical run` or `op run`.
+Do not commit an `XAI_API_KEY` or paste one into a repo file. First launch opens a browser to sign in with grok.com. For CI or a machine without a browser, inject `XAI_API_KEY` at runtime through `infisical run` or `op run`. Project NoéMI can issue a starter xAI API key from USD 1 — inquire at [noemi.newpush.com](https://noemi.newpush.com).
+
+To use Grok **from Claude Code**, paste [`../examples/grok-claude-plugin-prompt.md`](../examples/grok-claude-plugin-prompt.md) into a Claude session. Operator guide: [`grok-build-claude-code.md`](grok-build-claude-code.md).
 
 ## First Launch And First Win
 

@@ -1326,17 +1326,8 @@
 - **Context:** Live-fire on `newpush/newpush-agents` needed write (Coders), a conductor that is not the producer, Gemini without API keys, and the vault’s LiteLLM universal key instead of a native xAI key. The LiteLLM guide URL was not in the chat; the contract is the OpenAI-compatible `/v1` pair.
 - **Impact:** `scripts/github-app-token.js`, `coding-loop/writer.js` `resolveWriterAuth`, `docs/MACHINE_IDENTITY.md` App runbook, `docs/tool-usages/newpush-ai-gateway.md`. Gateway default `https://ai-gw.newpush.com/v1` and pin `xai/grok-4.6`. Vault name `AI_GW_API_TOKEN`; guide name `AI_GW_API_KEY` is an alias.
 
-## [2026-09-25-0002] Gartner is named for attribution only
+## [2026-09-26-0001] Gartner named for attribution only
 
-- **Decision:** Gartner is named for attribution only. AI TRiSM is a framework defined by Gartner, Inc. No document may imply a relationship with that firm, a badge, or that a paraphrase is the firm's own definition. No logo is added.
-- **Context:** Analyst-facing collateral is being prepared. The firm's content-compliance rules forbid an implied relationship and non-verbatim definitions. Bible Chapter 13 had listed the firm beside Rotary and the Chambers. NewPush has no relationship of that kind with Gartner, Inc. The task asked to restore a retired `Version 2.1 | September 2026` line. That stamp was not restored: Decision [2026-09-24-0003] requires `**Edition YYYY.MM.DD**` to match a published CalVer tag. The Bible remains **Edition 2026.09.23**. The newest published tag on this pass is `2026.09.25`; the lag is inside the 45-day window.
-- **Impact:**
-  - `docs/PROJECT_REFERENCE.md` — the firm is removed from the industry-partners list; new "Frameworks We Build On" subsection; key facts, Phase 0, Guardian Layer, Chapter 6, executive checklist, and Chapter 17 table reworded. Edition stamp unchanged (see Context).
-  - `docs/frameworks/gartner-trism.md` — retitled; working definitions labeled as NoéMI paraphrase. Filename kept.
-  - `docs/GOVERNANCE.md`, `docs/lifecycle/DISCERNMENT.md`, `docs/METHODOLOGY.md`, `docs/REQUIREMENTS.md`, `docs/tool-usages/secure-secret-management.md`, `README.md`, `guardian-layer/README.md`.
-  - `agents/engineering/ai-architect.md`, `agents/operations/qa-risk-manager.md` — framework wording. Nearby phrases that called the framework a standard were reworded.
-  - `skills/reporting/release-herald.md` — example values no longer imply the firm issued direction to NewPush. `skills-dist/` regenerated, not hand-edited.
-  - `n8n-templates/layer-b-labs/README.md` — embedded pedagogy is stated as NoéMI's own rule, with no firm cited.
-  - `services/noemi-knowledge-mcp/src/corpus.generated.json` regenerated from the updated docs.
-  - `docs/DECISION_LOG.md` — this entry.
-
+- **Decision:** Gartner is named for attribution only. No partnership, endorsement, certification, or "Gartner definition" language anywhere in the repository; AI TRiSM is described as a framework defined by Gartner, Inc., never a standard or mandate. Paraphrases are labeled as NoéMI's own. The one Gartner source cited (the 11 June 2025 guardian-agents press release) is cited by title and date only.
+- **Context:** Analyst-facing collateral is being prepared, and Gartner's Content Compliance Policy prohibits implied endorsement, co-branding or partnership appearance, and non-verbatim "definitions". The Bible's Chapter 13 listed Gartner under "Industry Partnerships" and `docs/frameworks/gartner-trism.md` labeled paraphrase as "Gartner Definition".
+- **Impact:** Wording changes in docs/PROJECT_REFERENCE.md (Chapter 13 bullet removed, new "Frameworks We Build On" subsection, attribution block), docs/frameworks/gartner-trism.md, docs/GOVERNANCE.md, docs/lifecycle/DISCERNMENT.md, docs/METHODOLOGY.md, docs/REQUIREMENTS.md, docs/tool-usages/secure-secret-management.md, README.md, guardian-layer/README.md, guardian-layer/guardian_evaluator.py, agents/engineering/ai-architect.md, agents/operations/qa-risk-manager.md, skills/reporting/release-herald.md, n8n-templates/layer-b-labs/README.md; skills-dist/ and the Knowledge MCP corpus regenerated. The Bible keeps its CalVer edition stamp per [2026-09-24-0003]; no SemVer bump.

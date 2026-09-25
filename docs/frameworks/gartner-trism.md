@@ -2,7 +2,7 @@
 
 ## Overview
 
-Project NoéMI maps its governance to **AI TRiSM** (AI trust, risk and security management), a framework defined by Gartner, Inc. The mapping is how NoéMI organizes model governance, reliability, and data protection for non-deterministic systems. It is not adoption of a Gartner product, and it does not use Gartner's wording.
+Project NoéMI maps its governance to AI TRiSM (AI trust, risk and security management), a framework defined by Gartner®, Inc. AI TRiSM provides a structured approach to managing the unique risks of non-deterministic systems, ensuring model governance, fairness, reliability, and robust data protection.
 
 > Attribution: AI TRiSM (AI trust, risk and security management) is a framework defined by Gartner, Inc. Gartner® is a registered trademark and service mark of Gartner, Inc. and/or its affiliates in the U.S. and internationally. NewPush and Project NoéMI are not affiliated with, sponsored by, or endorsed by Gartner; the name appears for attribution only.
 
@@ -10,7 +10,7 @@ This document maps five governance themes that NoéMI derives from the AI TRiSM 
 
 ---
 
-## Pillar 1: Explainability / Interpretability
+## Theme 1: Explainability / Interpretability
 
 **NoéMI working definition (our paraphrase, not Gartner's wording):** Ensuring that AI decisions can be understood, traced, and audited by humans.
 
@@ -19,7 +19,7 @@ This document maps five governance themes that NoéMI derives from the AI TRiSM 
 *   **Agent Persona Structure:** The standard persona template (`Mission, Core Mandates, Workflow, Boundaries`) explicitly defines the agent's expected behavior, making it easier for human operators (Accelerators) to interpret why an agent took a specific path.
 *   **Actionable Next Step:** Implement a standard "Audit Log" requirement in all agent personas, instructing them to output a brief JSON summary of their reasoning alongside their final payload.
 
-## Pillar 2: ModelOps
+## Theme 2: ModelOps
 
 **NoéMI working definition (our paraphrase, not Gartner's wording):** Managing the entire lifecycle of an AI model/agent—from development and deployment to monitoring and retirement—to ensure consistent performance and governance.
 
@@ -28,7 +28,7 @@ This document maps five governance themes that NoéMI derives from the AI TRiSM 
 *   **Fleet Deployment Infrastructure:** The multi-tenant `docker-compose.yml` (`examples/fleet-deployment/`) provides the standardized infrastructure required to deploy, scale, and monitor multiple agent cohorts consistently.
 *   **Configuration as Code:** Utilizing `mcp.config.json` and `.env.template` ensures that agent context and permissions are version-controlled and reproducible across environments.
 
-## Pillar 3: Data Anomaly Detection
+## Theme 3: Data Anomaly Detection
 
 **NoéMI working definition (our paraphrase, not Gartner's wording):** Continuously monitoring for unexpected failures, "data drift," or poisoned inputs that could compromise the model's accuracy.
 
@@ -36,7 +36,7 @@ This document maps five governance themes that NoéMI derives from the AI TRiSM 
 *   **The Guardian Layer (Discernment):** Guardian Agents, such as `PIIGuard` (`agents/guardian/pii-guard.md`), act as the first line of defense against data anomalies. They inspect incoming and outgoing payloads to ensure they match expected classifications (Public, Internal, Confidential).
 *   **Red Teaming:** The `examples/red-team-gauntlet/` provides specific test cases to simulate poisoned data (e.g., hidden instructions within seemingly normal text) to verify that the agents can detect and handle anomalous inputs gracefully.
 
-## Pillar 4: Adversarial Attack Resistance
+## Theme 4: Adversarial Attack Resistance
 
 **NoéMI working definition (our paraphrase, not Gartner's wording):** Implementing defenses against malicious attempts to deceive or manipulate AI models (e.g., prompt injection).
 
@@ -45,7 +45,7 @@ This document maps five governance themes that NoéMI derives from the AI TRiSM 
 *   **The Airgap Pattern:** Documented in `docs/agents/guardian/README.md`, this architectural pattern requires all user input to pass through a defensive Guardian Agent *before* reaching the primary execution agent, neutralizing prompt injections before they can be executed.
 *   **Red Team Gauntlet:** The prompt injection test cases in the Red Team examples ensure these defenses are continuously validated.
 
-## Pillar 5: Data Protection / Privacy
+## Theme 5: Data Protection / Privacy
 
 **NoéMI working definition (our paraphrase, not Gartner's wording):** Ensuring that AI systems comply with data privacy regulations and that sensitive information is not leaked.
 

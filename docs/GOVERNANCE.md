@@ -1,7 +1,7 @@
 # Governance, TRiSM, and Red Teaming
 
 ## Overview
-All agents developed within the Project NoeMI ecosystem must adhere to rigorous governance protocols before deployment. We align our security and operational controls with **AI TRiSM** (AI trust, risk and security management), a framework defined by Gartner, Inc.
+All agents developed within the Project NoeMI ecosystem must adhere to rigorous governance protocols before deployment. We align our security and operational controls with **AI TRiSM** (AI trust, risk and security management), a framework defined by Gartner®, Inc.
 
 ---
 

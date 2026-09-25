@@ -372,7 +372,7 @@ weekly digest pays off for consumers in concrete ways:
 - **A single, curated weekly update — not a firehose.** Communication is
   decoupled from tagging: however many versions land in a week, followers get one
   coherent, human-approved digest — benefit-language highlights, the governance
-  provenance behind them (academia + analyst firms + MSP field input), and a
+  provenance behind them (academic research + a published framework the change aligns with + MSP field input), and a
   social post — always reviewed by a human before it goes out. That turns raw
   release notes into something an adopting team, or a prospective one, actually
   reads.

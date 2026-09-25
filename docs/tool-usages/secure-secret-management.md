@@ -1,6 +1,6 @@
 # Project NoéMI: Phase 0 Security & Secret Management
 
-**Framework:** AI TRiSM (Gartner, Inc.) — security dimension | **Pedagogy:** Creation Diligence
+**Framework:** AI TRiSM (Gartner®, Inc.) — security dimension | **Pedagogy:** Creation Diligence
 
 ## Overview
 

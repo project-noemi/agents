@@ -97,7 +97,7 @@ The strategic aim is concrete: help enterprises convert AI from a labor-displace
 
 - **Lead Organization:** NewPush® (cybersecurity/infrastructure company, founded in 1999)
 - **Academic Partner:** George Mason University — Center for Infrastructure Security in the Era of AI (ISEAI)
-- **Frameworks:** the Dakan & Feller "4 Ds" of AI Fluency (open, CC BY-NC-ND 4.0) and AI TRiSM, a framework defined by Gartner, Inc. (attribution only — see Chapter 13)
+- **Frameworks:** the Dakan & Feller "4 Ds" of AI Fluency (open, CC BY-NC-ND 4.0) and AI TRiSM, a framework defined by Gartner®, Inc. (attribution only — see Chapter 13)
 - **Credential:** George Mason University-issued Badges of Completion (micro-credentials) at three levels
 - **Languages:** English, Spanish, French, German, Hungarian, ...
 - **Active Markets:** United States, Latin America, Europe (France, Germany, Hungary, Lithuania, ...)

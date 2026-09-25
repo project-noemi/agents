@@ -1,7 +1,7 @@
 # The 4D Framework: Discernment
 
 ## 1. The Core Principle
-Discernment focuses on validation, quality control, and testing. AI output is probabilistic, not deterministic, which means trust requires continuous verification. This phase maps to the trust dimension of the AI TRiSM framework (Gartner, Inc.).
+Discernment focuses on validation, quality control, and testing. AI output is probabilistic, not deterministic, which means trust requires continuous verification. This phase maps to the trust dimension of the AI TRiSM framework (Gartner®, Inc.).
 
 ## 2. Product and Performance Validation
 - **Product Discernment**: Is the output factually true and logically sound?

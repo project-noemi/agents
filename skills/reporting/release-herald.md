@@ -11,7 +11,7 @@ Turn a **week of changes** (the commits and date-versioned `YYYY.MM.DD` releases
 - **channel** — Target channel for the social draft: `linkedin`, `x`, `slack`, or `blog`. Controls length, tone, and formatting of the social post.
 - **audience** — Who the highlights are for: `client_buyer`, `msp_mssp`, or `builder_accelerator`. Selects which benefits to foreground.
 - **product_context** — Optional short description of the product/framework the week's changes belong to, so prose can name it correctly.
-- **governance_provenance** — Optional list of the authority behind the week's changes (e.g., academic research, analyst-firm guidance such as Gartner AI TRiSM, MSP field input). Grounds the digest's currency claim; used only when present in the source or explicitly supplied — never invented.
+- **governance_provenance** — Optional list of the authority behind the week's changes (e.g., academic research, published frameworks the change aligns with (e.g., AI TRiSM, a framework defined by Gartner, Inc.), MSP field input). Grounds the digest's currency claim; used only when present in the source or explicitly supplied — never invented.
 
 ## Procedure
 1. **Parse the source** — Normalize the week's `changelog` or `commit_range` into a flat list of change entries. For a commit range, read Conventional Commit subjects and group them by `type` (`feat`, `fix`, `docs`, `chore`, `ci`, `test`, `refactor`).
@@ -40,7 +40,7 @@ Turn a **week of changes** (the commits and date-versioned `YYYY.MM.DD` releases
       "detail": "Versions are now plain calendar dates (2026.08.04): subtract two dates to see exactly how far behind you are, and every tag means a real user-facing change actually shipped that day."
     }
   ],
-  "governance_provenance": ["Gartner AI TRiSM guidance", "academic research", "MSP field input"],
+  "governance_provenance": ["alignment with the AI TRiSM framework (Gartner, Inc.)", "academic research", "MSP field input"],
   "social_post": {
     "status": "DRAFT",
     "channel": "linkedin",
@@ -88,7 +88,7 @@ Turn a **week of changes** (the commits and date-versioned `YYYY.MM.DD` releases
 ## Examples
 
 ### Example 1
-- **Inputs:** `commit_range = 2026.07.31..2026.08.04` (the week's changes, spanning several dated releases), `channel = linkedin`, `audience = builder_accelerator`, `governance_provenance = ["Gartner AI TRiSM guidance", "MSP field input"]`
+- **Inputs:** `commit_range = 2026.07.31..2026.08.04` (the week's changes, spanning several dated releases), `channel = linkedin`, `audience = builder_accelerator`, `governance_provenance = ["alignment with the AI TRiSM framework (Gartner, Inc.)", "MSP field input"]`
 - **Behavior:** Groups the week's commits by Conventional Commit type, drops the `chore(release)`, `ci`, and `test` entries, curates the `feat` entries across all of the week's dated releases into two benefit-led highlights (new guardrails / new capabilities) — one digest, not one post per tag — attaches the supplied governance provenance, and drafts a LinkedIn post framing the week as a currency update with a `<release-link>` placeholder.
 - **Output:** 2 highlights + provenance line + 1 DRAFT LinkedIn post marked `needs_human_approval`; `filtered_out` records 5 dropped entries.
 

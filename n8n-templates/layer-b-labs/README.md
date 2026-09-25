@@ -2,7 +2,7 @@
 
 Production-ready, importable n8n workflow templates for **Project NoéMI Layer B (Dynamic Labs)** — the experiential, "just-in-time microburst" curriculum for **Practitioners (the Crew)**.
 
-These templates follow the Gartner mandate for *embedded* pedagogy: instead of heavy external manuals, the lesson lives **inside the tool**. Every operational node carries an adjacent `stickyNote` "microburst" that teaches the *why* using the **4D AI Fluency Framework** (Delegation, Description, Discernment, Diligence — adapting Dakan & Feller) and NoéMI's role model (Explorer → Practitioner → Accelerator).
+These templates follow NoéMI's embedded-pedagogy rule: instead of heavy external manuals, the lesson lives **inside the tool**. Every operational node carries an adjacent `stickyNote` "microburst" that teaches the *why* using the **4D AI Fluency Framework** (Delegation, Description, Discernment, Diligence — adapting Dakan & Feller) and NoéMI's role model (Explorer → Practitioner → Accelerator).
 
 ## Templates
 

@@ -23,7 +23,7 @@ Discernment is the validation layer: identifying when human judgment is still re
 
 ### D4: Diligence (Ethics, Verification, and Security)
 Generative models are probabilistic. Diligence requires continuous verification, ethical alignment, and robust security protocols for all outputs.
-*   **Application:** Implement Gartner AI TRiSM standards, Red Teaming protocols, auditability, and secure "Fetch-on-Demand" credential management for every deployed agent.
+*   **Application:** Implement controls mapped to the AI TRiSM framework (Gartner, Inc.), Red Teaming protocols, auditability, and secure "Fetch-on-Demand" credential management for every deployed agent.
 
 ---
 

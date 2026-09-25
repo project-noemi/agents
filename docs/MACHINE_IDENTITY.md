@@ -258,7 +258,7 @@ review and destroy the cross-model trail.
 | Field | Value |
 |---|---|
 | **Identity** | `noemi-conductor` (GitHub App; comments as `noemi-conductor[bot]`) |
-| **Status** | **Provisioning runbook below.** Create the App once; do not mint a PAT as `noemi-agent` or as a human |
+| **Status** | **Provisioned.** App id `5066927`, slug `noemi-conductor`. Install on every fleet org, **all repositories** (Decision [2026-09-26-0001]) |
 | **Purpose** | Comment on issues and apply `noemi:*` labels for triage, sufficiency, planning, and stops |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
 | **Credential** | Infisical `CONDUCTOR_APP_ID` + `CONDUCTOR_APP_PRIVATE_KEY`. The CLI mints a one-hour installation token at runtime (`scripts/github-app-token.js`). Optional override: `CONDUCTOR_GH_TOKEN` (already-minted installation token). Never a producer or human PAT |
@@ -289,8 +289,8 @@ transfer the App later, matching `noemi-reviewer-bot`):
    - **Issues:** Read and write
    - **Metadata:** Read-only (GitHub requires this)
 6. **Account permissions:** none.
-7. **Where can this GitHub App be installed?** Only on this account
-   (`newpush`), unless you are creating it on the enterprise for fleet install.
+7. **Where can this GitHub App be installed?** **Any account** (the fleet is
+   three orgs: `newpush`, `project-noemi`, `newpush-labs`).
 8. Create the App. Copy the **App ID**. Generate a **private key** and keep
    the `.pem` on disk only long enough to load it into Infisical.
 
@@ -301,16 +301,21 @@ infisical secrets set CONDUCTOR_APP_ID='<app-id>' --env=dev
 infisical secrets set CONDUCTOR_APP_PRIVATE_KEY="$(cat /path/to/noemi-conductor.private-key.pem)" --env=dev
 ```
 
-Then **install** the App:
+Then **install** the App on **every fleet org**, **all repositories**:
 
-1. App settings → Install App → `newpush`.
-2. Repository access: **Only select repositories** → `newpush-agents`
-   (add `project-noemi/agents` later if pickup should comment there too).
-3. Confirm the install can **read and write issues** only.
+| Org | Action |
+|---|---|
+| `newpush` (existing install `164618496`) | [Installation settings](https://github.com/organizations/newpush/settings/installations/164618496) → Repository access → **All repositories** |
+| `project-noemi` | [Install](https://github.com/apps/noemi-conductor/installations/new?target_id=271349740) → **All repositories** |
+| `newpush-labs` | [Install](https://github.com/apps/noemi-conductor/installations/new?target_id=183727677) → **All repositories** |
 
-`--post` then mints an installation token as `noemi-conductor[bot]`. Do not
-store a long-lived PAT as `CONDUCTOR_GH_TOKEN` unless you are debugging the
-mint path.
+If GitHub refuses the last two, the App is still “Only on this account”:
+[App settings](https://github.com/organizations/newpush/settings/apps/noemi-conductor)
+→ **Where can this GitHub App be installed?** → **Any account**, then retry.
+
+Permissions stay Issues read/write and Metadata read. `--post` mints
+`noemi-conductor[bot]` for the `--repo` owner. Do not store a long-lived PAT
+as `CONDUCTOR_GH_TOKEN` unless you are debugging the mint path.
 
 #### Classic PAT and SSO
 

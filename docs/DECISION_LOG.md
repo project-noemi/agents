@@ -1325,3 +1325,9 @@
 - **Decision:** Provision `noemi-conductor` as a GitHub App (Issues R/W, Metadata read, no Contents). Infisical holds `CONDUCTOR_APP_ID` + `CONDUCTOR_APP_PRIVATE_KEY`; the CLI mints an installation token per run. Stage C writer accepts `XAI_API_KEY` (api.x.ai) **or** LiteLLM `AI_GW_API_TOKEN` with `AI_GW_BASE_URL`; a gateway token without a base URL is refused. Local `--live-critic` uses user ADC (`gcloud auth application-default login`); Actions uses the existing fleet WIF variables. Classic PAT SSO authorization appears only if the org enforces SAML; Write via the Coders team is sufficient when it does not.
 - **Context:** Live-fire on `newpush/newpush-agents` needed write (Coders), a conductor that is not the producer, Gemini without API keys, and the vault’s LiteLLM universal key instead of a native xAI key. The LiteLLM guide URL was not in the chat; the contract is the OpenAI-compatible `/v1` pair.
 - **Impact:** `scripts/github-app-token.js`, `coding-loop/writer.js` `resolveWriterAuth`, `docs/MACHINE_IDENTITY.md` App runbook, `docs/tool-usages/newpush-ai-gateway.md`. Gateway default `https://ai-gw.newpush.com/v1` and pin `xai/grok-4.6`. Vault name `AI_GW_API_TOKEN`; guide name `AI_GW_API_KEY` is an alias.
+
+## [2026-09-26-0001] noemi-conductor installs on all fleet orgs, all repositories
+
+- **Decision:** `noemi-conductor` (App id `5066927`) is installed on `newpush`, `project-noemi`, and `newpush-labs` with **All repositories**. Permissions stay Issues read/write and Metadata read. New repos in those orgs inherit the install. Do not leave it on a single selected repo (`newpush-agents`).
+- **Context:** Live-fire started on `newpush/newpush-agents`. Pickup and later `--post` must work on `project-noemi/agents` and `{company}-agents` copies without a per-repo reinstall.
+- **Impact:** Human owner clicks the three org installs (GitHub does not allow this agent to approve org App installs). Register runbook lists the URLs.

@@ -298,6 +298,7 @@ test('draftPlan: ACTIONABLE yields a five-section draft, never accepted', () => 
   assert.match(drafted.plan, /## Stop conditions/);
   assert.ok(extractPaths(sufficientBody).includes('coding-loop/run.js'));
   assert.notEqual(drafted.status, 'accepted');
+  assert.match(drafted.plan, /## Tests\nVerify: .*Done when tests\/issue-loop\.test\.js fails/);
 });
 
 test('draftPlan: skip-red-team language does not accept the draft', () => {

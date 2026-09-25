@@ -4,12 +4,13 @@ import express from 'express';
 
 // Mock dependencies safely before importing server logic
 vi.mock('../oauth-manager.js', () => ({
-  OAuthManager: vi.fn().mockImplementation(() => ({
-    getGmailClient: () => ({
+  // Vitest 5: `new OAuthManager()` requires a function/class mock, not an arrow.
+  OAuthManager: vi.fn().mockImplementation(function OAuthManager() {
+    this.getGmailClient = () => ({
       getHistory: vi.fn().mockResolvedValue({ historyId: '1001', history: [] }),
       getProfile: vi.fn().mockResolvedValue({ historyId: '1000' })
-    })
-  }))
+    });
+  })
 }));
 
 // Create a local test instance identical to the server setup to avoid binding the port 

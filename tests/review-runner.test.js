@@ -611,6 +611,45 @@ test('workflow: App ID is resolved from Infisical when the Actions variable is e
     assert.ok(yml.includes('app-id: ${{ env.REVIEWER_APP_ID }}'));
 });
 
+test('workflow: fork notice warns and does not fail the check suite', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
+    assert.match(yml, /Warn on missing configuration/);
+    assert.match(yml, /::warning title=AI review unavailable \(fork PR\)::/);
+    assert.doesNotMatch(yml, /Fail on missing configuration/);
+    const warnStep = yml.slice(yml.indexOf('Warn on missing configuration'));
+    const nextJob = warnStep.indexOf('\n  advisory:');
+    const body = nextJob === -1 ? warnStep : warnStep.slice(0, nextJob);
+    assert.doesNotMatch(body, /exit 1/, 'fork-notice must not fail the check');
+});
+
+test('workflow: privileged fork review re-runs while ai-review remains, without cancelling itself', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
+    assert.match(yml, /types: \[labeled, synchronize, reopened\]/);
+    assert.match(
+        yml,
+        /github\.event_name == 'pull_request_target' && github\.event\.action == 'labeled' && github\.event\.label\.name == 'ai-review'/,
+    );
+    assert.match(
+        yml,
+        /contains\(github\.event\.pull_request\.labels\.\*\.name, 'ai-review'\)/,
+    );
+    assert.doesNotMatch(yml, /labels\/ai-review/, 'must not delete the trust-signal label');
+    assert.match(
+        yml,
+        /group: ai-review-\$\{\{ github\.repository \}\}.*github\.event_name \}\}/,
+        'concurrency must isolate pull_request from pull_request_target',
+    );
+});
+
+test('fleet caller: pull_request_target is label-gated, not unconstrained', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', 'templates/ci/ai-review-caller.yml'), 'utf8');
+    const target = yml.slice(yml.indexOf('pull_request_target:'));
+    const typesLine = target.match(/types: \[[^\]]+\]/)[0];
+    assert.equal(typesLine, 'types: [labeled, synchronize, reopened]');
+    assert.match(yml, /github\.event\.label\.name == 'ai-review'/);
+    assert.match(yml, /contains\(github\.event\.pull_request\.labels\.\*\.name, 'ai-review'\)/);
+});
+
 test('retry predicate: classification is structural, never message-derived', () => {
     const { isTransientGitHubError } = require('../scripts/review-pr.js');
     const withStatus = (status) => Object.assign(new Error(`GitHub GET /x → ${status} {}`), { status });

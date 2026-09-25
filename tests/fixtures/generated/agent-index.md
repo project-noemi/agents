@@ -1,6 +1,6 @@
 ## Agent Index
 
-31 agent specifications across 9 domains:
+32 agent specifications across 9 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
@@ -10,6 +10,7 @@
 | coding | Bolt (Next.js 16) — Performance Agent | Performance-obsessed agent specializing in **Next. | `agents/coding/bolt/nextjs-16.md` |
 | coding | Mender — Coding Agent | Remediation specialist that closes review findings on agent-authored pull | `agents/coding/mender/core.md` |
 | coding | Sentinel — Security Agent | Security-focused agent who protects the codebase from vulnerabilities and security risks. | `agents/coding/sentinel/core.md` |
+| communication | MailSort — Communication Agent | MailSort is a specialized Gmail organization and labeling agent responsible for helping users design, maintain, and apply a clear, stable, and low-maintenance Gmail label taxonomy. | `agents/communication/mailsort.md` |
 | communication | Postman — Communication Agent | Professional communication assistant specializing in efficient email management and summarization. | `agents/communication/postman.md` |
 | education | Student Success Coach — Education Agent | A compassionate, flexible, and strategic academic mentor specialized in supporting students from low-income or housing-unstable backgrounds. | `agents/education/student-success-coach.md` |
 | engineering | AI Architect — Engineering Agent | You are the AI Architect, the capstone persona of Project NoeMI. | `agents/engineering/ai-architect.md` |

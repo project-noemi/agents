@@ -15,7 +15,7 @@ const { completeStageA, evaluateSufficiency, issueText } = require('../coding-lo
 const { completeThroughStageB, draftPlan, extractPaths, runPlanRedTeam } = require('../coding-loop/plan.js');
 const { assertProducerToken, openImplementationPr, prepareImplementation } = require('../coding-loop/dispatch.js');
 const { critiquePlanLive } = require('../coding-loop/critic.js');
-const { assertWriterKey, draftChanges, isCarvedOut, selectGrokModel, validateFiles } = require('../coding-loop/writer.js');
+const { assertWriterKey, draftChanges, isCarvedOut, resolveWriterAuth, selectGrokModel, validateFiles } = require('../coding-loop/writer.js');
 
 const tenant = {
   tenantId: 'newpush-internal',
@@ -399,6 +399,17 @@ test('Stage C: producer token is required; conductor is not enough', () => {
   assert.equal(assertProducerToken({ AGENT_GH_TOKEN: 'x' }), 'x');
 });
 
+test('Stage C: AGENT_GH_USE_CLASSIC does not fall back to AGENT_GH_TOKEN', () => {
+  assert.throws(
+    () => assertProducerToken({ AGENT_GH_USE_CLASSIC: '1', AGENT_GH_TOKEN: 'fine' }),
+    /Refusing to fall back to AGENT_GH_TOKEN/,
+  );
+  assert.equal(
+    assertProducerToken({ AGENT_GH_USE_CLASSIC: '1', AGENT_GH_TOKEN: 'fine', AGENT_GH_TOKEN_CLASSIC: 'classic' }),
+    'classic',
+  );
+});
+
 test('assertRepoIssue: owner/name and a positive integer only', () => {
   assert.doesNotThrow(() => assertRepoIssue('project-noemi/agents', '12'));
   assert.doesNotThrow(() => assertRepoIssue('newpush/on-call_app', '1'));
@@ -431,6 +442,8 @@ test('CLI --implement without AGENT_GH_TOKEN is refused (identity split)', () =>
   const script = path.join(__dirname, '..', 'coding-loop', 'run.js');
   const env = { ...process.env };
   delete env.AGENT_GH_TOKEN;
+  delete env.AGENT_GH_TOKEN_CLASSIC;
+  delete env.AGENT_GH_USE_CLASSIC;
   const result = spawnSync(process.execPath, [
     script, '--repo', 'project-noemi/agents', '--issue', '1', '--implement',
     '--scan-status', 'APPROVED', '--budget-ok',
@@ -439,10 +452,24 @@ test('CLI --implement without AGENT_GH_TOKEN is refused (identity split)', () =>
   assert.match(result.stderr, /AGENT_GH_TOKEN/);
 });
 
+test('CLI --implement with AGENT_GH_USE_CLASSIC and only AGENT_GH_TOKEN is refused', () => {
+  const script = path.join(__dirname, '..', 'coding-loop', 'run.js');
+  const env = { ...process.env, AGENT_GH_USE_CLASSIC: '1', AGENT_GH_TOKEN: 'fine' };
+  delete env.AGENT_GH_TOKEN_CLASSIC;
+  const result = spawnSync(process.execPath, [
+    script, '--repo', 'project-noemi/agents', '--issue', '1', '--implement',
+    '--scan-status', 'APPROVED', '--budget-ok',
+  ], { env, encoding: 'utf8' });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Refusing to fall back to AGENT_GH_TOKEN/);
+});
+
 test('CLI --post without CONDUCTOR_GH_TOKEN is refused (identity split)', () => {
   const script = path.join(__dirname, '..', 'coding-loop', 'run.js');
   const env = { ...process.env };
   delete env.CONDUCTOR_GH_TOKEN;
+  delete env.CONDUCTOR_APP_ID;
+  delete env.CONDUCTOR_APP_PRIVATE_KEY;
   const result = spawnSync(process.execPath, [script, '--repo', 'project-noemi/agents', '--issue', '1', '--post'], {
     env,
     encoding: 'utf8',
@@ -613,7 +640,10 @@ test('selectGrokModel: highest preview then stable; missing pin fails closed', (
   assert.equal(preview.id, 'grok-4.6-preview');
   const stable = selectGrokModel(['grok-3', 'grok-4.6', 'grok-4']);
   assert.equal(stable.id, 'grok-4.6');
-  assert.throws(() => selectGrokModel(['grok-4.6'], { pin: 'grok-99' }), /not in the xAI catalogue/);
+  assert.throws(() => selectGrokModel(['grok-4.6'], { pin: 'grok-99' }), /not in the catalogue/);
+  const gw = selectGrokModel(['google/gemini-3.8-flash', 'xai/grok-4.6', 'xai/grok-build-0.1']);
+  assert.equal(gw.id, 'xai/grok-4.6');
+  assert.equal(selectGrokModel(['xai/grok-4.6'], { pin: 'xai/grok-4.6' }).id, 'xai/grok-4.6');
   assert.throws(() => selectGrokModel(['gpt-4']), /No Grok model/);
 });
 
@@ -768,19 +798,40 @@ test('CLI --open-pr without XAI_API_KEY or --implement is refused', () => {
   const script = path.join(__dirname, '..', 'coding-loop', 'run.js');
   const env = { ...process.env, AGENT_GH_TOKEN: 'x' };
   delete env.XAI_API_KEY;
+  delete env.AI_GW_API_TOKEN;
+  delete env.AI_GW_BASE_URL;
+  delete env.AI_GW_API_BASE;
   const missingKey = spawnSync(process.execPath, [
     script, '--repo', 'project-noemi/agents', '--issue', '1',
     '--implement', '--open-pr', '--scan-status', 'APPROVED', '--budget-ok',
   ], { env, encoding: 'utf8' });
   assert.equal(missingKey.status, 2);
-  assert.match(missingKey.stderr, /XAI_API_KEY/);
+  assert.match(missingKey.stderr, /XAI_API_KEY|AI_GW_API_TOKEN/);
 
   const missingImplement = spawnSync(process.execPath, [
     script, '--repo', 'project-noemi/agents', '--issue', '1', '--open-pr',
   ], { env: { ...process.env, AGENT_GH_TOKEN: 'x', XAI_API_KEY: 'x' }, encoding: 'utf8' });
   assert.equal(missingImplement.status, 2);
   assert.match(missingImplement.stderr, /--implement/);
-  assert.throws(() => assertWriterKey({}), /XAI_API_KEY/);
+  assert.throws(() => assertWriterKey({}), /XAI_API_KEY|AI_GW_API_TOKEN/);
+});
+
+test('writer auth: XAI_API_KEY uses api.x.ai; gateway token defaults to NewPush /v1', () => {
+  const { resolveWriterAuth, classifyGrok, normalizeApiBase, NEWPUSH_AI_GW_V1 } = require('../coding-loop/writer.js');
+  const xai = resolveWriterAuth({ XAI_API_KEY: 'xai', AI_GW_API_TOKEN: 'gw' });
+  assert.equal(xai.source, 'XAI_API_KEY');
+  assert.equal(xai.apiBase, 'https://api.x.ai/v1');
+  const gw = resolveWriterAuth({ AI_GW_API_TOKEN: 'gw' });
+  assert.equal(gw.source, 'AI_GW_API_TOKEN');
+  assert.equal(gw.apiBase, NEWPUSH_AI_GW_V1);
+  assert.equal(gw.pinDefault, 'xai/grok-4.6');
+  const alias = resolveWriterAuth({ AI_GW_API_KEY: 'sk-gw' });
+  assert.equal(alias.source, 'AI_GW_API_KEY');
+  const custom = resolveWriterAuth({ AI_GW_API_TOKEN: 'gw', AI_GW_BASE_URL: 'https://llm.example.com' });
+  assert.equal(custom.apiBase, 'https://llm.example.com/v1');
+  assert.equal(normalizeApiBase('https://ai-gw.newpush.com/v1/'), 'https://ai-gw.newpush.com/v1');
+  assert.equal(classifyGrok('xai/grok-4.6').id, 'xai/grok-4.6');
+  assert.equal(classifyGrok('xai/grok-4.6').name, 'grok-4.6');
 });
 
 test('parseArgs: --live-critic and --open-pr are off by default', () => {

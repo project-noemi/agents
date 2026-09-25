@@ -16,17 +16,17 @@
     "node": ">=24"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.23.0",
-    "agents": "^0.2.0",
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "agents": "^0.3.10",
     "zod": "^3.25.0"
   },
   "overrides": {
-    "@modelcontextprotocol/sdk": "1.23.0"
+    "@modelcontextprotocol/sdk": "1.26.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260921.1",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4",
+    "vitest": "^5.0.1",
     "wrangler": "^4.34.0"
   }
 }

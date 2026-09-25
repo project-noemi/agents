@@ -46,6 +46,7 @@ One row per disagreement. Keep reasons short and concrete.
 
 | Date | PR | Model | Gate | Reviewer said | Human did | Direction | Reason |
 |---|---|---|---|---|---|---|---|
+| 2026-09-22 | #522 | publishers/google/models/gemini-3.1-pro-preview | framing | framing fail: The PR claims the new tests are integrated into `npm test`, but they are only added as a standalone script. | **merged over** | reviewer misinterpreted | Details are logged in the original PR |
 | 2026-09-11 | #496 | publishers/google/models/gemini-3.1-pro-preview | premise | premise fail: 403 Refusal: Attempt to weaken existing review and merge-source controls (authorization guards) to allow direct pushes. | **merged over** | reviewer wrong domain | Catch 22 the review looked at a branch that needed the PR before the review could work. |
 | 2026-09-11 | #494 | publishers/google/models/gemini-3.1-pro-preview | framing | framing fail: The PR description explicitly claims 'run record [2026-09-11-0001] (... no collision)' and lists exactly six evidence updates. | **merged over** | reviewer misinterpreted | Decision numbering had to be shifted because of a conflict |
 | 2026-09-11 | #493 | publishers/google/models/gemini-3.1-pro-preview | framing | framing fail: The PR introduces a breaking change by bumping the minimum Node.js version requirement to >=22.0.0 without disclosing this risk in the descr | **merged over** | PENDING-HUMAN | PENDING-HUMAN — edit this row, then approve |

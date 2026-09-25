@@ -112,6 +112,11 @@ Confirm it worked without printing the credential:
 node scripts/gcp-token.js        # expect: ADC token obtained via gcloud-adc
 ```
 
+`gcloud auth login` (user login) is **not** ADC. `gcloud auth list` can show an
+active account while `gcloud auth application-default print-access-token`
+still fails. Live `--live-critic` on a laptop uses the application-default
+credential only.
+
 This credential expires and needs re-running periodically. When it lapses, the
 tooling tells you exactly that rather than failing obscurely.
 
@@ -523,36 +528,37 @@ malicious fork PRs from exfiltrating secrets via workflow code.
 When a fork PR arrives, the AI review workflow:
 
 1. Detects missing configuration variables
-2. **Fails visibly** with an error explaining the fork limitation
-3. Posts no green check that could be mistaken for a completed review
+2. **Warns** on "AI Review (fork notice)" and **succeeds** that check (it is
+   not required; a red X here made mergeable PRs look blocked)
+3. Leaves the required **"AI Review (advisory)"** check pending until a
+   maintainer adds the `ai-review` label
 
 ### Automatic trigger via label (preferred)
 
-The **preferred path** for fork PRs: add the `ai-review` label after reviewing
-the code. This triggers the advisory review in a privileged context:
+The **preferred path** for fork PRs: add the `ai-review` label **once** after
+reviewing the code. Later pushes re-run the advisory while the label remains.
 
 1. Fork PR arrives
-2. Automatic review fails visibly (GitHub withholds variables from fork PRs)
+2. Fork-notice warns (GitHub withholds variables from fork `pull_request`)
 3. **You review the code**
-4. **You add the 'ai-review' label** (trust signal)
+4. **You add the 'ai-review' label once** (trust signal)
 5. Label addition triggers the advisory review in base-repo context
 6. Advisory runs with access to credentials and posts findings
+7. Contributor pushes a fix → advisory re-runs; you re-approve if you already had
 
 **Why label-gated instead of approval-gated?** GitHub withholds secrets and
 variables from `pull_request_review` events on fork PRs ([GitHub docs](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#using-secrets-in-a-workflow)),
 so an approval cannot auto-trigger a privileged review. The label gate uses
-`pull_request_target: [labeled]` which **does** have access to credentials, and
-is safe because label addition is maintainer-only and the workflow never checks
-out PR code.
+`pull_request_target` (`labeled`, then `synchronize`/`reopened` while the
+label remains) which **does** have access to credentials, and is safe because
+label addition is maintainer-only and the workflow never checks out PR code.
 
 **What happens after the advisory runs:**
 
 - **No blocking findings:** Label remains, PR proceeds normally
-- **Blocking findings (critical/high):** The workflow **removes the `ai-review` label**
-  as a signal. Review the advisory comment posted by @noemi-reviewer-bot, then
-  either request changes or **re-add the label** after the contributor addresses
-  findings (or if you accept them). This ensures findings are seen without making
-  the advisory a required check (phase 1 is advisory-only).
+- **Blocking findings (critical/high):** Approvals are dismissed. The
+  `ai-review` **label stays** so the next push re-runs advisory. Review the
+  comment posted by @noemi-reviewer-bot, then request changes or re-approve.
 - **Advisory halts or fails:** Label remains (a halt/error is not a verdict)
 
 ### Manual trigger (when needed)

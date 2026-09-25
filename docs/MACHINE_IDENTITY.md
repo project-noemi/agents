@@ -40,9 +40,9 @@ identities have named owners (`docs/phase-zero-assessment/weighted-assessment-sp
 | **Status** | **Provisioned** 2026-08-02 |
 | **Purpose** | Open branches and pull requests on behalf of AI agents |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
-| **Credential type** | Fine-grained personal access token |
-| **Credential store** | Infisical — secret `AGENT_GH_TOKEN` |
-| **Repo permission** | `write` on `project-noemi/agents` |
+| **Credential type** | Fine-grained PAT (default) plus optional classic PAT (cross-org) |
+| **Credential store** | Infisical — secrets `AGENT_GH_TOKEN` and `AGENT_GH_TOKEN_CLASSIC` |
+| **Repo permission** | Fine-grained: `write` on `project-noemi/agents`. Classic: org-wide `repo` as the same `noemi-agent` user |
 | **Rotation** | 90 days, or immediately on suspected exposure |
 | **First rotation due** | 2026-10-31 |
 | **May approve PRs?** | **No.** Approval is a human-only act |
@@ -247,7 +247,7 @@ already present. The `project-noemi` install is still live: the bot identity
 continues to resolve and historical promotion PRs still attribute to
 `noemi-release-bot[bot]`.
 
-### Conductor identity — `noemi-conductor` (planned)
+### Conductor identity — `noemi-conductor`
 
 The issue-coding loop needs a third actor that can comment on issues without
 being the producer or the reviewer (Decision [2026-08-16-0004]). Issue chatter
@@ -257,24 +257,69 @@ review and destroy the cross-model trail.
 
 | Field | Value |
 |---|---|
-| **Identity** | `noemi-conductor` (GitHub App, planned) |
-| **Status** | **Planned.** Not provisioned. No App ID, no token, no install. |
+| **Identity** | `noemi-conductor` (GitHub App; comments as `noemi-conductor[bot]`) |
+| **Status** | **Provisioning runbook below.** Create the App once; do not mint a PAT as `noemi-agent` or as a human |
 | **Purpose** | Comment on issues and apply `noemi:*` labels for triage, sufficiency, planning, and stops |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
-| **Credential** | Not issued. When provisioned: installation token from Infisical, Fetch-on-Demand, never written to disk |
-| **Permissions (intended)** | Issues read/write, Metadata read. **No** Contents write. **No** Pull requests write. **No** Workflows, Administration, or Secrets |
+| **Credential** | Infisical `CONDUCTOR_APP_ID` + `CONDUCTOR_APP_PRIVATE_KEY`. The CLI mints a one-hour installation token at runtime (`scripts/github-app-token.js`). Optional override: `CONDUCTOR_GH_TOKEN` (already-minted installation token). Never a producer or human PAT |
+| **Permissions** | Issues read/write, Metadata read. **No** Contents write. **No** Pull requests write. **No** Workflows, Administration, or Secrets |
 | **May author code?** | **No** |
 | **May open PRs?** | **No** |
 | **May review or approve PRs?** | **No** |
 | **May merge PRs?** | **No** |
 
 Do not provision this identity by widening `noemi-agent` or
-`noemi-reviewer-bot`. A new App with Issues-only scope is the point. Until it
-exists, the persona and architecture are the contract; hosts must not post
-conductor comments as another machine user.
+`noemi-reviewer-bot`. A new App with Issues-only scope is the point.
 
 See `docs/architecture/issue-coding-loop.md` and
 `agents/engineering/issue-conductor.md`.
+
+#### Create the GitHub App (human, once)
+
+Signed in as a **newpush** org owner (or the enterprise owner if you will
+transfer the App later, matching `noemi-reviewer-bot`):
+
+1. Open [New GitHub App](https://github.com/organizations/newpush/settings/apps/new)
+   (org Settings → Developer settings → GitHub Apps → New GitHub App).
+2. **GitHub App name:** `noemi-conductor` (must be globally unique; add a
+   suffix only if GitHub rejects the name).
+3. **Homepage URL:** `https://github.com/project-noemi/agents`
+4. **Webhook:** uncheck **Active**. This App does not receive events.
+5. **Repository permissions** (nothing else):
+   - **Issues:** Read and write
+   - **Metadata:** Read-only (GitHub requires this)
+6. **Account permissions:** none.
+7. **Where can this GitHub App be installed?** Only on this account
+   (`newpush`), unless you are creating it on the enterprise for fleet install.
+8. Create the App. Copy the **App ID**. Generate a **private key** and keep
+   the `.pem` on disk only long enough to load it into Infisical.
+
+In **your** terminal (never paste the PEM into chat):
+
+```bash
+infisical secrets set CONDUCTOR_APP_ID='<app-id>' --env=dev
+infisical secrets set CONDUCTOR_APP_PRIVATE_KEY="$(cat /path/to/noemi-conductor.private-key.pem)" --env=dev
+```
+
+Then **install** the App:
+
+1. App settings → Install App → `newpush`.
+2. Repository access: **Only select repositories** → `newpush-agents`
+   (add `project-noemi/agents` later if pickup should comment there too).
+3. Confirm the install can **read and write issues** only.
+
+`--post` then mints an installation token as `noemi-conductor[bot]`. Do not
+store a long-lived PAT as `CONDUCTOR_GH_TOKEN` unless you are debugging the
+mint path.
+
+#### Classic PAT and SSO
+
+`AGENT_GH_TOKEN_CLASSIC` is a **user** PAT. GitHub shows **Configure SSO →
+Authorize** on that token **only when the organization enforces SAML SSO**.
+If `newpush` does not, that control is absent and is not a defect. Access
+then comes from org membership / team role (for example **Coders** with
+Write). Verify with `permissions.push` on the target repo, not with the SSO
+menu.
 
 ### Effective-permission posture — the token is the boundary
 
@@ -432,7 +477,14 @@ bash scripts/agent-gh.sh pr create --base develop \
 
 # Verify which identity a token resolves to
 bash scripts/agent-gh.sh whoami
+
+# Cross-org (live-fire, `{company}-agents`): classic PAT, same GitHub user.
+# Does not fall back to AGENT_GH_TOKEN if classic is missing.
+AGENT_GH_USE_CLASSIC=1 bash scripts/agent-gh.sh whoami
+AGENT_GH_USE_CLASSIC=1 bash scripts/agent-gh.sh api repos/newpush/newpush-agents --jq .full_name
 ```
+
+`AGENT_GH_TOKEN` stays the default fine-grained producer credential. `AGENT_GH_TOKEN_CLASSIC` is a second Infisical secret, minted as **`noemi-agent`** (never a human account). Set `AGENT_GH_USE_CLASSIC=1` per command; do not put that flag in the vault. Decision [2026-09-24-0002].
 
 Agents push branches and open PRs through this wrapper. Humans then review and
 merge with their own credentials — the separation is the point.

@@ -1326,8 +1326,15 @@
 - **Context:** Live-fire on `newpush/newpush-agents` needed write (Coders), a conductor that is not the producer, Gemini without API keys, and the vault’s LiteLLM universal key instead of a native xAI key. The LiteLLM guide URL was not in the chat; the contract is the OpenAI-compatible `/v1` pair.
 - **Impact:** `scripts/github-app-token.js`, `coding-loop/writer.js` `resolveWriterAuth`, `docs/MACHINE_IDENTITY.md` App runbook, `docs/tool-usages/newpush-ai-gateway.md`. Gateway default `https://ai-gw.newpush.com/v1` and pin `xai/grok-4.6`. Vault name `AI_GW_API_TOKEN`; guide name `AI_GW_API_KEY` is an alias.
 
-## [2026-09-26-0001] Gartner named for attribution only
+## [2026-09-26-0001] noemi-conductor installs on all fleet orgs, all repositories
+
+- **Decision:** `noemi-conductor` (App id `5066927`) is installed on `newpush`, `project-noemi`, and `newpush-labs` with **All repositories**. Permissions stay Issues read/write and Metadata read. New repos in those orgs inherit the install. Do not leave it on a single selected repo (`newpush-agents`).
+- **Context:** Live-fire started on `newpush/newpush-agents`. Pickup and later `--post` must work on `project-noemi/agents` and `{company}-agents` copies without a per-repo reinstall.
+- **Impact:** Human owner clicks the three org installs (GitHub does not allow this agent to approve org App installs). Register runbook lists the URLs.
+
+## [2026-09-26-0002] Gartner named for attribution only
 
 - **Decision:** Gartner is named for attribution only. No partnership, endorsement, certification, or "Gartner definition" language anywhere in the repository; AI TRiSM is described as a framework defined by Gartner, Inc., never a standard or mandate. Paraphrases are labeled as NoéMI's own. The one Gartner source cited (the 11 June 2025 guardian-agents press release) is cited by title and date only.
 - **Context:** Analyst-facing collateral is being prepared, and Gartner's Content Compliance Policy prohibits implied endorsement, co-branding or partnership appearance, and non-verbatim "definitions". The Bible's Chapter 13 listed Gartner under "Industry Partnerships" and `docs/frameworks/gartner-trism.md` labeled paraphrase as "Gartner Definition".
 - **Impact:** Wording changes in docs/PROJECT_REFERENCE.md (Chapter 13 bullet removed, new "Frameworks We Build On" subsection, attribution block), docs/frameworks/gartner-trism.md, docs/GOVERNANCE.md, docs/lifecycle/DISCERNMENT.md, docs/METHODOLOGY.md, docs/REQUIREMENTS.md, docs/tool-usages/secure-secret-management.md, README.md, guardian-layer/README.md, guardian-layer/guardian_evaluator.py, agents/engineering/ai-architect.md, agents/operations/qa-risk-manager.md, skills/reporting/release-herald.md, n8n-templates/layer-b-labs/README.md; skills-dist/ and the Knowledge MCP corpus regenerated. The Bible keeps its CalVer edition stamp per [2026-09-24-0003]; no SemVer bump.
+

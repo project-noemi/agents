@@ -231,7 +231,7 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 
 ## Attribution
 
-> Attribution: AI TRiSM (AI trust, risk and security management) is a framework defined by Gartner, Inc. Gartner® is a registered trademark and service mark of Gartner, Inc. and/or its affiliates in the U.S. and internationally. NewPush and Project NoéMI are not affiliated with, sponsored by, or endorsed by Gartner; the name appears for attribution only.
+> Attribution: AI TRiSM (AI trust, risk and security management) is a framework defined by Gartner, Inc. Gartner® is a registered trademark and service mark of Gartner, Inc. and/or its affiliates in the U.S. and internationally.
 
 The 4 Ds of AI Fluency — Dakan, R. and Feller, J., "Framework for AI Fluency," v1.1, CC BY-NC-ND 4.0.
 

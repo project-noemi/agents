@@ -97,7 +97,7 @@ The strategic aim is concrete: help enterprises convert AI from a labor-displace
 
 - **Lead Organization:** NewPush® (cybersecurity/infrastructure company, founded in 1999)
 - **Academic Partner:** George Mason University — Center for Infrastructure Security in the Era of AI (ISEAI)
-- **Frameworks:** the Dakan & Feller "4 Ds" of AI Fluency (open, CC BY-NC-ND 4.0) and AI TRiSM, a framework defined by Gartner®, Inc. (attribution only — see Chapter 13)
+- **Frameworks:** the Dakan & Feller "4 Ds" of AI Fluency (open, CC BY-NC-ND 4.0) and AI TRiSM, a framework defined by Gartner®, Inc.
 - **Credential:** George Mason University-issued Badges of Completion (micro-credentials) at three levels
 - **Languages:** English, Spanish, French, German, Hungarian, ...
 - **Active Markets:** United States, Latin America, Europe (France, Germany, Hungary, Lithuania, ...)
@@ -209,7 +209,7 @@ Ephemeral technical exercises tied to specific tools and platforms. Updated per 
 
 ### The Guardian Layer
 
-The principle that "the best defense against AI is another AI acting as a critic." A Guardian Agent is a specialized AI whose sole job is to monitor, critique, and audit the outputs of operational AI agents — checking for hallucinations, policy violations, data leakage, and prompt injection. You would not run a factory without quality control inspectors. You should not run an AI workforce without Guardians. Gartner uses the term "guardian agents" for a related category (Gartner press release, "Gartner Predicts that Guardian Agents will Capture 10-15% of the Agentic AI Market by 2030," 11 June 2025). "Guardian Layer" and "Guardian Agent" as used in NoéMI are NewPush's own terms for its implementation and imply no Gartner endorsement.
+The principle that "the best defense against AI is another AI acting as a critic." A Guardian Agent is a specialized AI whose sole job is to monitor, critique, and audit the outputs of operational AI agents — checking for hallucinations, policy violations, data leakage, and prompt injection. You would not run a factory without quality control inspectors. You should not run an AI workforce without Guardians. Gartner uses the term "guardian agents" for a related category (Gartner press release, "Gartner Predicts that Guardian Agents will Capture 10-15% of the Agentic AI Market by 2030," 11 June 2025). "Guardian Layer" and "Guardian Agent" as used in NoéMI are NewPush's own terms for its implementation.
 
 ### The Feynman Requirement
 
@@ -269,7 +269,7 @@ The **"4 Ds"** framework was originally developed by Prof. Rick Dakan (Ringling 
 
 > **Citation:** Dakan, Rick and Feller, Joseph. "Framework for AI Fluency," Version 1.1, CC BY-NC-ND 4.0.
 
-> Attribution: AI TRiSM (AI trust, risk and security management) is a framework defined by Gartner, Inc. Gartner® is a registered trademark and service mark of Gartner, Inc. and/or its affiliates in the U.S. and internationally. NewPush and Project NoéMI are not affiliated with, sponsored by, or endorsed by Gartner; the name appears for attribution only.
+> Attribution: AI TRiSM (AI trust, risk and security management) is a framework defined by Gartner, Inc. Gartner® is a registered trademark and service mark of Gartner, Inc. and/or its affiliates in the U.S. and internationally.
 
 Think of the 4 Ds as four competencies that, together, make someone (or an organization) genuinely AI-fluent — not just capable of using AI, but capable of *governing* it.
 
@@ -488,6 +488,8 @@ NoéMI meets organizations where they are. Different maturity levels need differ
 
 This is the chapter most AI programs do not have. It is also the reason most AI programs fail.
 
+NoéMI's Phase 0 method comes from NewPush's own delivery work, and its controls are mapped to the AI TRiSM framework (Gartner, Inc.).
+
 Phase 0 is what distinguishes NoéMI from every other AI training program on the market. It is the security perimeter established **before** any AI deployment begins. Not after. Not alongside. Before.
 
 The logic is unforgiving: every AI capability you deploy without governance is a risk surface you have added to your organization. The faster you move without Phase 0, the faster you move toward a breach, a compliance violation, or a data leak that ends up in a public LLM's training data.
@@ -641,10 +643,12 @@ NoéMI's credibility comes from the company it keeps.
 - **International Rotary Clubs:** Venue support, participant recruitment, and community network for the initial pilot cohorts.
 - **Local Chambers of Commerce:** Local division support for market delivery.
 
-### Frameworks We Build On (attribution, not partnership)
+### Frameworks We Build On
+
+Part of NoéMI's value is curation. The volume of AI guidance grows every week, and most of it is noise; we select the frameworks worth building on, adapt them to delivery reality, and credit their authors.
 
 - **The 4 Ds of AI Fluency** — Dakan, R. and Feller, J., "Framework for AI Fluency," v1.1, CC BY-NC-ND 4.0. NoéMI adopts the open framework and credits its authors.
-- **AI TRiSM** — a framework defined by Gartner, Inc. NoéMI's Phase 0 security methodology is mapped to it. Gartner is not a partner of, and does not endorse, NewPush or Project NoéMI; the name appears for attribution only.
+- **AI TRiSM** (AI trust, risk and security management) — a framework defined by Gartner, Inc. NoéMI's Phase 0 security methodology and Guardian Layer controls are mapped to it.
 
 ### International Delivery Partners
 

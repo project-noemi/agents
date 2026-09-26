@@ -9,7 +9,7 @@ as an *independent auditor* of an operational AI. It natively integrates
 the **AI TRiSM** framework (Gartner®, Inc.) and the
 **Discernment (D3)** phase of the [4D Framework](../docs/METHODOLOGY.md).
 
-Gartner uses the term "guardian agents" for a related category (Gartner press release, "Gartner Predicts that Guardian Agents will Capture 10-15% of the Agentic AI Market by 2030," 11 June 2025). "Guardian Layer" and "Guardian Agent" as used in NoéMI are NewPush's own terms for its implementation and imply no Gartner endorsement.
+Gartner uses the term "guardian agents" for a related category (Gartner press release, "Gartner Predicts that Guardian Agents will Capture 10-15% of the Agentic AI Market by 2030," 11 June 2025). "Guardian Layer" and "Guardian Agent" as used in NoéMI are NewPush's own terms for its implementation.
 
 > The best defense against a hallucinating AI is a specialized AI acting as an
 > independent auditor.

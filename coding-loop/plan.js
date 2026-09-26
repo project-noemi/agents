@@ -11,7 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { PATH_RE, issueText } = require('./sufficiency.js');
+const { PATH_RE, DONE_RE, issueText } = require('./sufficiency.js');
 
 const SKIP_B_PRIME_RE = /skip red-?team|ship the first draft|code while planning/i;
 
@@ -30,6 +30,14 @@ function extractPaths(text) {
     if (cleaned && !found.includes(cleaned)) found.push(cleaned);
   }
   return found;
+}
+
+function doneConditionLine(text) {
+  const hit = String(text || '')
+    .split(/\n+/)
+    .map((block) => block.replace(/\s+/g, ' ').trim())
+    .find((block) => block.length >= 12 && DONE_RE.test(block));
+  return hit ? hit.slice(0, 280) : '';
 }
 
 function firstParagraph(text) {
@@ -91,8 +99,9 @@ function draftPlan({ issue, intake, scan, routing, profile } = {}) {
     };
   }
   const goal = firstParagraph(text) || String((issue && issue.title) || '').trim();
+  const stated = doneConditionLine(text);
   const tests = intake.signals && intake.signals.done
-    ? 'Keep the check named in the issue. The change is wrong if that check would still pass.'
+    ? `Verify: ${stated || 'the done-condition stated in the issue'}. Incomplete if that is still false after the edit.`
     : 'Name a test or command that fails if the change is wrong.';
   const risks = [
     'Governance carve-out paths (.github/CODEOWNERS, require-develop-source, MACHINE_IDENTITY) stay out of scope.',
@@ -199,6 +208,7 @@ module.exports = {
   SKIP_B_PRIME_RE,
   completeThroughStageB,
   critiquePlan,
+  doneConditionLine,
   draftPlan,
   extractPaths,
   formatPlan,

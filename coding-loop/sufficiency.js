@@ -109,6 +109,7 @@ function completeStageA(input) {
 
 module.exports = {
   PATH_RE,
+  DONE_RE,
   QUESTIONS,
   completeStageA,
   detectSignals,

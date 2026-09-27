@@ -3,6 +3,10 @@
 /**
  * Mint a short-lived GitHub App installation token (RS256 JWT →
  * POST /app/installations/{id}/access_tokens). Never logs the token.
+ * 
+ * Installation IDs are resolved by owner name at runtime and must not
+ * be stored in configuration, vault, or documentation. They change on
+ * uninstall/reinstall and go stale silently.
  */
 
 const crypto = require('crypto');
@@ -43,19 +47,40 @@ async function mintGithubAppInstallationToken({
     'User-Agent': 'noemi-github-app-token',
     'X-GitHub-Api-Version': '2022-11-28',
   };
-  const list = await fetchImpl('https://api.github.com/app/installations?per_page=100', { headers });
-  if (!list.ok) {
-    const err = new Error(`GitHub App installations → ${list.status}`);
-    err.status = list.status;
-    throw err;
+
+  // Fetch all installations with pagination
+  const installations = [];
+  let page = 1;
+  const perPage = 100;
+  while (true) {
+    const list = await fetchImpl(
+      `https://api.github.com/app/installations?per_page=${perPage}&page=${page}`,
+      { headers },
+    );
+    if (!list.ok) {
+      const err = new Error(`GitHub App installations → ${list.status}`);
+      err.status = list.status;
+      throw err;
+    }
+    const batch = await list.json();
+    if (!Array.isArray(batch) || batch.length === 0) {
+      break;
+    }
+    installations.push(...batch);
+    if (batch.length < perPage) {
+      break; // Last page
+    }
+    page++;
   }
-  const installations = await list.json();
-  if (!Array.isArray(installations) || installations.length === 0) {
+
+  if (installations.length === 0) {
     const err = new Error('GitHub App has no installations.');
     err.status = 404;
     throw err;
   }
-  let installation = installations[0];
+
+  // Resolve installation by owner name
+  let installation;
   if (owner) {
     const want = String(owner).toLowerCase();
     const hit = installations.find(
@@ -67,7 +92,18 @@ async function mintGithubAppInstallationToken({
       throw err;
     }
     installation = hit;
+  } else {
+    // No owner specified: only allow if exactly one installation exists
+    if (installations.length > 1) {
+      const err = new Error(
+        `GitHub App has ${installations.length} installations. Specify owner to select one.`,
+      );
+      err.status = 400;
+      throw err;
+    }
+    installation = installations[0];
   }
+
   const minted = await fetchImpl(
     `https://api.github.com/app/installations/${installation.id}/access_tokens`,
     { method: 'POST', headers },

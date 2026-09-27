@@ -258,7 +258,7 @@ review and destroy the cross-model trail.
 | Field | Value |
 |---|---|
 | **Identity** | `noemi-conductor` (GitHub App; comments as `noemi-conductor[bot]`) |
-| **Status** | **Provisioned.** App id `5066927`, slug `noemi-conductor`. Install on every fleet org, **all repositories** (Decision [2026-09-26-0001]) |
+| **Status** | **Provisioned.** App id `5066927`, slug `noemi-conductor`. Installed on all repositories of `newpush`, `project-noemi`, `newpush-labs` (Decision [2026-09-26-0001]) |
 | **Purpose** | Comment on issues and apply `noemi:*` labels for triage, sufficiency, planning, and stops |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
 | **Credential** | Infisical `CONDUCTOR_APP_ID` + `CONDUCTOR_APP_PRIVATE_KEY`. The CLI mints a one-hour installation token at runtime (`scripts/github-app-token.js`). Optional override: `CONDUCTOR_GH_TOKEN` (already-minted installation token). Never a producer or human PAT |
@@ -276,46 +276,59 @@ See `docs/architecture/issue-coding-loop.md` and
 
 #### Create the GitHub App (human, once)
 
-Signed in as a **newpush** org owner (or the enterprise owner if you will
-transfer the App later, matching `noemi-reviewer-bot`):
+**Adopters:** create your own `{your-company}-conductor` GitHub App and record it in your own register following this template.
 
-1. Open [New GitHub App](https://github.com/organizations/newpush/settings/apps/new)
-   (org Settings → Developer settings → GitHub Apps → New GitHub App).
-2. **GitHub App name:** `noemi-conductor` (must be globally unique; add a
-   suffix only if GitHub rejects the name).
-3. **Homepage URL:** `https://github.com/project-noemi/agents`
+Signed in as an **owner of the org** where you will create the App (or as an enterprise owner if you will transfer the App later):
+
+1. Open **New GitHub App** at your org Settings → Developer settings → GitHub Apps → New GitHub App (for example, `https://github.com/organizations/<your-org>/settings/apps/new`).
+2. **GitHub App name:** `{your-company}-conductor` (must be globally unique; add a suffix only if GitHub rejects the name).
+3. **Homepage URL:** your repository or company site (for example, `https://github.com/<your-org>/<your-agents-repo>`).
 4. **Webhook:** uncheck **Active**. This App does not receive events.
 5. **Repository permissions** (nothing else):
    - **Issues:** Read and write
    - **Metadata:** Read-only (GitHub requires this)
 6. **Account permissions:** none.
-7. **Where can this GitHub App be installed?** **Any account** (the fleet is
-   three orgs: `newpush`, `project-noemi`, `newpush-labs`).
-8. Create the App. Copy the **App ID**. Generate a **private key** and keep
-   the `.pem` on disk only long enough to load it into Infisical.
+7. **Where can this GitHub App be installed?** **Any account** (if you operate across multiple orgs).
+8. Create the App. Copy the **App ID**. Generate a **private key** and keep the `.pem` on disk only long enough to load it into your SecretOps vault.
 
 In **your** terminal (never paste the PEM into chat):
 
 ```bash
-infisical secrets set CONDUCTOR_APP_ID='<app-id>' --env=dev
-infisical secrets set CONDUCTOR_APP_PRIVATE_KEY="$(cat /path/to/noemi-conductor.private-key.pem)" --env=dev
+infisical secrets set CONDUCTOR_APP_ID='<your-app-id>' --env=dev
+infisical secrets set CONDUCTOR_APP_PRIVATE_KEY="$(cat /path/to/your-conductor.private-key.pem)" --env=dev
 ```
 
-Then **install** the App on **every fleet org**, **all repositories**:
+Or, if using 1Password, store the App ID and private key in a secure note or password item via the 1Password UI.
 
-| Org | Action |
-|---|---|
-| `newpush` (existing install `164618496`) | [Installation settings](https://github.com/organizations/newpush/settings/installations/164618496) → Repository access → **All repositories** |
-| `project-noemi` | [Install](https://github.com/apps/noemi-conductor/installations/new?target_id=271349740) → **All repositories** |
-| `newpush-labs` | [Install](https://github.com/apps/noemi-conductor/installations/new?target_id=183727677) → **All repositories** |
+Then **install** the App on **every org** where the loop will operate, **all repositories** recommended:
 
-If GitHub refuses the last two, the App is still “Only on this account”:
-[App settings](https://github.com/organizations/newpush/settings/apps/noemi-conductor)
-→ **Where can this GitHub App be installed?** → **Any account**, then retry.
+1. Navigate to `https://github.com/apps/{your-company}-conductor`.
+2. Click **Install** for each org.
+3. Select **All repositories** (or **Only select repositories** if you prefer scoped access).
 
-Permissions stay Issues read/write and Metadata read. `--post` mints
-`noemi-conductor[bot]` for the `--repo` owner. Do not store a long-lived PAT
-as `CONDUCTOR_GH_TOKEN` unless you are debugging the mint path.
+If GitHub refuses installation on additional orgs, check that the App's **Where can this GitHub App be installed?** setting is **Any account**, not **Only on this account**.
+
+Permissions stay Issues read/write and Metadata read. The runtime mints `{your-company}-conductor[bot]` installation tokens for the repository owner. Do not store a long-lived PAT as `CONDUCTOR_GH_TOKEN` unless you are debugging the mint path.
+
+#### Finding the installation ID
+
+**Adopters:** installation IDs are not stored in your register, vault, or workflow configuration.
+
+**Installation IDs are not stored** in documentation, vault configuration, or code. They change on uninstall/reinstall and go stale silently, so recording them creates a maintenance hazard and a false sense of configuration truth.
+
+Instead, installation IDs are **resolved at runtime** by the code that needs them:
+
+1. The CLI (`scripts/github-app-token.js` → `mintGithubAppInstallationToken`) mints an App JWT, lists the App's installations with `GET /app/installations`, and picks the installation whose `account.login` matches the repository owner.
+2. Humans can find installation IDs at `https://github.com/organizations/<org>/settings/installations` (org settings → Third-party Access → GitHub Apps). For a user account: `https://github.com/settings/installations`.
+3. The API equivalent: `GET /orgs/{org}/installation` or `GET /repos/{owner}/{repo}/installation` (requires App JWT auth).
+
+The loop runtime calls `mintGithubAppInstallationToken` with the `owner` argument derived from the repository being acted upon. When the App is installed on multiple orgs, the correct installation is selected automatically by matching the owner name. No installation IDs appear in the vault, environment variables, or workflow configuration.
+
+#### Leverage an AI-as-a-Service provider (optional)
+
+**Adopters:** you can run the entire stack yourselves—creating the conductor App, managing installs, rotating credentials, and operating the vault. This is the default and fully supported path.
+
+Alternatively, you can hand this operational burden to an **AI-as-a-Service provider** to create, install, and manage the GitHub Apps, vault secrets, and loop infrastructure on your behalf. One example of such a provider is **NewPush** ([noemi.newpush.com](https://noemi.newpush.com) / [newpush.com](https://newpush.com)), which operates the reference fleet for this framework. Leveraging a provider is not required and is not the default—it is an optional operational model for teams that prefer managed infrastructure.
 
 #### Classic PAT and SSO
 

@@ -35,6 +35,18 @@ export function isFallbackError(err) {
   return isNetworkFailure(err) || err.name === 'TimeoutError';
 }
 
+// Own properties only. `typeof providers[name] === "function"` is also true
+// for inherited methods (toString, constructor), and calling those is not a
+// provider run.
+export function isRegisteredProvider(providers, name) {
+  return typeof name === 'string'
+    && name.length > 0
+    && providers !== null
+    && typeof providers === 'object'
+    && Object.hasOwn(providers, name)
+    && typeof providers[name] === 'function';
+}
+
 export async function runWithFallbacks({
   preferred,
   fallbacks = [],
@@ -54,8 +66,8 @@ export async function runWithFallbacks({
   let lastFallbackError = null;
 
     for (const providerName of order) {
+    if (!isRegisteredProvider(providers, providerName)) continue;
     const provider = providers[providerName];
-    if (typeof provider !== 'function') continue;
 
     try {
       return await provider(input);

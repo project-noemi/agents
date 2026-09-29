@@ -4,7 +4,7 @@ import { validateBlueprint } from "./validate.js";
 import { runMock } from "./providers/mock.js";
 import { runGemini } from "./providers/gemini.js";
 import { runXai } from "./providers/xai.js";
-import { isFallbackError, runWithFallbacks } from "./providers/fallback.js";
+import { isFallbackError, isRegisteredProvider, runWithFallbacks } from "./providers/fallback.js";
 
 const isProviderError = (e) =>
   (typeof e?.code === "string" && e.code.startsWith("PROVIDER")) ||
@@ -49,7 +49,7 @@ export async function compileFile(filePath, opts = {}) {
     xai: (input) => runXai(ir, input),
   };
 
-  if (typeof providers[preferred] !== "function") {
+  if (!isRegisteredProvider(providers, preferred)) {
     return { ok: false, errors: [{ code: "PROVIDER", path: "provider",
       message: `Unknown provider "${preferred}". Known: ${Object.keys(providers).join(", ")}.` }] };
   }

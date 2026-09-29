@@ -313,6 +313,40 @@ test('throws the last fallback error when every provider fails', async () => {
   ]);
 });
 
+test('inherited object methods are not invoked as providers', async () => {
+  for (const name of ['toString', 'constructor']) {
+    await assert.rejects(
+      () => runWithFallbacks({
+        preferred: name,
+        providers: { mock: async () => 'mock-result' },
+        input: 'x',
+      }),
+      (err) => err.code === 'PROVIDER',
+    );
+  }
+});
+
+test('an inherited fallback name is skipped rather than called', async () => {
+  const calls = [];
+  const result = await runWithFallbacks({
+    preferred: 'gemini',
+    fallbacks: ['toString', 'mock'],
+    providers: {
+      gemini: async () => {
+        calls.push('gemini');
+        throw errorWithStatus(429);
+      },
+      mock: async () => {
+        calls.push('mock');
+        return 'mock-result';
+      },
+    },
+    input: 'x',
+  });
+  assert.strictEqual(result, 'mock-result');
+  assert.deepStrictEqual(calls, ['gemini', 'mock']);
+});
+
 test('throws when no providers are available', async () => {
   await assert.rejects(
     () => runWithFallbacks({

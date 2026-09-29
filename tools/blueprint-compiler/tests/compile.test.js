@@ -73,6 +73,16 @@ test("refuses an unknown preferred provider", async () => {
 });
 
 
+test("inherited object methods are not providers", async () => {
+  for (const provider of ["toString", "constructor"]) {
+    const result = await compileFile(fixture("architect.core.md"), { provider });
+    assert.equal(result.ok, false, provider);
+    assert.equal(result.errors[0].code, "PROVIDER");
+    assert.equal(result.run, undefined);
+    assert.match(result.errors[0].message, new RegExp(provider));
+  }
+});
+
 test("a misspelled preferred provider fails closed even when a fallback is configured", async () => {
   await withEnv({ NOEMI_FALLBACK_PROVIDERS: "mock" }, async () => {
     const result = await compileFile(fixture("architect.core.md"), { provider: "gemni" });

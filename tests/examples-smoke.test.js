@@ -142,8 +142,8 @@ test('template infrastructure is grouped under templates/context and the root no
     const claudeTemplate = read('templates/context/CLAUDE.template.md');
 
     assert.match(templatesReadme, /generated context templates/i);
-    assert.match(geminiTemplate, /<!-- GLOBAL_MANDATES_START -->/);
-    assert.match(claudeTemplate, /templates\/context\/\{GEMINI,CLAUDE\}\.template\.md/);
+    assert.equal(geminiTemplate, '@AGENTS.md\n');
+    assert.equal(claudeTemplate, '@AGENTS.md\n');
     assert.ok(!fs.existsSync(path.join(repoRoot, 'GEMINI.template.md')));
     assert.ok(!fs.existsSync(path.join(repoRoot, 'CLAUDE.template.md')));
     assert.ok(!fs.existsSync(path.join(repoRoot, 'n8n')));

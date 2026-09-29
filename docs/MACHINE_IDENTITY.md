@@ -40,9 +40,9 @@ identities have named owners (`docs/phase-zero-assessment/weighted-assessment-sp
 | **Status** | **Provisioned** 2026-08-02 |
 | **Purpose** | Open branches and pull requests on behalf of AI agents |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
-| **Credential type** | Fine-grained personal access token |
-| **Credential store** | Infisical — secret `AGENT_GH_TOKEN` |
-| **Repo permission** | `write` on `project-noemi/agents` |
+| **Credential type** | Fine-grained PAT (default) plus optional classic PAT (cross-org) |
+| **Credential store** | Infisical — secrets `AGENT_GH_TOKEN` and `AGENT_GH_TOKEN_CLASSIC` |
+| **Repo permission** | Fine-grained: `write` on `project-noemi/agents`. Classic: org-wide `repo` as the same `noemi-agent` user |
 | **Rotation** | 90 days, or immediately on suspected exposure |
 | **First rotation due** | 2026-10-31 |
 | **May approve PRs?** | **No.** Approval is a human-only act |
@@ -247,7 +247,7 @@ already present. The `project-noemi` install is still live: the bot identity
 continues to resolve and historical promotion PRs still attribute to
 `noemi-release-bot[bot]`.
 
-### Conductor identity — `noemi-conductor` (planned)
+### Conductor identity — `noemi-conductor`
 
 The issue-coding loop needs a third actor that can comment on issues without
 being the producer or the reviewer (Decision [2026-08-16-0004]). Issue chatter
@@ -257,24 +257,87 @@ review and destroy the cross-model trail.
 
 | Field | Value |
 |---|---|
-| **Identity** | `noemi-conductor` (GitHub App, planned) |
-| **Status** | **Planned.** Not provisioned. No App ID, no token, no install. |
+| **Identity** | `noemi-conductor` (GitHub App; comments as `noemi-conductor[bot]`) |
+| **Status** | **Provisioned.** App id `5066927`, slug `noemi-conductor`. Installed on all repositories of `newpush`, `project-noemi`, `newpush-labs` (Decision [2026-09-26-0001]) |
 | **Purpose** | Comment on issues and apply `noemi:*` labels for triage, sufficiency, planning, and stops |
 | **Named owner** | `@WSwarm` (Balazs Nagy) |
-| **Credential** | Not issued. When provisioned: installation token from Infisical, Fetch-on-Demand, never written to disk |
-| **Permissions (intended)** | Issues read/write, Metadata read. **No** Contents write. **No** Pull requests write. **No** Workflows, Administration, or Secrets |
+| **Credential** | Infisical `CONDUCTOR_APP_ID` + `CONDUCTOR_APP_PRIVATE_KEY`. The CLI mints a one-hour installation token at runtime (`scripts/github-app-token.js`). Optional override: `CONDUCTOR_GH_TOKEN` (already-minted installation token). Never a producer or human PAT |
+| **Permissions** | Issues read/write, Metadata read. **No** Contents write. **No** Pull requests write. **No** Workflows, Administration, or Secrets |
 | **May author code?** | **No** |
 | **May open PRs?** | **No** |
 | **May review or approve PRs?** | **No** |
 | **May merge PRs?** | **No** |
 
 Do not provision this identity by widening `noemi-agent` or
-`noemi-reviewer-bot`. A new App with Issues-only scope is the point. Until it
-exists, the persona and architecture are the contract; hosts must not post
-conductor comments as another machine user.
+`noemi-reviewer-bot`. A new App with Issues-only scope is the point.
 
 See `docs/architecture/issue-coding-loop.md` and
 `agents/engineering/issue-conductor.md`.
+
+#### Create the GitHub App (human, once)
+
+**Adopters:** create your own `{your-company}-conductor` GitHub App and record it in your own register following this template.
+
+Signed in as an **owner of the org** where you will create the App (or as an enterprise owner if you will transfer the App later):
+
+1. Open **New GitHub App** at your org Settings → Developer settings → GitHub Apps → New GitHub App (for example, `https://github.com/organizations/<your-org>/settings/apps/new`).
+2. **GitHub App name:** `{your-company}-conductor` (must be globally unique; add a suffix only if GitHub rejects the name).
+3. **Homepage URL:** your repository or company site (for example, `https://github.com/<your-org>/<your-agents-repo>`).
+4. **Webhook:** uncheck **Active**. This App does not receive events.
+5. **Repository permissions** (nothing else):
+   - **Issues:** Read and write
+   - **Metadata:** Read-only (GitHub requires this)
+6. **Account permissions:** none.
+7. **Where can this GitHub App be installed?** **Any account** (if you operate across multiple orgs).
+8. Create the App. Copy the **App ID**. Generate a **private key** and keep the `.pem` on disk only long enough to load it into your SecretOps vault.
+
+In **your** terminal (never paste the PEM into chat):
+
+```bash
+infisical secrets set CONDUCTOR_APP_ID='<your-app-id>' --env=dev
+infisical secrets set CONDUCTOR_APP_PRIVATE_KEY="$(cat /path/to/your-conductor.private-key.pem)" --env=dev
+```
+
+Or, if using 1Password, store the App ID and private key in a secure note or password item via the 1Password UI.
+
+Then **install** the App on **every org** where the loop will operate, **all repositories** recommended:
+
+1. Navigate to `https://github.com/apps/{your-company}-conductor`.
+2. Click **Install** for each org.
+3. Select **All repositories** (or **Only select repositories** if you prefer scoped access).
+
+If GitHub refuses installation on additional orgs, check that the App's **Where can this GitHub App be installed?** setting is **Any account**, not **Only on this account**.
+
+Permissions stay Issues read/write and Metadata read. The runtime mints `{your-company}-conductor[bot]` installation tokens for the repository owner. Do not store a long-lived PAT as `CONDUCTOR_GH_TOKEN` unless you are debugging the mint path.
+
+#### Finding the installation ID
+
+**Adopters:** installation IDs are not stored in your register, vault, or workflow configuration.
+
+**Installation IDs are not stored** in documentation, vault configuration, or code. They change on uninstall/reinstall and go stale silently, so recording them creates a maintenance hazard and a false sense of configuration truth.
+
+Instead, installation IDs are **resolved at runtime** by the code that needs them:
+
+1. The CLI (`scripts/github-app-token.js` → `mintGithubAppInstallationToken`) mints an App JWT, lists the App's installations with `GET /app/installations`, and picks the installation whose `account.login` matches the repository owner.
+2. Humans can find installation IDs at `https://github.com/organizations/<org>/settings/installations` (org settings → Third-party Access → GitHub Apps). For a user account: `https://github.com/settings/installations`.
+3. The API equivalent: `GET /orgs/{org}/installation` or `GET /repos/{owner}/{repo}/installation` (requires App JWT auth).
+
+The loop runtime calls `mintGithubAppInstallationToken` with the `owner` argument derived from the repository being acted upon. When the App is installed on multiple orgs, the correct installation is selected automatically by matching the owner name. No installation IDs appear in the vault, environment variables, or workflow configuration.
+
+#### Leverage an AI-as-a-Service provider (optional)
+
+**Adopters:** you can run the entire stack yourselves—creating the conductor App, managing installs, rotating credentials, and operating the vault. This is the default and fully supported path.
+
+Alternatively, you can hand this operational burden to an **AI-as-a-Service provider** to create, install, and manage the GitHub Apps, vault secrets, and loop infrastructure on your behalf. One example of such a provider is **NewPush** ([noemi.newpush.com](https://noemi.newpush.com) / [newpush.com](https://newpush.com)), which operates the reference fleet for this framework. Leveraging a provider is not required and is not the default—it is an optional operational model for teams that prefer managed infrastructure.
+
+#### Classic PAT and SSO
+
+`AGENT_GH_TOKEN_CLASSIC` is a **user** PAT. GitHub shows **Configure SSO →
+Authorize** on that token **only when the organization enforces SAML SSO**.
+If `newpush` does not, that control is absent and is not a defect. Access
+then comes from org membership / team role (for example **Coders** with
+Write). Verify with `permissions.push` on the target repo, not with the SSO
+menu.
 
 ### Effective-permission posture — the token is the boundary
 
@@ -432,7 +495,14 @@ bash scripts/agent-gh.sh pr create --base develop \
 
 # Verify which identity a token resolves to
 bash scripts/agent-gh.sh whoami
+
+# Cross-org (live-fire, `{company}-agents`): classic PAT, same GitHub user.
+# Does not fall back to AGENT_GH_TOKEN if classic is missing.
+AGENT_GH_USE_CLASSIC=1 bash scripts/agent-gh.sh whoami
+AGENT_GH_USE_CLASSIC=1 bash scripts/agent-gh.sh api repos/newpush/newpush-agents --jq .full_name
 ```
+
+`AGENT_GH_TOKEN` stays the default fine-grained producer credential. `AGENT_GH_TOKEN_CLASSIC` is a second Infisical secret, minted as **`noemi-agent`** (never a human account). Set `AGENT_GH_USE_CLASSIC=1` per command; do not put that flag in the vault. Decision [2026-09-24-0002].
 
 Agents push branches and open PRs through this wrapper. Humans then review and
 merge with their own credentials — the separation is the point.

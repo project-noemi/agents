@@ -6,9 +6,10 @@ vi.mock('googleapis', () => {
   return {
     google: {
       auth: {
-        OAuth2: vi.fn().mockImplementation(() => ({
-          setCredentials: vi.fn()
-        }))
+        // Vitest 5: `new google.auth.OAuth2()` requires a function/class mock.
+        OAuth2: vi.fn().mockImplementation(function OAuth2() {
+          this.setCredentials = vi.fn();
+        })
       },
       gmail: vi.fn().mockReturnValue({
         users: {

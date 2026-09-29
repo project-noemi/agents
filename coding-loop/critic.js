@@ -58,11 +58,20 @@ function buildCriticPrompt(plan) {
 
 function normalizeModelCritique(reply, structural) {
   const findings = validateFindings(reply && reply.findings);
-  if (String(reply && reply.verdict).toLowerCase() === 'fail' && findings.length === 0) {
+  const verdict = String(reply && reply.verdict).toLowerCase();
+  if (verdict === 'fail' && !findings.some((item) => BLOCKING.includes(item.severity))) {
+    // An explicit fail is never downgraded to pass by its own finding list.
     findings.push({
       severity: 'high',
       gate: 'framing',
-      claim: 'Critic returned fail without a finding.',
+      claim: 'Critic returned fail without a high or critical finding.',
+    });
+  } else if (verdict !== 'pass' && verdict !== 'fail') {
+    // A missing or unknown verdict is a malformed reply, never an acceptance.
+    findings.push({
+      severity: 'high',
+      gate: 'framing',
+      claim: `Critic reply had no usable verdict (${reply && reply.verdict != null ? JSON.stringify(reply.verdict) : 'missing'}).`,
     });
   }
   const combined = [...(structural.findings || []), ...findings];

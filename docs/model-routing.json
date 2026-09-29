@@ -6,6 +6,10 @@
     "maxCycles": 3,
     "onLimit": "needs-info"
   },
+  "docRedTeam": {
+    "maxCycles": 3,
+    "onLimit": "needs-clarification"
+  },
   "stages": {
     "triage": {
       "provider": "anthropic",

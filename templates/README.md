@@ -8,6 +8,7 @@ Project NoeMI keeps the final generated outputs at the top level:
 - `CLAUDE.md`
 
 Those stay in the root because local agentic clients consume them directly.
+Each is a generated `@AGENTS.md` pointer (Decision [2026-09-22-0001]); catalogs are not injected.
 
 The source templates live here instead so the repo root stays focused on:
 
@@ -19,5 +20,6 @@ The source templates live here instead so the repo root stays focused on:
 ## Current Template Areas
 
 - `context/` — base templates for generated orchestrator context files
+- `headless-agent-home/` — loop-owned Grok Build and Claude Code profiles for runs with no person at the terminal (Decision [2026-09-27-0001])
 
 The canonical agent specification template remains in [`docs/AGENT_TEMPLATE.md`](../docs/AGENT_TEMPLATE.md), because it is primarily a human-facing authoring guide rather than generator infrastructure.

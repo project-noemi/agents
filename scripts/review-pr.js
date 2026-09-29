@@ -755,6 +755,21 @@ async function main() {
   })}\n`);
 
   process.stdout.write(`${comment}\n`);
+
+  // Write a findings marker file when blocking findings exist (used by CI to
+  // determine if a fork PR approval should be dismissed).
+  const blockingFindings = findings.filter((f) => BLOCKING_SEVERITIES.includes(f.severity));
+  if (blockingFindings.length > 0) {
+    const markerPath = process.env.REVIEW_FINDINGS_FILE;
+    if (markerPath) {
+      const markerData = {
+        blocking_count: blockingFindings.length,
+        severities: blockingFindings.map((f) => f.severity),
+        recommendation: review.recommendation,
+      };
+      fs.writeFileSync(markerPath, JSON.stringify(markerData, null, 2));
+    }
+  }
 }
 
 module.exports = {

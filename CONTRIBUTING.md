@@ -77,7 +77,7 @@ Run `node scripts/generate_all.js` when you change any of the following:
 - `templates/context/CLAUDE.template.md`
 - generator helper logic in `scripts/`
 
-Generated outputs are committed to the repo. CI checks that `GEMINI.md` and `CLAUDE.md` stay fresh.
+Generated outputs are committed to the repo. CI checks that `GEMINI.md` and `CLAUDE.md` stay the `@AGENTS.md` pointer (Decision [2026-09-22-0001]).
 
 ## Validation Expectations
 
@@ -113,7 +113,7 @@ npm run validate
 
 ### Docs
 
-- Keep `docs/PROJECT_REFERENCE.md` as the canonical public narrative.
+- Keep `docs/PROJECT_REFERENCE.md` as the canonical public narrative. Its stamp is `**Edition YYYY.MM.DD**` (a published CalVer tag), not SemVer or a month name. Update the story when it drifts; the audit fails if the stamp lags the latest tag by more than 45 days.
 - Keep `docs/REQUIREMENTS.md` as current implementation truth, not a stale drift graveyard.
 - Keep `docs/DECISION_LOG.md` focused on durable decisions, not temporary work notes.
 - Prefer buyer-safe, diagnostic language in Phase 0 content. Do not turn repo docs into sales collateral.
@@ -140,6 +140,10 @@ npm run validate
 - Historical Python examples may remain, but do not present them as the recommended first path for new builders.
 
 ## Branching Model
+
+### Branch Naming
+
+For comprehensive branch naming rules (types, format, examples), see the **[Branch Naming](docs/DEV_AGENT_PROMPT.md#branch-naming)** section in `docs/DEV_AGENT_PROMPT.md` — the fleet-wide canonical reference. Quick summary: use `<type>/<area>-<slice>` with lowercase and hyphens only (no dots, no underscores, no spaces).
 
 ### Promotion order
 
@@ -208,6 +212,21 @@ If you accidentally open a PR against `main`, retarget it via the GitHub UI (Edi
 ```bash
 gh pr edit <num> --base develop
 ```
+
+### Fork pull requests
+
+External contributors open PRs from a fork. GitHub withholds Actions
+variables from `pull_request` on those PRs, so the required **AI Review
+(advisory)** check does not run until a maintainer adds the `ai-review`
+label **once**. After that:
+
+- later commits (including "Update branch") re-run the advisory automatically
+- the unprivileged "AI Review (fork notice)" check may warn; it is **not**
+  required and must not be treated as a merge blocker
+- a human still approves and merges
+
+See [`docs/AI_REVIEW_GOVERNANCE.md`](docs/AI_REVIEW_GOVERNANCE.md) § Fork Pull
+Requests.
 
 ## Pull Request Expectations
 

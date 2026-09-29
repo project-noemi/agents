@@ -1,0 +1,24 @@
+# Loop-owned Grok home for headless runs (Decision [2026-09-27-0001]).
+#
+# Personal settings for the loop profile. Keep it minimal: nothing here may
+# depend on a person being at the terminal. Do not add [[hooks.*]] tables:
+# under the pin in requirements.toml they are skipped at dispatch.
+#
+# The compat switches stop Grok from importing the interactive user's Claude
+# and Cursor material into headless runs. Hooks are already skipped by the
+# pin; skills, rules, instruction files, and MCP servers are not, so they are
+# switched off here.
+
+[compat.claude]
+hooks = false
+skills = false
+rules = false
+agents = false
+mcps = false
+
+[compat.cursor]
+hooks = false
+skills = false
+rules = false
+agents = false
+mcps = false

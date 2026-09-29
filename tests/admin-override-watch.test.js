@@ -121,14 +121,14 @@ test('protection drift: deviation from the decided policy is a finding', () => {
     });
     assert.equal(drift.length, 2, 'approvals + missing required check');
     assert.match(drift.map((d) => d.detail).join(' '), /approvals is 0/);
-    assert.match(drift.map((d) => d.detail).join(' '), /Cross-Model PR Review/);
+    assert.match(drift.map((d) => d.detail).join(' '), /AI Review \(advisory\)/);
 });
 
 test('protection drift: matching policy yields no findings', () => {
     assert.deepEqual(diffProtection('develop', {
         enforce_admins: false, required_approving_review_count: 1,
         require_code_owner_reviews: true,
-        contexts: ['Audit, Generate, and Fast Tests', 'Cross-Model PR Review'],
+        contexts: ['Audit, Generate, and Fast Tests', 'AI Review (advisory)'],
     }), []);
 });
 

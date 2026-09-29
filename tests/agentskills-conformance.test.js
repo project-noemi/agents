@@ -28,7 +28,7 @@ function builtFiles() {
         skillsDir: path.join(repoRoot, 'skills'),
         agentsMdPath: path.join(repoRoot, 'AGENTS.md'),
         repoRoot
-    }).files;
+    }).files.filter((file) => path.basename(file.relPath) === 'SKILL.md');
 }
 
 test('frontmatter license claim is consistent with the repository LICENSE', () => {

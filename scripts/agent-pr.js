@@ -42,6 +42,7 @@
  */
 
 const { withRetry } = require('./resilience_helpers');
+const { resolveProducerToken, describeProducerTokenShape } = require('./agent-token.js');
 
 const API_BASE = (process.env.GITHUB_API_URL || 'https://api.github.com').replace(/\/+$/, '');
 const EXPECTED_LOGIN = process.env.AGENT_GH_EXPECTED_LOGIN || 'noemi-agent';
@@ -71,20 +72,27 @@ function fail(msg, { risk } = {}) {
 }
 
 function resolveToken() {
-  const token = process.env.AGENT_GH_TOKEN;
-  if (!token) {
+  try {
+    const { token, source } = resolveProducerToken(process.env);
+    const shape = describeProducerTokenShape(token);
+    if (source === 'AGENT_GH_TOKEN_CLASSIC' && shape === 'fine-grained') {
+      log('⚠ AGENT_GH_TOKEN_CLASSIC looks fine-grained; cross-org private repos may still 404.');
+    }
+    if (source === 'AGENT_GH_TOKEN' && shape === 'classic') {
+      log('⚠ AGENT_GH_TOKEN looks classic; the default path is meant to stay fine-grained.');
+    }
+    auditLog.actions.push(`resolved producer token from ${source}`);
+    return token;
+  } catch (err) {
     fail(
-      'Could not resolve the machine-identity token.\n' +
-        '  AGENT_GH_TOKEN is not present in the environment.\n' +
-        '  Inject it via the remote environment secret settings, or wrap the command:\n' +
-        '    infisical run --env=dev -- node scripts/agent-pr.js ...\n' +
-        '    op run --env-file=.env.template -- node scripts/agent-pr.js ...\n' +
-        '  Provision per docs/MACHINE_IDENTITY.md. Do NOT paste the token into a chat\n' +
-        '  session or commit it to the repo. Do NOT fall back to human credentials.',
-      { risk: 'machine token unavailable; refused rather than authoring as a human' }
+      `Could not resolve the machine-identity token.\n` +
+        `  ${err.message}\n` +
+        '  Inject AGENT_GH_TOKEN (default) or AGENT_GH_TOKEN_CLASSIC with AGENT_GH_USE_CLASSIC=1.\n' +
+        '  Wrap with infisical run / op run. Do NOT paste the token into a chat session,\n' +
+        '  commit it, or fall back to human credentials.',
+      { risk: 'machine token unavailable; refused rather than authoring as a human' },
     );
   }
-  return token;
 }
 
 async function ghRequest(token, method, path, body) {
@@ -155,6 +163,12 @@ async function verifyIdentity(token) {
     );
   }
   log(`→ acting as: ${user.login} (${user.type})`);
+  try {
+    const { source } = resolveProducerToken(process.env);
+    log(`→ token source: ${source}`);
+  } catch {
+    // resolveToken already succeeded; ignore a later env change.
+  }
   auditLog.actions.push(`verified token identity: ${user.login}`);
   return user;
 }

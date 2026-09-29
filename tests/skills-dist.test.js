@@ -60,27 +60,35 @@ test('frontmatter: quotes in the Purpose lead are YAML-escaped', () => {
         sourceRelPath: 'skills/test/quoted-skill.md',
         mandateSections: [{ title: 'T', body: 'rule' }],
     });
-    const descLine = out.split('\n').find((l) => l.startsWith('description:'));
-    assert.equal(descLine, 'description: "Say \\"hello\\" safely."');
-    assert.ok(out.startsWith('---\nname: quoted-skill\n'), 'frontmatter must open the file');
+    const descLine = out.skillMd.split('\n').find((l) => l.startsWith('description:'));
+    assert.match(descLine, /^description: "Say \\"hello\\" safely\./);
+    assert.ok(out.skillMd.startsWith('---\nname: quoted-skill\n'), 'frontmatter must open the file');
+    assert.match(out.mandatesMd, /^# Global Mandates/m);
+    assert.match(out.skillMd, /references\/mandates\.md/);
 });
 
 test('artifact shape: provenance, license, mandates, and a single H1', () => {
     const { files } = buildSkillsDist({ skillsDir, agentsMdPath, repoRoot });
     assert.ok(files.length > 0, 'at least the substantively complete skills must publish');
-    for (const file of files) {
+    const skillFiles = files.filter((file) => path.basename(file.relPath) === 'SKILL.md');
+    const mandateFiles = files.filter((file) => file.relPath.replace(/\\/g, '/').endsWith('references/mandates.md'));
+    assert.equal(skillFiles.length, mandateFiles.length, 'each published skill has a mandates reference');
+    for (const file of skillFiles) {
         const c = file.content;
         assert.match(c, /^---\nname: [a-z0-9-]+\ndescription: "/, `${file.slug}: frontmatter`);
+        assert.match(c, /Use when the task matches this skill's Purpose and Inputs/, `${file.slug}: description says when`);
         assert.match(c, /Generated file — do not edit/, `${file.slug}: provenance`);
         assert.match(c, /FSL-1\.1-Apache-2\.0/, `${file.slug}: license marker`);
-        assert.match(c, /## Global Mandates/, `${file.slug}: mandates section`);
-        assert.match(c, /### 🔐 Secrets & Configuration/, `${file.slug}: SecretOps mandate`);
-        assert.match(c, /### 🛡 Error Handling and Resilience/, `${file.slug}: resilience mandate`);
-        assert.match(c, /#### Mandatory Security Rules/, `${file.slug}: mandate subsections nest as children`);
+        assert.match(c, /## Global Mandates/, `${file.slug}: mandates pointer`);
+        assert.match(c, /references\/mandates\.md/, `${file.slug}: progressive disclosure`);
         const h1s = c.match(/^# /gm) || [];
         assert.equal(h1s.length, 1, `${file.slug}: exactly one H1`);
-        // The gates that make these skills worth installing travel verbatim.
         assert.match(c, /### Refusal Criteria/, `${file.slug}: refusal criteria travel`);
+    }
+    for (const file of mandateFiles) {
+        assert.match(file.content, /## 🔐 Secrets & Configuration/, `${file.slug}: SecretOps mandate`);
+        assert.match(file.content, /## 🛡 Error Handling and Resilience/, `${file.slug}: resilience mandate`);
+        assert.match(file.content, /### Mandatory Security Rules/, `${file.slug}: mandate subsections nest as children`);
     }
 });
 
@@ -88,8 +96,8 @@ test('determinism: two in-memory builds are byte-identical, slugs unique and sor
     const a = buildSkillsDist({ skillsDir, agentsMdPath, repoRoot });
     const b = buildSkillsDist({ skillsDir, agentsMdPath, repoRoot });
     assert.deepEqual(a, b, 'the builder must be a pure function of its inputs');
-    const slugs = a.files.map((f) => f.slug);
-    assert.deepEqual(slugs, [...new Set(slugs)].sort(), 'slugs unique and sorted');
+    const relPaths = a.files.map((f) => f.relPath);
+    assert.deepEqual(relPaths, [...new Set(relPaths)].sort(), 'relPaths unique and sorted');
 });
 
 test('honesty gate: placeholder skills are withheld, and no published artifact contains TBD', () => {
@@ -148,7 +156,7 @@ test('license drift fails generation instead of stamping a stale identifier', ()
             agentsMdPath: path.join(tmp, 'AGENTS.md'),
             repoRoot: tmp,
         });
-        assert.equal(files.length, 1);
+        assert.equal(files.length, 2);
     } finally {
         fs.rmSync(tmp, { recursive: true, force: true });
     }

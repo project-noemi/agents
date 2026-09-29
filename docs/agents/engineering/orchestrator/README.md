@@ -78,7 +78,7 @@ Independent review, design critique, and write-capable rescue through [xai-org/g
 | Write-capable rescue with Grok session resume | Grok (`/grok-build:delegate`, `--resume`) |
 | High-risk change needs two independent families | Use both Codex review **and** Grok critique when both are ready |
 
-Always run `/grok-build:check` (or the Codex equivalent readiness path) before routing. If a bridge is missing, fall back to Claude models rather than inventing CLI wrappers.
+Always run `/grok-build:check` (or the Codex equivalent readiness path) before routing. For any bridge run (review, critique, delegate) also run the headless readiness gate from a project-noemi/agents checkout, `node <agents-checkout>/scripts/check-headless-hooks.js --grok-home "$GROK_HOME"` (`npm run check:headless` is the same gate inside that repository; add `--claude-settings <file>` or `--claude-bare` only when the loop also launches a headless `claude -p`); any non-zero exit is a stop; a run that would inherit the interactive profile is not ready ([runtime contract section 10](../../../tool-usages/orchestrator-runtime-contract.md#10-headless-execution-control)). If a bridge is missing, fall back to Claude models rather than inventing CLI wrappers.
 
 ## Scope vs. the Gemini Baseline
 

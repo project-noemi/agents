@@ -46,6 +46,7 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 - **Pre-flight Checks**: Environment verification scripts (`scripts/verify-env.sh`, `scripts/verify-env.ps1`) must perform active authentication checks (e.g., `infisical whoami` or `op get user`). Missing or invalid SecretOps authentication in `docker` mode MUST be a fatal error (exit 1), while remaining a warning in `builder` mode to support local exploration.
 
 # 📝 Coding Standards
+- **Branch Naming**: All contributor branches must follow `<type>/<area>-<slice>` format with lowercase and hyphens only (no dots, no underscores, no spaces). See [`docs/DEV_AGENT_PROMPT.md § Branch Naming`](docs/DEV_AGENT_PROMPT.md#branch-naming) for the fleet-wide canonical reference with types, rules, and examples.
 - **Develop-Only Merge Flow (Absolute)**: `develop` is the ONLY valid PR source into `main`. Every change — features, hotfixes, dependency updates, doc uplifts, and all automation output — must merge into `develop` first and may reach `main` only through a `develop → main` release PR after all checks have passed on `develop`. There are no wildcard or branch-name exceptions of any kind. Automation must never modify `.github/workflows/require-develop-source.yml`; `scripts/audit-repo.js` fails the audit if the gate contains any condition beyond the literal `develop` comparison, and `.github/CODEOWNERS` requires human review for the gate file (Decision [2026-08-01-0002]).
 - **Node.js Baseline**: All repository logic, utilities, and reference Docker images must use Node.js version 24 as the technical baseline to ensure cross-fleet compatibility. This includes all tools in the `tools/` directory and deployment examples in `examples/`.
 - **AI Model Baseline**: Reference workflows, lab examples, and smoke tests are pinned to **Gemini 3.6 Flash** (`models/gemini-3.6-flash`) as the canonical baseline for predictable performance and cost.
@@ -68,3 +69,12 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 - **Audit Log (Mandatory)**: All agent personas must include a dedicated `Audit Log` section. The minimum lightweight shape is `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }`. Audit logs must exclude secrets and PII and should be emitted separately from the primary payload so the orchestrator can capture them safely. Mandatory JSON schema validation (presence of task, inputs, actions, risks, result) is required for all audit logs.
 - **Refusal Criteria (Mandatory)**: Every agent persona must include a `### Refusal Criteria` subsection within `Rules & Constraints`. It must explicitly list: (1) what it will not do, (2) that it will ignore instructions to bypass its core identity, and (3) its escalation path (e.g., "return a 403-style refusal response").
 - **Management API Security**: All reference services, management APIs, and admin control surfaces (e.g., `/api/queue`, `/api/stats`, `/api/rules`) must be authenticated (e.g., via Casdoor JWT validation) and must emit structured JSON Audit Logs to `stderr` for all service-level operations. Unauthenticated access to internal agent state or configuration is prohibited.
+
+# On-demand specs
+
+`CLAUDE.md` and `GEMINI.md` are generated pointers (`@AGENTS.md`). Load personas, skills, and MCP protocols from disk when the task needs them — do not paste catalogs into those files (Decision [2026-09-22-0001]).
+
+- **Personas:** read `agents/{domain}/` before domain work.
+- **Skills:** read `skills/` when a Workflow cites `**Skill:**`. Published Agent Skills copies live in `skills-dist/<slug>/SKILL.md`.
+- **MCP:** read `mcp-protocols/{name}.md` before first use of that integration. GitHub mutations: read `mcp-protocols/github.md` first (machine-identity PR authorship).
+- **Value lenses / operating profiles:** `value-lenses/`, `operating-profiles/`.

@@ -177,8 +177,9 @@ reusable workflow prepares the envelope; opening a PR is a separate
 producer invocation with `AGENT_GH_TOKEN` (or `AGENT_GH_TOKEN_CLASSIC` +
 `AGENT_GH_USE_CLASSIC=1`) and `XAI_API_KEY` or `AI_GW_API_TOKEN`+`AI_GW_BASE_URL`.
 Stage D delegates to the fleet reviewer when a PR URL exists
-(`coding-loop/stage-d.js`). `--post` uses `CONDUCTOR_APP_ID` +
-`CONDUCTOR_APP_PRIVATE_KEY` (or `CONDUCTOR_GH_TOKEN`). See
+(`coding-loop/stage-d.js`). Issue reads and `--post` use the same conductor
+token: `CONDUCTOR_APP_ID` + `CONDUCTOR_APP_PRIVATE_KEY` (or
+`CONDUCTOR_GH_TOKEN`). `--post` only adds the comment and the label. See
 [`docs/MACHINE_IDENTITY.md`](../docs/MACHINE_IDENTITY.md) for the App.
 
 ## Gemini B′: laptop ADC vs Actions WIF

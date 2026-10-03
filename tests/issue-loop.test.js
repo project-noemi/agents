@@ -10,7 +10,7 @@ const {
   issueFromGitHub,
   tenantAllows,
 } = require('../coding-loop/intake.js');
-const { assertRepoIssue, exitCodeForError } = require('../coding-loop/run.js');
+const { assertRepoIssue, exitCodeForError, issueReadToken } = require('../coding-loop/run.js');
 const { completeStageA, evaluateSufficiency, issueText } = require('../coding-loop/sufficiency.js');
 const {
   applyPlanRevision,
@@ -875,6 +875,12 @@ test('CLI --implement with AGENT_GH_USE_CLASSIC and only AGENT_GH_TOKEN is refus
   ], { env, encoding: 'utf8' });
   assert.equal(result.status, 2);
   assert.match(result.stderr, /Refusing to fall back to AGENT_GH_TOKEN/);
+});
+
+test('issue read keeps a minted conductor token when --post is off', () => {
+  assert.equal(issueReadToken('minted-installation-token', {}), 'minted-installation-token');
+  assert.equal(issueReadToken('', { GH_TOKEN: 'local-read' }), 'local-read');
+  assert.equal(issueReadToken('', {}), '');
 });
 
 test('CLI --post without CONDUCTOR_GH_TOKEN is refused (identity split)', () => {

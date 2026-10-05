@@ -12,12 +12,12 @@ source  →  load  →  parse  →  validate  →  resolve  →  instantiate  �
 
 | Stage | Sprint | Notes |
 |---|---|---|
-| Load | 1 | File path only. HTTP + registry in Sprint 3. |
-| Parse | 1 | Markdown ATX `##` headings → section map. Extract `**Skill:**` refs. |
-| Validate | 1 | Required headings + Refusal Criteria. Fail closed. |
+|| Load | 1 | `loaders/file.js` (`loadFile`). HTTP + registry in Sprint 3. |
+| Parse | 1, 3 | Markdown ATX `##` headings → section map (required headings match case-insensitively). Extract `**Skill:**` and `**MCP:**` refs and the `### Refusal Criteria` body onto `ir.refusalCriteria`. Pure: no env access. |
+| Validate | 1, 3 | Required headings + a non-empty `### Refusal Criteria` under Rules & Constraints. Fail closed (`MISSING_REFUSAL`). |
 | Resolve | 3 | Map skill slugs to `skills/` or `skills-dist/`. MCP ids to `mcp-protocols/`. |
 | Instantiate | 3 | Build a Mastra agent from IR. Sprint 1 returns a mock agent. |
-| Supervise | 2–3 | Timeouts, fallback list, structured errors, stderr audit JSON. |
+| Supervise | 2–3 | Timeouts, fallback list, structured errors, stderr audit JSON (`audit.js` builds the record; the CLI writes it). |
 
 Studio (Sprint 4) and Arena (Sprint 5) sit on top of `supervise`.
 
@@ -28,6 +28,8 @@ See `src/ir.js` and REQUIREMENTS.md §5. `id` is `{domain}/{name}` derived from 
 ## Provider policy
 
 Configuration, not code. Sprint 1 ships only `mock`. Sprint 2 adds Gemini + Grok (xAI), both called through NewPush's generative AI gateway with one virtual key (`AI_GW_API_KEY`) resolved by `infisical run` / `op run`. Provider credentials stay with NewPush. Never `dotenv`.
+
+Model policy plumbing: `config.js` maps `NOEMI_PREFERRED_PROVIDER` and `NOEMI_FALLBACK_PROVIDERS` to `modelPolicy` (read at call time; empty values count as unset). `compileSource` passes it into `parseBlueprint`, which never touches the environment.
 
 Fallback triggers later: timeout, 429 after backoff, 5xx, missing key. A mock-only environment must still complete `npm test`.
 

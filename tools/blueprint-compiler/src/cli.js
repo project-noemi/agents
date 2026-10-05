@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
 import { compileFile } from "./compile.js";
+import { auditFromCompile, writeAudit } from "./audit.js";
 
 const USAGE = [
   "Usage: blueprint-compiler compile <file.md> [--provider <name>] [--prompt <text>]",
@@ -25,25 +26,23 @@ const { provider, prompt = "Hello from the Blueprint Compiler." } = parsed.value
 
 let result;
 
-try { result = await compileFile(file, { provider, prompt }); }
-catch (err) {
-  console.error(JSON.stringify({ ok: false, errors: [{ code: err.code ?? "INTERNAL", message: err.message }] }, null, 2));
-  process.exit(1);
+try {
+  result = await compileFile(file, { provider, prompt });
+} catch (err) {
+  // Only real bugs reach here; compileFile returns structured errors otherwise.
+  result = {
+    ok: false,
+    stage: "internal",
+    errors: [{ code: typeof err.code === "string" ? err.code : "INTERNAL", message: err.message }],
+  };
 }
+
+// One single-line JSON audit record on stderr, success or failure.
+writeAudit(auditFromCompile(result, { file, provider }));
 
 if (!result.ok) {
   console.error(JSON.stringify({ ok: false, errors: result.errors }, null, 2));
-  process.exit(1);
+  process.exitCode = 1;   // not process.exit(1): lets stderr flush on pipes
+} else {
+  console.log(JSON.stringify({ ok: true, ir: result.ir, run: result.run }, null, 2));
 }
-
-const fellBack = result.run.fallbacks ?? [];
-
-console.error(JSON.stringify({
-  task: `compile:${result.ir.id}`,
-  inputs: [file, provider ?? "(from config)"],
-  actions: ["parse", "validate", ...fellBack.map((f) => `fallback-from:${f.provider}`), `run:${result.run.provider}`],
-  risks: fellBack.map((f) => `${f.provider} failed (${f.reason}); fell back`),
-  result: "ok",
-}));
-
-console.log(JSON.stringify({ ok: true, ir: result.ir, run: result.run }, null, 2));

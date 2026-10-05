@@ -103,6 +103,7 @@ type BlueprintIR = {
   domain: string;
   title: string;
   sections: Record<string, string>;
+  refusalCriteria: string;  // trimmed body of ### Refusal Criteria (non-empty)
   skills: string[];
   mcp: string[];
   modelPolicy: { preferred: string; fallbacks: string[] };
@@ -114,7 +115,7 @@ Validator fails closed if any of these headings are absent (case-insensitive; a 
 
 Role · Tone · Capabilities · Mission · Rules & Constraints · Data Inventory · Boundaries · Workflow · Audit Log · External Tooling Dependencies
 
-`### Refusal Criteria` must appear under Rules & Constraints.
+`### Refusal Criteria` must appear under Rules & Constraints and have a non-empty body. A prose mention of "refusal criteria", an empty heading, the heading under another section, or a top-level `## Refusal Criteria` fails closed with `MISSING_REFUSAL`.
 
 ---
 
@@ -125,7 +126,8 @@ Role · Tone · Capabilities · Mission · Rules & Constraints · Data Inventory
 - Own `package.json`. Do not add Mastra or provider SDKs to the **root** package.
 - Package tests live here (`npm test` inside this directory). Do not add them to root `tests/`.
 - Root `npm run validate` must keep passing on a spec-only clone.
-- Audit records emit to `stderr` as JSON `{task, inputs, actions, risks, result}`.
+- Audit records emit to `stderr` as JSON `{task, inputs, actions, risks, result}`, for success and failure. `src/     audit.js` builds them; the CLI writes them. The library never logs.
+- `parse.js` is pure: it never reads `process.env`. `config.js` maps the `NOEMI_*` variables to `modelPolicy`.
 - Refusal Criteria from the persona are copied onto the running agent. The runtime must honor them, not strip them.
 - Extract later to `project-noemi/blueprint-compiler` only if Studio + Arena + Mastra outgrow `tools/`. Isolation now makes that a move, not a rewrite.
 

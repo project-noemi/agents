@@ -47,7 +47,8 @@ function idFromPath(filePath) {
 /**
  * Parse a NoéMI Markdown persona into a Blueprint IR.
  * @param {string} markdown
- * @param {{ source?: { kind: "file" | "http" | "registry", ref: string } }} [opts]
+ * @param {{ source?: { kind: "file" | "http" | "registry", ref: string },
+ *  modelPolicy?: { preferred: string, fallbacks: string[] } }} [opts]
  */
 export function parseBlueprint(markdown, opts = {}) {
   const source = opts.source ?? { kind: "file", ref: "<string>" };
@@ -92,6 +93,7 @@ export function parseBlueprint(markdown, opts = {}) {
       ? pathId
       : `${fromTitle.domain}/${fromTitle.name}`;
   const [domain, name] = id.split("/");
+  const modelPolicy = opts.modelPolicy ?? { preferred: "mock", fallbacks: [] };
 
   return {
     id,
@@ -101,13 +103,7 @@ export function parseBlueprint(markdown, opts = {}) {
     sections,
     skills: [...skills],
     mcp: [],
-    modelPolicy: {
-      preferred: process.env.NOEMI_PREFERRED_PROVIDER ?? "mock",
-      fallbacks: (process.env.NOEMI_FALLBACK_PROVIDERS ?? "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    },
+    modelPolicy: { preferred: modelPolicy.preferred, fallbacks: [...modelPolicy.fallbacks] },
     source,
   };
 }

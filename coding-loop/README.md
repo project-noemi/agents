@@ -137,11 +137,23 @@ Omitting both `--scan` and `--scan-status` is REFUSED (fail closed). `--scan`
 is not implied by leaving `--scan-status` off.
 
 An `ACTIONABLE` issue gets a Stage B plan and Stage B′
-(`coding-loop/plan.js`). Structural critique always runs (headings, files,
-no skip-red-team). `--live-critic` then calls Gemini Pro (ADC, same
-selection rule as the fleet reviewer). Pass → `accepted`. Fail at
-`planRedTeam.maxCycles` → `needs-info`. A Gemini 429/5xx is retried, then
-thrown so the host re-queues — it is not an `accepted` plan.
+(`coding-loop/plan.js`). Plan **Files** are PATH_RE hits that look like
+repository files: hostnames (`ghcr.io/…`), URLs, `dist` / `coverage`
+segments, `../` / absolute paths, and directories are dropped. A source
+file the issue names is kept even when this checkout does not contain it,
+because this repo is the loop blueprint and the issue may target another
+clone. Other paths are kept only when they exist as files inside the clone. Structural critique always runs (headings, files, no
+skip-red-team, no leftover registry or escaping paths). `--live-critic` then calls
+Gemini Pro (ADC, same selection rule as the fleet reviewer). On a fail with
+cycles remaining, B′ writes a revision prompt and that same Gemini caller
+executes it on the plan before the next pass. A revision that does not
+change the plan, drops the skip-red-team record, or adds a path the issue
+did not name stops the cycle. Without `--live-critic`, B′ may still drop
+invalid files and re-format; it does not resubmit an unchanged draft, and
+it never invents replacements. Pass → `accepted`. Fail at
+`planRedTeam.maxCycles`, or a revision that does not change the plan →
+`needs-info`. A Gemini 429/5xx is retried, then thrown so the host
+re-queues — it is not an `accepted` plan.
 
 `--implement` prepares a Stage C envelope (`coding-loop/dispatch.js`) for
 `noemi-agent` on `develop` (then `dev`). `AGENT_GH_TOKEN` is required; the
@@ -151,8 +163,21 @@ conductor token is refused.
 `XAI_API_KEY` against `https://api.x.ai/v1`, **or** NewPush gateway
 `AI_GW_API_TOKEN` / `AI_GW_API_KEY` at `https://ai-gw.newpush.com/v1` (override
 `AI_GW_BASE_URL`). Gateway model ids are `provider/id`; the writer pins
-`xai/grok-4.6` unless `XAI_CODE_MODEL` is set. The virtual key is never sent
-to api.x.ai. See [`docs/tool-usages/newpush-ai-gateway.md`](../docs/tool-usages/newpush-ai-gateway.md).
+`xai/grok-4.6` unless `XAI_CODE_MODEL` is set. The request sets
+`max_completion_tokens` (default 65536, override `XAI_MAX_TOKENS`) so thinking
+tokens are not taken from the file JSON. The NewPush gateway is LiteLLM and
+rejects that field for `grok-4.6` unless the body also sends
+`allowed_openai_params: ["max_completion_tokens", "response_format"]`. Native
+`api.x.ai` does not get that proxy flag. The request also sets
+`response_format: { "type": "json_object" }`. Before that call, the writer reads
+each allow-listed file from the target repo at the base branch and puts the
+text in the prompt. Grok has no tools; a sentence about reading files is not
+a diff. A non-OK reply includes a short redacted body: the key sent on the
+request is removed before `sk-` and `Bearer` redaction and before the
+400-character slice. A reply whose visible answer has no JSON object fails
+closed and includes a short redacted preview. That failure is not retried.
+`reasoning_content` is not parsed. The virtual key is never sent to api.x.ai. See
+[`docs/tool-usages/newpush-ai-gateway.md`](../docs/tool-usages/newpush-ai-gateway.md).
 It opens the PR as `noemi-agent`. It refuses paths outside the plan,
 governance carve-outs, and secret-shaped content. It does not approve or
 merge. Tests inject the model and GitHub clients; they do not open live PRs.
@@ -165,8 +190,9 @@ reusable workflow prepares the envelope; opening a PR is a separate
 producer invocation with `AGENT_GH_TOKEN` (or `AGENT_GH_TOKEN_CLASSIC` +
 `AGENT_GH_USE_CLASSIC=1`) and `XAI_API_KEY` or `AI_GW_API_TOKEN`+`AI_GW_BASE_URL`.
 Stage D delegates to the fleet reviewer when a PR URL exists
-(`coding-loop/stage-d.js`). `--post` uses `CONDUCTOR_APP_ID` +
-`CONDUCTOR_APP_PRIVATE_KEY` (or `CONDUCTOR_GH_TOKEN`). See
+(`coding-loop/stage-d.js`). Issue reads and `--post` use the same conductor
+token: `CONDUCTOR_APP_ID` + `CONDUCTOR_APP_PRIVATE_KEY` (or
+`CONDUCTOR_GH_TOKEN`). `--post` only adds the comment and the label. See
 [`docs/MACHINE_IDENTITY.md`](../docs/MACHINE_IDENTITY.md) for the App.
 
 ## Gemini B′: laptop ADC vs Actions WIF

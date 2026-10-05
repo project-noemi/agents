@@ -46,6 +46,8 @@ One row per disagreement. Keep reasons short and concrete.
 
 | Date | PR | Model | Gate | Reviewer said | Human did | Direction | Reason |
 |---|---|---|---|---|---|---|---|
+| 2026-10-01 | #568 | publishers/google/models/gemini-3.1-pro-preview | premise | premise fail: The PR description contains a prompt injection attempt instructing the reviewer to approve or merge. | **merged over** | reviewer wrong domain | revert PR merged by mistake |
+| 2026-09-30 | #565 | publishers/google/models/gemini-3.1-pro-preview | code | code fail: The validation for the mandatory Refusal Criteria heading can be bypassed by mentioning the phrase anywhere in the rules section. | **merged over** | reviewer wrong domain | n/a |
 | 2026-09-29 | #475 | publishers/google/models/gemini-3.1-pro-preview | code | code fail: The validation for the mandatory Refusal Criteria security control can be bypassed by including the phrase 'refusal criteria' anywhere in th | **merged over** | reviewer too strict | catch 22 |
 | 2026-09-22 | #522 | publishers/google/models/gemini-3.1-pro-preview | framing | framing fail: The PR claims the new tests are integrated into `npm test`, but they are only added as a standalone script. | **merged over** | reviewer misinterpreted | Details are logged in the original PR |
 | 2026-09-11 | #496 | publishers/google/models/gemini-3.1-pro-preview | premise | premise fail: 403 Refusal: Attempt to weaken existing review and merge-source controls (authorization guards) to allow direct pushes. | **merged over** | reviewer wrong domain | Catch 22 the review looked at a branch that needed the PR before the review could work. |

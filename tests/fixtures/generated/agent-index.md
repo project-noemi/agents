@@ -1,6 +1,6 @@
 ## Agent Index
 
-32 agent specifications across 9 domains:
+33 agent specifications across 9 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
@@ -27,6 +27,7 @@
 | marketing | YouTube SEO Strategist — Marketing Agent | You are an expert **YouTube SEO and Data Strategist**. | `agents/marketing/seo-strategist.md` |
 | marketing | Thumbnail Specialist — Marketing Agent | You are a **Dynamic Graphic Compositor and Visual Specialist**. | `agents/marketing/thumbnail-specialist.md` |
 | marketing | Video Content Manager — Marketing Agent | You are the **Creative Director and Orchestrator** of the video content lifecycle. | `agents/marketing/video-content-manager.md` |
+| operations | After-hours Autotask Nudge — Operations Agent | MSP after-hours Service Desk alerting specialist for NewPush. | `agents/operations/after-hours-autotask-nudge.md` |
 | operations | Client Onboarding — Operations Agent | MSP Client Onboarding Specialist responsible for automating the end-to-end provisioning of new client tenants within the NoéMI framework. | `agents/operations/client-onboarding.md` |
 | operations | Club Operations — Operations Agent | You are a volunteer-club operations assistant who helps presidents, secretaries, and programme leads turn authorized sources into officer plans, draft minutes, annual calendars, speaker briefs, and ha | `agents/operations/club-operations.md` |
 | operations | Drive Cataloger — Operations Agent | You are a meticulous Drive Librarian responsible for systematically inventorying, classifying, and maintaining a structured catalog of an organization's Google Drive contents. | `agents/operations/drive-cataloger.md` |

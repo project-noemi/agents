@@ -1,11 +1,19 @@
 import { basename, dirname } from "node:path";
+import { REQUIRED_HEADINGS } from "./ir.js";
 
 const H1 = /^#\s+([^#].+)$/;
 const SECTION = /^##\s+(.+)$/;
 const SKILL = /\*\*Skill:\*\*\s+`([^`]+)`/g;
 
+// ASSUMED syntax, mirrors **Skill:**. Confirm against docs/AGENT_TEMPLATE.md.
+const MCP = /\*\*MCP:\*\*\s+`([^`]+)`/g;
+const REFUSAL_HEADING = /^###\s+Refusal Criteria\s*:?\s*$/i;
+const SUBSECTION_END = /^#{1,3}\s/;   // #### subheadings stay inside the body
+const CANONICAL = new Map(REQUIRED_HEADINGS.map((h) => [h.toLowerCase(), h]));
+
 function normalizeHeading(raw) {
-  return raw.replace(/\s*\(.*\)\s*$/, "").trim();
+  const base = raw.replace(/\s*\(.*\)\s*$/, "").trim();
+  return CANONICAL.get(base.toLowerCase()) ?? base;
 }
 
 function slugFromTitle(title) {
@@ -44,6 +52,27 @@ function idFromPath(filePath) {
   return dir || null;
 }
 
+export function extractRefusalCriteria(rulesBody = "") {
+  const lines = rulesBody.split("\n");
+  const start = lines.findIndex((l) => REFUSAL_HEADING.test(l));
+  if (start === -1) return "";
+  const body = [];
+  for (const line of lines.slice(start + 1)) {
+    if (SUBSECTION_END.test(line)) break;
+    body.push(line);
+  }
+  return body.join("\n").replace(/<!--[\s\S]*?-->/g, "").trim();
+}
+
+// Deduped, raw. Slug safety is the resolver's job, not the parser's.
+function collectRefs(sections, re) {
+  const found = new Set();
+  for (const body of Object.values(sections)) {
+    for (const m of body.matchAll(re)) found.add(m[1].trim());
+  }
+  return [...found];
+}
+
 /**
  * Parse a NoéMI Markdown persona into a Blueprint IR.
  * @param {string} markdown
@@ -79,12 +108,7 @@ export function parseBlueprint(markdown, opts = {}) {
     sections[key] = bodyLines.join("\n").trim();
   }
 
-  const skills = new Set();
-  for (const body of Object.values(sections)) {
-    for (const match of body.matchAll(SKILL)) {
-      skills.add(match[1].trim());
-    }
-  }
+  const refusalCriteria = extractRefusalCriteria(sections["Rules & Constraints"]);
 
   const fromTitle = slugFromTitle(title || "Unknown — Unknown Agent");
   const pathId = source.kind === "file" ? idFromPath(source.ref) : null;
@@ -101,8 +125,9 @@ export function parseBlueprint(markdown, opts = {}) {
     domain: domain ?? fromTitle.domain,
     title,
     sections,
-    skills: [...skills],
-    mcp: [],
+    refusalCriteria,
+    skills: collectRefs(sections, SKILL),
+    mcp: collectRefs(sections, MCP),
     modelPolicy: { preferred: modelPolicy.preferred, fallbacks: [...modelPolicy.fallbacks] },
     source,
   };

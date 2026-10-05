@@ -15,8 +15,7 @@ test("compileSource runs from a string with no filesystem", async () => {
     const r = await compileSource(persona(), src, { provider: "mock" });
     assert.equal(r.ok, true);
     assert.equal(r.run.provider, "mock");
-    // COMMIT 2: add this line back once refusalCriteria exists:
-    // assert.match(r.ir.refusalCriteria, /Refused Task Types/);
+    assert.match(r.ir.refusalCriteria, /Refused Task Types/);
   });
 });
 

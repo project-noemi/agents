@@ -6,6 +6,7 @@ import { auditFromCompile, writeAudit } from "./audit.js";
 const USAGE = [
   "Usage: blueprint-compiler compile <file.md> [--provider <name>] [--prompt <text>]",
   "  Without --provider, NOEMI_PREFERRED_PROVIDER / NOEMI_FALLBACK_PROVIDERS decide (default: mock).",
+  "  NOEMI_REPO_ROOT overrides the repo root used to resolve skills and MCP refs.",
 ].join("\n");
 
 function usage(message) { if (message) console.error(message); console.error(USAGE); process.exit(2); }
@@ -44,5 +45,5 @@ if (!result.ok) {
   console.error(JSON.stringify({ ok: false, errors: result.errors }, null, 2));
   process.exitCode = 1;   // not process.exit(1): lets stderr flush on pipes
 } else {
-  console.log(JSON.stringify({ ok: true, ir: result.ir, run: result.run }, null, 2));
+  console.log(JSON.stringify({ ok: true, ir: result.ir, resolved: result.resolved, run: result.run }, null, 2));
 }

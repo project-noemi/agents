@@ -1,6 +1,7 @@
 import { parseBlueprint } from "./parse.js";
 import { validateBlueprint } from "./validate.js";
-import { loadModelPolicy } from "./config.js";
+import { resolveBlueprint } from "./resolve.js";
+import { loadModelPolicy, loadResolverConfig } from "./config.js";
 import { loadFile } from "./loaders/file.js";
 import { runMock } from "./providers/mock.js";
 import { runGemini } from "./providers/gemini.js";
@@ -26,11 +27,12 @@ const describeFailure = (e) => (Number.isInteger(e.status) ? `HTTP ${e.status}` 
 
 /**
  * Compile persona Markdown from any source (file today; http/registry in Sprint 5).
- * Pure with respect to I/O: no filesystem, no stderr. Callers (CLI, Studio) decide
- * how to log.
+ * Never loads the persona and never logs; callers (CLI, Studio) decide how to log.
+ * The only filesystem access is the resolver's read-only existence checks under
+ * repoRoot, and only when the persona has **Skill:** or **MCP:** refs.
  * @param {string} markdown
  * @param {import("./ir.js").SourceRef} source
- * @param {{ prompt?: string, provider?: string }} [opts]
+ * @param {{ prompt?: string, provider?: string, repoRoot?: string }} [opts]
  */
 export async function compileSource(markdown, source, opts = {}) {
   const ir = parseBlueprint(markdown, { source, modelPolicy: loadModelPolicy() });
@@ -38,6 +40,13 @@ export async function compileSource(markdown, source, opts = {}) {
   const errors = validateBlueprint(ir);
   if (errors.length) {
     return { ok: false, stage: "validate", errors };
+  }
+
+  // `||`, not `??`: an empty repoRoot means "unset", as in config.js.
+  const repoRoot = opts.repoRoot || loadResolverConfig().repoRoot;
+  const { resolved, errors: refErrors } = await resolveBlueprint(ir, { repoRoot });
+  if (refErrors.length) {
+    return { ok: false, stage: "resolve", errors: refErrors };
   }
 
   const preferred = opts.provider ?? ir.modelPolicy.preferred ?? "mock";
@@ -63,7 +72,7 @@ export async function compileSource(markdown, source, opts = {}) {
       onFallback: ({ provider, error }) =>
         fallbacksUsed.push({ provider, reason: describeFailure(error) }),
     });
-    return { ok: true, ir, run: { ...run, fallbacks: fallbacksUsed } };
+    return { ok: true, ir, resolved, run: { ...run, fallbacks: fallbacksUsed } };
   } catch (err) {
     if (!isProviderError(err)) throw err;   // real bugs still throw
     return { ok: false, stage: "provider", errors: [toCompileError(err)], fallbacks: fallbacksUsed };
@@ -72,7 +81,7 @@ export async function compileSource(markdown, source, opts = {}) {
 
 /**
  * @param {string} filePath
- * @param {{ prompt?: string, provider?: string }} [opts]
+ * @param {{ prompt?: string, provider?: string, repoRoot?: string }} [opts]
  */
 export async function compileFile(filePath, opts = {}) {
   let loaded;

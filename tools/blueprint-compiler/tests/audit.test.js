@@ -14,7 +14,7 @@ test("success record keeps the existing shape", () => {
     { file: "f.md", provider: "xai" }
   );
   assert.deepEqual(Object.keys(rec).sort(), KEYS);
-  assert.deepEqual(rec.actions, ["parse", "validate", "fallback-from:xai", "run:gemini"]);
+  assert.deepEqual(rec.actions, ["parse", "validate", "resolve", "fallback-from:xai", "run:gemini"]);
   assert.equal(rec.result, "ok");
 });
 
@@ -36,4 +36,17 @@ test("writeAudit emits exactly one JSON line", () => {
   assert.ok(chunks[0].endsWith("\n"));
   assert.equal(chunks[0].trim().split("\n").length, 1);
   assert.equal(JSON.parse(chunks[0]).task, "t");
+});
+
+test("a resolve failure records the resolve stage and every error code", () => {
+  const rec = auditFromCompile(
+    { ok: false, stage: "resolve", errors: [
+      { code: "BAD_SLUG", message: "m1" },
+      { code: "UNRESOLVED_SKILL", message: "m2" },
+    ] },
+    { file: "f.md" }
+  );
+  assert.deepEqual(rec.actions, ["parse", "validate", "resolve"]);
+  assert.equal(rec.result, "error:BAD_SLUG,UNRESOLVED_SKILL");
+  assert.deepEqual(rec.risks, ["BAD_SLUG: m1", "UNRESOLVED_SKILL: m2"]);
 });

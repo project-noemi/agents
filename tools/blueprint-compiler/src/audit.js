@@ -4,7 +4,8 @@
 const STAGES = {
   load: ["load"],
   validate: ["parse", "validate"],
-  provider: ["parse", "validate", "run"],
+  resolve: ["parse", "validate", "resolve"],
+  provider: ["parse", "validate", "resolve", "run"],
   internal: [],
 };
 
@@ -19,7 +20,7 @@ export function auditFromCompile(r, { file, provider } = {}) {
     return auditRecord({
       task: `compile:${r.ir.id}`,
       inputs,
-      actions: ["parse", "validate", ...fell.map((f) => `fallback-from:${f.provider}`), `run:${r.run.provider}`],
+      actions: ["parse", "validate", "resolve", ...fell.map((f) => `fallback-from:${f.provider}`), `run:${r.run.provider}`],
       risks: fell.map((f) => `${f.provider} failed (${f.reason}); fell back`),
       result: "ok",
     });

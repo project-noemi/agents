@@ -1422,3 +1422,63 @@
 - **Decision:** Before the Grok call, `--open-pr` reads each allow-listed path from the target repository at the integration branch and places that text in the prompt. The request sets `response_format` to `json_object`. On every API base other than `api.x.ai`, `allowed_openai_params` names both `max_completion_tokens` and `response_format`. A visible answer that is not JSON fails once, with a short redacted preview, and is not retried. `scanIssueBody` still blocks every `postgres://`, `mysql://`, and `mongodb://` URL, including a host-only URL and a password in the query string. The writer may keep a host-only URL only when that exact URL token is already in the base file. A known URL is not removed from inside a longer URL. A URL with userinfo (`user@` or `user:password@`) or a `password`, `pwd`, `pass`, `token`, or `secret` query parameter is not loaded and is not accepted in a draft.
 - **Context:** After [2026-10-04-0002], `--implement --open-pr` for `newpush/newpush-agents` #187 returned `finish_reason=stop` with about 98 characters of content and no JSON, four times. A probe of the same plan returned `I'll read the allow-listed files and apply the hybrid GHCR compose + docs changes.` The writer had asked for complete file contents and had not included the files. The gateway accepts `response_format: json_object` when that field is in `allowed_openai_params`. The executive-assistant compose file contains `mongodb://mongo:27017/noemi_ea`. Advisory review on #591 rejected loosening the connection-string pattern in `scan.js`. The scanner stays strict. The writer exception is limited to an unchanged host-only URL already on the base branch.
 - **Impact:** `coding-loop/writer.js`, `coding-loop/run.js`, `coding-loop/scan.js`, `tests/issue-loop.test.js`, `coding-loop/README.md`, `docs/architecture/issue-coding-loop.md`, `docs/tool-usages/newpush-ai-gateway.md`.
+
+## [2026-10-05-0001] An Opened Issue Keeps One Loop Label, and Unfinished Work Does Not Close It
+
+- **Decision:** The pull-request body starts with `Part of #N` when the accepted plan says "the agent does not" finish the work. Otherwise it starts with `Closes #N`. When a conductor token is present, the loop sets one `noemi:*` label and deletes the other `noemi:*` labels on that issue. An opened pull request is labeled `noemi:review`. Stage D remains the fleet reviewer already installed on the target repository. This loop does not call a second reviewer. Pickup stays off.
+- **Context:** `--implement --open-pr` for `newpush/newpush-agents` #187 opened pull request 191. The body started with `Closes #187` even though the accepted plan says the agent does not publish the image. Earlier runs had left both `noemi:needs-info` and `noemi:planned` on the issue, and this run did not apply `noemi:in-progress` or `noemi:review` because `--post` was off. `stage-d.js` only records that the fleet reviewer should run. The reviewer comment on pull request 191 came from the workflow already installed on that repository.
+- **Impact:** `coding-loop/dispatch.js`, `coding-loop/run.js`, `scripts/github-client.js`, `tests/issue-loop.test.js`, `docs/architecture/issue-coding-loop.md`.
+
+## [2026-10-05-0002] Gmail EA Image Publishes to GHCR with the Actions Token
+
+- **Decision:** `ghcr.io/project-noemi/gmail-executive-assistant` is published by `.github/workflows/publish-gmail-ea.yml` using `GITHUB_TOKEN` (`packages: write`). Local PATs in this environment do not carry `write:packages`. The Dockerfile in `tools/executive-assistant` builds the Vite UI in-image and copies only the JavaScript files that exist in this tree.
+- **Context:** `docker manifest inspect ghcr.io/project-noemi/gmail-executive-assistant:latest` returned `manifest unknown`. `docker login` succeeded with `AGENT_GH_TOKEN`, `AGENT_GH_TOKEN_CLASSIC`, and the WSwarm `gh` keyring token; each push was denied for missing packages scopes. `noemi-conductor` has `issues: write` only.
+- **Impact:** `.github/workflows/publish-gmail-ea.yml`, `tools/executive-assistant/Dockerfile`, `tools/executive-assistant/.dockerignore`.
+
+## [2026-10-05-0003] GHCR Package Visibility Is Org Policy Plus a One-Time UI Change
+
+- **Decision:** Anonymous `docker manifest inspect ghcr.io/project-noemi/gmail-executive-assistant:latest` is the publish gate. GitHub REST and GraphQL cannot change Container registry visibility for this org package (GET works with `GITHUB_TOKEN`; PATCH/PUT `/visibility` return 404). The organization must allow public package creation under Settings → Packages; the package itself is then set public once in Package settings. Later pushes keep that visibility. The publish workflow inspects authenticated, then logs out of `ghcr.io` and inspects anonymously.
+- **Context:** The first Actions publish created the package as private because `project-noemi` had public package creation unchecked. Unauthenticated inspect returned 401. The GitHub UI Danger Zone Public radio was disabled until that org checkbox was saved. A public package cannot be made private again.
+- **Impact:** `.github/workflows/publish-gmail-ea.yml`. Org setting: https://github.com/organizations/project-noemi/settings/packages. Package: https://github.com/orgs/project-noemi/packages/container/gmail-executive-assistant/settings.
+
+## [2026-10-05-0004] The Gmail EA Runtime Image Does Not Keep the UI Toolchain
+
+- **Decision:** The Vite UI is built in a builder stage. The runtime image copies `ui/dist` and the server dependencies from `npm ci --omit=dev`. It does not copy `ui/node_modules`.
+- **Context:** Advisory review on #596 found `npm install` for the UI in the final stage, so Vite stayed in the published image while the description said production dependencies were omitted. Package visibility stays the one-time Package settings change in [2026-10-05-0003]. The workflow does not change it.
+- **Impact:** `tools/executive-assistant/Dockerfile`.
+
+## [2026-10-05-0005] Private Clones Keep GHCR Packages Private
+
+- **Decision:** A private copy of this repository publishes `ghcr.io/<owner>/gmail-executive-assistant` with `GITHUB_TOKEN`. That package stays private. Org **Package creation → Public** stays unchecked so members cannot flip a package to public. The publish workflow never changes visibility. On `project-noemi` an anonymous `docker manifest inspect` must succeed (the public reference image, Decision [2026-10-05-0003]). On any other owner that same anonymous inspect **failing** is the pass condition; a successful anonymous inspect fails the job. Making a package public in the UI cannot be reversed.
+- **Context:** Operators fork or copy this tree for private agentic work (`README.md`, `docs/UPSTREAM_SYNC.md`, `coding-loop/README.md`). The public reference org had to enable Public package creation once so `gmail-executive-assistant` could be pulled without credentials. Copying that org checkbox, or copying a workflow that *requires* anonymous inspect, would publish private clone images to the world.
+- **Impact:** `.github/workflows/publish-gmail-ea.yml`, `README.md`, `docs/UPSTREAM_SYNC.md`, `coding-loop/README.md`.
+
+## [2026-10-05-0006] Gmail EA :latest Publishes from develop with Locked UI Deps
+
+- **Decision:** The publish workflow runs on path-filtered `push` to `develop` and on `workflow_dispatch`. Feature-branch pushes do not retag `:latest`. `permissions` include `id-token: write` and `attestations: write` so `docker/build-push-action@v6` can sign provenance. The UI builder copies `ui/package-lock.json` and runs `npm ci`.
+- **Context:** Advisory code review on #596: unfiltered `push` overwrote `:latest` from any branch; `provenance: true` without `id-token: write`; builder `npm install` with only `ui/package.json`.
+- **Impact:** `.github/workflows/publish-gmail-ea.yml`, `tools/executive-assistant/Dockerfile`, `tools/executive-assistant/ui/package-lock.json`.
+
+## [2026-10-05-0007] Private Clones Check GHCR Visibility Before Push
+
+- **Decision:** On owners other than `project-noemi`, the publish workflow reads GitHub Packages visibility (`/orgs` then `/users`) **before** `docker/build-push-action`. A `public` package fails the job without pushing. A 404 means the package does not exist yet and first push stays private. Unexpected API errors fail closed. The post-push anonymous inspect remains.
+- **Context:** Advisory code review on #596: `Refuse an anonymous pull` ran after `push: true`, so a public clone package would receive new layers before the job failed.
+- **Impact:** `.github/workflows/publish-gmail-ea.yml`.
+
+## [2026-10-06-0001] Review Reads EU AI Act and GDPR Guidance Beside Sentinel
+
+- **Decision:** `agents/coding/sentinel/compliance.md` is loaded with the Sentinel spec from this blueprint, never from the repository under review. The reviewer may cite it on an existing gate when a diff clearly conflicts with a duty it names. It is not a fourth gate, not a legal opinion, and not a finding merely because the organization is outside the European Union. The file is not an agent persona. A duty that belongs to one organization stays in that organization's agents repository.
+- **Context:** Operators asked for a simple compliance source the review can read, following the European AI Act and the GDPR, as guidance rather than a mandate.
+- **Impact:** `agents/coding/sentinel/compliance.md`, `scripts/review-pr.js`, `scripts/context_helpers.js`, `coding-loop/README.md`, `tests/review-runner.test.js`, `tests/contracts.test.js`.
+
+## [2026-10-06-0002] A Compliance-Only Override Needs No Calibration Entry
+
+- **Decision:** The review runs a fourth gate, `compliance`, after premise, framing, and code. Its source is `agents/coding/sentinel/compliance.md`. A clear conflict fails that gate. Merging a pull request whose latest verdict failed only `compliance` does not open a calibration entry. The deploying organization decides whether to comply. A premise, framing, or code failure still opens one.
+- **Context:** Operators asked for the compliance source to be a real gate, and for an override of that gate to stay at the organization's discretion.
+- **Impact:** `scripts/review-pr.js`, `scripts/calibration-watch.js`, `agents/coding/sentinel/compliance.md`, `agents/engineering/pr-reviewer.md`, `coding-loop/README.md`, `tests/review-runner.test.js`, `tests/calibration-watch.test.js`.
+
+## [2026-10-06-0003] The Reviewer Halts When the Diff Changes Review Behavior
+
+- **Decision:** A diff that touches the review runner, the calibration watch, the Sentinel spec, the compliance guidance, or the reviewer persona is a governance carve-out. The reviewer halts and a human reviews it. The review job checks out `project-noemi/agents` at `main` unless a caller passes another tooling ref, so this halt applies to later pull requests once the change is on that ref.
+- **Context:** Pull request #602 changed how review and calibration work. The reviewer posted findings on that change instead of recusing. The operator merged it for that reason.
+- **Impact:** `scripts/review-pr.js`, `docs/AI_REVIEW_GOVERNANCE.md`, `agents/engineering/pr-reviewer.md`, `tests/review-runner.test.js`.

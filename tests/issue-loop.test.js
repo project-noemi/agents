@@ -24,7 +24,7 @@ const {
   isRepoPath,
   runPlanRedTeam,
 } = require('../coding-loop/plan.js');
-const { assertProducerToken, openImplementationPr, prepareImplementation } = require('../coding-loop/dispatch.js');
+const { assertProducerToken, issueLinkLine, openImplementationPr, prepareImplementation } = require('../coding-loop/dispatch.js');
 const { critiquePlanLive, revisePlanLive } = require('../coding-loop/critic.js');
 const {
   assertWriterKey, draftChanges, grokMessageText, isCarvedOut, parseJsonObject, resolveWriterAuth, selectGrokModel, validateFiles,
@@ -840,6 +840,40 @@ test('completeThroughStageB: skip stays skip; a complete issue is accepted', asy
   assert.equal(ready.plan.status, 'accepted');
 });
 
+test('loop label: an open PR replaces older noemi labels with noemi:review', async () => {
+  const { activeLoopLabel, syncNoemiLabel } = require('../coding-loop/run.js');
+  assert.equal(activeLoopLabel({
+    post: false,
+    implementation: { opened: true, label: 'noemi:in-progress' },
+    review: { status: 'delegated', label: 'noemi:review' },
+  }), 'noemi:review');
+  assert.equal(activeLoopLabel({
+    post: true,
+    intake: { tier: 'ACTIONABLE', label: 'noemi:queued' },
+    plan: { status: 'accepted', label: 'noemi:planned' },
+  }), 'noemi:planned');
+  assert.equal(activeLoopLabel({ post: false, intake: { tier: 'ACTIONABLE', label: 'noemi:queued' } }), '');
+
+  const calls = [];
+  await syncNoemiLabel({
+    repo: 'newpush/newpush-agents',
+    number: 187,
+    label: 'noemi:review',
+    current: [{ name: 'noemi:needs-info' }, { name: 'noemi:planned' }, { name: 'bug' }],
+    token: 'conductor',
+    ghImpl: async (path, opts) => {
+      calls.push({ path, method: opts.method, body: opts.body });
+      return null;
+    },
+  });
+  assert.deepEqual(calls.map((call) => `${call.method} ${call.path}`), [
+    'DELETE /repos/newpush/newpush-agents/issues/187/labels/noemi%3Aneeds-info',
+    'DELETE /repos/newpush/newpush-agents/issues/187/labels/noemi%3Aplanned',
+    'POST /repos/newpush/newpush-agents/issues/187/labels',
+  ]);
+  assert.deepEqual(calls[2].body, { labels: ['noemi:review'] });
+});
+
 test('Stage C: only an accepted plan on develop/dev is ready, and it does not open a PR', async () => {
   const ready = await completeThroughStageB({
     issue: issue({ body: sufficientBody, number: 12 }),
@@ -859,6 +893,18 @@ test('Stage C: only an accepted plan on develop/dev is ready, and it does not op
   assert.equal(impl.identity, 'noemi-agent');
   assert.equal(impl.writer, 'grok');
   assert.equal(impl.reason, 'not-opened');
+  assert.match(impl.body, /^Closes #12\n/);
+
+  const humanLeft = prepareImplementation({
+    issue: issue({ number: 187, title: 'Publish GHCR image' }),
+    plan: {
+      status: 'accepted',
+      plan: '## Goal\nfiles\n\nThe agent does not publish the image.',
+    },
+    branches: ['develop'],
+  });
+  assert.match(humanLeft.body, /^Part of #187\n/);
+  assert.equal(issueLinkLine(187, { plan: 'The agent does not publish the image.' }), 'Part of #187');
 
   const noPlan = prepareImplementation({
     issue: issue(),

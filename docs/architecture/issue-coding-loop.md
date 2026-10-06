@@ -218,15 +218,21 @@ as `noemi-agent`. Label `noemi:in-progress`. Open a PR against `develop` (then
 [2026-08-16-0003]). `--implement` prepares the envelope (`opened: false`).
 `--implement --open-pr` reads the allow-listed files from the base branch,
 calls Grok for one JSON object (`coding-loop/writer.js`), and opens the
-PR with `AGENT_GH_TOKEN` (`coding-loop/dispatch.js`). Pickup does not open
-PRs just because the producer token is present.
+PR with `AGENT_GH_TOKEN` (`coding-loop/dispatch.js`). The body starts with
+`Closes #N`, or with `Part of #N` when the accepted plan says the agent does
+not finish the work. Pickup does not open PRs just because the producer
+token is present. When a conductor token is present, the loop applies one
+`noemi:*` label and removes the other `noemi:*` labels. An opened PR is
+`noemi:review`.
 
 ### Stage D — PR red-team
 
 Reuse the existing fleet reviewer (`scripts/review-pr.js` /
 `noemi-reviewer-bot[bot]`). Do not add a second Gemini reviewer. Label
 `noemi:review`. Humans still own approval and merge.
-`coding-loop/stage-d.js` only delegates once a PR URL exists.
+`coding-loop/stage-d.js` records the handoff once a PR URL exists. It does not
+call the reviewer. The target repository's installed review workflow is
+Stage D.
 
 Pickup is the reusable workflow `.github/workflows/coding-loop.yml` and
 `templates/ci/coding-loop-caller.yml`. Budget is fail-closed

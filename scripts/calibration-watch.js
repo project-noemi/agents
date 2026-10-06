@@ -24,6 +24,9 @@
  *     human can override.
  *   - Log the reverse case (reviewer too lenient, bug found later) — that
  *     cannot be detected mechanically and stays a manual entry.
+ *   - Log a merge whose latest verdict failed only the compliance gate.
+ *     Following that guidance is the deploying organization's choice
+ *     (Decision [2026-10-06-0002]). Premise, framing, and code still log.
  *
  * USAGE (normally invoked by .github/workflows/calibration-watch.yml)
  *   PR_NUMBER=392 GITHUB_REPOSITORY=owner/repo node scripts/calibration-watch.js
@@ -60,7 +63,7 @@ function parseReviewVerdict(body) {
   if (body.includes('governance carve-out')) return null;
 
   const model = (body.match(/\*\*Model:\*\*\s*`([^`]+)`/) || [])[1] || '(unknown)';
-  const failedGates = [...body.matchAll(/^\|\s*(premise|framing|code)\s*\|[^|]*\|\s*❌\s*fail\s*\|/gim)]
+  const failedGates = [...body.matchAll(/^\|\s*(premise|framing|code|compliance)\s*\|[^|]*\|\s*❌\s*fail\s*\|/gim)]
     .map((m) => m[1].toLowerCase());
 
   // First blocking finding: "- **high** · `file` · _gate_ — claim"
@@ -72,6 +75,15 @@ function parseReviewVerdict(body) {
     model,
     claim: finding.trim().slice(0, 140),
   };
+}
+
+/**
+ * A calibration entry is owed when a substantive gate failed.
+ * Compliance alone is the organization's choice and does not open one.
+ */
+function requiresCalibration(verdict) {
+  if (!verdict || !verdict.failing) return false;
+  return verdict.gates.some((gate) => gate !== 'compliance');
 }
 
 /** Pick the reviewer's LATEST verdict from a PR's comment stream. */
@@ -233,8 +245,11 @@ async function main() {
     process.stderr.write(`PR #${prNumber}: no reviewer verdict found (halt or no review) — nothing to log.\n`);
     return;
   }
-  if (!verdict.failing) {
-    process.stderr.write(`PR #${prNumber}: latest verdict passed — merge agrees with the reviewer.\n`);
+  if (!requiresCalibration(verdict)) {
+    const why = verdict.failing
+      ? 'only the compliance gate failed — the organization decides whether to comply. No calibration entry.'
+      : 'latest verdict passed — merge agrees with the reviewer.';
+    process.stderr.write(`PR #${prNumber}: ${why}\n`);
     return;
   }
 
@@ -299,7 +314,7 @@ async function main() {
 }
 
 module.exports = {
-  parseReviewVerdict, latestVerdict, buildCalibrationRow, alreadyLogged, REVIEWER_LOGINS,
+  parseReviewVerdict, latestVerdict, buildCalibrationRow, alreadyLogged, requiresCalibration, REVIEWER_LOGINS,
   isRepoNotFound, tokenAfterRepoProbe, verifyTokenLogin, adoptClassicToken,
 };
 

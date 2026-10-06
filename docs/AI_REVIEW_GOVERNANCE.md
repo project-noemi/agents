@@ -91,8 +91,13 @@ The reviewer halts and escalates to human review when a diff touches:
 - branch protection settings
 - `.github/CODEOWNERS`
 - `.github/workflows/require-develop-source.yml`
+- `.github/workflows/ai-review.yml`
+- `.github/workflows/calibration-watch.yml`
 - `docs/MACHINE_IDENTITY.md` (the identity register)
 - this document
+- `scripts/review-pr.js` and `scripts/calibration-watch.js`
+- `agents/coding/sentinel/core.md` and `agents/coding/sentinel/compliance.md`
+- `agents/engineering/pr-reviewer.md`
 
 Not a capability judgment. These are the controls that constrain agents, and an
 agent evaluating changes to its own constraints is circular regardless of how

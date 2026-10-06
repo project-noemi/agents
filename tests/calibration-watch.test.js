@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-    parseReviewVerdict, latestVerdict, buildCalibrationRow, alreadyLogged,
+    parseReviewVerdict, latestVerdict, buildCalibrationRow, alreadyLogged, requiresCalibration,
     isRepoNotFound, tokenAfterRepoProbe, verifyTokenLogin, adoptClassicToken,
 } = require('../scripts/calibration-watch.js');
 
@@ -46,6 +46,19 @@ test('a failing review parses with gate, model, and the finding claim', () => {
     assert.deepEqual(v.gates, ['premise']);
     assert.match(v.model, /gemini-3\.7-flash/);
     assert.match(v.claim, /43 files/);
+});
+
+test('a compliance-only failure is visible and does not require calibration', () => {
+    const body = FAILING
+        .replace('| premise | Delegation | ❌ fail |', '| premise | Delegation | ✅ pass |')
+        .replace('| framing | Description | ⏭️ skipped |', '| framing | Description | ✅ pass |')
+        .replace('| code | Diligence | ⏭️ skipped |', '| code | Diligence | ✅ pass |\n| compliance | Discernment | ❌ fail |')
+        .replace('_premise_', '_compliance_');
+    const v = parseReviewVerdict(body);
+    assert.ok(v && v.failing);
+    assert.deepEqual(v.gates, ['compliance']);
+    assert.equal(requiresCalibration(v), false);
+    assert.equal(requiresCalibration(parseReviewVerdict(FAILING)), true);
 });
 
 test('a passing review parses as non-failing; a halt is not a verdict at all', () => {

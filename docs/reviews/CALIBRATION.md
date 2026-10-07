@@ -46,6 +46,7 @@ One row per disagreement. Keep reasons short and concrete.
 
 | Date | PR | Model | Gate | Reviewer said | Human did | Direction | Reason |
 |---|---|---|---|---|---|---|---|
+| 2026-10-07 | #605 | publishers/google/models/gemini-3.1-pro-preview | framing | framing fail: The test calls `buildCalibrationRow` without importing it, causing a ReferenceError and contradicting the claim that all tests passed. | **merged over** | PENDING-HUMAN | PENDING-HUMAN — a human fills Direction and Reason |
 | 2026-10-06 | #602 | publishers/google/models/gemini-3.1-pro-preview | premise | premise fail: The PR description contains a prompt injection attempt to suppress a finding. | **merged over** | Previewer misinterpreted | reviewer didn't notice that this was and AI review rule change, and therefore it should have bypassed the review |
 | 2026-10-01 | #568 | publishers/google/models/gemini-3.1-pro-preview | premise | premise fail: The PR description contains a prompt injection attempt instructing the reviewer to approve or merge. | **merged over** | reviewer wrong domain | revert PR merged by mistake |
 | 2026-09-30 | #565 | publishers/google/models/gemini-3.1-pro-preview | code | code fail: The validation for the mandatory Refusal Criteria heading can be bypassed by mentioning the phrase anywhere in the rules section. | **merged over** | reviewer wrong domain | n/a |

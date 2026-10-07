@@ -40,6 +40,11 @@ test('AGENTS.md includes the required top-level mandate sections', () => {
     }
 });
 
+test('compliance guidance is not indexed as a persona', () => {
+    const agents = discoverAgents(path.join(repoRoot, 'agents'));
+    assert.equal(agents.some((agent) => agent.path.endsWith('compliance.md')), false);
+});
+
 test('all personas expose the required contract headings', () => {
     const agents = discoverAgents(path.join(repoRoot, 'agents'));
     assert.ok(agents.length > 0, 'Expected at least one persona');

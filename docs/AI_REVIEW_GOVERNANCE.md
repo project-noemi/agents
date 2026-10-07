@@ -91,8 +91,13 @@ The reviewer halts and escalates to human review when a diff touches:
 - branch protection settings
 - `.github/CODEOWNERS`
 - `.github/workflows/require-develop-source.yml`
+- `.github/workflows/ai-review.yml`
+- `.github/workflows/calibration-watch.yml`
 - `docs/MACHINE_IDENTITY.md` (the identity register)
 - this document
+- `scripts/review-pr.js` and `scripts/calibration-watch.js`
+- `agents/coding/sentinel/core.md` and `agents/coding/sentinel/compliance.md`
+- `agents/engineering/pr-reviewer.md`
 
 Not a capability judgment. These are the controls that constrain agents, and an
 agent evaluating changes to its own constraints is circular regardless of how
@@ -113,7 +118,7 @@ pin; `auto` or an empty value discovers. A pin that is missing from the
 catalogue, or that is not a usable Gemini text model, halts rather than
 silently reviewing on a different model.
 
-**This does not change the `models/gemini-3.6-flash` pin in `CLAUDE.md`.** That
+**This does not change the `models/gemini-3.8-flash` pin in `CLAUDE.md`.** That
 pin governs reference workflows, lab examples, and smoke tests, where
 determinism and predictable cost are the point. Review has the opposite
 objective and therefore its own policy.
@@ -400,7 +405,7 @@ handoff point for anyone picking the work up.
 
 **Phase 1 is operational.** The first fully automated cross-model review ran in
 CI on 2026-08-11 against PR #379: Workload Identity Federation to Google, OIDC
-to Infisical, `gemini-3.6-flash` resolved at runtime, all three gates executed,
+to Infisical, `gemini-3.8-flash` resolved at runtime, all three gates executed,
 findings posted by `noemi-reviewer`. No static credential is stored in GitHub.
 
 | Item | State | Blocked on |

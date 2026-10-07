@@ -36,6 +36,7 @@ async function gh(path, { token, accept = 'application/vnd.github+json', method 
       error.status = res.status;
       throw error;
     }
+    if (res.status === 204) return null;
     return accept.includes('diff') ? res.text() : res.json();
   }, {
     maxRetries: 4,

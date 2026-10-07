@@ -49,6 +49,7 @@ If you do not already have `{org}/{org}-agents`:
 - Copy or fork `project-noemi/agents`.
 - Default branch `develop`. Keep the develop-only merge gate.
 - Point `scripts/sync-upstream.sh` at `project-noemi/agents` as `upstream`.
+- Keep GitHub Packages **private**. Leave org **Settings → Packages → Package creation → Public** unchecked. The Gmail EA publish workflow will fail this copy if `docker manifest inspect` succeeds without credentials. See `docs/UPSTREAM_SYNC.md` (GitHub Packages on a private clone).
 
 NewPush: this is `newpush/newpush-agents`. Sync #423 (or later `develop`)
 into that copy before turning pickup on.
@@ -119,6 +120,59 @@ and it is not required to classify the first issue.
 - Never sync secrets, `tenants/*.json` with real spend caps you do not want
   public, or App private keys upstream.
 
+## Operate one issue
+
+Run this on one repository before pickup. The issue names a file that already
+exists on that repository's `develop` branch, and it has a `Done when` section
+a person can check. It does not contain secrets, and it does not ask the agent
+to edit the review workflow, `CODEOWNERS`, or the identity register.
+
+From the copy's root, with Node 24. Inject credentials with your vault
+(`infisical run` or `op run`). Do not write them into a file.
+
+```bash
+node coding-loop/run.js \
+  --repo your-org/your-repo --issue N \
+  --scan --budget-ok --live-critic --implement --open-pr
+```
+
+The environment holds:
+
+- a conductor credential to read the issue and set labels (`CONDUCTOR_APP_ID`
+  plus `CONDUCTOR_APP_PRIVATE_KEY`, or `CONDUCTOR_GH_TOKEN`)
+- a producer token to open the pull request (`AGENT_GH_TOKEN`). The conductor
+  token is refused for that step
+- a writer credential: `XAI_API_KEY`, or your organization's OpenAI-compatible
+  gateway (`AI_GW_API_TOKEN` and `AI_GW_BASE_URL`)
+- for `--live-critic`, application-default credentials on a laptop, or
+  Workload Identity Federation in Actions (`CODING_LOOP_LIVE_CRITIC=true` and
+  the same `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, and
+  `GOOGLE_CLOUD_PROJECT` variables as the fleet reviewer). There is no Gemini
+  API key
+
+A successful run opens a pull request as the producer, with base `develop`.
+The body starts with `Closes #N`, or with `Part of #N` when the accepted plan
+says the agent does not finish the work. With a conductor token, the issue
+keeps one `noemi:*` label. An opened pull request is `noemi:review`.
+
+Stage D is the review workflow installed on the target repository.
+`coding-loop/stage-d.js` records the handoff. It does not call a second
+reviewer. The review runs premise, then framing, then code, then compliance.
+Compliance reads `agents/coding/sentinel/compliance.md` from this blueprint.
+That file is the shared EU AI Act and GDPR baseline. It is guidance, not a
+legal opinion. The deploying organization chooses whether to follow it.
+Merging a pull request that failed only the compliance gate does not open a
+calibration entry. A premise, framing, or code failure still does. A duty
+that applies only to one organization is recorded in that organization's
+agents repository, and promoted here when every tenant needs it.
+
+A second `--open-pr` for the same issue is refused while `noemi/issue-N`
+exists. A person still approves and merges.
+
+Leave pickup off until `limits.daily_usd` is a real cap and this command has
+succeeded on one repository. Stage A stays the heuristic until its model is
+wired.
+
 ## Stage A today
 
 Hard gates: `noemi:skip`, bot authors, empty/template body, tenant, scan,
@@ -137,11 +191,23 @@ Omitting both `--scan` and `--scan-status` is REFUSED (fail closed). `--scan`
 is not implied by leaving `--scan-status` off.
 
 An `ACTIONABLE` issue gets a Stage B plan and Stage B′
-(`coding-loop/plan.js`). Structural critique always runs (headings, files,
-no skip-red-team). `--live-critic` then calls Gemini Pro (ADC, same
-selection rule as the fleet reviewer). Pass → `accepted`. Fail at
-`planRedTeam.maxCycles` → `needs-info`. A Gemini 429/5xx is retried, then
-thrown so the host re-queues — it is not an `accepted` plan.
+(`coding-loop/plan.js`). Plan **Files** are PATH_RE hits that look like
+repository files: hostnames (`ghcr.io/…`), URLs, `dist` / `coverage`
+segments, `../` / absolute paths, and directories are dropped. A source
+file the issue names is kept even when this checkout does not contain it,
+because this repo is the loop blueprint and the issue may target another
+clone. Other paths are kept only when they exist as files inside the clone. Structural critique always runs (headings, files, no
+skip-red-team, no leftover registry or escaping paths). `--live-critic` then calls
+Gemini Pro (ADC, same selection rule as the fleet reviewer). On a fail with
+cycles remaining, B′ writes a revision prompt and that same Gemini caller
+executes it on the plan before the next pass. A revision that does not
+change the plan, drops the skip-red-team record, or adds a path the issue
+did not name stops the cycle. Without `--live-critic`, B′ may still drop
+invalid files and re-format; it does not resubmit an unchanged draft, and
+it never invents replacements. Pass → `accepted`. Fail at
+`planRedTeam.maxCycles`, or a revision that does not change the plan →
+`needs-info`. A Gemini 429/5xx is retried, then thrown so the host
+re-queues — it is not an `accepted` plan.
 
 `--implement` prepares a Stage C envelope (`coding-loop/dispatch.js`) for
 `noemi-agent` on `develop` (then `dev`). `AGENT_GH_TOKEN` is required; the
@@ -151,8 +217,21 @@ conductor token is refused.
 `XAI_API_KEY` against `https://api.x.ai/v1`, **or** NewPush gateway
 `AI_GW_API_TOKEN` / `AI_GW_API_KEY` at `https://ai-gw.newpush.com/v1` (override
 `AI_GW_BASE_URL`). Gateway model ids are `provider/id`; the writer pins
-`xai/grok-4.6` unless `XAI_CODE_MODEL` is set. The virtual key is never sent
-to api.x.ai. See [`docs/tool-usages/newpush-ai-gateway.md`](../docs/tool-usages/newpush-ai-gateway.md).
+`xai/grok-4.6` unless `XAI_CODE_MODEL` is set. The request sets
+`max_completion_tokens` (default 65536, override `XAI_MAX_TOKENS`) so thinking
+tokens are not taken from the file JSON. The NewPush gateway is LiteLLM and
+rejects that field for `grok-4.6` unless the body also sends
+`allowed_openai_params: ["max_completion_tokens", "response_format"]`. Native
+`api.x.ai` does not get that proxy flag. The request also sets
+`response_format: { "type": "json_object" }`. Before that call, the writer reads
+each allow-listed file from the target repo at the base branch and puts the
+text in the prompt. Grok has no tools; a sentence about reading files is not
+a diff. A non-OK reply includes a short redacted body: the key sent on the
+request is removed before `sk-` and `Bearer` redaction and before the
+400-character slice. A reply whose visible answer has no JSON object fails
+closed and includes a short redacted preview. That failure is not retried.
+`reasoning_content` is not parsed. The virtual key is never sent to api.x.ai. See
+[`docs/tool-usages/newpush-ai-gateway.md`](../docs/tool-usages/newpush-ai-gateway.md).
 It opens the PR as `noemi-agent`. It refuses paths outside the plan,
 governance carve-outs, and secret-shaped content. It does not approve or
 merge. Tests inject the model and GitHub clients; they do not open live PRs.
@@ -165,8 +244,20 @@ reusable workflow prepares the envelope; opening a PR is a separate
 producer invocation with `AGENT_GH_TOKEN` (or `AGENT_GH_TOKEN_CLASSIC` +
 `AGENT_GH_USE_CLASSIC=1`) and `XAI_API_KEY` or `AI_GW_API_TOKEN`+`AI_GW_BASE_URL`.
 Stage D delegates to the fleet reviewer when a PR URL exists
-(`coding-loop/stage-d.js`). `--post` uses `CONDUCTOR_APP_ID` +
-`CONDUCTOR_APP_PRIVATE_KEY` (or `CONDUCTOR_GH_TOKEN`). See
+(`coding-loop/stage-d.js`). The reviewer reads
+`agents/coding/sentinel/compliance.md` from this blueprint, next to the
+Sentinel persona, and applies it as the compliance gate after premise,
+framing, and code. The file is guidance for the EU AI Act and the GDPR, not
+a legal opinion. The deploying organization chooses whether to follow it: a
+merge that fails only that gate does not open a calibration entry. A duty
+that applies only to one organization is recorded in that organization's
+agents repository.
+Issue reads and `--post` use the same conductor
+token: `CONDUCTOR_APP_ID` + `CONDUCTOR_APP_PRIVATE_KEY` (or
+`CONDUCTOR_GH_TOKEN`). `--post` posts the conductor comment. The label is
+separate: when a conductor token is present the loop keeps one `noemi:*`
+label, and an opened pull request is `noemi:review` even without `--post`.
+See
 [`docs/MACHINE_IDENTITY.md`](../docs/MACHINE_IDENTITY.md) for the App.
 
 ## Gemini B′: laptop ADC vs Actions WIF

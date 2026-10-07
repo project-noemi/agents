@@ -1,7 +1,6 @@
+import { readFile } from "node:fs/promises";
 import { parseBlueprint } from "./parse.js";
 import { validateBlueprint } from "./validate.js";
-import { loadModelPolicy } from "./config.js";
-import { loadFile } from "./loaders/file.js";
 import { runMock } from "./providers/mock.js";
 import { runGemini } from "./providers/gemini.js";
 import { runXai } from "./providers/xai.js";
@@ -25,21 +24,22 @@ function toCompileError(err) {
 const describeFailure = (e) => (Number.isInteger(e.status) ? `HTTP ${e.status}` : e.name);
 
 /**
- * Compile persona Markdown from any source (file today; http/registry in Sprint 5).
- * Pure with respect to I/O: no filesystem, no stderr. Callers (CLI, Studio) decide
- * how to log.
- * @param {string} markdown
- * @param {import("./ir.js").SourceRef} source
+ * @param {string} filePath
  * @param {{ prompt?: string, provider?: string }} [opts]
  */
-export async function compileSource(markdown, source, opts = {}) {
-  const ir = parseBlueprint(markdown, { source, modelPolicy: loadModelPolicy() });
+export async function compileFile(filePath, opts = {}) {
+  const markdown = await readFile(filePath, "utf8");
+
+  const ir = parseBlueprint(markdown, {
+    source: { kind: "file", ref: filePath },
+  });
 
   const errors = validateBlueprint(ir);
   if (errors.length) {
-    return { ok: false, stage: "validate", errors };
+    return { ok: false, errors };
   }
 
+  // Read the preferred model and fallback order from the IR.
   const preferred = opts.provider ?? ir.modelPolicy.preferred ?? "mock";
   const fallbacks = ir.modelPolicy.fallbacks ?? [];
 
@@ -50,12 +50,12 @@ export async function compileSource(markdown, source, opts = {}) {
   };
 
   if (!isRegisteredProvider(providers, preferred)) {
-    return { ok: false, stage: "provider", errors: [{ code: "PROVIDER", path: "provider",
+    return { ok: false, errors: [{ code: "PROVIDER", path: "provider",
       message: `Unknown provider "${preferred}". Known: ${Object.keys(providers).join(", ")}.` }] };
   }
 
   const fallbacksUsed = [];
-
+  
   try {
     const run = await runWithFallbacks({
       preferred, fallbacks, providers,
@@ -66,21 +66,6 @@ export async function compileSource(markdown, source, opts = {}) {
     return { ok: true, ir, run: { ...run, fallbacks: fallbacksUsed } };
   } catch (err) {
     if (!isProviderError(err)) throw err;   // real bugs still throw
-    return { ok: false, stage: "provider", errors: [toCompileError(err)], fallbacks: fallbacksUsed };
+    return { ok: false, errors: [toCompileError(err)] };
   }
-}
-
-/**
- * @param {string} filePath
- * @param {{ prompt?: string, provider?: string }} [opts]
- */
-export async function compileFile(filePath, opts = {}) {
-  let loaded;
-  try {
-    loaded = await loadFile(filePath);
-  } catch (err) {
-    if (err.code !== "LOAD") throw err;
-    return { ok: false, stage: "load", errors: [{ code: "LOAD", message: err.message, path: filePath }] };
-  }
-  return compileSource(loaded.markdown, loaded.source, opts);
 }

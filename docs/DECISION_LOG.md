@@ -1465,19 +1465,31 @@
 - **Context:** Advisory code review on #596: `Refuse an anonymous pull` ran after `push: true`, so a public clone package would receive new layers before the job failed.
 - **Impact:** `.github/workflows/publish-gmail-ea.yml`.
 
-## [2026-10-06-0001] Review Reads EU AI Act and GDPR Guidance Beside Sentinel
+## [2026-10-06-0001] AI Model Baseline — Gemini 3.8 Flash (Supersedes [2026-08-13-0002])
+
+- **Decision:** Replace the Gemini Flash baseline in Decision [2026-08-13-0002] with **Gemini 3.8 Flash** (`models/gemini-3.8-flash`, `gemini-3.8-flash` API identifier). Reference workflows, lab examples, smoke tests, Python examples, and the `AGENTS.md` mandate now pin that SKU. The resolver (`scripts/resolve-gemini-model.js`) is extended to discover the highest-generation stable Flash model at runtime when requested (via `--floor flash` or programmatically), with a `gemini-3.8-flash` pinned fallback. **Pro** selections are unchanged: the AI reviewer stays on its Pro-preview discovery path (currently resolving `gemini-3.1-pro-preview`), and `.github/workflows/ai-review.yml` flags remain as they are.
+- **Context:** Product Owner (Big B) directed this upgrade via Autotask T20261006.0004. Gemini 3.8 Flash has been GA since 2026-09-02 (no `-preview` suffix). Google's `gemini-flash-latest` alias still points to 3.5, so this is an explicit pin ahead of the alias. The resolver's Flash support was incomplete: `meetsFloor` used `>=`, allowing a Flash request to return Pro; tier detection lacked an exact `flash` name requirement and would misclassify `gemini-3.8-live`, `*-transcribe`, and `*-translate` as Flash; `parseFloat` version parsing ranked 3.10 below 3.8; and no stable-over-preview preference existed for Flash. These are fixed.
+- **Impact:** 
+  - **Policy:** `AGENTS.md` "AI Model Baseline" updated to declare `gemini-3.8-flash` (line ~53).
+  - **Code:** `guardian-layer/guardian_evaluator.py:64` (`DEFAULT_MODEL`), `examples/docker/agent.py:34`, `examples/red-team-gauntlet/flawed_fleet.py:42` updated to pin `gemini-3.8-flash`.
+  - **Workflows:** n8n workflow JSONs (`n8n-templates/layer-b-labs/customer-inquiry-router.json`, `examples/workflows/rfp-responder.json`, `docs/n8n-workflows/ai-email-triage.json`, `docs/n8n-workflows/lab-2-1-json-structuring-validation.json`, `docs/n8n-workflows/lab-2-2-iterative-workflow-automation.json`) updated to pin `models/gemini-3.8-flash`.
+  - **Tests:** `tests/examples-smoke.test.js:373` regex updated to match `gemini-3\.8-flash`.
+  - **Resolver:** `scripts/resolve-gemini-model.js` extended with `resolveFlash()` to discover the highest stable Flash (preferring stable over preview, numeric version comparison, excludes `live`/`transcribe`/`translate` variants, requires `flash` in name); `meetsFloor()` rewritten to enforce exact tier match; new test cases added.
+  - **Docs:** `REQUIREMENTS.md`, `docs/AI_REVIEW_GOVERNANCE.md`, `docs/reviews/CALIBRATION.md`, `docs/examples/cross-model-review-setup.md`, `docs/n8n-workflows/README.md` updated to reference the 3.8 Flash baseline. Historical entries in `DECISION_LOG.md` that named 3.6 Flash are not rewritten. Synthetic version fixtures in `tests/review-runner.test.js` and dry-run samples in `scripts/resolve-gemini-model.js` remain illustrative and are not updated.
+
+## [2026-10-06-0002] Review Reads EU AI Act and GDPR Guidance Beside Sentinel
 
 - **Decision:** `agents/coding/sentinel/compliance.md` is loaded with the Sentinel spec from this blueprint, never from the repository under review. The reviewer may cite it on an existing gate when a diff clearly conflicts with a duty it names. It is not a fourth gate, not a legal opinion, and not a finding merely because the organization is outside the European Union. The file is not an agent persona. A duty that belongs to one organization stays in that organization's agents repository.
 - **Context:** Operators asked for a simple compliance source the review can read, following the European AI Act and the GDPR, as guidance rather than a mandate.
 - **Impact:** `agents/coding/sentinel/compliance.md`, `scripts/review-pr.js`, `scripts/context_helpers.js`, `coding-loop/README.md`, `tests/review-runner.test.js`, `tests/contracts.test.js`.
 
-## [2026-10-06-0002] A Compliance-Only Override Needs No Calibration Entry
+## [2026-10-06-0003] A Compliance-Only Override Needs No Calibration Entry
 
 - **Decision:** The review runs a fourth gate, `compliance`, after premise, framing, and code. Its source is `agents/coding/sentinel/compliance.md`. A clear conflict fails that gate. Merging a pull request whose latest verdict failed only `compliance` does not open a calibration entry. The deploying organization decides whether to comply. A premise, framing, or code failure still opens one.
 - **Context:** Operators asked for the compliance source to be a real gate, and for an override of that gate to stay at the organization's discretion.
 - **Impact:** `scripts/review-pr.js`, `scripts/calibration-watch.js`, `agents/coding/sentinel/compliance.md`, `agents/engineering/pr-reviewer.md`, `coding-loop/README.md`, `tests/review-runner.test.js`, `tests/calibration-watch.test.js`.
 
-## [2026-10-06-0003] The Reviewer Halts When the Diff Changes Review Behavior
+## [2026-10-06-0004] The Reviewer Halts When the Diff Changes Review Behavior
 
 - **Decision:** A diff that touches the review runner, the calibration watch, the Sentinel spec, the compliance guidance, or the reviewer persona is a governance carve-out. The reviewer halts and a human reviews it. The review job checks out `project-noemi/agents` at `main` unless a caller passes another tooling ref, so this halt applies to later pull requests once the change is on that ref.
 - **Context:** Pull request #602 changed how review and calibration work. The reviewer posted findings on that change instead of recusing. The operator merged it for that reason.

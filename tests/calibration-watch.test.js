@@ -226,3 +226,44 @@ test('workflow wiring: the run step passes both producer tokens into the watch',
     assert.match(executable, /AGENT_GH_TOKEN_CLASSIC="\$AGENT_GH_TOKEN_CLASSIC"/);
     assert.match(executable, /node scripts\/calibration-watch\.js/);
 });
+
+test('generated row must not contain "approve" or "merge" as instructions', () => {
+    const row = buildCalibrationRow({
+        date: '2026-10-06', prNumber: 999,
+        verdict: { gates: ['premise'], model: 'gemini-3.6-flash', claim: 'test finding' },
+    });
+    // The row should not instruct the user to approve or merge
+    assert.doesNotMatch(row, /\bapprove\b/i, 'generated row must not contain "approve"');
+    assert.doesNotMatch(row, /\bmerge\b/i, 'generated row must not contain "merge"');
+});
+
+test('PR body must not contain "approve" or "merge" as instructions', () => {
+    // Extract the body template from the script
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'calibration-watch.js'), 'utf8');
+    // Find the body array construction (between "const body = [" and "].join")
+    const bodyMatch = src.match(/const body = \[([\s\S]*?)\]\.join\(/);
+    assert.ok(bodyMatch, 'PR body template should exist in script');
+    const bodyTemplate = bodyMatch[1];
+    // Check for approval/merge instructions (case-insensitive)
+    // Allow the word "merged" in past tense (describing what happened)
+    // but not "merge" as an instruction or "approve"/"approving"
+    assert.doesNotMatch(bodyTemplate, /\bapprove\b/i, 'PR body template must not contain "approve"');
+    assert.doesNotMatch(bodyTemplate, /\bapproving\b/i, 'PR body template must not contain "approving"');
+    // "merged" in past tense is OK (it describes the event), but not "merge" as a command
+    assert.doesNotMatch(bodyTemplate, /\bmerge\b(?!d)/i, 'PR body template must not contain "merge" as an instruction');
+});
+
+test('PR title must not contain "approve" or "merge" as instructions', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'calibration-watch.js'), 'utf8');
+    // Find the title in the gh pr create call
+    const titleMatch = src.match(/--title',\s*[`'"](.*?)[`'"]/);
+    assert.ok(titleMatch, 'PR title template should exist in script');
+    const titleTemplate = titleMatch[1];
+    // "merged" in past tense is OK, but not "merge" as a command or "approve"
+    assert.doesNotMatch(titleTemplate, /\bapprove\b/i, 'PR title must not contain "approve"');
+    assert.doesNotMatch(titleTemplate, /\bmerge\b(?!d)/i, 'PR title must not contain "merge" as an instruction');
+});

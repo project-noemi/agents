@@ -349,12 +349,13 @@ test('selection: Pro is elevated when a stable Pro exists in the newest generati
 });
 
 test('selection: prefer_pro_tier falls back to an older stable Pro and reports the cost', () => {
-    const live = ['gemini-3.6-flash', 'gemini-2.5-pro']
+    const live = ['gemini-3.8-flash', 'gemini-2.5-pro']
         .map((n) => `publishers/google/models/${n}`);
     const { chosen, tradeoff } = selectModel(live, { floor: 'flash', preferPro: true });
     assert.equal(chosen.name, 'gemini-2.5-pro');
-    assert.match(tradeoff, /prefer_pro_tier selected gemini-2\.5-pro \(gen 2\.5\)/);
-    assert.match(tradeoff, /gemini-3\.6-flash \(gen 3\.6\)/);
+    // Decision [2026-10-06-0001]: generation now uses numeric major.minor (2.5 -> 2.05, 3.8 -> 3.08)
+    assert.match(tradeoff, /prefer_pro_tier selected gemini-2\.5-pro \(gen 2\.05\)/);
+    assert.match(tradeoff, /gemini-3\.8-flash \(gen 3\.08\)/);
 });
 
 test('pin: empty and auto restore discovery', () => {
@@ -440,20 +441,93 @@ test('classify: non-text modalities are rejected outright', () => {
     // Found only by ranking the live catalogue: image/tts/embedding variants
     // still contain "pro" or "flash", so a tier rank would select them to
     // review code. 18 of 25 published Gemini models are wrong for this job.
+    // Decision [2026-10-06-0001]: also exclude live/transcribe/translate.
     for (const n of [
         'gemini-3-pro-image', 'gemini-2.5-pro-tts', 'gemini-embedding-001',
         'gemini-live-2.5-flash-native-audio', 'gemini-robotics-er-2-preview-info',
         'gemini-2.5-computer-use-preview-10-2025', 'gemini-omni-flash-preview',
-        'gemini-3.1-flash-image',
+        'gemini-3.1-flash-image', 'gemini-3.8-live', 'gemini-3.8-flash-transcribe',
+        'gemini-3.8-flash-translate',
     ]) {
         assert.equal(classify(`publishers/google/models/${n}`), null, `${n} must be rejected`);
     }
 });
 
 test('classify: legitimate text models survive the modality filter', () => {
-    for (const n of ['gemini-3.6-flash', 'gemini-2.5-pro', 'gemini-3.5-flash-lite']) {
+    for (const n of ['gemini-3.8-flash', 'gemini-2.5-pro', 'gemini-3.5-flash-lite']) {
         assert.ok(classify(`publishers/google/models/${n}`), `${n} must be kept`);
     }
+});
+
+test('classify: version comparison is numeric (Decision [2026-10-06-0001])', () => {
+    // parseFloat ranked 3.10 below 3.8; numeric major.minor fixes this
+    const v38 = classify('models/gemini-3.8-flash');
+    const v310 = classify('models/gemini-3.10-flash');
+    assert.ok(v310.generation > v38.generation, '3.10 must rank above 3.8');
+    assert.equal(v38.generation, 3.08);
+    assert.equal(v310.generation, 3.10);
+});
+
+test('meetsFloor: >= semantics for backward compatibility (Decision [2026-10-06-0001])', () => {
+    // Pro review selection uses >= so preferPro can fall back across generations
+    const flash = classify('models/gemini-3.8-flash');
+    const pro = classify('models/gemini-3.1-pro');
+    assert.ok(meetsFloor(flash, 'flash'), 'flash model meets flash floor');
+    assert.ok(meetsFloor(pro, 'flash'), 'pro model meets flash floor with >=');
+    assert.ok(meetsFloor(pro, 'pro'), 'pro model meets pro floor');
+    assert.ok(!meetsFloor(flash, 'pro'), 'flash model does not meet pro floor');
+});
+
+test('resolveFlash: only selects flash tier, not pro (Decision [2026-10-06-0001])', () => {
+    // Flash-specific resolution filters to exact tier to prevent silent upgrade
+    const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = [
+        'models/gemini-3.8-flash',
+        'models/gemini-3.10-pro', // Higher generation Pro should be ignored
+    ];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, 'models/gemini-3.8-flash');
+});
+
+test('classify: tier detection requires explicit marker (Decision [2026-10-06-0001])', () => {
+    // Models without "flash" or "pro" in the name return null
+    const noTier = classify('models/gemini-3.8');
+    assert.equal(noTier, null, 'model without tier marker must be rejected');
+});
+
+test('resolveFlash: selects highest stable flash', () => {
+    const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = [
+        'models/gemini-2.5-flash',
+        'models/gemini-3.6-flash',
+        'models/gemini-3.8-flash',
+        'models/gemini-3.10-flash',
+        'models/gemini-3.8-flash-preview',
+        'models/gemini-3.1-pro',
+    ];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, 'models/gemini-3.10-flash');
+    assert.equal(result.tier, 'flash');
+    assert.equal(result.generation, 3.10);
+});
+
+test('resolveFlash: prefers stable over preview', () => {
+    const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = [
+        'models/gemini-3.8-flash',
+        'models/gemini-3.10-flash-preview',
+    ];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, 'models/gemini-3.8-flash');
+});
+
+test('resolveFlash: falls back to pinned baseline when no flash in catalogue', () => {
+    const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = ['models/gemini-3.1-pro', 'models/gemini-2.5-pro'];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, 'models/gemini-3.8-flash');
+    assert.ok(result.fallback, 'fallback reason must be present');
+    assert.match(result.fallback, /no flash models/);
 });
 
 test('selection: an image model never wins even when it is the newest Pro', () => {
@@ -468,7 +542,7 @@ test('model ranking: non-Gemini models are ignored', () => {
 });
 
 test('default review floor is pro — a flash-only catalogue is refused', () => {
-    const live = ['gemini-3.6-flash', 'gemini-3.5-flash']
+    const live = ['gemini-3.8-flash', 'gemini-3.5-flash']
         .map((n) => `publishers/google/models/${n}`);
     assert.equal(selectModel(live).chosen, null);
     assert.ok(selectModel(live, { floor: 'flash' }).chosen);
@@ -486,7 +560,7 @@ test('Sentinel spec loads from this tooling tree, not the reviewed repo', () => 
 });
 
 test('model floor: a flash model does not satisfy a pro floor', () => {
-    const flash = classify('models/gemini-3.6-flash');
+    const flash = classify('models/gemini-3.8-flash');
     const pro = classify('models/gemini-2.5-pro');
     assert.equal(meetsFloor(pro, 'pro'), true);
     assert.equal(meetsFloor(flash, 'pro'), false);

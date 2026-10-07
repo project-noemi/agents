@@ -104,7 +104,7 @@ function buildCalibrationRow({ date, prNumber, verdict }) {
     ? `${verdict.gates.join('+')} fail: ${clean(verdict.claim)}`
     : `${verdict.gates.join('+')} gate failed`;
   return `| ${date} | #${prNumber} | ${clean(verdict.model)} | ${verdict.gates[0] || '?'} `
-    + `| ${said} | **merged over** | PENDING-HUMAN | PENDING-HUMAN — edit this row, then approve |`;
+    + `| ${said} | **merged over** | PENDING-HUMAN | PENDING-HUMAN — a human fills Direction and Reason |`;
 }
 
 /** Idempotence: an existing row or open entry-branch for this PR means skip. */
@@ -292,7 +292,7 @@ async function main() {
     `PR #${prNumber} was **merged over a failing review** `
       + `(${verdict.gates.join(', ')} ❌, model \`${verdict.model}\`).`,
     '',
-    'This entry is the phase-2 evidence the governance framework requires. Before approving:',
+    'This entry is the phase-2 evidence the governance framework requires. To complete the entry:',
     '',
     '1. Edit the row\'s **Direction** cell: `reviewer too strict` / `reviewer too lenient` / `reviewer wrong domain` / `reviewer misinterpreted`.',
     '2. Replace the **Reason** cell with one concrete sentence.',

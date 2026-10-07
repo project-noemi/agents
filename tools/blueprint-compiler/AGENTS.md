@@ -33,10 +33,8 @@ Node.js 24 is the baseline. Conventional commits: `feat(compiler)`, `fix(validat
 
 - Input is a NoéMI Markdown persona (`docs/AGENT_TEMPLATE.md` headings).
 - Output of Sprint 1 is a Blueprint IR plus a mock completion, not a live model call.
-- Missing, empty, or misplaced Refusal Criteria is a hard error (`MISSING_REFUSAL`). A prose mention does not count.
-- `parse.js` is pure. Environment is read only in `config.js` (model policy) and the provider modules.
+- Missing Refusal Criteria is a hard error.
 - Extract `**Skill:** \`category/name\`` references onto `ir.skills`.
-- Extract `**MCP:** \`slug\`` references onto `ir.mcp` and the `### Refusal Criteria` body onto `ir.refusalCriteria`. Slugs are stored raw; safety checks belong to the resolver.
 - Do not target `newpush/newpush-mastra-orchestration`.
 - Do not add Mastra or provider SDKs to the repository root `package.json`.
 

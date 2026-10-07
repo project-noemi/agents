@@ -7,7 +7,6 @@
  * @property {string} domain
  * @property {string} title
  * @property {Record<string, string>} sections
- * @property {string} refusalCriteria  trimmed body of ### Refusal Criteria; non-empty on a valid blueprint
  * @property {string[]} skills
  * @property {string[]} mcp
  * @property {{ preferred: string, fallbacks: string[] }} modelPolicy

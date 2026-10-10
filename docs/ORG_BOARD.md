@@ -112,6 +112,19 @@ Builders add a row to the **[Bot Intake Sheet](https://docs.google.com/spreadshe
 4. The bot is moved onto the organization board grid
 5. The bot registers with Executive Office by message
 
+### Pending Intake Entries
+
+The following entries are on the intake sheet awaiting owner approval:
+
+**Time Tracking Assistant**
+- **Status**: Pending owner approval. Not built. No bot ID assigned.
+- **Purpose**: Each day, review each person's work and propose estimated hours spent, based on their activity in email, the ticketing system (Autotask), and GitHub. People confirm or adjust each proposal. Addresses incomplete time entries in the ticketing system.
+- **Proposed seat**: Division 1 Communications, Department 1 Personnel, alongside the HR processing and identity/onboarding bots. Alternatives noted on the intake sheet: Department 9 Materiel and admin, Department 21 Knowledge and analysis.
+- **What it can touch**: Read-only access to email, Autotask, and GitHub activity. Creates Autotask time entries only after the person confirms.
+- **Sends messages**: Nothing is sent without approval (draft-only).
+- **Overlaps**: None identified. Coordinates with the HR processing bot.
+- **Conditions before any build**: Owner approval, and a privacy review of employee-activity monitoring (Hungary and US) with the legal admin bot.
+
 ## 4. Handoff Convention
 
 All work is routed through Executive Office using a **fixed message format**. This ensures consistency and traceability.

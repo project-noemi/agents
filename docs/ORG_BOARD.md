@@ -1,14 +1,10 @@
 # Organization Board — GrokBot and Bot Coordination
 
-This document explains how the NewPush bot system works with GrokBot, organized around a Hubbard-style organization board structure. The system routes work to bots by role, with Executive Office acting as the central coordination hub.
-
-## Status
-
-Department names are a **DRAFT** and await verification by the owner. The contractor view and bot intake sheets are templates and may evolve as the system grows.
+This document explains how the NewPush bot system works with GrokBot, organized around a 7-division, 21-department organization board. The system routes work to bots by role, with Executive Office acting as the central coordination hub.
 
 ## 1. The Organization Board
 
-The bot fleet is organized into **7 divisions** and **21 departments**, following a Hubbard-style organization board layout:
+The bot fleet is organized into **7 divisions** and **21 departments**:
 
 ### Division 1: Communications (Departments 1–3)
 - Dept 1: Personnel
@@ -86,7 +82,7 @@ Work escalates in the following order:
 1. Bot (attempts to complete the task)
 2. Department lead bot (if the bot cannot complete it)
 3. Executive Office (if the department cannot resolve it)
-4. The user (Balázs) — final escalation point
+4. The owner — final escalation point
 
 **User approval is required for:**
 - Money (spending, commitments)
@@ -112,7 +108,7 @@ Builders add a row to the **[Bot Intake Sheet](https://docs.google.com/spreadshe
 
 1. Builder adds the bot to the intake sheet
 2. Executive Office checks for conflicts with existing bots
-3. The user (Balázs) approves the bot
+3. The owner approves the bot
 4. The bot is moved onto the organization board grid
 5. The bot registers with Executive Office by message
 
@@ -151,27 +147,7 @@ All bots follow a common set of rules, documented in a **shared skill** that all
 
 The shared skill is part of the bot specification library and is loaded on demand by each bot.
 
-## 6. Department 1: Identity and Onboarding Bot (PLANNED)
-
-The **Department 1 Identity and Onboarding Bot** is **APPROVED but NOT BUILT yet**.
-
-### Purpose
-
-This bot will handle identity and onboarding workflows for new team members and contractors.
-
-### Planned Capabilities
-
-- Prepares NewPush and NewPush-free identity account requests for approval
-- Records the person's seat on the organization board sheet
-- Drafts a note to the department lead
-- **Never creates accounts or changes access without approval**
-- Handles disabling accounts first on departure
-
-### Status
-
-This bot is in the planning phase. The specification has been approved, but implementation has not started.
-
-## 7. Cursor as the Shared Team Environment
+## 6. Cursor as the Shared Team Environment
 
 All GrokBot builders work in **Cursor** as the shared team environment.
 

@@ -229,6 +229,10 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 → [CONTRIBUTING.md](CONTRIBUTING.md)
 (Contribution workflow, agent and skill standards)
 
+**Operations / Bot Coordination**
+→ [docs/ORG_BOARD.md](docs/ORG_BOARD.md)
+(Organization board structure and bot coordination system)
+
 **Visual Orientation**
 → [docs/visuals/README.md](docs/visuals/README.md)
 (System maps and flows)

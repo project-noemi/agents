@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "contract": "Each question must surface source in the top search hits, and those hits must contain mustMention.",
+  "mcp": "https://mcp.noemi.newpush.com/mcp",
+  "questions": [
+    {
+      "id": "what-is-noemi",
+      "question": "What is Project NoéMI?",
+      "query": "What is Project NoéMI",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["global AI fluency accelerator", "Virtual Workforce"]
+    },
+    {
+      "id": "three-pillars",
+      "question": "What are the three pillars?",
+      "query": "Security First Then Speed Architecture Over Tools Replacement Trap",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Security First, Then Speed", "Architecture Over Tools", "Replacement Trap"]
+    },
+    {
+      "id": "phase-0",
+      "question": "What is Phase 0 security?",
+      "query": "Phase 0 security baseline before agents",
+      "source": "docs/PHASE_ZERO_SECURITY_BASELINE.md",
+      "mustMention": ["Phase 0 Security Baseline"]
+    },
+    {
+      "id": "four-ds",
+      "question": "What are the four Ds of AI fluency?",
+      "query": "four Ds of AI fluency delegation description discernment diligence",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["DELEGATION", "DESCRIPTION", "DISCERNMENT", "DILIGENCE"]
+    },
+    {
+      "id": "methodology",
+      "question": "How is the 4D Framework applied in the methodology?",
+      "query": "4D Framework institutional orchestration Montessori Prepared Digital Environment",
+      "source": "docs/METHODOLOGY.md",
+      "mustMention": ["Montessori", "Prepared Digital Environment"]
+    },
+    {
+      "id": "producer-reviewer",
+      "question": "What is producer–reviewer separation?",
+      "query": "producer reviewer separation",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Producer", "Reviewer"]
+    },
+    {
+      "id": "shadow-ai",
+      "question": "What is Shadow AI?",
+      "query": "Shadow AI",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Shadow AI"]
+    },
+    {
+      "id": "equilibrium",
+      "question": "What is the 1:50 Equilibrium?",
+      "query": "1:50 Equilibrium",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["1:50", "Equilibrium"]
+    },
+    {
+      "id": "governance",
+      "question": "How are agents governed before deployment?",
+      "query": "AI TRiSM alignment governance",
+      "source": "docs/GOVERNANCE.md",
+      "mustMention": ["AI TRiSM"]
+    },
+    {
+      "id": "refusal",
+      "question": "What is the Refusal Principle?",
+      "query": "refusal principle",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Refusal Principle"]
+    },
+    {
+      "id": "feynman",
+      "question": "What is the Feynman Requirement?",
+      "query": "Feynman requirement",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Feynman"]
+    },
+    {
+      "id": "governed-loop",
+      "question": "What is the governed-loop skill?",
+      "query": "governed loop skill",
+      "source": "skills-dist/governed-loop/SKILL.md",
+      "mustMention": ["governed-loop"]
+    }
+  ]
+}

@@ -181,6 +181,11 @@ function discoverAgents(baseDir, prefix = '') {
             continue;
         }
 
+        // compliance.md sits beside a persona as review guidance. It is not an agent.
+        if (entry.name === 'compliance.md') {
+            continue;
+        }
+
         const relativePath = path.join(prefix, entry.name);
         const content = fs.readFileSync(fullPath, 'utf8');
         const titleMatch = content.match(/^#\s+(.+)/m);

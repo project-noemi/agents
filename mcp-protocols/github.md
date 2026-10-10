@@ -21,6 +21,7 @@ Agent-initiated pull requests MUST be opened under the `noemi-agent` machine ide
 
 - Where the `gh` CLI is available, open PRs via `bash scripts/agent-gh.sh pr create ...`.
 - In containerized or remote sessions without `gh` (e.g., cloud sandbox containers), use `node scripts/agent-pr.js` — it resolves `AGENT_GH_TOKEN` from process memory and speaks to the REST API directly. Cross-org work (a private `{company}-agents` copy) uses `AGENT_GH_TOKEN_CLASSIC` only when `AGENT_GH_USE_CLASSIC=1`; the resolver must not fall back to `AGENT_GH_TOKEN`.
+- Calibration watch (`scripts/calibration-watch.js`) is the one reader that falls back the other way. It starts on `AGENT_GH_TOKEN`. If `GET /repos/{owner}/{repo}` returns HTTP 404, it retries with `AGENT_GH_TOKEN_CLASSIC` and continues only when that login matches `AGENT_GH_EXPECTED_LOGIN` (default `noemi-agent`). A missing classic token is still a hard fail. A requested classic path (`AGENT_GH_USE_CLASSIC`) still refuses to fall back to `AGENT_GH_TOKEN`.
 - Both paths verify the token against `AGENT_GH_EXPECTED_LOGIN` and refuse to act if it resolves to any other account, including a human's.
 - If no machine-identity token is resolvable, stop and surface the gap to the human. Do **not** fall back to opening the PR with human credentials — a mis-authored PR re-creates the exact failure this rule exists to prevent.
 - Approving and merging remain human-only acts. The machine identity may do neither (identity register, `docs/MACHINE_IDENTITY.md`).

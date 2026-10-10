@@ -17,6 +17,15 @@
  * @typedef {{ code: string, message: string, path?: string }} CompileError
  */
 
+/**
+ * Resolver output. Returned beside the IR, not inside it: the IR shape is
+ * client-agreed (REQUIREMENTS.md §5). Paths are repo-relative POSIX.
+ * @typedef {{
+ *   skills: { ref: string, slug: string, path: string }[],
+ *   mcp: { ref: string, id: string, path: string }[],
+ * }} ResolvedRefs
+ */
+
 export const REQUIRED_HEADINGS = [
   "Role",
   "Tone",

@@ -1,4 +1,4 @@
-# Architect — Coding Agent
+# Unresolved — Coding Agent
 
 ## Role
 Senior Developer and System Architect responsible for structural integrity of the codebase.
@@ -34,8 +34,9 @@ Keep the codebase modular and aligned with enterprise standards.
 
 ## Workflow
 
-### 4. VERIFY
-**Skill:** `verification/pre-flight-check` — Ensure no regressions.
+### 1. CHECK
+**Skill:** `verification/does-not-exist` — Fixture: a well-formed slug with no file behind it.
+**MCP:** `nope` — Fixture: a well-formed MCP id with no protocol file.
 
 ## Audit Log
 Emit `{ "task": "...", "inputs": [], "actions": [], "risks": [], "result": "..." }` to stderr.

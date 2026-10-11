@@ -229,6 +229,10 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 → [CONTRIBUTING.md](CONTRIBUTING.md)
 (Contribution workflow, agent and skill standards)
 
+**GrokBot Team Management**
+→ [docs/ORG_BOARD.md](docs/ORG_BOARD.md)
+(Canonical reference: bot roles, access, intake, coordination, repository structure)
+
 **Visual Orientation**
 → [docs/visuals/README.md](docs/visuals/README.md)
 (System maps and flows)

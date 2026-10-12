@@ -1,3 +1,5 @@
+import { buildAgentContext } from "./context.js";
+
 /**
  * Sprint 2 provider. Calls Gemini through NewPush's generative AI gateway
  * (Google-native surface: generateContent) with a virtual key resolved from
@@ -61,12 +63,7 @@ export async function runGemini(ir, prompt) {
 
   const gateway = (process.env.AI_GW_BASE_URL || DEFAULT_GATEWAY).replace(/\/+$/, "");
   const model = (process.env.GEMINI_MODEL || DEFAULT_MODEL).replace(/^google\//, "");
-  const role = (ir.sections.Role ?? "").split("\n")[0];
-  const context = [
-    `You are compiling and running the NoéMI persona "${ir.title}".`,
-    `Role: ${role}`,
-    `Skills: ${ir.skills.join(", ") || "(none)"}`,
-  ].join("\n");
+  const context = buildAgentContext(ir);
 
   const started = Date.now();
   const url = `${gateway}/google/v1beta/models/${model}:generateContent`;

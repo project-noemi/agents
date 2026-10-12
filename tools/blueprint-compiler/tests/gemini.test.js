@@ -191,3 +191,26 @@ test("a timeout propagates as TimeoutError (fallback-eligible)", async () => {
     })
   );
 });
+
+test("the request includes Rules & Constraints and Refusal Criteria from the persona", async () => {
+  const fake = recordFetch(async () => jsonResponse(geminiBody("ok")));
+  const fullIr = {
+    id: "coding/architect",
+    title: "Architect — Coding Agent",
+    sections: {
+      Role: "Keep structure sound.\nReview diffs for drift.",
+      "Rules & Constraints": "Never commit failing tests.\nRefusal Criteria are below.",
+      "Refusal Criteria": "Will not override safety checks.",
+    },
+    skills: ["verification/pre-flight-check"],
+  };
+  await withEnv({ AI_GW_API_KEY: "test-key" }, () =>
+    withFetch(fake, async () => {
+      await runGemini(fullIr, "hello");
+      const body = JSON.parse(fake.calls[0].init.body);
+      const userText = body.contents[0].parts[0].text;
+      assert.match(userText, /Rules & Constraints: Never commit failing tests/);
+      assert.match(userText, /Refusal Criteria: Will not override safety checks/);
+    })
+  );
+});

@@ -1,3 +1,5 @@
+import { buildAgentContext } from "./context.js";
+
 /**
  * Sprint 2 provider. Calls xAI (Grok) through NewPush's generative AI
  * gateway (OpenAI-compatible surface) with a virtual key resolved from
@@ -63,12 +65,7 @@ export async function runXai(ir, prompt) {
   // the gateway rejects bare ids on its OpenAI surface.
   const configured = process.env.XAI_MODEL || DEFAULT_MODEL;
   const model = configured.startsWith("xai/") ? configured : `xai/${configured}`;
-  const role = (ir.sections.Role ?? "").split("\n")[0];
-  const context = [
-    `You are compiling and running the NoéMI persona "${ir.title}".`,
-    `Role: ${role}`,
-    `Skills: ${ir.skills.join(", ") || "(none)"}`,
-  ].join("\n");
+  const context = buildAgentContext(ir);
 
   const started = Date.now();
   const url = `${gateway}/v1/chat/completions`;

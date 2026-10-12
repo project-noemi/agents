@@ -173,3 +173,26 @@ test("an empty completion yields empty output instead of throwing", async () => 
     })
   );
 });
+
+test("the request includes Rules & Constraints and Refusal Criteria from the persona", async () => {
+  const fake = recordFetch(async () => jsonResponse(xaiBody("ok")));
+  const fullIr = {
+    id: "coding/architect",
+    title: "Architect — Coding Agent",
+    sections: {
+      Role: "Keep structure sound.\nReview diffs for drift.",
+      "Rules & Constraints": "Never commit failing tests.\nRefusal Criteria are below.",
+      "Refusal Criteria": "Will not override safety checks.",
+    },
+    skills: ["verification/pre-flight-check"],
+  };
+  await withEnv({ AI_GW_API_KEY: "test-key" }, () =>
+    withFetch(fake, async () => {
+      await runXai(fullIr, "hello");
+      const body = JSON.parse(fake.calls[0].init.body);
+      const systemMessage = body.messages[0].content;
+      assert.match(systemMessage, /Rules & Constraints: Never commit failing tests/);
+      assert.match(systemMessage, /Refusal Criteria: Will not override safety checks/);
+    })
+  );
+});

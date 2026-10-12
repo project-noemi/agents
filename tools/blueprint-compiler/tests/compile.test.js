@@ -92,3 +92,85 @@ test("a misspelled preferred provider fails closed even when a fallback is confi
   });
 });
 
+test("parse handles __proto__ heading without crashing or polluting Object.prototype", () => {
+  const md = [
+    "# Test — Agent",
+    "",
+    "## Role",
+    "Test role",
+    "",
+    "## __proto__",
+    "Malicious content",
+    "",
+    "## Tone",
+    "Test tone",
+  ].join("\n");
+
+  const ir = parseBlueprint(md, {
+    source: { kind: "file", ref: "test.md" },
+  });
+
+  // Use bracket notation to access __proto__ as a regular property
+  assert.equal(ir.sections["__proto__"], "Malicious content");
+  // Verify Object.prototype was not polluted (Object.prototype.__proto__ is null, not undefined)
+  assert.equal(Object.prototype.__proto__, null);
+  assert.equal(ir.sections.Role, "Test role");
+  assert.equal(ir.sections.Tone, "Test tone");
+});
+
+test("parse handles constructor heading without crashing or polluting Object.prototype", () => {
+  const md = [
+    "# Test — Agent",
+    "",
+    "## Role",
+    "Test role",
+    "",
+    "## constructor",
+    "Malicious content",
+    "",
+    "## Tone",
+    "Test tone",
+  ].join("\n");
+
+  const ir = parseBlueprint(md, {
+    source: { kind: "file", ref: "test.md" },
+  });
+
+  assert.equal(ir.sections.constructor, "Malicious content");
+  assert.equal(typeof Object.prototype.constructor, "function");
+  assert.equal(ir.sections.Role, "Test role");
+  assert.equal(ir.sections.Tone, "Test tone");
+});
+
+test("parse handles multiple dangerous headings without crashing", () => {
+  const md = [
+    "# Test — Agent",
+    "",
+    "## Role",
+    "Test role",
+    "",
+    "## __proto__",
+    "First malicious",
+    "",
+    "## constructor",
+    "Second malicious",
+    "",
+    "## toString",
+    "Third malicious",
+    "",
+    "## Tone",
+    "Test tone",
+  ].join("\n");
+
+  const ir = parseBlueprint(md, {
+    source: { kind: "file", ref: "test.md" },
+  });
+
+  // Use bracket notation for __proto__ to avoid accessor behavior
+  assert.equal(ir.sections["__proto__"], "First malicious");
+  assert.equal(ir.sections.constructor, "Second malicious");
+  assert.equal(ir.sections.toString, "Third malicious");
+  assert.equal(ir.sections.Role, "Test role");
+  assert.equal(ir.sections.Tone, "Test tone");
+});
+

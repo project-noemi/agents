@@ -55,7 +55,7 @@ export function parseBlueprint(markdown, opts = {}) {
 
   let title = "";
   /** @type {Record<string, string[]>} */
-  const buckets = {};
+  const buckets = Object.create(null);
   let current = null;
 
   for (const line of lines) {
@@ -67,13 +67,15 @@ export function parseBlueprint(markdown, opts = {}) {
     const heading = line.match(SECTION);
     if (heading) {
       current = normalizeHeading(heading[1]);
-      if (!buckets[current]) buckets[current] = [];
+      if (!Object.hasOwn(buckets, current)) {
+        buckets[current] = [];
+      }
       continue;
     }
     if (current) buckets[current].push(line);
   }
 
-  const sections = {};
+  const sections = Object.create(null);
   for (const [key, bodyLines] of Object.entries(buckets)) {
     sections[key] = bodyLines.join("\n").trim();
   }

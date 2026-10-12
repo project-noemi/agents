@@ -1,9 +1,8 @@
 import { REQUIRED_HEADINGS } from "./ir.js";
 
 function hasRefusal(sections) {
-  if (sections["Refusal Criteria"]) return true;
   const rules = sections["Rules & Constraints"] ?? "";
-  return /refusal criteria/i.test(rules);
+  return /^###\s+Refusal Criteria\s*$/im.test(rules);
 }
 
 /**

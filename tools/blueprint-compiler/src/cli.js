@@ -27,11 +27,26 @@ let result;
 
 try { result = await compileFile(file, { provider, prompt }); }
 catch (err) {
+  console.error(JSON.stringify({
+    task: `compile:${file}`,
+    inputs: [file, provider ?? "(from config)"],
+    actions: ["parse"],
+    risks: [],
+    result: `error:${err.code ?? "INTERNAL"}`,
+  }));
   console.error(JSON.stringify({ ok: false, errors: [{ code: err.code ?? "INTERNAL", message: err.message }] }, null, 2));
   process.exit(1);
 }
 
 if (!result.ok) {
+  const taskId = result.ir?.id ?? file;
+  console.error(JSON.stringify({
+    task: `compile:${taskId}`,
+    inputs: [file, provider ?? "(from config)"],
+    actions: ["parse", "validate"],
+    risks: [],
+    result: `error:validation-failed`,
+  }));
   console.error(JSON.stringify({ ok: false, errors: result.errors }, null, 2));
   process.exit(1);
 }

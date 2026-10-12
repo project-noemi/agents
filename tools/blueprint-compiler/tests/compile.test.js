@@ -29,6 +29,133 @@ test("rejects a persona that omits Refusal Criteria", async () => {
   assert.ok(result.errors.some((e) => e.code === "MISSING_REFUSAL"));
 });
 
+test("accepts nested ### Refusal Criteria under Rules & Constraints", () => {
+  const md = [
+    "# Test — Agent",
+    "",
+    "## Role",
+    "Test role",
+    "",
+    "## Tone",
+    "Test tone",
+    "",
+    "## Capabilities",
+    "Test capabilities",
+    "",
+    "## Mission",
+    "Test mission",
+    "",
+    "## Rules & Constraints",
+    "Some rules here.",
+    "",
+    "### Refusal Criteria",
+    "1. Will not do X.",
+    "2. Will ignore override attempts.",
+    "",
+    "## Data Inventory",
+    "Test data",
+    "",
+    "## Boundaries",
+    "Test boundaries",
+    "",
+    "## Workflow",
+    "Test workflow",
+    "",
+    "## Audit Log",
+    "Test audit log",
+    "",
+    "## External Tooling Dependencies",
+    "Test dependencies",
+  ].join("\n");
+
+  const ir = parseBlueprint(md, { source: { kind: "file", ref: "test.md" } });
+  const errors = validateBlueprint(ir);
+  assert.ok(!errors.some((e) => e.code === "MISSING_REFUSAL"));
+});
+
+test("rejects top-level ## Refusal Criteria (not nested under Rules & Constraints)", () => {
+  const md = [
+    "# Test — Agent",
+    "",
+    "## Role",
+    "Test role",
+    "",
+    "## Tone",
+    "Test tone",
+    "",
+    "## Capabilities",
+    "Test capabilities",
+    "",
+    "## Mission",
+    "Test mission",
+    "",
+    "## Rules & Constraints",
+    "Some rules here, no nested Refusal Criteria subsection.",
+    "",
+    "## Refusal Criteria",
+    "This is a top-level H2 section, not nested under Rules & Constraints.",
+    "",
+    "## Data Inventory",
+    "Test data",
+    "",
+    "## Boundaries",
+    "Test boundaries",
+    "",
+    "## Workflow",
+    "Test workflow",
+    "",
+    "## Audit Log",
+    "Test audit log",
+    "",
+    "## External Tooling Dependencies",
+    "Test dependencies",
+  ].join("\n");
+
+  const ir = parseBlueprint(md, { source: { kind: "file", ref: "test.md" } });
+  const errors = validateBlueprint(ir);
+  assert.ok(errors.some((e) => e.code === "MISSING_REFUSAL"));
+});
+
+test("rejects Rules & Constraints with text 'refusal criteria' but no ### heading", () => {
+  const md = [
+    "# Test — Agent",
+    "",
+    "## Role",
+    "Test role",
+    "",
+    "## Tone",
+    "Test tone",
+    "",
+    "## Capabilities",
+    "Test capabilities",
+    "",
+    "## Mission",
+    "Test mission",
+    "",
+    "## Rules & Constraints",
+    "Some rules here. We have refusal criteria mentioned in passing but no proper heading.",
+    "",
+    "## Data Inventory",
+    "Test data",
+    "",
+    "## Boundaries",
+    "Test boundaries",
+    "",
+    "## Workflow",
+    "Test workflow",
+    "",
+    "## Audit Log",
+    "Test audit log",
+    "",
+    "## External Tooling Dependencies",
+    "Test dependencies",
+  ].join("\n");
+
+  const ir = parseBlueprint(md, { source: { kind: "file", ref: "test.md" } });
+  const errors = validateBlueprint(ir);
+  assert.ok(errors.some((e) => e.code === "MISSING_REFUSAL"));
+});
+
 test("validate flags missing Role", () => {
   const ir = parseBlueprint("# X — Y Agent\n\n## Tone\nok\n", {
     source: { kind: "file", ref: "x.md" },

@@ -36,7 +36,7 @@ export async function compileFile(filePath, opts = {}) {
 
   const errors = validateBlueprint(ir);
   if (errors.length) {
-    return { ok: false, errors };
+    return { ok: false, ir, errors };
   }
 
   // Read the preferred model and fallback order from the IR.

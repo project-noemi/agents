@@ -1,0 +1,135 @@
+name: Publish Gmail EA image
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+    paths:
+      - ".github/workflows/publish-gmail-ea.yml"
+      - "tools/executive-assistant/Dockerfile"
+      - "tools/executive-assistant/.dockerignore"
+      - "tools/executive-assistant/package.json"
+      - "tools/executive-assistant/package-lock.json"
+      - "tools/executive-assistant/*.js"
+      - "tools/executive-assistant/ui/**"
+
+concurrency:
+  group: publish-gmail-ea
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+  # docker/build-push-action@v6 provenance: GHCR attestations plus OIDC.
+  attestations: write
+  id-token: write
+
+# Visibility: this workflow never changes package visibility. GitHub creates
+# a private package on first push. The public reference image on
+# project-noemi was set public once in Package settings (Decision
+# [2026-10-05-0003]). A private clone must leave org Package creation
+# Public unchecked; the "Refuse an anonymous pull" step fails the job if
+# that clone's image is world-pullable (Decision [2026-10-05-0005]).
+# :latest is retagged from develop pushes and workflow_dispatch only
+# (Decision [2026-10-05-0006]).
+# Private clones read package visibility before push (Decision
+# [2026-10-05-0007]); the post-push anonymous inspect remains.
+jobs:
+  publish:
+    name: Build and push GHCR image
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/gmail-executive-assistant
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Refuse a public package before push (private clones)
+        if: github.repository_owner != 'project-noemi'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          OWNER="${{ github.repository_owner }}"
+          NAME=gmail-executive-assistant
+          vis=""
+          err=/tmp/pkg-vis.err
+          for prefix in orgs users; do
+            if vis=$(gh api "/${prefix}/${OWNER}/packages/container/${NAME}" --jq .visibility 2>"${err}"); then
+              break
+            fi
+            if grep -Eq 'HTTP 404|Not Found' "${err}"; then
+              vis=""
+              continue
+            fi
+            echo "Could not read package visibility via /${prefix}/${OWNER}/packages."
+            cat "${err}"
+            exit 1
+          done
+          if [ -z "${vis}" ]; then
+            echo 'Package does not exist yet. First push stays private by default.'
+            exit 0
+          fi
+          if [ "${vis}" = public ]; then
+            echo 'Package visibility is public. Refusing to push new layers.'
+            echo 'Private agent work keeps GitHub Packages private.'
+            echo 'Leave org Settings → Packages → Package creation → Public unchecked.'
+            echo 'See README (GitHub Packages on a private clone) and docs/UPSTREAM_SYNC.md.'
+            exit 1
+          fi
+          echo "Package visibility is ${vis}. Safe to push."
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: tools/executive-assistant
+          file: tools/executive-assistant/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          provenance: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.title=gmail-executive-assistant
+            org.opencontainers.image.description=Project NoéMI Gmail executive assistant
+
+      - name: Inspect the published manifest (authenticated)
+        run: docker buildx imagetools inspect "${IMAGE}:latest"
+
+      - name: Require an anonymous pull (public reference image)
+        if: github.repository_owner == 'project-noemi'
+        run: |
+          set -euo pipefail
+          docker logout ghcr.io || true
+          docker manifest inspect "${IMAGE}:latest"
+
+      - name: Refuse an anonymous pull (private clones)
+        if: github.repository_owner != 'project-noemi'
+        run: |
+          set -euo pipefail
+          docker logout ghcr.io || true
+          if docker manifest inspect "${IMAGE}:latest"; then
+            echo 'This clone published a world-pullable GHCR package.'
+            echo 'Private agent work keeps GitHub Packages private.'
+            echo 'Leave org Settings → Packages → Package creation → Public unchecked.'
+            echo 'See README (GitHub Packages on a private clone) and docs/UPSTREAM_SYNC.md.'
+            exit 1
+          fi
+          echo 'Anonymous inspect failed. The package is not world-pullable.'

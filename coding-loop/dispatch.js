@@ -55,9 +55,18 @@ function prepareImplementation({ issue, plan, branches } = {}) {
     base,
     head: `noemi/issue-${number}`,
     title,
-    body: [`Closes #${number}`, '', plan.plan || ''].join('\n'),
+    body: [issueLinkLine(number, plan), '', plan.plan || ''].join('\n'),
     label: 'noemi:in-progress',
   };
+}
+
+function issueLinkLine(number, plan) {
+  // "Closes" merges the issue away. A plan that says the agent does not
+  // finish the work must leave the issue open for that human step
+  // (Decision [2026-10-05-0001]).
+  const text = String((plan && plan.plan) || '');
+  const keyword = /the agent does not\b/i.test(text) ? 'Part of' : 'Closes';
+  return `${keyword} #${number}`;
 }
 
 function assertProducerToken(env) {
@@ -172,6 +181,7 @@ async function openImplementationPr({
 module.exports = {
   assertProducerToken,
   expectedProducerLogin,
+  issueLinkLine,
   openImplementationPr,
   prepareImplementation,
   slugIssue,

@@ -32,6 +32,16 @@ This enables them to:
 * protect internal logic and intellectual property
 * move at their own pace without blocking on upstream changes
 
+### GitHub Packages on a private clone
+
+A copy of this repository still contains `.github/workflows/publish-gmail-ea.yml`. On your org that workflow pushes `ghcr.io/<your-org>/gmail-executive-assistant`. GitHub creates that package **private**. Keep it private for private agent work.
+
+1. In the GitHub org: **Settings → Packages → Package creation**. Leave **Public** unchecked. **Private** stays available, so members can still publish packages only your org can pull.
+2. Do not use a package's **Danger Zone → Change visibility → Public** unless that image is meant to be pulled without credentials. GitHub will not let you make that package private again.
+3. The workflow does not change visibility. On `project-noemi` it requires an anonymous `docker manifest inspect` because the reference image is public. On any other owner it **fails** if that anonymous inspect succeeds, so a copied workflow cannot quietly ship a world-pullable image.
+
+Details: [docs/UPSTREAM_SYNC.md](docs/UPSTREAM_SYNC.md#github-packages-on-a-private-clone). Decision [2026-10-05-0005].
+
 In practice:
 
 * teams start with a small number of agents and workflows

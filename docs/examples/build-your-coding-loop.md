@@ -130,8 +130,12 @@ infisical run --env=dev -- node coding-loop/run.js \
 That requires `AGENT_GH_TOKEN` (or classic + `AGENT_GH_USE_CLASSIC=1`) and
 either `XAI_API_KEY` or NewPush gateway `AI_GW_API_TOKEN` (see
 [`../tool-usages/newpush-ai-gateway.md`](../tool-usages/newpush-ai-gateway.md)).
-Do not open PRs with the conductor token. `--post` uses the `noemi-conductor`
+Do not open PRs with the conductor token. `--post` uses the conductor
 App (`CONDUCTOR_APP_ID` + `CONDUCTOR_APP_PRIVATE_KEY`).
+
+What a successful open looks like, including the compliance gate, is
+**Operate one issue** in
+[`../../coding-loop/README.md`](../../coding-loop/README.md).
 
 Architecture: [`../architecture/issue-coding-loop.md`](../architecture/issue-coding-loop.md)
 (product loop vs host). Labs:

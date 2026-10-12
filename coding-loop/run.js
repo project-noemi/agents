@@ -20,7 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const { gh } = require('../scripts/github-client.js');
-const { issueFromGitHub } = require('./intake.js');
+const { issueFromGitHub, labelsOf } = require('./intake.js');
 const { completeThroughStageB, loadRouting } = require('./plan.js');
 const { assertProducerToken, openImplementationPr, prepareImplementation } = require('./dispatch.js');
 const { resolveProducerToken } = require('../scripts/agent-token.js');
@@ -274,14 +274,6 @@ async function main() {
   });
 
   if (args.post && intake.tier !== 'SKIPPED') {
-    const label = (plan.status === 'accepted' || plan.status === 'needs-info')
-      ? plan.label
-      : intake.label;
-    await gh(`/repos/${args.repo}/issues/${args.issue}/labels`, {
-      token: conductor,
-      method: 'POST',
-      body: { labels: [label] },
-    });
     const comment = plan.status === 'accepted'
       ? plan.plan
       : plan.status === 'needs-info'
@@ -300,6 +292,24 @@ async function main() {
     ? await implementFromPlan({ args, issue, plan })
     : null;
   const review = prepareReview({ implementation });
+  const label = activeLoopLabel({
+    post: args.post,
+    intake,
+    plan,
+    implementation,
+    review,
+  });
+  if (label && conductor) {
+    await syncNoemiLabel({
+      repo: args.repo,
+      number: args.issue,
+      label,
+      current: issue.labels,
+      token: conductor,
+    });
+  } else if (label) {
+    process.stderr.write('✖ conductor token missing; left the issue label unchanged.\n');
+  }
 
   process.stderr.write(`${JSON.stringify({
     task: 'Issue-loop Stage A through Stage C',
@@ -326,9 +336,40 @@ async function main() {
         ? 'Stage C envelope ready; pass --open-pr to draft with Grok and open as noemi-agent'
         : null,
     ].filter(Boolean),
-    result: (implementation && implementation.label) || plan.label || intake.label,
+    result: label || plan.label || intake.label,
   })}\n`);
   process.stdout.write(`${JSON.stringify({ intake, plan, implementation, review }, null, 2)}\n`);
+}
+
+function activeLoopLabel({ post, intake, plan, implementation, review } = {}) {
+  if (implementation && implementation.opened) {
+    if (review && review.status === 'delegated' && review.label) return review.label;
+    return implementation.label || '';
+  }
+  if (!post || !intake || intake.tier === 'SKIPPED') return '';
+  if (plan && (plan.status === 'accepted' || plan.status === 'needs-info')) return plan.label || '';
+  return intake.label || '';
+}
+
+async function syncNoemiLabel({ repo, number, label, current, token, ghImpl } = {}) {
+  const call = ghImpl || gh;
+  const names = labelsOf({ labels: current });
+  for (const name of names) {
+    if (!name.startsWith('noemi:') || name === label) continue;
+    const encoded = encodeURIComponent(name);
+    try {
+      await call(`/repos/${repo}/issues/${number}/labels/${encoded}`, { token, method: 'DELETE' });
+    } catch (err) {
+      if (!err || err.status !== 404) throw err;
+    }
+  }
+  if (label && !names.includes(label)) {
+    await call(`/repos/${repo}/issues/${number}/labels`, {
+      token,
+      method: 'POST',
+      body: { labels: [label] },
+    });
+  }
 }
 
 function exitCodeForError(err) {
@@ -344,4 +385,5 @@ if (require.main === module) {
 
 module.exports = {
   parseArgs, buildGateInputs, resolveScanInput, loadTenant, assertRepoIssue, exitCodeForError, implementFromPlan, issueReadToken,
+  activeLoopLabel, syncNoemiLabel,
 };

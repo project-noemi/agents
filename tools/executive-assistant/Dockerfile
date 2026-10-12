@@ -1,35 +1,37 @@
 # Dockerfile
-# Project NoéMI - Executive Assistant (Cloud Run)
+# Project NoéMI - Executive Assistant
+#
+# The builder stage installs the UI toolchain and emits ui/dist.
+# The runtime image keeps production server dependencies and that dist.
+# ui/node_modules (Vite) stay in the builder.
 
-# Multi-stage build for a lean production image
 FROM node:24-alpine AS builder
 
 WORKDIR /usr/src/app
 
-COPY package*.json ./
-# Install all dependencies (including devDependencies if needed for build)
-RUN npm install
+COPY ui/package.json ui/package-lock.json ./ui/
+RUN cd ui && npm ci
+COPY ui ./ui
+RUN cd ui && npm run build
 
-COPY . .
-
-# Final stage
 FROM node:24-alpine
 
 WORKDIR /usr/src/app
+RUN chown node:node /usr/src/app
+USER node
 
-COPY package*.json ./
-# Only install production dependencies
-RUN npm install --production
+COPY --chown=node:node package*.json ./
+RUN npm ci --omit=dev
 
-# Copy application files out of builder ensuring no tests or extraneous markdown files bulk up the container
-COPY --from=builder /usr/src/app/index.js ./
-COPY --from=builder /usr/src/app/server.js ./
-COPY --from=builder /usr/src/app/delta-sync.js ./
-COPY --from=builder /usr/src/app/state-manager.js ./
-COPY --from=builder /usr/src/app/triage-router.js ./
-COPY --from=builder /usr/src/app/oauth-manager.js ./
+COPY --from=builder --chown=node:node /usr/src/app/ui/dist ./ui/dist
+# There is no index.js in this tree. package.json "main" / "start" and CMD
+# are node server.js. Develop copied a missing index.js from the builder.
+COPY --chown=node:node server.js ./
+COPY --chown=node:node delta-sync.js ./
+COPY --chown=node:node state-manager.js ./
+COPY --chown=node:node triage-router.js ./
+COPY --chown=node:node oauth-manager.js ./
 
-# Best practice for Cloud Run Node.js execution
 ENV PORT=8080
 EXPOSE 8080
 

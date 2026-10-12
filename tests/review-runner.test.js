@@ -12,8 +12,10 @@ const {
     buildRemediationPrompt,
     renderComment,
     loadSentinelFromDisk,
+    loadComplianceFromDisk,
     SENTINEL_REPO,
     SENTINEL_PATH,
+    COMPLIANCE_PATH,
     SEVERITIES,
     BLOCKING_SEVERITIES,
     GATES,
@@ -32,11 +34,18 @@ test('carve-out: governance-critical paths are detected', () => {
     assert.deepEqual(detectCarveOut(files), ['.github/CODEOWNERS']);
 });
 
-test('carve-out: the merge gate and both governance docs are covered', () => {
+test('carve-out: merge gate, governance docs, and review behavior are covered', () => {
     for (const f of [
         '.github/workflows/require-develop-source.yml',
+        '.github/workflows/ai-review.yml',
+        '.github/workflows/calibration-watch.yml',
         'docs/MACHINE_IDENTITY.md',
         'docs/AI_REVIEW_GOVERNANCE.md',
+        'scripts/review-pr.js',
+        'scripts/calibration-watch.js',
+        'agents/coding/sentinel/core.md',
+        'agents/coding/sentinel/compliance.md',
+        'agents/engineering/pr-reviewer.md',
     ]) {
         assert.deepEqual(detectCarveOut([f]), [f], `${f} must be carved out`);
     }
@@ -106,11 +115,12 @@ test('recommendation: a clean review reports no findings', () => {
     );
 });
 
-test('gate order is premise, framing, code', () => {
+test('gate order is premise, framing, code, then compliance', () => {
     // Order is structural: reviewing code before premise lends false legitimacy
-    // to work the reviewer is recommending against.
-    assert.deepEqual(GATES.map((g) => g.id), ['premise', 'framing', 'code']);
-    assert.deepEqual(GATES.map((g) => g.dimension), ['Delegation', 'Description', 'Diligence']);
+    // to work the reviewer is recommending against. Compliance is last, and
+    // following it is the organization's choice.
+    assert.deepEqual(GATES.map((g) => g.id), ['premise', 'framing', 'code', 'compliance']);
+    assert.deepEqual(GATES.map((g) => g.dimension), ['Delegation', 'Description', 'Diligence', 'Discernment']);
 });
 
 test('prompt: reviewed content is framed as data and injection is reportable', () => {
@@ -140,6 +150,43 @@ test('prompt: Sentinel spec from project-noemi/agents is injected as review crit
     assert.match(p, /Trust Nothing: Verify everything/);
     assert.match(p, /you review; you do not patch/);
     assert.doesNotMatch(p, /other-org\/other-repo.*sentinel/i);
+});
+
+test('prompt: compliance guidance is injected only on the compliance gate', () => {
+    const complianceGate = GATES.find((g) => g.id === 'compliance');
+    const p = buildGatePrompt(complianceGate, {
+        title: 'T', body: '', files: [], diff: '', repo: 'o/r', pr: '1',
+        complianceGuidance: '# Compliance guidance\nDo not put personal data into a prompt.',
+    });
+    assert.match(p, /<compliance_guidance>/);
+    assert.match(p, /Do not invent legal conclusions/);
+    assert.match(p, /Do not put personal data into a prompt/);
+    const codePrompt = buildGatePrompt(GATES[2], {
+        title: 'T', body: '', files: [], diff: '', repo: 'o/r', pr: '1',
+        complianceGuidance: '# Compliance guidance\nDo not put personal data into a prompt.',
+    });
+    assert.doesNotMatch(codePrompt, /<compliance_guidance>/);
+    assert.match(codePrompt, /Do not apply the compliance guidance on this gate/);
+});
+
+test('prompt: a compliance gate with no file returns no findings', () => {
+    const complianceGate = GATES.find((g) => g.id === 'compliance');
+    const p = buildGatePrompt(complianceGate, {
+        title: 'T', body: 'B', files: ['a.js'], diff: 'diff', repo: 'o/r', pr: '1',
+    });
+    assert.match(p, /No compliance file was loaded/);
+    assert.doesNotMatch(p, /<compliance_guidance>/);
+});
+
+test('compliance guidance loads from the Sentinel directory and is not a persona', () => {
+    const text = loadComplianceFromDisk();
+    assert.equal(COMPLIANCE_PATH, 'agents/coding/sentinel/compliance.md');
+    assert.match(text, /# Compliance guidance/);
+    assert.match(text, /GDPR|General Data Protection Regulation/);
+    assert.match(text, /2024\/1689/);
+    assert.match(text, /report it on the compliance gate/);
+    assert.doesNotMatch(text, /premise gate/);
+    assert.doesNotMatch(text, /## Role/);
 });
 
 test('prompt: a malicious diff is embedded as data, not interpolated as instruction', () => {
@@ -221,7 +268,7 @@ test('remediation prompt: prioritises blocking findings over cosmetic ones', () 
 test('comment: records the model, since a verdict depends on what produced it', () => {
     const c = renderComment({
         model: 'models/gemini-x-pro', reviewed_at: '2026-08-03T00:00:00Z', pr: 'o/r#1',
-        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: 'pass' } },
+        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: 'pass' }, compliance: { verdict: 'pass' } },
         findings: [], recommendation: 'no-findings', remediation_prompt: null,
     });
     assert.match(c, /models\/gemini-x-pro/);
@@ -235,11 +282,12 @@ test('comment: skipped gates are reported as skipped, not as passed', () => {
             premise: { verdict: 'fail' },
             framing: { verdict: 'skipped' },
             code: { verdict: 'skipped' },
+            compliance: { verdict: 'skipped' },
         },
         findings: [{ gate: 'premise', severity: 'critical', file: 'x', line: null, claim: 'unnecessary', evidence: 'e' }],
         recommendation: 'escalate', remediation_prompt: null,
     });
-    assert.match(c, /Gates not run: framing, code/);
+    assert.match(c, /Gates not run: framing, code, compliance/);
     assert.match(c, /skipped, not passed|skipped, not\s+passed/);
     assert.match(c, /Premise gate failed/);
 });
@@ -247,7 +295,7 @@ test('comment: skipped gates are reported as skipped, not as passed', () => {
 test('comment: a coerced severity is surfaced, not hidden', () => {
     const c = renderComment({
         model: 'm', reviewed_at: 'now', pr: 'o/r#1',
-        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: 'fail' } },
+        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: 'fail' }, compliance: { verdict: 'skipped' } },
         findings: [{ gate: 'code', severity: 'high', file: 'a.js', line: 1, claim: 'c', evidence: '', severity_coerced_from: 'blocker' }],
         recommendation: 'request-changes', remediation_prompt: null,
     });
@@ -258,10 +306,25 @@ test('comment: a coerced severity is surfaced, not hidden', () => {
 test('comment: states plainly that the review does not approve or block', () => {
     const c = renderComment({
         model: 'm', reviewed_at: 'now', pr: 'o/r#1',
-        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: 'pass' } },
+        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: 'pass' }, compliance: { verdict: 'pass' } },
         findings: [], recommendation: 'no-findings', remediation_prompt: null,
     });
     assert.match(c, /does not approve, merge, or block/);
+});
+
+test('comment: a compliance-only failure says the merge needs no calibration entry', () => {
+    const c = renderComment({
+        model: 'm', reviewed_at: 'now', pr: 'o/r#1',
+        gates: {
+            premise: { verdict: 'pass' },
+            framing: { verdict: 'pass' },
+            code: { verdict: 'pass' },
+            compliance: { verdict: 'fail' },
+        },
+        findings: [{ gate: 'compliance', severity: 'high', file: 'a.js', line: 1, claim: 'personal data in the prompt', evidence: 'e' }],
+        recommendation: 'request-changes', remediation_prompt: null,
+    });
+    assert.match(c, /does not require a calibration entry/);
 });
 
 // --- model resolution ------------------------------------------------------
@@ -286,12 +349,13 @@ test('selection: Pro is elevated when a stable Pro exists in the newest generati
 });
 
 test('selection: prefer_pro_tier falls back to an older stable Pro and reports the cost', () => {
-    const live = ['gemini-3.6-flash', 'gemini-2.5-pro']
+    const live = ['gemini-3.8-flash', 'gemini-2.5-pro']
         .map((n) => `publishers/google/models/${n}`);
     const { chosen, tradeoff } = selectModel(live, { floor: 'flash', preferPro: true });
     assert.equal(chosen.name, 'gemini-2.5-pro');
-    assert.match(tradeoff, /prefer_pro_tier selected gemini-2\.5-pro \(gen 2\.5\)/);
-    assert.match(tradeoff, /gemini-3\.6-flash \(gen 3\.6\)/);
+    // Decision [2026-10-06-0001]: generation now uses numeric major.minor (2.5 -> 2.05, 3.8 -> 3.08)
+    assert.match(tradeoff, /prefer_pro_tier selected gemini-2\.5-pro \(gen 2\.05\)/);
+    assert.match(tradeoff, /gemini-3\.8-flash \(gen 3\.08\)/);
 });
 
 test('pin: empty and auto restore discovery', () => {
@@ -377,20 +441,93 @@ test('classify: non-text modalities are rejected outright', () => {
     // Found only by ranking the live catalogue: image/tts/embedding variants
     // still contain "pro" or "flash", so a tier rank would select them to
     // review code. 18 of 25 published Gemini models are wrong for this job.
+    // Decision [2026-10-06-0001]: also exclude live/transcribe/translate.
     for (const n of [
         'gemini-3-pro-image', 'gemini-2.5-pro-tts', 'gemini-embedding-001',
         'gemini-live-2.5-flash-native-audio', 'gemini-robotics-er-2-preview-info',
         'gemini-2.5-computer-use-preview-10-2025', 'gemini-omni-flash-preview',
-        'gemini-3.1-flash-image',
+        'gemini-3.1-flash-image', 'gemini-3.8-live', 'gemini-3.8-flash-transcribe',
+        'gemini-3.8-flash-translate',
     ]) {
         assert.equal(classify(`publishers/google/models/${n}`), null, `${n} must be rejected`);
     }
 });
 
 test('classify: legitimate text models survive the modality filter', () => {
-    for (const n of ['gemini-3.6-flash', 'gemini-2.5-pro', 'gemini-3.5-flash-lite']) {
+    for (const n of ['gemini-3.8-flash', 'gemini-2.5-pro', 'gemini-3.5-flash-lite']) {
         assert.ok(classify(`publishers/google/models/${n}`), `${n} must be kept`);
     }
+});
+
+test('classify: version comparison is numeric (Decision [2026-10-06-0001])', () => {
+    // parseFloat ranked 3.10 below 3.8; numeric major.minor fixes this
+    const v38 = classify('models/gemini-3.8-flash');
+    const v310 = classify('models/gemini-3.10-flash');
+    assert.ok(v310.generation > v38.generation, '3.10 must rank above 3.8');
+    assert.equal(v38.generation, 3.08);
+    assert.equal(v310.generation, 3.10);
+});
+
+test('meetsFloor: >= semantics for backward compatibility (Decision [2026-10-06-0001])', () => {
+    // Pro review selection uses >= so preferPro can fall back across generations
+    const flash = classify('models/gemini-3.8-flash');
+    const pro = classify('models/gemini-3.1-pro');
+    assert.ok(meetsFloor(flash, 'flash'), 'flash model meets flash floor');
+    assert.ok(meetsFloor(pro, 'flash'), 'pro model meets flash floor with >=');
+    assert.ok(meetsFloor(pro, 'pro'), 'pro model meets pro floor');
+    assert.ok(!meetsFloor(flash, 'pro'), 'flash model does not meet pro floor');
+});
+
+test('resolveFlash: only selects flash tier, not pro (Decision [2026-10-06-0001])', () => {
+    // Flash-specific resolution filters to exact tier to prevent silent upgrade
+    const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = [
+        'models/gemini-3.8-flash',
+        'models/gemini-3.10-pro', // Higher generation Pro should be ignored
+    ];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, 'models/gemini-3.8-flash');
+});
+
+test('classify: tier detection requires explicit marker (Decision [2026-10-06-0001])', () => {
+    // Models without "flash" or "pro" in the name return null
+    const noTier = classify('models/gemini-3.8');
+    assert.equal(noTier, null, 'model without tier marker must be rejected');
+});
+
+test('resolveFlash: selects highest stable flash', () => {
+    const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = [
+        'models/gemini-2.5-flash',
+        'models/gemini-3.6-flash',
+        'models/gemini-3.8-flash',
+        'models/gemini-3.10-flash',
+        'models/gemini-3.8-flash-preview',
+        'models/gemini-3.1-pro',
+    ];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, 'models/gemini-3.10-flash');
+    assert.equal(result.tier, 'flash');
+    assert.equal(result.generation, 3.10);
+});
+
+test('resolveFlash: prefers stable over preview', () => {
+    const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = [
+        'models/gemini-3.8-flash',
+        'models/gemini-3.10-flash-preview',
+    ];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, 'models/gemini-3.8-flash');
+});
+
+test('resolveFlash: falls back to pinned baseline when no flash in catalogue', () => {
+    const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = ['models/gemini-3.1-pro', 'models/gemini-2.5-pro'];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, 'models/gemini-3.8-flash');
+    assert.ok(result.fallback, 'fallback reason must be present');
+    assert.match(result.fallback, /no flash models/);
 });
 
 test('selection: an image model never wins even when it is the newest Pro', () => {
@@ -405,7 +542,7 @@ test('model ranking: non-Gemini models are ignored', () => {
 });
 
 test('default review floor is pro — a flash-only catalogue is refused', () => {
-    const live = ['gemini-3.6-flash', 'gemini-3.5-flash']
+    const live = ['gemini-3.8-flash', 'gemini-3.5-flash']
         .map((n) => `publishers/google/models/${n}`);
     assert.equal(selectModel(live).chosen, null);
     assert.ok(selectModel(live, { floor: 'flash' }).chosen);
@@ -423,7 +560,7 @@ test('Sentinel spec loads from this tooling tree, not the reviewed repo', () => 
 });
 
 test('model floor: a flash model does not satisfy a pro floor', () => {
-    const flash = classify('models/gemini-3.6-flash');
+    const flash = classify('models/gemini-3.8-flash');
     const pro = classify('models/gemini-2.5-pro');
     assert.equal(meetsFloor(pro, 'pro'), true);
     assert.equal(meetsFloor(flash, 'pro'), false);
@@ -594,6 +731,14 @@ test('reviewer credential preference: app token shadows PATs, distinct name', ()
     const patIdx = src.indexOf('process.env.REVIEWER_GH_TOKEN');
     assert.ok(appIdx > -1, 'app token path must exist');
     assert.ok(appIdx < patIdx, 'app token must be consulted before any PAT');
+});
+
+test('workflow: reviewer checkout is the pinned tooling repo, never the PR head', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'ai-review.yml'), 'utf8');
+    assert.match(yml, /never the PR head/);
+    assert.match(yml, /repository: project-noemi\/agents/);
+    assert.match(yml, /ref: \$\{\{ inputs\.tooling-ref \|\| 'main' \}\}/);
+    assert.doesNotMatch(yml, /ref: \$\{\{ github\.event\.pull_request\.head/);
 });
 
 test('workflow: review discovers the highest Pro preview (no hard pin)', () => {

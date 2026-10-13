@@ -1,22 +1,40 @@
-# Grok Bot: Setting Up An Organization Board
-
-When you run more than a few Grok Bots, give them an **organization board**: a map of divisions and departments where every bot has one seat, one owner, and one clear route for work and escalation. This guide is a generic template. Rename divisions and departments to fit your organization.
+# Grok Bot: Setting Up An Organization Chart For A Bot Team
 
 See also: [`grok-bot-getting-started.md`](grok-bot-getting-started.md) and [`../architecture/grok-bot-architecture.md`](../architecture/grok-bot-architecture.md).
 
-## 1. The Board Layout
+## Introduction
 
-Group work into **divisions**, each with a few **departments**. Each department has a head (a bot or a person), and each division has a lead. Example layout:
+Much of the success of American business comes from standardizing repeatable processes and management. An outside observer arriving in the United States will find that many companies are structured in a very similar way: around **seven divisions and twenty-one departments**. Department names vary from company to company, but the departments largely perform the same functions, aligned with established best practices and leading practices.
 
-| Division | Example departments |
-|---|---|
-| 1. People and Communications | Personnel, Internal communications, Inspections |
-| 2. Sales and Marketing | Marketing, Publications, Sales |
-| 3. Finance | Income, Payables, Accounts and admin |
-| 4. Delivery | Service delivery, Projects, Support |
-| 5. Quality | Review, Training, Improvement |
-| 6. Public and Partners | Public relations, Partnerships, Community |
-| 7. Executive | **Executive Office**, Legal and compliance, Knowledge and analysis |
+This guide presents a generalized version of that structure so that readers can draw on it when setting up a team ("swarm") of Grok Bots to help run a company. Each bot takes one clearly defined role on the chart, with a single human owner and a clear route for work and escalation. The names below are generic; adapt them to your organization.
+
+## 1. A Generalized Seven-Division, Twenty-One-Department Chart
+
+| Division | Department | What it does |
+|---|---|---|
+| **1. People and Communications** | 1. Human Resources | Recruiting, onboarding, offboarding, personnel records |
+| | 2. Internal Communications | Routing of internal mail and messages, announcements, scheduling |
+| | 3. Performance and Compliance Review | Checks that work is done to standard and policies are followed |
+| **2. Marketing and Sales** | 4. Marketing | Campaigns, market research, promotion planning |
+| | 5. Publications | Website, content, brochures, newsletters |
+| | 6. Sales | Lead handling, proposals, closing, renewals |
+| **3. Finance** | 7. Revenue and Billing | Invoicing, collections, payment reconciliation |
+| | 8. Payables | Vendor bills, expenses, payroll processing |
+| | 9. Accounting and Assets | Bookkeeping, reporting, budgets, equipment and supplies |
+| **4. Operations and Delivery** | 10. Service Planning | Capacity, scheduling, resource allocation |
+| | 11. Service Delivery | Producing the product or service for customers |
+| | 12. Delivery Tracking | Measuring output, deadlines, and delivery metrics |
+| **5. Quality and Training** | 13. Quality Assurance | Reviewing output and correcting defects |
+| | 14. Training | Staff training, documentation, standard operating procedures |
+| | 15. Process Improvement | Root-cause analysis and refinement of procedures |
+| **6. Customers and Partners** | 16. Customer Success | Account care, support escalations, satisfaction |
+| | 17. Partnerships | Vendors, resellers, alliances |
+| | 18. Public Relations and Community | Reputation, events, public presence |
+| **7. Executive** | 19. Executive Office | Coordination, routing, and oversight of all divisions |
+| | 20. Legal and Risk | Contracts, compliance, insurance, risk management |
+| | 21. Strategy and Analysis | Planning, reporting, knowledge management |
+
+For a bot team, start small: one bot can cover several departments at first, then split as volume grows. Each department has a head (a bot or a person), and each division has a lead.
 
 ### Source of truth
 

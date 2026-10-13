@@ -31,6 +31,7 @@ To set up a whole team of bots in one step, point a fresh installation at the [s
 - Connect only the services the bot actually needs (least privilege).
 - Prefer read-only scopes until a write workflow is proven.
 - Use a dedicated machine identity for code hosting where possible (see [`../MACHINE_IDENTITY.md`](../MACHINE_IDENTITY.md)).
+- Moving code hosting to Origin? See the [GitHub to Origin migration](github-to-origin-migration.md) resource.
 - Keep credentials out of prompts, memory, and files; follow [`secure-secret-management.md`](secure-secret-management.md).
 
 ## 3. Write Routines

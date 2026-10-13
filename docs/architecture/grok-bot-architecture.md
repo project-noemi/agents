@@ -1,5 +1,7 @@
 # Grok Bot Architecture
 
+> Also available as a Google Doc; the GitHub markdown is the source of truth.
+
 This document describes how Grok Bots run and the operating patterns that follow from it. For usage, see [`../tool-usages/grok-bot-getting-started.md`](../tool-usages/grok-bot-getting-started.md).
 
 ## Overview

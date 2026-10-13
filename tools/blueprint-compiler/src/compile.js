@@ -4,9 +4,10 @@ import { resolveBlueprint } from "./resolve.js";
 import { loadModelPolicy, loadResolverConfig } from "./config.js";
 import { loadFile } from "./loaders/file.js";
 import { runMock } from "./providers/mock.js";
-import { runGemini } from "./providers/gemini.js";
-import { runXai } from "./providers/xai.js";
-import { isFallbackError, isRegisteredProvider, runWithFallbacks } from "./providers/fallback.js";
+import { runGemini, TIMEOUT_VAR as GEMINI_TIMEOUT_VAR } from "./providers/gemini.js";
+import { runXai, TIMEOUT_VAR as XAI_TIMEOUT_VAR } from "./providers/xai.js";
+import { loadGatewayConfig } from "./providers/gateway.js";
+import { isFallbackError, providerOrder, runWithFallbacks } from "./providers/fallback.js";
 
 const isProviderError = (e) =>
   (typeof e?.code === "string" && e.code.startsWith("PROVIDER")) ||
@@ -58,9 +59,16 @@ export async function compileSource(markdown, source, opts = {}) {
     xai: (input) => runXai(ir, input),
   };
 
-  if (!isRegisteredProvider(providers, preferred)) {
-    return { ok: false, stage: "provider", errors: [{ code: "PROVIDER", path: "provider",
-      message: `Unknown provider "${preferred}". Known: ${Object.keys(providers).join(", ")}.` }] };
+  // Check the whole chain before any provider runs: unknown names and bad
+  // gateway config (key, URL, timeout) fail closed up front, not mid-fallback.
+  const gatewayTimeoutVar = { gemini: GEMINI_TIMEOUT_VAR, xai: XAI_TIMEOUT_VAR };
+  try {
+    for (const name of providerOrder({ preferred, fallbacks, providers })) {
+      if (gatewayTimeoutVar[name]) loadGatewayConfig({ timeoutVar: gatewayTimeoutVar[name] });
+    }
+  } catch (err) {
+    if (!isProviderError(err)) throw err;
+    return { ok: false, stage: "provider", errors: [{ ...toCompileError(err), path: "provider" }] };
   }
 
   const fallbacksUsed = [];

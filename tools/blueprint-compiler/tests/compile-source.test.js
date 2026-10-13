@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { compileFile, compileSource } from "../src/compile.js";
 import { persona } from "./helpers/persona.js";
-import { withEnv } from "./helpers/fake-network.js";
+import { withEnv, withFetch } from "./helpers/fake-network.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const clean = { NOEMI_PREFERRED_PROVIDER: undefined, NOEMI_FALLBACK_PROVIDERS: undefined, NOEMI_REPO_ROOT: undefined };
@@ -81,5 +81,33 @@ test("an empty opts.repoRoot means unset and falls back to config", async () => 
     const r = await compileSource(withRefs, src, { provider: "mock", repoRoot: "" });
     assert.equal(r.ok, true);
     assert.deepEqual(r.resolved.mcp.map((m) => m.path), ["mcp-protocols/github.md"]);
+  });
+});
+
+test("an unknown fallback fails up front, before the preferred provider runs", async () => {
+  await withEnv({ NOEMI_PREFERRED_PROVIDER: undefined, NOEMI_FALLBACK_PROVIDERS: "mock,grok" }, () =>
+    withFetch(() => { throw new Error("no provider should run"); }, async () => {
+      const r = await compileSource(persona(), src, { provider: "gemini" });
+      assert.equal(r.ok, false);
+      assert.equal(r.stage, "provider");
+      assert.equal(r.errors[0].code, "PROVIDER");
+      assert.match(r.errors[0].message, /"grok"/);
+    }));
+});
+
+test("a live fallback with no gateway key fails up front, even when mock is preferred", async () => {
+  await withEnv({ AI_GW_API_KEY: undefined, NOEMI_FALLBACK_PROVIDERS: "gemini" }, async () => {
+    const r = await compileSource(persona(), src, { provider: "mock" });
+    assert.equal(r.ok, false);
+    assert.equal(r.stage, "provider");
+    assert.equal(r.errors[0].code, "PROVIDER_CONFIG");
+  });
+});
+
+test("a bad timeout on any live provider in the chain fails up front", async () => {
+  await withEnv({ AI_GW_API_KEY: "test-key", XAI_TIMEOUT_MS: "soon", NOEMI_FALLBACK_PROVIDERS: "xai" }, async () => {
+    const r = await compileSource(persona(), src, { provider: "mock" });
+    assert.equal(r.errors[0].code, "PROVIDER_CONFIG");
+    assert.match(r.errors[0].message, /XAI_TIMEOUT_MS/);
   });
 });

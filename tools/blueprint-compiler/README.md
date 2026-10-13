@@ -41,11 +41,31 @@ op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.co
 | `GEMINI_TIMEOUT_MS` | Per-request timeout | `30000` |
 | `XAI_MODEL` | Grok model (`xai/` is added if missing) | `xai/grok-4.6` |
 | `XAI_TIMEOUT_MS` | Per-request timeout | `30000` |
+| `AI_GW_MAX_RETRIES` | Retries per provider on 429 / 5xx / network failure, before falling back | `3` |
+| `AI_GW_RETRY_BASE_MS` | First backoff delay; doubles each retry (capped at 8s, plus jitter) | `1000` |
 | `NOEMI_REPO_ROOT` | Root that `skills/` and `mcp-protocols/` resolve against. Use an absolute path; a relative one resolves against the current directory. Not a secret | this clone's root |
 
 A 401 from the gateway means the virtual key is missing or invalid; a 403 means
 the model is not allowed on the key or its budget / rate limit is spent. Both
 fail closed. Ask your NewPush contact about keys, models, and limits.
+
+Failure handling, in order:
+
+1. **Up front, before any provider runs.** Every name in `[preferred, ...fallbacks]`
+   must be a known provider (`PROVIDER`), and every live provider in that chain
+   must have valid gateway config: key set, `AI_GW_BASE_URL` an https URL (http
+   only for localhost), timeouts and retry settings whole numbers
+   (`PROVIDER_CONFIG`). A typo in a fallback no longer waits for the preferred
+   provider to fail. Repeated names run once.
+2. **Retry on the same provider.** 429, 5xx, and network failures retry with
+   exponential backoff (`scripts/resilience_helpers.js`). Timeouts are not retried.
+3. **Fall back.** Once retries are spent, or on a timeout, the next provider runs.
+4. **Fail closed.** 4xx, config errors, and `PROVIDER_EMPTY` (a blocked prompt, a
+   safety/recitation/content filter stop, or an empty answer) never fall back.
+
+Both providers send the same system prompt (`src/providers/prompt.js`) with the
+persona's Refusal Criteria copied verbatim: Gemini as `systemInstruction`, xAI as
+the `system` message. The user prompt is never mixed into it.
 
 Provider names for `--provider`, `NOEMI_PREFERRED_PROVIDER` and
 `NOEMI_FALLBACK_PROVIDERS` are `mock`, `gemini` and `xai`. `xai` is the

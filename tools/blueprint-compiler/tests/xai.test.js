@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { runXai } from "../src/providers/xai.js";
+import { isFallbackError } from "../src/providers/fallback.js";
 import {
   withEnv,
   withFetch,
@@ -164,12 +165,23 @@ test("a timeout propagates as TimeoutError (fallback-eligible)", async () => {
   );
 });
 
-test("an empty completion yields empty output instead of throwing", async () => {
-  await withEnv({ AI_GW_API_KEY: "test-key" }, () =>
-    withFetch(async () => jsonResponse({ choices: [] }), async () => {
-      const result = await runXai(ir, "hello");
-      assert.equal(result.output, "");
-      assert.equal(result.usage.inputTokens, 0);
-    })
-  );
+test("an empty or filtered completion fails closed with PROVIDER_EMPTY", async () => {
+  const bodies = [
+    { choices: [] },
+    xaiBody(""),
+    xaiBody("   "),
+    { choices: [{ index: 0, message: { role: "assistant", content: "partial" }, finish_reason: "content_filter" }] },
+    { choices: [{ index: 0, message: { role: "assistant", content: null, refusal: "no" }, finish_reason: "stop" }] },
+  ];
+  for (const body of bodies) {
+    await withEnv({ AI_GW_API_KEY: "test-key" }, () =>
+      withFetch(async () => jsonResponse(body), async () => {
+        await assert.rejects(() => runXai(ir, "hello"), (err) => {
+          assert.equal(err.code, "PROVIDER_EMPTY");
+          assert.equal(isFallbackError(err), false, "a blocked/empty answer must not fall back");
+          return true;
+        });
+      })
+    );
+  }
 });

@@ -46,7 +46,7 @@ Configuration, not code. Sprint 1 ships only `mock`. Sprint 2 adds Gemini + Grok
 
 Model policy plumbing: `config.js` maps `NOEMI_PREFERRED_PROVIDER` and `NOEMI_FALLBACK_PROVIDERS` to `modelPolicy` (read at call time; empty values count as unset). `compileSource` passes it into `parseBlueprint`, which never touches the environment.
 
-Fallback triggers later: timeout, 429 after backoff, 5xx, missing key. A mock-only environment must still complete `npm test`.
+Fallback triggers: timeout, 429 / 5xx / network failure after backoff (`providers/gateway.js`). A missing key, bad gateway config, an unknown provider name, or an empty/blocked response fails closed up front or immediately, never falls back. A mock-only environment must still complete `npm test`.
 
 ## Non-goals (Sprint 1–5)
 

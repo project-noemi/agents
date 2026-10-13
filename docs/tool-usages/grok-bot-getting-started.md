@@ -53,6 +53,7 @@ Start with a manual run, review the output, then enable the schedule.
 - Give each bot one domain; have a coordinator bot hand off well-scoped tasks.
 - A delegation message should include the goal, context, constraints, and the expected shape of the result.
 - The receiving bot reports back; the coordinator decides on next steps.
+- To coordinate many bots as a team, see [`grok-bot-org-board-guide.md`](grok-bot-org-board-guide.md).
 - Bots share one computer (see the architecture doc), so hand off files by path rather than pasting large content.
 
 ## 5. Approval And Safety Basics

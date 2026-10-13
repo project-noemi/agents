@@ -69,6 +69,10 @@ The box cannot report its own outage, so monitoring has two halves:
 2. **Analyzer (inside the box)**: periodically reviews heartbeat history for gaps, resource pressure, and failed restores, and summarizes findings for a bot routine.
 3. **External watchdog (outside the box)**: an independent check (e.g. a hosted routine or external uptime service) alerts when heartbeats stop arriving.
 
+## Bootstrapping A Swarm
+
+The [swarm deploy agent](../tool-usages/grok-bot-swarm-deploy-agent.md) runs as an ordinary bot. It creates other bots on the hosted service, attaches generic skills, and records each action in a reviewable log, which can be kept in the home directory or `/workspace` on the box so every bot can read it. It is rate-limited and never creates accounts or spends money without the owner's approval.
+
 ## Design Rules
 
 - Treat system paths as ephemeral; treat home and `/workspace` as the source of truth.

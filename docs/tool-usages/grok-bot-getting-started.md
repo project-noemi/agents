@@ -1,5 +1,7 @@
 # Grok Bot: Getting Started
 
+> Also available as a Google Doc; the GitHub markdown is the source of truth.
+
 A **Grok Bot** is a persistent, hosted assistant. Unlike a one-shot chat, a bot keeps context over time and can act on your behalf through connected services. For hosted personas without persistence, see [`grok-custom-agents.md`](grok-custom-agents.md). For how bots run under the hood, see [`../architecture/grok-bot-architecture.md`](../architecture/grok-bot-architecture.md).
 
 ## What A Grok Bot Has

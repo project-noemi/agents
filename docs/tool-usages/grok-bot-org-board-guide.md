@@ -1,5 +1,7 @@
 # Grok Bot: Setting Up An Organization Chart For A Bot Team
 
+> Also available as a Google Doc; the GitHub markdown is the source of truth.
+
 See also: [`grok-bot-getting-started.md`](grok-bot-getting-started.md) and [`../architecture/grok-bot-architecture.md`](../architecture/grok-bot-architecture.md).
 
 ## Introduction

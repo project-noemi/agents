@@ -10,6 +10,8 @@ Much of the success of American business comes from standardizing repeatable pro
 
 This guide presents a generalized version of that structure so that readers can draw on it when setting up a team ("swarm") of Grok Bots to help run a company. Each bot takes one clearly defined role on the chart, with a single human owner and a clear route for work and escalation. The names below are generic; adapt them to your organization.
 
+The fastest way to apply this structure is the [swarm deploy agent](grok-bot-swarm-deploy-agent.md), which asks about company size, industry, and staffing, and then generates a chart tailored to the company.
+
 ## 1. A Generalized Seven-Division, Twenty-One-Department Chart
 
 | Division | Department | What it does |
@@ -36,7 +38,7 @@ This guide presents a generalized version of that structure so that readers can 
 | | 20. Legal and Risk | Contracts, compliance, insurance, risk management |
 | | 21. Strategy and Analysis | Planning, reporting, knowledge management |
 
-For a bot team, start small: one bot can cover several departments at first, then split as volume grows. Each department has a head (a bot or a person), and each division has a lead.
+Treat this chart as a **reference model**, not a fixed template: the deploy agent scales it down for small companies (fewer, combined divisions) or uses it in full for established ones. For a bot team, start small: one bot can cover several departments at first, then split as volume grows. Each department has a head (a bot or a person), and each division has a lead.
 
 ### Source of truth
 
@@ -120,6 +122,8 @@ Put these in one shared skill that every bot loads:
 - **Respect prohibitions** in the handoff message; log what you did.
 
 ## 6. Getting Started
+
+The [swarm deploy agent](grok-bot-swarm-deploy-agent.md) can perform most of these steps for you, with owner approval. To do it by hand:
 
 1. Draft your divisions and departments using the table above.
 2. Create the Executive Office bot first, with the routing and escalation rules.

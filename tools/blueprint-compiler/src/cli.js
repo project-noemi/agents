@@ -40,12 +40,29 @@ catch (err) {
 
 if (!result.ok) {
   const taskId = result.ir?.id ?? file;
+  const firstError = result.errors[0];
+  const isProviderError = firstError?.code?.startsWith("PROVIDER");
+  const isValidationError = ["MISSING_HEADING", "MISSING_REFUSAL", "PARSE"].includes(firstError?.code);
+  
+  let resultType;
+  let actions;
+  if (isProviderError) {
+    resultType = `error:provider-${firstError.code.toLowerCase()}`;
+    actions = ["parse", "validate", "run"];
+  } else if (isValidationError) {
+    resultType = "error:validation-failed";
+    actions = ["parse", "validate"];
+  } else {
+    resultType = `error:${firstError?.code?.toLowerCase() ?? "unknown"}`;
+    actions = ["parse"];
+  }
+  
   console.error(JSON.stringify({
     task: `compile:${taskId}`,
     inputs: [file, provider ?? "(from config)"],
-    actions: ["parse", "validate"],
+    actions,
     risks: [],
-    result: `error:validation-failed`,
+    result: resultType,
   }));
   console.error(JSON.stringify({ ok: false, errors: result.errors }, null, 2));
   process.exit(1);

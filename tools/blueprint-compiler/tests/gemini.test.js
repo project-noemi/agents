@@ -192,7 +192,7 @@ test("a timeout propagates as TimeoutError (fallback-eligible)", async () => {
   );
 });
 
-test("the request includes Rules & Constraints and Refusal Criteria from the persona", async () => {
+test("the request includes Rules & Constraints and Refusal Criteria in systemInstruction", async () => {
   const fake = recordFetch(async () => jsonResponse(geminiBody("ok")));
   const fullIr = {
     id: "coding/architect",
@@ -200,7 +200,9 @@ test("the request includes Rules & Constraints and Refusal Criteria from the per
     sections: {
       Role: "Keep structure sound.\nReview diffs for drift.",
       "Rules & Constraints": "Never commit failing tests.\nRefusal Criteria are below.",
-      "Refusal Criteria": "Will not override safety checks.",
+      "Rules & Constraints:subsections": {
+        "Refusal Criteria": "Will not override safety checks.",
+      },
     },
     skills: ["verification/pre-flight-check"],
   };
@@ -208,9 +210,13 @@ test("the request includes Rules & Constraints and Refusal Criteria from the per
     withFetch(fake, async () => {
       await runGemini(fullIr, "hello");
       const body = JSON.parse(fake.calls[0].init.body);
+      assert.ok(body.systemInstruction, "systemInstruction field must be present");
+      assert.ok(body.systemInstruction.parts, "systemInstruction must have parts");
+      const systemText = body.systemInstruction.parts[0].text;
+      assert.match(systemText, /Rules & Constraints: Never commit failing tests/);
+      assert.match(systemText, /Refusal Criteria: Will not override safety checks/);
       const userText = body.contents[0].parts[0].text;
-      assert.match(userText, /Rules & Constraints: Never commit failing tests/);
-      assert.match(userText, /Refusal Criteria: Will not override safety checks/);
+      assert.equal(userText, "hello", "user prompt must be isolated from system context");
     })
   );
 });

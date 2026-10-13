@@ -89,3 +89,26 @@ test("CLI emits audit log on success", async () => {
   assert.equal(successOutput.ok, true);
   assert.equal(successOutput.ir.id, "coding/architect");
 });
+
+test("CLI audit log distinguishes provider config errors from validation errors", async () => {
+  // Provider config error (e.g., missing API key) should result in error:provider-provider_config
+  const result = await runCli(["compile", fixture("architect.core.md"), "--provider", "gemini"]);
+  
+  assert.equal(result.code, 1);
+  
+  const stderrLines = result.stderr.trim().split("\n");
+  assert.ok(stderrLines.length >= 2, "expected at least audit log line + error JSON start");
+  
+  // First line should be the audit log (single-line JSON)
+  const auditLog = JSON.parse(stderrLines[0]);
+  assert.equal(auditLog.task, "compile:coding/architect");
+  assert.deepEqual(auditLog.inputs, [fixture("architect.core.md"), "gemini"]);
+  assert.deepEqual(auditLog.actions, ["parse", "validate", "run"]);
+  assert.deepEqual(auditLog.risks, []);
+  assert.equal(auditLog.result, "error:provider-provider_config");
+  
+  // Remaining lines form the error JSON (may be multiline pretty-printed)
+  const errorOutput = JSON.parse(stderrLines.slice(1).join("\n"));
+  assert.equal(errorOutput.ok, false);
+  assert.ok(errorOutput.errors.some((e) => e.code === "PROVIDER_CONFIG"));
+});

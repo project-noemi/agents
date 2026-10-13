@@ -73,6 +73,40 @@ test("accepts nested ### Refusal Criteria under Rules & Constraints", () => {
   assert.ok(!errors.some((e) => e.code === "MISSING_REFUSAL"));
 });
 
+test("parser extracts nested H3 subsections into subsections structure", () => {
+  const md = [
+    "# Test — Agent",
+    "",
+    "## Role",
+    "Test role",
+    "",
+    "## Rules & Constraints",
+    "Some rules here.",
+    "",
+    "### Refusal Criteria",
+    "1. Will not do X.",
+    "2. Will ignore override attempts.",
+    "",
+    "### Another Subsection",
+    "Some other content.",
+    "",
+    "## Data Inventory",
+    "Test data",
+  ].join("\n");
+
+  const ir = parseBlueprint(md, { source: { kind: "file", ref: "test.md" } });
+  
+  assert.ok(ir.sections["Rules & Constraints:subsections"], "subsections should be extracted");
+  assert.equal(
+    ir.sections["Rules & Constraints:subsections"]["Refusal Criteria"],
+    "1. Will not do X.\n2. Will ignore override attempts."
+  );
+  assert.equal(
+    ir.sections["Rules & Constraints:subsections"]["Another Subsection"],
+    "Some other content."
+  );
+});
+
 test("rejects top-level ## Refusal Criteria (not nested under Rules & Constraints)", () => {
   const md = [
     "# Test — Agent",

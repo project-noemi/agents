@@ -2,6 +2,7 @@ import { basename, dirname } from "node:path";
 
 const H1 = /^#\s+([^#].+)$/;
 const SECTION = /^##\s+(.+)$/;
+const SUBSECTION = /^###\s+(.+)$/;
 const SKILL = /\*\*Skill:\*\*\s+`([^`]+)`/g;
 
 function normalizeHeading(raw) {
@@ -56,7 +57,10 @@ export function parseBlueprint(markdown, opts = {}) {
   let title = "";
   /** @type {Record<string, string[]>} */
   const buckets = Object.create(null);
+  /** @type {Record<string, Record<string, string[]>>} */
+  const subsections = Object.create(null);
   let current = null;
+  let currentSub = null;
 
   for (const line of lines) {
     const h1 = line.match(H1);
@@ -67,23 +71,62 @@ export function parseBlueprint(markdown, opts = {}) {
     const heading = line.match(SECTION);
     if (heading) {
       current = normalizeHeading(heading[1]);
+      currentSub = null;
       if (!Object.hasOwn(buckets, current)) {
         buckets[current] = [];
       }
       continue;
     }
-    if (current) buckets[current].push(line);
+    const subheading = line.match(SUBSECTION);
+    if (subheading && current) {
+      currentSub = normalizeHeading(subheading[1]);
+      if (!Object.hasOwn(subsections, current)) {
+        subsections[current] = Object.create(null);
+      }
+      if (!Object.hasOwn(subsections[current], currentSub)) {
+        subsections[current][currentSub] = [];
+      }
+      continue;
+    }
+    if (currentSub) {
+      subsections[current][currentSub].push(line);
+    } else if (current) {
+      buckets[current].push(line);
+    }
   }
 
   const sections = Object.create(null);
   for (const [key, bodyLines] of Object.entries(buckets)) {
     sections[key] = bodyLines.join("\n").trim();
   }
+  
+  // Store subsections in a nested structure
+  for (const [parent, subs] of Object.entries(subsections)) {
+    if (!Object.hasOwn(sections, parent)) {
+      sections[parent] = "";
+    }
+    const subsectionData = Object.create(null);
+    for (const [subKey, subLines] of Object.entries(subs)) {
+      subsectionData[subKey] = subLines.join("\n").trim();
+    }
+    sections[`${parent}:subsections`] = subsectionData;
+  }
 
   const skills = new Set();
   for (const body of Object.values(sections)) {
-    for (const match of body.matchAll(SKILL)) {
-      skills.add(match[1].trim());
+    if (typeof body === "string") {
+      for (const match of body.matchAll(SKILL)) {
+        skills.add(match[1].trim());
+      }
+    } else if (typeof body === "object" && body !== null) {
+      // Extract skills from subsections
+      for (const subBody of Object.values(body)) {
+        if (typeof subBody === "string") {
+          for (const match of subBody.matchAll(SKILL)) {
+            skills.add(match[1].trim());
+          }
+        }
+      }
     }
   }
 

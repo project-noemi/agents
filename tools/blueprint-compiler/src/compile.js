@@ -50,7 +50,7 @@ export async function compileFile(filePath, opts = {}) {
   };
 
   if (!isRegisteredProvider(providers, preferred)) {
-    return { ok: false, errors: [{ code: "PROVIDER", path: "provider",
+    return { ok: false, ir, errors: [{ code: "PROVIDER", path: "provider",
       message: `Unknown provider "${preferred}". Known: ${Object.keys(providers).join(", ")}.` }] };
   }
 
@@ -66,6 +66,6 @@ export async function compileFile(filePath, opts = {}) {
     return { ok: true, ir, run: { ...run, fallbacks: fallbacksUsed } };
   } catch (err) {
     if (!isProviderError(err)) throw err;   // real bugs still throw
-    return { ok: false, errors: [toCompileError(err)] };
+    return { ok: false, ir, errors: [toCompileError(err)] };
   }
 }

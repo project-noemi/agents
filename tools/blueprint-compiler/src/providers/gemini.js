@@ -79,7 +79,8 @@ export async function runGemini(ir, prompt) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: `${context}\n\n${prompt}` }] }],
+      systemInstruction: { parts: [{ text: context }] },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
     }),
     signal: AbortSignal.timeout(timeoutMs),
   });

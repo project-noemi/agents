@@ -1,6 +1,10 @@
 import { REQUIRED_HEADINGS } from "./ir.js";
 
 function hasRefusal(sections) {
+  const subsections = sections["Rules & Constraints:subsections"];
+  if (subsections && Object.hasOwn(subsections, "Refusal Criteria")) {
+    return true;
+  }
   const rules = sections["Rules & Constraints"] ?? "";
   return /^###\s+Refusal Criteria\s*$/im.test(rules);
 }
@@ -14,7 +18,9 @@ export function validateBlueprint(ir) {
 
   for (const heading of REQUIRED_HEADINGS) {
     const body = ir.sections[heading];
-    if (!body || !body.trim()) {
+    const subsections = ir.sections[`${heading}:subsections`];
+    const hasContent = (body && body.trim()) || (subsections && Object.keys(subsections).length > 0);
+    if (!hasContent) {
       errors.push({
         code: "MISSING_HEADING",
         message: `Required heading "${heading}" is missing or empty.`,

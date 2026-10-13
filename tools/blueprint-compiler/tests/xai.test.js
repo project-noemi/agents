@@ -182,7 +182,9 @@ test("the request includes Rules & Constraints and Refusal Criteria from the per
     sections: {
       Role: "Keep structure sound.\nReview diffs for drift.",
       "Rules & Constraints": "Never commit failing tests.\nRefusal Criteria are below.",
-      "Refusal Criteria": "Will not override safety checks.",
+      "Rules & Constraints:subsections": {
+        "Refusal Criteria": "Will not override safety checks.",
+      },
     },
     skills: ["verification/pre-flight-check"],
   };

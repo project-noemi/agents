@@ -9,7 +9,8 @@
 export function buildAgentContext(ir) {
   const role = (ir.sections.Role ?? "").split("\n")[0];
   const rules = ir.sections["Rules & Constraints"] ?? "";
-  const refusal = ir.sections["Refusal Criteria"] ?? "";
+  const subsections = ir.sections["Rules & Constraints:subsections"];
+  const refusal = subsections?.["Refusal Criteria"] ?? "";
 
   const parts = [
     `You are compiling and running the NoéMI persona "${ir.title}".`,

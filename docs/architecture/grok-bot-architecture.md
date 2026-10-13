@@ -20,11 +20,11 @@ flowchart LR
     R --> B2
   end
   subgraph Box["The box: shared persistent Linux pod"]
-    FS[(Home + /workspace\npersistent)]
-    SYS[/usr, /etc, /opt\nreset to image/]
+    FS[("Home + /workspace<br/>persistent")]
+    SYS["/usr, /etc, /opt<br/>reset to image"]
     D1[Desktop + Chrome profile A]
     D2[Desktop + Chrome profile B]
-    BOOT[Boot restore script\nrun from shell profile]
+    BOOT[Boot restore script<br/>run from shell profile]
     HB[Per-minute heartbeat + analyzer]
   end
   B1 --> D1

@@ -801,6 +801,8 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/tool-usages/`](tool-usages/) | Tool-specific guides and integration patterns |
 | [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) | Grok Custom Agents, Projects, Skills, and Grok Bot as the Gems / Custom GPT equivalent |
 | [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md) | Grok Build CLI / TUI: per-platform install, first win, and Fetch-on-Demand launch |
+| [`docs/tool-usages/grok-bot-getting-started.md`](tool-usages/grok-bot-getting-started.md) | Grok Bot: chat, memory, routines, skills, connectors, delegation, and approval basics |
+| [`docs/architecture/grok-bot-architecture.md`](architecture/grok-bot-architecture.md) | Grok Bot architecture: hosted bots, shared persistent box, per-bot desktops, persistence, and monitoring |
 | [`docs/examples/build-your-coding-loop.md`](examples/build-your-coding-loop.md) | Coder quick start: deploy an issue → PR loop on your `{company}-agents` copy |
 | [`coding-loop/`](../coding-loop/) | In-repo Coding Loop runtime (Stages A–D: intake, plan, critic, writer, review) |
 | [`skills/`](../skills/) | Reusable skills (source of truth) |

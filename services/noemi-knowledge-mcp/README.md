@@ -17,10 +17,6 @@ discovery only (website Decision 220 / PR #572) and must not host a fake `/mcp`.
 | `get_document` | Full text by path or chunk id |
 | `list_documents` | Corpus inventory |
 
-## FAQ retrieval check
-
-`eval/faq-questions.json` is this service's retrieval contract: public questions about Project NoéMI, the corpus document that must rank in the top hits, and the phrases those hits must contain. `src/faq-retrieval.test.ts` checks that against the corpus built in this repo (Decision [2026-09-30-0001]).
-
 ## Local development
 
 ```bash

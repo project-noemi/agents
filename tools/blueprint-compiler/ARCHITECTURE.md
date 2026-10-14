@@ -1,22 +1,23 @@
 # Architecture — NoéMI Blueprint Compiler
 
-Status: agreed in Session 1 (1 September 2026). Package-local. Not a fleet Decision Log entry yet.
+Status: agreed in Session 1 (1 September 2026); updated for Sprint 3. Package-local. Not a fleet Decision Log entry yet.
 
 ## Pipeline
 
 ```
 source  →  load  →  parse  →  validate  →  resolve  →  instantiate  →  supervise
                                                       └─ mock (Sprint 1)
+                                                      └─ gemini, xai (Sprint 2)
                                                       └─ mastra agent (Sprint 3)
 ```
 
 | Stage | Sprint | Notes |
 |---|---|---|
-|| Load | 1 | `loaders/file.js` (`loadFile`). HTTP + registry in Sprint 3. |
+| Load | 1, 3 | `loaders/file.js`, `loaders/http.js`, `loaders/registry.js`. All three return `{ markdown, source }` and feed the same `compileSource`. See Loaders below. |
 | Parse | 1, 3 | Markdown ATX `##` headings → section map (required headings match case-insensitively). Extract `**Skill:**` and `**MCP:**` refs and the `### Refusal Criteria` body onto `ir.refusalCriteria`. Pure: no env access. |
 | Validate | 1, 3 | Required headings + a non-empty `### Refusal Criteria` under Rules & Constraints. Fail closed (`MISSING_REFUSAL`). |
 | Resolve | 3 | `resolve.js`: skill slugs to `skills/{category}/{name}.md`, MCP ids to `mcp-protocols/{id}.md` or `.json`. Fails closed, collects every error. See Resolution below. |
-| Instantiate | 3 | Build a Mastra agent from IR. Sprint 1 returns a mock agent. |
+| Instantiate | 3 | `runtime/mastra.js` builds a Mastra agent from the IR (`--provider mastra`). The `mock` provider still returns a deterministic stand-in. See Mastra runtime below. |
 | Supervise | 2–3 | Timeouts, fallback list, structured errors, stderr audit JSON (`audit.js` builds the record; the CLI writes it). Actions run `parse`, `validate`, `resolve`, then `run:<provider>`. |
 
 Studio (Sprint 4) and Arena (Sprint 5) sit on top of `supervise`.
@@ -42,11 +43,65 @@ See `src/ir.js` and REQUIREMENTS.md §5. `id` is `{domain}/{name}` derived from 
 
 ## Provider policy
 
-Configuration, not code. Sprint 1 ships only `mock`. Sprint 2 adds Gemini + Grok (xAI), both called through NewPush's generative AI gateway with one virtual key (`AI_GW_API_KEY`) resolved by `infisical run` / `op run`. Provider credentials stay with NewPush. Never `dotenv`.
+Configuration, not code. Providers are `mock` (Sprint 1), `gemini` and `xai` (Sprint 2), and `mastra` (Sprint 3). Every live provider is called through NewPush's generative AI gateway with one virtual key (`AI_GW_API_KEY`) resolved by `infisical run` / `op run`. Provider credentials stay with NewPush. Never `dotenv`.
 
 Model policy plumbing: `config.js` maps `NOEMI_PREFERRED_PROVIDER` and `NOEMI_FALLBACK_PROVIDERS` to `modelPolicy` (read at call time; empty values count as unset). `compileSource` passes it into `parseBlueprint`, which never touches the environment.
 
-Fallback triggers: timeout, 429 / 5xx / network failure after backoff (`providers/gateway.js`). A missing key, bad gateway config, an unknown provider name, or an empty/blocked response fails closed up front or immediately, never falls back. A mock-only environment must still complete `npm test`.
+Fallback triggers: timeout, 429 / 5xx / network failure after backoff (`providers/gateway.js`, whose `withGatewayRetry` is the single retry policy for `postJson` and the Mastra runtime alike). A missing key, bad gateway config, an unknown provider name, or an empty/blocked response fails closed up front or immediately, never falls back. A mock-only environment must still complete `npm test`.
+
+## Mastra runtime
+
+`runtime/mastra.js` exports `buildMastraAgent(ir, config)` (IR to agent, no model call), `runMastra(ir, prompt)` (provider-shaped, registered in `compile.js` as `mastra`), and `loadMastraConfig()` (checked up front for every `mastra` in the provider chain). `@mastra/core` is a dependency of this package only, pinned exactly (`1.71.0`), imported lazily so a mock-only run never loads it.
+
+**Refusal Criteria.** The agent's `instructions` are `buildSystemPrompt(ir)`, so the persona's criteria are copied verbatim into the system slot, as for Gemini and xAI. `buildMastraAgent` throws `MISSING_REFUSAL` for an IR without them: `validate.js` already stops that case, but Studio and Arena will call the runtime directly.
+
+**Spike (Sprint 3, section 4): can Mastra's model layer target the gateway's OpenAI surface with `AI_GW_API_KEY`? Yes.** `spikes/mastra-gateway.mjs` reproduces it against a loopback server. Two traps, both pinned by tests:
+
+| Config | What goes over the wire | Verdict |
+|---|---|---|
+| `{ id: "xai/grok-4.6", url: base }` | `POST /chat/completions`, `model: "grok-4.6"` | Wrong path and a bare model id the gateway rejects |
+| `{ id: "xai/grok-4.6", url: base + "/v1" }` | `POST /v1/chat/completions`, `model: "grok-4.6"` | Right path, still a bare model id |
+| `{ providerId: "newpush", modelId: "xai/grok-4.6", url: base + "/v1" }` | `POST /v1/chat/completions`, `model: "xai/grok-4.6"`, `Authorization: Bearer <key>` | **Used.** `url` is a base that Mastra appends `/chat/completions` to |
+
+**Mastra reports failure differently, so the runtime translates it.** Observed on 1.71.0:
+
+| Gateway does | Mastra does | Runtime does |
+|---|---|---|
+| 429 / 5xx / 4xx | Throws `AI_APICallError` with `.statusCode` (not `.status`) | Rethrows with `.status`, so retry and fallback work |
+| Connection refused | `AI_APICallError`, no status | Rethrows as `TypeError("fetch failed")`, the shape `fallback.js` treats as a network failure |
+| Hangs past the deadline | **Resolves** with `finishReason: "aborted"` and empty text | Checks the abort signal and throws `TimeoutError` |
+| 200 with empty text, a `refusal`, or `content_filter` | **Resolves** successfully | Throws `PROVIDER_EMPTY` (fail closed, never falls back) |
+| 200 with `choices: []` | Throws a bare `TypeError` from inside the SDK | Throws `PROVIDER_EMPTY`, not a bug-fallback |
+
+Without that translation a 503 would never fall back and a blocked answer would be returned as a success.
+
+**One retry policy.** The runtime passes `maxRetries: 0` to Mastra and wraps each attempt in `withGatewayRetry`, so `AI_GW_MAX_RETRIES` means the same thing for every provider and a failing gateway is not hit `(Mastra retries) × (ours)` times.
+
+**Silence.** Mastra's default logger prints raw error objects to stderr, which would break the CLI's one-JSON-line audit record. The runtime installs Mastra's `noopLogger`; a test fails if anything reaches stderr.
+
+**Not yet.** Skill and MCP *content* are not loaded into the agent. `resolved` proves the files exist and the prompt names the skills. Loading them (Sprint 4+) must re-check containment at read time. The `mastra` provider has no tools and no streaming yet; Studio's stream view is the first consumer that needs streaming.
+
+Known dependency note: `npm audit` reports a moderate, transitive finding (`sprintf-js` via `gray-matter`, which Mastra uses for front matter). Nothing here passes untrusted strings to it. Re-check when bumping Mastra.
+
+## Loaders
+
+`loaders/file.js`, `loaders/http.js` and `loaders/registry.js` each return `{ markdown, source }`. `compile.js` wraps all three in one `loadThenCompile`, so every source gets the same `compileSource` (parse, validate, resolve, run) and the same structured `stage: "load"` failure (`LOAD`, or `LOAD_CONFIG` for a bad `NOEMI_LOADER_*` value). Loaders read no environment; `config.js` (`loadLoaderConfig`) supplies their settings, and `opts.loader` overrides it.
+
+**HTTP (`loadHttp`).** A URL typed into Studio is attacker-influenced input, so the loader fails closed:
+
+- https only; plain http only for localhost (as in `gateway.js`)
+- no credentials, query string, or fragment, so a token cannot reach `source.ref`, the audit record, or an error message
+- redirects are not followed: a redirect is how an allowed host becomes an internal one
+- a timeout and a hard size cap, enforced while streaming (and by declared `content-length`)
+- `text/html` responses are rejected
+- optional host allowlist (`NOEMI_HTTP_ALLOWED_HOSTS`)
+
+**Residual risk (SSRF).** With no allowlist, any https host is allowed, including ones that resolve to private addresses. That is acceptable for a CLI a developer runs on their own machine. **Studio must set an allowlist, or add address filtering, before it accepts a user-typed URL.**
+
+**Registry (`loadRegistry`).** A ref is `domain/name[@version]`. Segments must be lowercase-hyphen (at most 64 characters) and the version a tag or branch name with no slash, validated before any URL is built, so neither can add a path segment, query, or host. The URL is then fetched by `loadHttp`, inheriting every rule above.
+
+> **Assumption to confirm with the client.** The 5 August brief never fixed a registry layout. We assumed the public repo addressed by release tag (releases are already tagged `YYYY.MM.DD`):
+> `{NOEMI_REGISTRY_URL}/{version}/agents/{domain}/{name}/core.md`, with the base defaulting to `https://raw.githubusercontent.com/project-noemi/agents` and the version to `main`. It is isolated in `registryUrl()`.
 
 ## Non-goals (Sprint 1–5)
 

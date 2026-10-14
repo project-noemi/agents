@@ -1,8 +1,10 @@
 # Blueprint Compiler
 
 Turns a NoéMI Markdown persona into a Blueprint IR and runs it on a configured
-model provider (`mock`, `gemini`, and `xai` for Grok), falling back to the next
-provider when one is unavailable.
+model provider (`mock`, `gemini`, `xai` for Grok, and `mastra`, which runs the
+persona as a Mastra agent), falling back to the next provider when one is
+unavailable. The persona can come from a local file, an http(s) URL, or the
+versioned registry.
 
 This is not the fleet spec library. Specs live in `agents/`, `skills/`, and
 `mcp-protocols/`. This package *reads* them.
@@ -15,12 +17,15 @@ npm test        # offline: every network call is faked
 node src/cli.js compile fixtures/architect.core.md --provider mock --prompt "hello"
 ```
 
+`compile` takes a file path, an `https://` URL, or `registry:domain/name[@version]`
+(see [Loaders](#loaders)). [DEMO.md](DEMO.md) is a runnable, fully offline walkthrough.
+
 ## Live providers
 
-Both live providers go through NewPush's generative AI gateway: `gemini` uses
-the Google-native surface (`/google/v1beta/models/{model}:generateContent`) and
-`xai` uses the OpenAI-compatible surface (`/v1/chat/completions`). One gateway
-virtual key authenticates both as `Authorization: Bearer`. It is not a Google or
+All live providers go through NewPush's generative AI gateway: `gemini` uses
+the Google-native surface (`/google/v1beta/models/{model}:generateContent`), while
+`xai` and `mastra` use the OpenAI-compatible surface (`/v1/chat/completions`).
+One gateway virtual key authenticates all of them as `Authorization: Bearer`. It is not a Google or
 xAI credential; never send it to those providers directly.
 
 Keys are injected at runtime and never written to disk. Do not add a `.env` file.
@@ -28,6 +33,7 @@ Keys are injected at runtime and never written to disk. Do not add a `.env` file
 ```bash
 infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --provider gemini
 infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --provider xai
+infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --provider mastra
 op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.core.md
 ```
 
@@ -41,8 +47,15 @@ op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.co
 | `GEMINI_TIMEOUT_MS` | Per-request timeout | `30000` |
 | `XAI_MODEL` | Grok model (`xai/` is added if missing) | `xai/grok-4.6` |
 | `XAI_TIMEOUT_MS` | Per-request timeout | `30000` |
+| `MASTRA_MODEL` | Model for the `mastra` provider, as the gateway's OpenAI surface names it (`provider/model`) | `xai/grok-4.6` |
+| `MASTRA_TIMEOUT_MS` | Per-request timeout for `mastra` | `30000` |
 | `AI_GW_MAX_RETRIES` | Retries per provider on 429 / 5xx / network failure, before falling back | `3` |
 | `AI_GW_RETRY_BASE_MS` | First backoff delay; doubles each retry (capped at 8s, plus jitter) | `1000` |
+| `NOEMI_HTTP_ALLOWED_HOSTS` | Comma-separated host allowlist for http(s) and registry personas. Empty means any https host | none |
+| `NOEMI_LOADER_TIMEOUT_MS` | Timeout for fetching a remote persona | `10000` |
+| `NOEMI_LOADER_MAX_BYTES` | Size cap for a remote persona | `262144` |
+| `NOEMI_REGISTRY_URL` | Registry base URL (see [Loaders](#loaders)) | `https://raw.githubusercontent.com/project-noemi/agents` |
+| `NOEMI_REGISTRY_VERSION` | Version used when a registry ref has no `@version` | `main` |
 | `NOEMI_REPO_ROOT` | Root that `skills/` and `mcp-protocols/` resolve against. Use an absolute path; a relative one resolves against the current directory. Not a secret | this clone's root |
 
 A 401 from the gateway means the virtual key is missing or invalid; a 403 means
@@ -53,7 +66,7 @@ Failure handling, in order:
 
 1. **Up front, before any provider runs.** Every name in `[preferred, ...fallbacks]`
    must be a known provider (`PROVIDER`), and every live provider in that chain
-   must have valid gateway config: key set, `AI_GW_BASE_URL` an https URL (http
+   must have valid gateway config (`mastra` also needs a valid `MASTRA_MODEL`): key set, `AI_GW_BASE_URL` an https URL (http
    only for localhost), timeouts and retry settings whole numbers
    (`PROVIDER_CONFIG`). A typo in a fallback no longer waits for the preferred
    provider to fail. Repeated names run once.
@@ -63,14 +76,60 @@ Failure handling, in order:
 4. **Fail closed.** 4xx, config errors, and `PROVIDER_EMPTY` (a blocked prompt, a
    safety/recitation/content filter stop, or an empty answer) never fall back.
 
-Both providers send the same system prompt (`src/providers/prompt.js`) with the
-persona's Refusal Criteria copied verbatim: Gemini as `systemInstruction`, xAI as
-the `system` message. The user prompt is never mixed into it.
+All live providers send the same system prompt (`src/providers/prompt.js`) with the
+persona's Refusal Criteria copied verbatim: Gemini as `systemInstruction`, xAI and
+Mastra as the `system` message. The user prompt is never mixed into it.
 
 Provider names for `--provider`, `NOEMI_PREFERRED_PROVIDER` and
-`NOEMI_FALLBACK_PROVIDERS` are `mock`, `gemini` and `xai`. `xai` is the
+`NOEMI_FALLBACK_PROVIDERS` are `mock`, `gemini`, `xai` and `mastra`. `xai` is the
 provider name used in `docs/model-routing.json`; `grok` is not an alias. (That
 file calls Google's provider `google`; this package's name for it is `gemini`.)
+
+## Mastra runtime
+
+`--provider mastra` builds a real `@mastra/core` agent from the IR
+(`src/runtime/mastra.js`) and runs it against the gateway's OpenAI-compatible
+surface with the same `AI_GW_API_KEY`. The persona's Refusal Criteria are the
+agent's instructions, copied verbatim; the runtime refuses to build an agent for
+an IR that has none (`MISSING_REFUSAL`).
+
+It behaves like the other live providers: the same retry policy
+(`AI_GW_MAX_RETRIES`, `AI_GW_RETRY_BASE_MS`), 429 / 5xx / network failure / timeout
+fall back, and 4xx, bad config and `PROVIDER_EMPTY` fail closed. Mastra reports
+those failures differently from the hand-rolled providers (it can resolve
+successfully with empty text or `finishReason: "aborted"`), so the runtime
+translates them; ARCHITECTURE.md ("Mastra runtime") has the spike findings.
+
+`@mastra/core` is a dependency of this package only, pinned exactly, and is
+imported lazily, so mock-only runs never load it. It must never be added to the
+repository root `package.json`.
+
+The runtime does not read skill or MCP *content* yet; `resolved` proves the files
+exist and the persona's `Skills:` line names them. Reading them is Sprint 4+ and
+must re-check containment at read time (ARCHITECTURE.md, Resolution).
+
+## Loaders
+
+A persona can come from three places. All three end in the same `compileSource`,
+so a remote persona is validated and resolved exactly like a local file.
+
+| Source | CLI | API | Source ref |
+|---|---|---|---|
+| File | `compile fixtures/architect.core.md` | `compileFile(path)` | `{ kind: "file", ref }` |
+| URL | `compile https://host/path/core.md` | `compileUrl(url)` | `{ kind: "http", ref }` |
+| Registry | `compile registry:coding/architect@2026.09.11` | `compileRegistry(ref)` | `{ kind: "registry", ref, version }` |
+
+The HTTP loader fails closed: https only (plain http for localhost), no
+credentials / query / fragment in the URL, redirects are **not** followed, an
+optional host allowlist, a timeout and a size cap, and HTML responses are
+rejected. Failures return `stage: "load"` with code `LOAD` (or `LOAD_CONFIG` for a
+bad `NOEMI_LOADER_*` value).
+
+The registry maps `domain/name[@version]` to
+`{NOEMI_REGISTRY_URL}/{version}/agents/{domain}/{name}/core.md`. Refs and versions
+are matched against strict patterns before a URL is built. **The layout is our
+assumption** (the public repo addressed by release tag); it lives in one function,
+`registryUrl()`, so changing it is a one-line edit.
 
 ## Skill and MCP resolution
 
@@ -108,11 +167,18 @@ record's `risks` lists what failed first.
 |---|---|
 | 1 | Parse, validate, mock provider |
 | 2 | Config-driven selection, Gemini + xAI (Grok), fallback |
-| 3+ | Skill/MCP resolution, Mastra. See REQUIREMENTS.md |
+| 3 | Skill/MCP resolution, Mastra runtime (`--provider mastra`), HTTP + registry loaders |
+| 4 | Studio. See REQUIREMENTS.md |
+| 5 | Arena. See REQUIREMENTS.md |
 
 ## Testing without the network
 
 Shared fakes live in `tests/helpers/fake-network.js`. Reuse them for new providers.
+
+Tests that need a real Mastra agent talk to a loopback fake gateway
+(`tests/helpers/fake-gateway.js`) instead of stubbing `fetch`, because Mastra does
+its own I/O. Loopback never leaves the machine. `spikes/mastra-gateway.mjs`
+reproduces the Sprint 3 spike on its own.
 
 Tests pass `repoRoot: fixtures/`, so they do not depend on `NOEMI_REPO_ROOT` or on
 this clone's real `skills/`. The CLI tests clear the variable and cover the default root.
@@ -125,5 +191,6 @@ this clone's real `skills/`. The CLI tests clear the variable and cover the defa
 
 - [REQUIREMENTS.md](REQUIREMENTS.md) — Field Session requirements (proposal intent + 1 Sep 2026 amendments)
 - [ARCHITECTURE.md](ARCHITECTURE.md) — pipeline and IR
+- [DEMO.md](DEMO.md) — offline demo script
 - [AGENTS.md](AGENTS.md) — secrets, loop, and package contract
 - [GIT-WORKFLOW.md](GIT-WORKFLOW.md) — branch map, staying up to date, and opening PRs

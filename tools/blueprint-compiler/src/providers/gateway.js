@@ -123,6 +123,28 @@ function isRetryable(err) {
 }
 
 /**
+ * Run one attempt function under the gateway's retry policy (429 / 5xx /
+ * network failure, exponential backoff, config from loadGatewayConfig). Shared
+ * by postJson() and the Mastra runtime so there is exactly one retry policy:
+ * the attempt must throw errors that carry `.status` (or undici's
+ * TypeError("fetch failed")) for them to be retried.
+ * @template T
+ * @param {() => Promise<T>} attempt
+ * @param {ReturnType<typeof loadGatewayConfig>} config
+ * @returns {Promise<T>}
+ */
+export function withGatewayRetry(attempt, config) {
+  return withRetry(attempt, {
+    maxRetries: config.maxRetries,
+    baseDelayMs: config.retryBaseMs,
+    maxDelayMs: RETRY_MAX_DELAY_MS,
+    retryIf: isRetryable,
+    // compile.js never logs; the CLI owns stderr for its audit record.
+    onRetry: () => {},
+  });
+}
+
+/**
  * POST JSON to the gateway with backoff, and return the parsed body.
  * @param {string} url
  * @param {object} body
@@ -159,12 +181,5 @@ export async function postJson(url, body, config, label) {
     }
   };
 
-  return withRetry(attempt, {
-    maxRetries: config.maxRetries,
-    baseDelayMs: config.retryBaseMs,
-    maxDelayMs: RETRY_MAX_DELAY_MS,
-    retryIf: isRetryable,
-    // compile.js never logs; the CLI owns stderr for its audit record.
-    onRetry: () => {},
-  });
+  return withGatewayRetry(attempt, config);
 }

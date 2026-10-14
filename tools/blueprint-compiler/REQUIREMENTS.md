@@ -41,7 +41,7 @@ Load a NoéMI blueprint, validate it, resolve skill and MCP references, and inst
 | Resolve skills and MCP refs | 3 | Slugs map to `skills/` or `skills-dist/` and `mcp-protocols/` |
 | Instantiate on Mastra | 3 | IR becomes a Mastra agent. Mastra is the runtime target, not the Sprint 1 host |
 | HTTP URL + versioned registry loaders | 3 | Same validate/resolve path as local files |
-| Fallback, timeout, structured errors | 2–3 | 429 / 5xx / missing key trigger the next provider. Mock-only `npm test` still passes |
+| Fallback, timeout, structured errors | 2–3 | 429 / 5xx / network failure / timeout trigger the next provider. A missing key, bad config, any other 4xx, and an empty or blocked answer fail closed and never fall back. Mock-only `npm test` still passes |
 
 ### 2.2 NoéMI Studio
 
@@ -103,6 +103,7 @@ type BlueprintIR = {
   domain: string;
   title: string;
   sections: Record<string, string>;
+  refusalCriteria: string;   // body of ### Refusal Criteria under Rules & Constraints; non-empty on a valid blueprint
   skills: string[];
   mcp: string[];
   modelPolicy: { preferred: string; fallbacks: string[] };
@@ -164,3 +165,19 @@ This package is accepted for Sprint 1 when all of the following hold:
 3. A persona missing `### Refusal Criteria` fails with `MISSING_REFUSAL`.
 4. `**Skill:** \`verification/pre-flight-check\`` is extracted onto `ir.skills`.
 5. This requirements file is in the same package, so the course document and the working tree cannot drift from each other.
+
+---
+
+## 10. Sprint 3 acceptance (compiler core)
+
+Sprint 3 is accepted when all of the following hold, in addition to section 9:
+
+1. `npm test` inside `tools/blueprint-compiler` is green with no network and no API keys. Tests that need a real Mastra agent use a loopback server, never the internet.
+2. `node src/cli.js compile <persona> --provider mastra` builds a Mastra agent from the IR and runs it through the gateway's OpenAI-compatible surface with `AI_GW_API_KEY`. The persona's Refusal Criteria are in the system message verbatim. An IR without them is refused (`MISSING_REFUSAL`).
+3. The `mastra` provider follows the same rules as `gemini` and `xai`: 429 / 5xx / network failure / timeout fall back after one shared retry policy; a missing key, bad config, other 4xx, and `PROVIDER_EMPTY` fail closed; nothing but the audit line reaches stderr.
+4. A persona loaded from an `https://` URL or from the registry (`registry:domain/name[@version]`) takes the same validate and resolve path as a local file. A remote persona with no Refusal Criteria fails `MISSING_REFUSAL`; one with escaping skill refs fails `BAD_SLUG`.
+5. The HTTP loader is https-only (http for localhost), refuses credentials / query / fragment, does not follow redirects, and enforces a timeout and a size cap.
+6. `@mastra/core` appears only in this package's `package.json`, pinned exactly. Root `npm run validate` still passes on a spec-only clone.
+7. README, ARCHITECTURE, REQUIREMENTS and AGENTS describe all of the above.
+
+**Open question for the client.** The registry layout in section 2.1 ("versioned registry loaders") was never specified. We assumed the public repo addressed by release tag: `{base}/{version}/agents/{domain}/{name}/core.md`. See ARCHITECTURE.md, Loaders.

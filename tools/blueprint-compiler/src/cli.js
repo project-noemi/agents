@@ -4,9 +4,11 @@ import { compileFile } from "./compile.js";
 import { auditFromCompile, writeAudit } from "./audit.js";
 
 const USAGE = [
-  "Usage: blueprint-compiler compile <file.md> [--provider <name>] [--prompt <text>]",
+  "Usage: blueprint-compiler compile <file.md | https://url | registry:domain/name[@version]> [--provider <name>] [--prompt <text>]",
+  "  Providers: mock, gemini, xai, mastra.",
   "  Without --provider, NOEMI_PREFERRED_PROVIDER / NOEMI_FALLBACK_PROVIDERS decide (default: mock).",
   "  NOEMI_REPO_ROOT overrides the repo root used to resolve skills and MCP refs.",
+  "  NOEMI_REGISTRY_URL / NOEMI_REGISTRY_VERSION / NOEMI_HTTP_ALLOWED_HOSTS configure the loaders.",
 ].join("\n");
 
 function usage(message) { if (message) console.error(message); console.error(USAGE); process.exit(2); }
@@ -28,9 +30,13 @@ const { provider, prompt = "Hello from the Blueprint Compiler." } = parsed.value
 let result;
 
 try {
-  result = await compileFile(file, { provider, prompt });
+  // file path, http(s) URL, or registry:domain/name[@version]
+  const compile = /^https?:\/\//i.test(file) ? compileUrl
+    : file.startsWith("registry:") ? (ref, o) => compileRegistry(ref.slice("registry:".length), o)
+    : compileFile;
+  result = await compile(file, { provider, prompt });
 } catch (err) {
-  // Only real bugs reach here; compileFile returns structured errors otherwise.
+  // Only real bugs reach here; the compile functions return structured errors otherwise.
   result = {
     ok: false,
     stage: "internal",

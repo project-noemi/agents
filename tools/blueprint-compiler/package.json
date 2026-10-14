@@ -14,5 +14,9 @@
   "scripts": {
     "compile": "node src/cli.js",
     "test": "node --import ./tests/helpers/setup.js --test --test-concurrency=1 tests/*.test.js"
+  },
+  "dependencies": {
+    "@mastra/core": "1.71.0",
+    "zod": "4.6.7"
   }
 }

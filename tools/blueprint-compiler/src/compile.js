@@ -1,16 +1,28 @@
 import { parseBlueprint } from "./parse.js";
 import { validateBlueprint } from "./validate.js";
 import { resolveBlueprint } from "./resolve.js";
-import { loadLoaderConfig, loadModelPolicy, loadResolverConfig } from "./config.js";
+import { loadLoaderConfig, loadModelPolicy, loadResolverConfig, loadRuntime, RUNTIMES } from "./config.js";
 import { loadFile } from "./loaders/file.js";
 import { loadHttp } from "./loaders/http.js";
 import { loadRegistry } from "./loaders/registry.js";
 import { runMock } from "./providers/mock.js";
-import { runGemini, TIMEOUT_VAR as GEMINI_TIMEOUT_VAR } from "./providers/gemini.js";
-import { runXai, TIMEOUT_VAR as XAI_TIMEOUT_VAR } from "./providers/xai.js";
+import { runGemini, gatewayModelId as geminiModelId, TIMEOUT_VAR as GEMINI_TIMEOUT_VAR } from "./providers/gemini.js";
+import { runXai, gatewayModelId as xaiModelId, TIMEOUT_VAR as XAI_TIMEOUT_VAR } from "./providers/xai.js";
 import { runMastra, loadMastraConfig } from "./runtime/mastra.js";
 import { loadGatewayConfig } from "./providers/gateway.js";
 import { isFallbackError, providerOrder, runWithFallbacks } from "./providers/fallback.js";
+
+// Two layers, kept apart:
+//   provider = which model answers (mock, gemini, xai): NOEMI_PREFERRED_PROVIDER / fallbacks
+//   runtime  = how it is called (direct, mastra):       --runtime / NOEMI_RUNTIME
+// DIRECT is the hand-rolled call for each provider. LIVE says how each live
+// provider is reached through the gateway, which is all the Mastra runtime needs.
+// mock has no model, so it has no LIVE entry and always runs direct.
+const DIRECT = { mock: runMock, gemini: runGemini, xai: runXai };
+const LIVE = {
+  gemini: { timeoutVar: GEMINI_TIMEOUT_VAR, modelId: geminiModelId },
+  xai: { timeoutVar: XAI_TIMEOUT_VAR, modelId: xaiModelId },
+};
 
 const isProviderError = (e) =>
   (typeof e?.code === "string" && e.code.startsWith("PROVIDER")) ||
@@ -36,7 +48,7 @@ const describeFailure = (e) => (Number.isInteger(e.status) ? `HTTP ${e.status}` 
  * repoRoot, and only when the persona has **Skill:** or **MCP:** refs.
  * @param {string} markdown
  * @param {import("./ir.js").SourceRef} source
- * @param {{ prompt?: string, provider?: string, repoRoot?: string }} [opts]
+ * @param {{ prompt?: string, provider?: string, runtime?: string, repoRoot?: string }} [opts]
  */
 export async function compileSource(markdown, source, opts = {}) {
   const ir = parseBlueprint(markdown, { source, modelPolicy: loadModelPolicy() });
@@ -56,24 +68,38 @@ export async function compileSource(markdown, source, opts = {}) {
   const preferred = opts.provider ?? ir.modelPolicy.preferred ?? "mock";
   const fallbacks = ir.modelPolicy.fallbacks ?? [];
 
-  const providers = {
-    mock: (input) => runMock(ir, input),
-    gemini: (input) => runGemini(ir, input),
-    xai: (input) => runXai(ir, input),
-    mastra: (input) => runMastra(ir, input),
-  };
+  // Fail closed on an unknown runtime before anything runs.
+  const runtime = opts.runtime || loadRuntime();
+  if (!RUNTIMES.includes(runtime)) {
+    const shown = runtime.length > 40 ? `${runtime.slice(0, 37)}...` : runtime;
+    return {
+      ok: false,
+      stage: "provider",
+      errors: [{ code: "RUNTIME", message: `Unknown runtime "${shown}". Known: ${RUNTIMES.join(", ")}.`, path: "runtime" }],
+    };
+  }
+
+  // Same provider names whatever the runtime; only the call path differs.
+  const providers = Object.fromEntries(
+    Object.entries(DIRECT).map(([name, run]) => [
+      name,
+      runtime === "mastra" && LIVE[name]
+        ? (input) => runMastra(ir, input, { provider: name, ...LIVE[name] })
+        : (input) => run(ir, input),
+    ])
+  );
 
   // Check the whole chain before any provider runs: unknown names and bad
-  // gateway config (key, URL, timeout) fail closed up front, not mid-fallback.
-  const preflight = {
-    gemini: () => loadGatewayConfig({ timeoutVar: GEMINI_TIMEOUT_VAR }),
-    xai: () => loadGatewayConfig({ timeoutVar: XAI_TIMEOUT_VAR }),
-    mastra: () => loadMastraConfig(),   // gateway config + MASTRA_MODEL
+  // gateway config (key, URL, timeout, and under mastra the model) fail closed
+  // up front, not mid-fallback.
+  const preflight = (name) => {
+    const live = LIVE[name];
+    if (!live) return;
+    if (runtime === "mastra") loadMastraConfig(live);
+    else loadGatewayConfig({ timeoutVar: live.timeoutVar });
   };
   try {
-    for (const name of providerOrder({ preferred, fallbacks, providers })) {
-      preflight[name]?.();
-    }
+    for (const name of providerOrder({ preferred, fallbacks, providers })) preflight(name);
   } catch (err) {
     if (!isProviderError(err)) throw err;
     return { ok: false, stage: "provider", errors: [{ ...toCompileError(err), path: "provider" }] };
@@ -88,7 +114,8 @@ export async function compileSource(markdown, source, opts = {}) {
       onFallback: ({ provider, error }) =>
         fallbacksUsed.push({ provider, reason: describeFailure(error) }),
     });
-    return { ok: true, ir, resolved, run: { ...run, fallbacks: fallbacksUsed } };
+    // mock under --runtime mastra still runs direct, and says so.
+    return { ok: true, ir, resolved, run: { ...run, runtime: run.runtime ?? "direct", fallbacks: fallbacksUsed } };
   } catch (err) {
     if (!isProviderError(err)) throw err;   // real bugs still throw
     return { ok: false, stage: "provider", errors: [toCompileError(err)], fallbacks: fallbacksUsed };
@@ -115,7 +142,7 @@ const loaderConfig = (opts) => ({ ...loadLoaderConfig(), ...opts.loader });
 
 /**
  * @param {string} filePath
- * @param {{ prompt?: string, provider?: string, repoRoot?: string }} [opts]
+ * @param {{ prompt?: string, provider?: string, runtime?: string, repoRoot?: string }} [opts]
  */
 export function compileFile(filePath, opts = {}) {
   return loadThenCompile(() => loadFile(filePath), filePath, opts);
@@ -124,7 +151,7 @@ export function compileFile(filePath, opts = {}) {
 /**
  * Compile a persona served over http(s). See loaders/http.js for the limits.
  * @param {string} url
- * @param {{ prompt?: string, provider?: string, repoRoot?: string,
+ * @param {{ prompt?: string, provider?: string, runtime?: string, repoRoot?: string,
  *   loader?: { allowedHosts?: string[], timeoutMs?: number, maxBytes?: number } }} [opts]
  */
 export function compileUrl(url, opts = {}) {

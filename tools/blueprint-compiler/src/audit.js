@@ -12,15 +12,20 @@ const STAGES = {
 export const auditRecord = ({ task, inputs = [], actions = [], risks = [], result }) =>
   ({ task, inputs, actions, risks, result });
 
-/** @param {object} r compileFile/compileSource result @param {{file?: string, provider?: string}} ctx */
-export function auditFromCompile(r, { file, provider } = {}) {
-  const inputs = [file, provider ?? "(from config)"];
+/**
+ * @param {object} r compileFile/compileSource result
+ * @param {{file?: string, provider?: string, runtime?: string}} ctx
+ */
+export function auditFromCompile(r, { file, provider, runtime } = {}) {
+  // `runtime` is only listed when --runtime was passed, so existing records keep their shape.
+  const inputs = [file, provider ?? "(from config)", ...(runtime ? [runtime] : [])];
   if (r.ok) {
     const fell = r.run.fallbacks ?? [];
+    const via = r.run.runtime === "mastra" ? "+mastra" : "";
     return auditRecord({
       task: `compile:${r.ir.id}`,
       inputs,
-      actions: ["parse", "validate", "resolve", ...fell.map((f) => `fallback-from:${f.provider}`), `run:${r.run.provider}`],
+      actions: ["parse", "validate", "resolve", ...fell.map((f) => `fallback-from:${f.provider}`), `run:${r.run.provider}${via}`],
       risks: fell.map((f) => `${f.provider} failed (${f.reason}); fell back`),
       result: "ok",
     });

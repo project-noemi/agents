@@ -3,6 +3,8 @@ import test from "node:test";
 import { buildMastraAgent, loadMastraConfig, normalizeError, runMastra } from "../src/runtime/mastra.js";
 import { compileSource } from "../src/compile.js";
 import { isFallbackError } from "../src/providers/fallback.js";
+import { gatewayModelId as xaiModelId } from "../src/providers/xai.js";
+import { gatewayModelId as geminiModelId } from "../src/providers/gemini.js";
 import { parseBlueprint } from "../src/parse.js";
 import { persona } from "./helpers/persona.js";
 import { withEnv } from "./helpers/fake-network.js";
@@ -13,7 +15,16 @@ const ir = parseBlueprint(persona({ rules: `1. Be safe.\n\n### Refusal Criteria\
   source: { kind: "file", ref: "agents/coding/architect/core.md" },
 });
 const src = { kind: "file", ref: "in-memory.md" };
-const clean = { NOEMI_PREFERRED_PROVIDER: undefined, NOEMI_FALLBACK_PROVIDERS: undefined, NOEMI_REPO_ROOT: undefined, MASTRA_MODEL: undefined, MASTRA_TIMEOUT_MS: undefined };
+
+// The runtime takes its model and timeout from the chosen provider.
+const xai = { provider: "xai", timeoutVar: "XAI_TIMEOUT_MS", modelId: xaiModelId };
+const gemini = { provider: "gemini", timeoutVar: "GEMINI_TIMEOUT_MS", modelId: geminiModelId };
+
+const clean = {
+  NOEMI_PREFERRED_PROVIDER: undefined, NOEMI_FALLBACK_PROVIDERS: undefined, NOEMI_REPO_ROOT: undefined,
+  NOEMI_RUNTIME: undefined, XAI_MODEL: undefined, GEMINI_MODEL: undefined,
+  XAI_TIMEOUT_MS: undefined, GEMINI_TIMEOUT_MS: undefined,
+};
 const key = { AI_GW_API_KEY: "test-key", AI_GW_BASE_URL: undefined };
 
 const mastraAvailable = await import("@mastra/core/agent").then(() => true, () => false);
@@ -21,25 +32,31 @@ const real = { skip: !mastraAvailable && "@mastra/core is not installed" };
 
 // ---------------------------------------------------------------- config
 
-test("config: defaults to xai/grok-4.6 on the gateway's /v1 surface", () => {
-  const c = loadMastraConfig({ AI_GW_API_KEY: "k" });
+test("config: xai target defaults to xai/grok-4.6 on the gateway's /v1 surface", () => {
+  const c = loadMastraConfig(xai, { AI_GW_API_KEY: "k" });
   assert.equal(c.model, "xai/grok-4.6");
   assert.equal(c.modelUrl, "https://ai-gw.newpush.com/v1");
   assert.equal(c.timeoutMs, 30_000);
 });
 
-test("config: MASTRA_MODEL and MASTRA_TIMEOUT_MS are honored and validated", () => {
-  const c = loadMastraConfig({ AI_GW_API_KEY: "k", MASTRA_MODEL: " google/gemini-3.8-flash ", MASTRA_TIMEOUT_MS: "5000" });
-  assert.equal(c.model, "google/gemini-3.8-flash");
-  assert.equal(c.timeoutMs, 5000);
-  for (const MASTRA_MODEL of ["grok-4.6", "xai/", "/grok", "xai/grok 4"]) {
-    assert.throws(() => loadMastraConfig({ AI_GW_API_KEY: "k", MASTRA_MODEL }), (e) => e.code === "PROVIDER_CONFIG" && /MASTRA_MODEL/.test(e.message), MASTRA_MODEL);
-  }
-  assert.throws(() => loadMastraConfig({ AI_GW_API_KEY: "k", MASTRA_TIMEOUT_MS: "soon" }), (e) => e.code === "PROVIDER_CONFIG");
+test("config: the model comes from the provider's own setting, not a Mastra one", () => {
+  assert.equal(loadMastraConfig(xai, { AI_GW_API_KEY: "k", XAI_MODEL: "grok-4.3" }).model, "xai/grok-4.3");
+  assert.equal(loadMastraConfig(gemini, { AI_GW_API_KEY: "k" }).model, "google/gemini-3.8-flash");
+  assert.equal(
+    loadMastraConfig(gemini, { AI_GW_API_KEY: "k", GEMINI_MODEL: "google/gemini-3.1-pro-preview" }).model,
+    "google/gemini-3.1-pro-preview",
+  );
+});
+
+test("config: the provider's timeout variable is honored and validated", () => {
+  assert.equal(loadMastraConfig(xai, { AI_GW_API_KEY: "k", XAI_TIMEOUT_MS: "5000" }).timeoutMs, 5000);
+  assert.equal(loadMastraConfig(gemini, { AI_GW_API_KEY: "k", GEMINI_TIMEOUT_MS: "7000" }).timeoutMs, 7000);
+  assert.throws(() => loadMastraConfig(xai, { AI_GW_API_KEY: "k", XAI_TIMEOUT_MS: "soon" }),
+    (e) => e.code === "PROVIDER_CONFIG" && /XAI_TIMEOUT_MS/.test(e.message));
 });
 
 test("config: a missing key fails closed and is never fallback-worthy", () => {
-  assert.throws(() => loadMastraConfig({}), (e) => e.code === "PROVIDER_CONFIG" && !isFallbackError(e));
+  assert.throws(() => loadMastraConfig(xai, {}), (e) => e.code === "PROVIDER_CONFIG" && !isFallbackError(e));
 });
 
 // ------------------------------------------------- build (fake Agent, no I/O)
@@ -53,7 +70,7 @@ const noopLogger = { marker: "noop" };
 const deps = { Agent: FakeAgent, noopLogger };
 
 test("build: refusal criteria are in the instructions verbatim, user text is not", async () => {
-  const config = loadMastraConfig({ AI_GW_API_KEY: "k" });
+  const config = loadMastraConfig(xai, { AI_GW_API_KEY: "k" });
   const agent = await buildMastraAgent(ir, config, deps);
   assert.ok(agent.opts.instructions.includes(CRITERIA), "copied, not summarized");
   assert.match(agent.opts.instructions, /## Refusal Criteria/);
@@ -63,14 +80,14 @@ test("build: refusal criteria are in the instructions verbatim, user text is not
 });
 
 test("build: the model keeps the gateway's provider/model id and /v1 base URL", async () => {
-  const config = loadMastraConfig({ AI_GW_API_KEY: "k", AI_GW_BASE_URL: "https://gw.example.test/" });
+  const config = loadMastraConfig(xai, { AI_GW_API_KEY: "k", AI_GW_BASE_URL: "https://gw.example.test/" });
   const { model } = (await buildMastraAgent(ir, config, deps)).opts;
   // providerId/modelId, NOT { id: "xai/grok-4.6" }, which would send a bare "grok-4.6".
   assert.deepEqual(model, { providerId: "newpush", modelId: "xai/grok-4.6", url: "https://gw.example.test/v1", apiKey: "k" });
 });
 
 test("build: an IR without Refusal Criteria is refused, not run unprotected", async () => {
-  const config = loadMastraConfig({ AI_GW_API_KEY: "k" });
+  const config = loadMastraConfig(xai, { AI_GW_API_KEY: "k" });
   for (const refusalCriteria of [undefined, "", "   \n"]) {
     await assert.rejects(() => buildMastraAgent({ ...ir, refusalCriteria }, config, deps), (e) => e.code === "MISSING_REFUSAL");
   }
@@ -81,13 +98,15 @@ test("build: an IR without Refusal Criteria is refused, not run unprotected", as
 const ok = (text = "hello", extra = {}) => ({ text, finishReason: "stop", usage: { inputTokens: 5, outputTokens: 2 }, ...extra });
 const apiError = (statusCode, message = `synthetic ${statusCode}`) => Object.assign(new Error(message), { name: "AI_APICallError", statusCode });
 const script = (fn) => { FakeAgent.script = fn; };
-const run = (prompt = "hi", vars = {}) => withEnv({ ...clean, ...key, ...vars }, () => runMastra(ir, prompt, deps));
+const run = (prompt = "hi", vars = {}, target = xai) =>
+  withEnv({ ...clean, ...key, ...vars }, () => runMastra(ir, prompt, target, deps));
 
-test("run: success has the mock.js shape, real usage, and passes the prompt through", async () => {
+test("run: success has the provider shape, runtime mastra, real usage, and passes the prompt through", async () => {
   let seen;
   script((prompt, options) => { seen = { prompt, options }; return ok("hello"); });
   const r = await run("review src/parse.js");
-  assert.equal(r.provider, "mastra");
+  assert.equal(r.provider, "xai", "the model provider, not 'mastra'");
+  assert.equal(r.runtime, "mastra");
   assert.equal(r.model, "xai/grok-4.6");
   assert.equal(r.output, "hello");
   assert.deepEqual([r.usage.inputTokens, r.usage.outputTokens, r.usage.costUsd], [5, 2, 0]);
@@ -95,6 +114,12 @@ test("run: success has the mock.js shape, real usage, and passes the prompt thro
   assert.equal(seen.prompt, "review src/parse.js");
   assert.equal(seen.options.maxRetries, 0, "Mastra must not run a second retry policy");
   assert.ok(seen.options.abortSignal instanceof AbortSignal);
+});
+
+test("run: a gemini target reports provider gemini and the google/ gateway model", async () => {
+  script(() => ok());
+  const r = await run("hi", {}, gemini);
+  assert.deepEqual([r.provider, r.runtime, r.model], ["gemini", "mastra", "google/gemini-3.8-flash"]);
 });
 
 test("run: 429 and 5xx are retried with the gateway's policy, then succeed", async () => {
@@ -137,7 +162,7 @@ test("run: Mastra resolving with finishReason 'aborted' after the deadline is a 
     clearTimeout(hold);
     return { text: "", finishReason: "aborted", usage: {} };   // what Mastra really does
   });
-  await assert.rejects(() => run("hi", { MASTRA_TIMEOUT_MS: "30" }), (e) => e.name === "TimeoutError" && isFallbackError(e));
+  await assert.rejects(() => run("hi", { XAI_TIMEOUT_MS: "30" }), (e) => e.name === "TimeoutError" && isFallbackError(e));
   assert.equal(n, 1, "timeouts are not retried");
 });
 
@@ -175,13 +200,13 @@ test("normalize: error messages carry the gateway text but are capped", () => {
 test("run: a missing key fails before Mastra is touched", async () => {
   script(() => { throw new Error("must not run"); });
   await withEnv({ ...clean, AI_GW_API_KEY: undefined }, () =>
-    assert.rejects(() => runMastra(ir, "hi", deps), (e) => e.code === "PROVIDER_CONFIG"));
+    assert.rejects(() => runMastra(ir, "hi", xai, deps), (e) => e.code === "PROVIDER_CONFIG"));
 });
 
 // ------------------------------------------- REAL Mastra Agent, loopback gateway
 
-const realRun = (gateway, vars = {}) =>
-  withEnv({ ...clean, AI_GW_API_KEY: "test-key", AI_GW_BASE_URL: gateway.base, ...vars }, () => runMastra(ir, "hello"));
+const realRun = (gateway, vars = {}, target = xai) =>
+  withEnv({ ...clean, AI_GW_API_KEY: "test-key", AI_GW_BASE_URL: gateway.base, ...vars }, () => runMastra(ir, "hello", target));
 
 test("real Mastra: targets /v1/chat/completions with Bearer auth and the full xai/ model id", real, async () => {
   await withLocalGateway((req, res) => sendJson(res, chatReply("hello from the gateway")), async (gw) => {
@@ -206,11 +231,18 @@ test("real Mastra: refusal criteria ride in the system message, the user turn is
   });
 });
 
-test("real Mastra: MASTRA_MODEL selects another gateway model (Gemini via the OpenAI surface)", real, async () => {
+test("real Mastra: a gemini target reaches Gemini through the OpenAI surface", real, async () => {
   await withLocalGateway((req, res) => sendJson(res, chatReply("ok")), async (gw) => {
-    const r = await realRun(gw, { MASTRA_MODEL: "google/gemini-3.8-flash" });
+    const r = await realRun(gw, {}, gemini);
     assert.equal(gw.requests[0].body.model, "google/gemini-3.8-flash");
-    assert.equal(r.model, "google/gemini-3.8-flash");
+    assert.deepEqual([r.provider, r.runtime, r.model], ["gemini", "mastra", "google/gemini-3.8-flash"]);
+  });
+});
+
+test("real Mastra: XAI_MODEL selects the model (no Mastra-specific setting)", real, async () => {
+  await withLocalGateway((req, res) => sendJson(res, chatReply("ok")), async (gw) => {
+    await realRun(gw, { XAI_MODEL: "grok-4.3" });
+    assert.equal(gw.requests[0].body.model, "xai/grok-4.3");
   });
 });
 
@@ -253,7 +285,7 @@ test("real Mastra: empty, filtered, refusal, and no-choices bodies are PROVIDER_
 
 test("real Mastra: a hung gateway is a fallback-worthy TimeoutError", real, async () => {
   await withLocalGateway(() => { /* never answer */ }, async (gw) => {
-    await assert.rejects(() => realRun(gw, { MASTRA_TIMEOUT_MS: "150" }), (e) => e.name === "TimeoutError" && isFallbackError(e));
+    await assert.rejects(() => realRun(gw, { XAI_TIMEOUT_MS: "150" }), (e) => e.name === "TimeoutError" && isFallbackError(e));
   });
 });
 
@@ -267,7 +299,7 @@ test("real Mastra: a refused connection is a fallback-worthy network failure", r
 test("real Mastra: nothing is written to stderr on failure (the CLI audit line owns it)", real, async () => {
   const write = process.stderr.write;
   const chunks = [];
-  process.stderr.write = (c, ...a) => { chunks.push(String(c)); return true; };
+  process.stderr.write = (c) => { chunks.push(String(c)); return true; };
   try {
     await withLocalGateway((req, res) => sendError(res, 503), async (gw) => {
       await assert.rejects(() => realRun(gw, { AI_GW_MAX_RETRIES: "0" }));
@@ -290,53 +322,110 @@ test("real Mastra: the key never appears in the URL, body, or an error message",
 
 const compile = (vars, opts = {}) => withEnv({ ...clean, ...vars }, () => compileSource(persona(), src, opts));
 
-test("compile: --provider mastra runs end to end on a real Mastra Agent", real, async () => {
+test("compile: --runtime mastra --provider xai runs end to end on a real Mastra Agent", real, async () => {
   await withLocalGateway((req, res) => sendJson(res, chatReply("from mastra")), async (gw) => {
-    const r = await compile({ ...key, AI_GW_BASE_URL: gw.base }, { provider: "mastra", prompt: "hi" });
+    const r = await compile({ ...key, AI_GW_BASE_URL: gw.base }, { runtime: "mastra", provider: "xai", prompt: "hi" });
     assert.equal(r.ok, true);
-    assert.equal(r.run.provider, "mastra");
+    assert.deepEqual([r.run.provider, r.run.runtime], ["xai", "mastra"]);
     assert.equal(r.run.output, "from mastra");
     assert.deepEqual(r.run.fallbacks, []);
   });
 });
 
-test("compile: mastra 503 falls back to mock and says so", real, async () => {
-  await withLocalGateway((req, res) => sendError(res, 503), async (gw) => {
-    const r = await compile({ ...key, AI_GW_BASE_URL: gw.base, AI_GW_MAX_RETRIES: "0", NOEMI_FALLBACK_PROVIDERS: "mock" }, { provider: "mastra" });
-    assert.equal(r.ok, true);
-    assert.equal(r.run.provider, "mock");
-    assert.deepEqual(r.run.fallbacks, [{ provider: "mastra", reason: "HTTP 503" }]);
+test("compile: NOEMI_RUNTIME=mastra selects the runtime from config", real, async () => {
+  await withLocalGateway((req, res) => sendJson(res, chatReply("ok")), async (gw) => {
+    const r = await compile({ ...key, AI_GW_BASE_URL: gw.base, NOEMI_RUNTIME: "mastra" }, { provider: "xai" });
+    assert.equal(r.run.runtime, "mastra");
   });
 });
 
-test("compile: mastra 403 and PROVIDER_EMPTY fail closed even with a fallback configured", real, async () => {
+test("compile: without a runtime, a live provider runs direct", async () => {
+  const r = await compile({}, { provider: "mock" });
+  assert.equal(r.ok, true);
+  assert.equal(r.run.runtime, "direct");
+});
+
+test("compile: mastra on xai 503 falls back to mock and says so", real, async () => {
+  await withLocalGateway((req, res) => sendError(res, 503), async (gw) => {
+    const r = await compile(
+      { ...key, AI_GW_BASE_URL: gw.base, AI_GW_MAX_RETRIES: "0", NOEMI_FALLBACK_PROVIDERS: "mock" },
+      { runtime: "mastra", provider: "xai" },
+    );
+    assert.equal(r.ok, true);
+    assert.equal(r.run.provider, "mock");
+    assert.equal(r.run.runtime, "direct", "mock has no model, so it runs direct");
+    assert.deepEqual(r.run.fallbacks, [{ provider: "xai", reason: "HTTP 503" }]);
+  });
+});
+
+test("compile: Mastra on Gemini, falling back to xAI (still on Mastra)", real, async () => {
+  // The case the two-layer design exists for: choose the runtime once, then
+  // choose and fall back between model providers as usual.
+  await withLocalGateway(
+    (req, res) => (req.body.model.startsWith("google/") ? sendError(res, 503) : sendJson(res, chatReply("from grok"))),
+    async (gw) => {
+      const r = await compile(
+        { ...key, AI_GW_BASE_URL: gw.base, AI_GW_MAX_RETRIES: "0", NOEMI_FALLBACK_PROVIDERS: "xai,mock" },
+        { runtime: "mastra", provider: "gemini" },
+      );
+      assert.equal(r.ok, true);
+      assert.deepEqual([r.run.provider, r.run.runtime], ["xai", "mastra"]);
+      assert.equal(r.run.output, "from grok");
+      assert.deepEqual(r.run.fallbacks, [{ provider: "gemini", reason: "HTTP 503" }]);
+      assert.deepEqual(gw.requests.map((q) => q.body.model), ["google/gemini-3.8-flash", "xai/grok-4.6"]);
+    },
+  );
+});
+
+test("compile: mastra on xai 403 and PROVIDER_EMPTY fail closed even with a fallback configured", real, async () => {
   await withLocalGateway((req, res) => sendError(res, 403), async (gw) => {
-    const r = await compile({ ...key, AI_GW_BASE_URL: gw.base, NOEMI_FALLBACK_PROVIDERS: "mock" }, { provider: "mastra" });
+    const r = await compile({ ...key, AI_GW_BASE_URL: gw.base, NOEMI_FALLBACK_PROVIDERS: "mock" }, { runtime: "mastra", provider: "xai" });
     assert.equal(r.ok, false);
     assert.equal(r.errors[0].code, "PROVIDER_HTTP");
     assert.equal(r.errors[0].status, 403);
   });
   await withLocalGateway((req, res) => sendJson(res, chatReply("")), async (gw) => {
-    const r = await compile({ ...key, AI_GW_BASE_URL: gw.base, NOEMI_FALLBACK_PROVIDERS: "mock" }, { provider: "mastra" });
+    const r = await compile({ ...key, AI_GW_BASE_URL: gw.base, NOEMI_FALLBACK_PROVIDERS: "mock" }, { runtime: "mastra", provider: "xai" });
     assert.equal(r.ok, false);
     assert.equal(r.errors[0].code, "PROVIDER_EMPTY");
   });
 });
 
-test("compile: mastra in the chain with no key fails up front, even when mock is preferred", async () => {
-  const r = await compile({ AI_GW_API_KEY: undefined, NOEMI_FALLBACK_PROVIDERS: "mastra" }, { provider: "mock" });
+test("compile: a live provider in the chain with no key fails up front under the mastra runtime", async () => {
+  const r = await compile({ AI_GW_API_KEY: undefined, NOEMI_FALLBACK_PROVIDERS: "xai" }, { runtime: "mastra", provider: "mock" });
   assert.equal(r.ok, false);
   assert.equal(r.stage, "provider");
   assert.equal(r.errors[0].code, "PROVIDER_CONFIG");
 });
 
-test("compile: a bad MASTRA_MODEL anywhere in the chain fails up front", async () => {
-  const r = await compile({ ...key, MASTRA_MODEL: "grok", NOEMI_FALLBACK_PROVIDERS: "mastra" }, { provider: "mock" });
+test("compile: a bad timeout anywhere in the chain fails up front under the mastra runtime", async () => {
+  const r = await compile({ ...key, XAI_TIMEOUT_MS: "soon", NOEMI_FALLBACK_PROVIDERS: "xai" }, { runtime: "mastra", provider: "mock" });
   assert.equal(r.errors[0].code, "PROVIDER_CONFIG");
-  assert.match(r.errors[0].message, /MASTRA_MODEL/);
+  assert.match(r.errors[0].message, /XAI_TIMEOUT_MS/);
 });
 
-test("compile: a mock-only run never needs Mastra", async () => {
+test("compile: an unknown runtime fails closed before anything runs", async () => {
+  const r = await compile({}, { runtime: "bogus", provider: "mock" });
+  assert.equal(r.ok, false);
+  assert.equal(r.stage, "provider");
+  assert.equal(r.errors[0].code, "RUNTIME");
+  assert.match(r.errors[0].message, /bogus/);
+});
+
+test("compile: 'mastra' is no longer a provider name", async () => {
+  const r = await compile({}, { provider: "mastra" });
+  assert.equal(r.ok, false);
+  assert.equal(r.errors[0].code, "PROVIDER");
+  assert.match(r.errors[0].message, /mastra/);
+});
+
+test("compile: mock under --runtime mastra still runs, direct, and reports it", async () => {
+  const r = await compile({ AI_GW_API_KEY: undefined }, { runtime: "mastra", provider: "mock" });
+  assert.equal(r.ok, true);
+  assert.deepEqual([r.run.provider, r.run.runtime], ["mock", "direct"]);
+});
+
+test("compile: a direct-runtime run never needs Mastra", async () => {
   const r = await compile({ AI_GW_API_KEY: undefined }, { provider: "mock" });
   assert.equal(r.ok, true);
 });

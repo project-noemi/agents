@@ -329,7 +329,7 @@ test("cli: a failed remote load exits 1 with a LOAD audit record, not a stack tr
   });
 });
 
-test("cli: --provider mastra runs end to end against a loopback gateway", async () => {
+test("cli: --runtime mastra --provider xai runs end to end against a loopback gateway", async () => {
   const gw = http.createServer((req, res) => {
     req.resume();
     req.on("end", () => {
@@ -341,12 +341,17 @@ test("cli: --provider mastra runs end to end against a loopback gateway", async 
   });
   await new Promise((r) => gw.listen(0, "127.0.0.1", r));
   try {
-    const r = await runCli(["compile", join(fixtures, "architect.core.md"), "--provider", "mastra"],
+    const r = await runCli(
+      ["compile", join(fixtures, "architect.core.md"), "--runtime", "mastra", "--provider", "xai"],
       { AI_GW_API_KEY: "sk-canary", AI_GW_BASE_URL: `http://127.0.0.1:${gw.address().port}` });
     assert.equal(r.code, 0, r.stderr);
     const out = JSON.parse(r.stdout);
-    assert.equal(out.run.provider, "mastra");
+    assert.equal(out.run.provider, "xai");
+    assert.equal(out.run.runtime, "mastra");
     assert.equal(out.run.output, "hello from mastra");
+    const audit = JSON.parse(r.stderr.trim());
+    assert.deepEqual(audit.inputs.slice(1), ["xai", "mastra"]);
+    assert.ok(audit.actions.includes("run:xai+mastra"));
     assert.equal(r.stderr.trim().split("\n").length, 1, "one audit line; Mastra's logger is silent");
     assert.ok(!r.stdout.includes("sk-canary") && !r.stderr.includes("sk-canary"));
   } finally {

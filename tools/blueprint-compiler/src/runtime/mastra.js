@@ -2,6 +2,16 @@
  * Sprint 3 runtime: instantiate a Blueprint IR as a Mastra agent and run it
  * through NewPush's generative AI gateway (OpenAI-compatible surface).
  *
+ * This is a RUNTIME, not a provider. Which model answers is still decided by
+ * provider selection (NOEMI_PREFERRED_PROVIDER / NOEMI_FALLBACK_PROVIDERS);
+ * `--runtime mastra` only changes HOW that model is called. compile.js passes
+ * a `target` describing the chosen provider:
+ *
+ *   { provider: "xai", timeoutVar: "XAI_TIMEOUT_MS", modelId: (env) => "xai/grok-4.6" }
+ *
+ * so the model and timeout come from the provider's own settings (XAI_MODEL,
+ * GEMINI_MODEL, *_TIMEOUT_MS). There is no separate Mastra model setting.
+ *
  * Spike result (spikes/mastra-gateway.mjs, ARCHITECTURE.md "Mastra runtime"):
  * Mastra's model layer CAN target the gateway with AI_GW_API_KEY, with two
  * traps this file encodes:
@@ -17,7 +27,7 @@
  * PROVIDER_EMPTY). Without that, a 503 would not fall back and a blocked or
  * empty answer would be returned as a success.
  *
- * Mastra is imported lazily: a mock-only run never loads it, and a clone
+ * Mastra is imported lazily: a direct-runtime run never loads it, and a clone
  * without `npm install` still gets a clear PROVIDER_CONFIG, not a crash.
  *
  * Refusal Criteria: the agent's instructions come from buildSystemPrompt(),
@@ -27,27 +37,26 @@
 import { configError, emptyError, httpError, loadGatewayConfig, withGatewayRetry } from "../providers/gateway.js";
 import { buildSystemPrompt } from "../providers/prompt.js";
 
-export const TIMEOUT_VAR = "MASTRA_TIMEOUT_MS";
-export const MODEL_VAR = "MASTRA_MODEL";
-// Gateway OpenAI surface ids are always `provider/model`.
-export const DEFAULT_MODEL = "xai/grok-4.6";
 // Only used to label the model inside Mastra; the gateway never sees it.
 const PROVIDER_ID = "newpush";
 // These end reasons mean the text cannot be trusted. Empty text always fails too.
 const BAD_FINISH = new Set(["content-filter", "error", "aborted"]);
 
 /**
- * Validate and resolve everything the Mastra provider needs from the
- * environment, before any request is made. Throws PROVIDER_CONFIG.
- * compile.js calls this up front for every `mastra` in the provider chain.
+ * How one live provider is reached through the gateway.
+ * @typedef {{ provider: string, timeoutVar: string, modelId: (env?: object) => string }} MastraTarget
  */
-export function loadMastraConfig(env = process.env) {
-  const gw = loadGatewayConfig({ timeoutVar: TIMEOUT_VAR }, env);
-  const model = env[MODEL_VAR]?.trim() || DEFAULT_MODEL;
-  if (!/^[^/\s]+\/[^\s]+$/.test(model)) {
-    throw configError(`${MODEL_VAR} must look like "provider/model" (for example xai/grok-4.6); got "${model}".`);
-  }
-  return { ...gw, model, modelUrl: `${gw.gateway}/v1` };
+
+/**
+ * Validate and resolve everything the Mastra runtime needs from the
+ * environment, before any request is made. Throws PROVIDER_CONFIG.
+ * compile.js calls this up front for every live provider in the chain when
+ * the runtime is `mastra`.
+ * @param {MastraTarget} target
+ */
+export function loadMastraConfig({ modelId, timeoutVar }, env = process.env) {
+  const gw = loadGatewayConfig({ timeoutVar }, env);   // key, URL, timeout, retries
+  return { ...gw, model: modelId(env), modelUrl: `${gw.gateway}/v1` };
 }
 
 async function loadMastra() {
@@ -143,14 +152,16 @@ function assertUsable(result) {
 }
 
 /**
- * Provider-shaped entry point: same signature and return shape as runMock /
- * runGemini / runXai, so compile.js treats it as one more provider.
+ * Run the IR as a Mastra agent on the model of the chosen provider. Same return
+ * shape as runMock / runGemini / runXai, except `provider` is the MODEL provider
+ * (not "mastra") and `runtime` is "mastra".
  * @param {import("../ir.js").BlueprintIR} ir
  * @param {string} prompt
+ * @param {MastraTarget} target
  * @param {{ Agent?: Function, noopLogger?: object }} [deps]
  */
-export async function runMastra(ir, prompt, deps = {}) {
-  const config = loadMastraConfig();
+export async function runMastra(ir, prompt, target, deps = {}) {
+  const config = loadMastraConfig(target);
   const agent = await buildMastraAgent(ir, config, deps);
 
   const started = Date.now();
@@ -173,7 +184,8 @@ export async function runMastra(ir, prompt, deps = {}) {
   assertUsable(result);
 
   return {
-    provider: "mastra",
+    provider: target.provider,
+    runtime: "mastra",
     model: config.model,
     output: result.text,
     usage: {

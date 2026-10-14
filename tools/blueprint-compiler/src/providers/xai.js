@@ -17,12 +17,19 @@ import { buildSystemPrompt } from "./prompt.js";
 const DEFAULT_MODEL = "xai/grok-4.6";
 export const TIMEOUT_VAR = "XAI_TIMEOUT_MS";
 
+/**
+ * Accept a bare `grok-4.6` from config, but always use `xai/grok-4.6`: the
+ * gateway rejects bare ids on its OpenAI surface. The Mastra runtime uses the
+ * same id, so one XAI_MODEL setting drives both runtimes.
+ */
+export const gatewayModelId = (env = process.env) => {
+  const configured = env.XAI_MODEL || DEFAULT_MODEL;
+  return configured.startsWith("xai/") ? configured : `xai/${configured}`;
+};
+
 export async function runXai(ir, prompt) {
   const config = loadGatewayConfig({ timeoutVar: TIMEOUT_VAR });
-  // Accept a bare `grok-4.6` from config, but always send `xai/grok-4.6`:
-  // the gateway rejects bare ids on its OpenAI surface.
-  const configured = process.env.XAI_MODEL || DEFAULT_MODEL;
-  const model = configured.startsWith("xai/") ? configured : `xai/${configured}`;
+  const model = gatewayModelId();
 
   const started = Date.now();
   const data = await postJson(

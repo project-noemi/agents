@@ -43,7 +43,7 @@ npm run deploy
 1. **Hostname:** `mcp.noemi.newpush.com` → Worker route / Custom Domain for `noemi-knowledge-mcp`.
 2. **DNS-AID (optional, after live):**  
    `_mcp._agents.noemi` HTTPS/SVCB → `mcp.noemi.newpush.com` (extend `website/scripts/publish-dns-aid.sh`).
-## FAQ 
+
 ### Marketing site follow-up
 
 Website PR **#572** publishes `/.well-known/mcp/server-card.json` on

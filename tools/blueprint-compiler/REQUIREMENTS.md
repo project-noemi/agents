@@ -2,9 +2,9 @@
 
 **Status:** Session 1 agreed, 1 September 2026  
 **Course:** Colorado School of Mines CSCI 370 Field Session, Fall 2026  
-**Client:** NewPush (Balázs Nagy, `bnagy@newpush.com`)  
-**Student team:** Ally Wallace · Jake Galloway · Ryan Clark · Van Nguyen  
-**Advisor:** Kathleen Kelly  
+**Client:** NewPush (the client, `client@example.com`)  
+**Student team:** Student A · Student B · Student C · Student D  
+**Advisor:** the advisor  
 **Working repository:** [`project-noemi/agents`](https://github.com/project-noemi/agents), package `tools/blueprint-compiler/`  
 **Source brief:** Drive doc `NewPush_NoeMI_Fall2026_Mines_FieldSession_Proposal_v3` (5 August 2026)
 
@@ -148,7 +148,7 @@ Role · Tone · Capabilities · Mission · Rules & Constraints · Data Inventory
 ## 8. Working agreements
 
 - Async channel: Slack. Same-business-day answers from NewPush.
-- First student PR reviewers: `@WSwarm` (Balázs) or `@thakivagyok` (Kristóf). CODEOWNERS already lists both.
+- First student PR reviewers: `@client-reviewer` (the client) or `@team-reviewer` (a team member). CODEOWNERS already lists both.
 - Producer opens the PR. Reviewer does not approve their own work. Humans merge.
 - GitHub access is Team `Mines2026fall` on `project-noemi/agents`.
 - Course artifacts (team contract, elevator pitch, bookclub) are the students’ Canvas work. They are not product deliverables.

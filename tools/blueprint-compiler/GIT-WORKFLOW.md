@@ -1,6 +1,6 @@
 # Git workflow — Mines CSCI 370 Field Session
 
-**Audience:** the student team (Ally Wallace · Jake Galloway · Ryan Clark · Van Nguyen)
+**Audience:** the student team (Student A · Student B · Student C · Student D)
 **Integration branch:** `feat/tools-blueprint-compiler`
 **Last updated:** 11 September 2026
 

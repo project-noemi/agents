@@ -15,6 +15,12 @@ export function loadModelPolicy(env = process.env) {
   };
 }
 
+// How the chosen provider's model is called. Orthogonal to provider selection:
+// `direct` posts to the gateway itself, `mastra` runs the same model as a Mastra
+// agent. Same call-time rule; empty means unset.
+export const RUNTIMES = ["direct", "mastra"];
+export const loadRuntime = (env = process.env) => env.NOEMI_RUNTIME?.trim() || "direct";
+
 // src/ -> blueprint-compiler/ -> tools/ -> repo root.
 // resolve() drops the trailing separator so default and override roots look alike.
 const DEFAULT_REPO_ROOT = resolve(fileURLToPath(new URL("../../../", import.meta.url)));

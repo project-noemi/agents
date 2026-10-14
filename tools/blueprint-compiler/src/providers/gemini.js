@@ -19,13 +19,22 @@ import { buildSystemPrompt } from "./prompt.js";
 const DEFAULT_MODEL = "gemini-3.8-flash";
 export const TIMEOUT_VAR = "GEMINI_TIMEOUT_MS";
 
+/** The Google-native model id (no `google/` prefix). */
+const nativeModel = (env = process.env) => (env.GEMINI_MODEL || DEFAULT_MODEL).replace(/^google\//, "");
+
+/**
+ * The same model as the gateway's OpenAI surface names it (`provider/model`).
+ * The Mastra runtime uses this surface, so one GEMINI_MODEL setting drives both runtimes.
+ */
+export const gatewayModelId = (env = process.env) => `google/${nativeModel(env)}`;
+
 // STOP and MAX_TOKENS are normal ends; everything else (SAFETY, RECITATION,
 // BLOCKLIST, PROHIBITED_CONTENT, SPII, OTHER, ...) means the text can't be trusted.
 const OK_FINISH = new Set([undefined, "STOP", "MAX_TOKENS", "FINISH_REASON_UNSPECIFIED"]);
 
 export async function runGemini(ir, prompt) {
   const config = loadGatewayConfig({ timeoutVar: TIMEOUT_VAR });
-  const model = (process.env.GEMINI_MODEL || DEFAULT_MODEL).replace(/^google\//, "");
+  const model = nativeModel();
 
   const started = Date.now();
   const data = await postJson(

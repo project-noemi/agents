@@ -10,9 +10,9 @@
 - **Promotes Into:** `develop` (lowest trunk)
 - **Scope Of Work:** `tools/blueprint-compiler/`
 - **GitHub Team:** `mines2026fall` (`push`)
-- **Client:** NewPush — Balázs Nagy (`bnagy@newpush.com`)
-- **Advisor:** Kathleen Kelly, Colorado School of Mines
-- **Team:** Ally Wallace · Jake Galloway · Ryan Clark · Van Nguyen
+- **Client:** NewPush — the client (`client@example.com`)
+- **Advisor:** the advisor, Colorado School of Mines
+- **Team:** Student A · Student B · Student C · Student D
 - **Engagement Contract:** `tools/blueprint-compiler/REQUIREMENTS.md`
 - **Contributor Guide:** `tools/blueprint-compiler/GIT-WORKFLOW.md`
 

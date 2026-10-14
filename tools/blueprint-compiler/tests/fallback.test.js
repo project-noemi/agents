@@ -232,25 +232,26 @@ test('non-transient errors do not trigger fallback', async () => {
   ]);
 });
 
-test('skips providers that are not configured', async () => {
+test('an unconfigured provider in the chain fails up front, before any call', async () => {
   const calls = [];
-
-  const result = await runWithFallbacks({
-    preferred: 'gemini',
-    fallbacks: ['grok', 'mock'],
-    providers: {
-      gemini: null,
-      grok: undefined,
-      mock: async () => {
-        calls.push('mock');
-        return 'mock-result';
+  await assert.rejects(
+    () => runWithFallbacks({
+      preferred: 'gemini',
+      fallbacks: ['grok', 'mock'],
+      providers: {
+        gemini: null,
+        grok: undefined,
+        mock: async () => { calls.push('mock'); return 'mock-result'; },
       },
+      input: { prompt: 'test' },
+    }),
+    (err) => {
+      assert.equal(err.code, 'PROVIDER');
+      assert.match(err.message, /Unknown providers "gemini", "grok"/);
+      return true;
     },
-    input: { prompt: 'test' },
-  });
-
-  assert.strictEqual(result, 'mock-result');
-  assert.deepStrictEqual(calls, ['mock']);
+  );
+  assert.deepStrictEqual(calls, [], 'no provider runs when the chain is invalid');
 });
 
 test('tries fallbacks in configured order', async () => {
@@ -326,28 +327,35 @@ test('inherited object methods are not invoked as providers', async () => {
   }
 });
 
-test('an inherited fallback name is skipped rather than called', async () => {
+test('an inherited fallback name is rejected up front, never called', async () => {
   const calls = [];
-  const result = await runWithFallbacks({
-    preferred: 'gemini',
-    fallbacks: ['toString', 'mock'],
-    providers: {
-      gemini: async () => {
-        calls.push('gemini');
-        throw errorWithStatus(429);
+  await assert.rejects(
+    () => runWithFallbacks({
+      preferred: 'gemini',
+      fallbacks: ['toString', 'mock'],
+      providers: {
+        gemini: async () => { calls.push('gemini'); throw errorWithStatus(429); },
+        mock: async () => { calls.push('mock'); return 'mock-result'; },
       },
-      mock: async () => {
-        calls.push('mock');
-        return 'mock-result';
-      },
-    },
-    input: 'x',
-  });
-  assert.strictEqual(result, 'mock-result');
-  assert.deepStrictEqual(calls, ['gemini', 'mock']);
+      input: 'x',
+    }),
+    (err) => err.code === 'PROVIDER' && /"toString"/.test(err.message),
+  );
+  assert.deepStrictEqual(calls, [], 'the preferred provider is not spent before the typo surfaces');
 });
 
-test('throws when no providers are available', async () => {
+test('a repeated provider name runs once', async () => {
+  const calls = [];
+  await assert.rejects(() => runWithFallbacks({
+    preferred: 'gemini',
+    fallbacks: ['gemini', 'gemini'],
+    providers: { gemini: async () => { calls.push('gemini'); throw errorWithStatus(503); } },
+    input: 'x',
+  }), (err) => err.status === 503);
+  assert.deepStrictEqual(calls, ['gemini']);
+});
+
+test('an empty registry rejects every name up front', async () => {
   await assert.rejects(
     () => runWithFallbacks({
       preferred: 'gemini',
@@ -355,7 +363,7 @@ test('throws when no providers are available', async () => {
       providers: {},
       input: { prompt: 'test' },
     }),
-    /No available providers/,
+    (err) => err.code === 'PROVIDER' && /Unknown providers "gemini", "grok"/.test(err.message),
   );
 });
 

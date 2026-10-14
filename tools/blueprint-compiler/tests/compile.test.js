@@ -9,9 +9,12 @@ import { withEnv } from "./helpers/fake-network.js";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const fixture = (name) => join(root, "..", "fixtures", name);
+// Pinned so these tests never depend on NOEMI_REPO_ROOT or on the real skills/ tree.
+const repoRoot = join(root, "..", "fixtures");
 
 test("parses a valid persona and extracts skill refs", async () => {
   const result = await compileFile(fixture("architect.core.md"), {
+    repoRoot,
     provider: "mock",
     prompt: "review src/parse.js",
   });
@@ -66,6 +69,7 @@ test("derives id from agents/{domain}/{name} paths, not the clone folder name", 
 
 test("refuses an unknown preferred provider", async () => {
   const result = await compileFile(fixture("architect.core.md"), {
+    repoRoot,
     provider: "anthropic",
   });
   assert.equal(result.ok, false);
@@ -75,7 +79,7 @@ test("refuses an unknown preferred provider", async () => {
 
 test("inherited object methods are not providers", async () => {
   for (const provider of ["toString", "constructor"]) {
-    const result = await compileFile(fixture("architect.core.md"), { provider });
+    const result = await compileFile(fixture("architect.core.md"), { repoRoot, provider });
     assert.equal(result.ok, false, provider);
     assert.equal(result.errors[0].code, "PROVIDER");
     assert.equal(result.run, undefined);
@@ -85,7 +89,7 @@ test("inherited object methods are not providers", async () => {
 
 test("a misspelled preferred provider fails closed even when a fallback is configured", async () => {
   await withEnv({ NOEMI_FALLBACK_PROVIDERS: "mock" }, async () => {
-    const result = await compileFile(fixture("architect.core.md"), { provider: "gemni" });
+    const result = await compileFile(fixture("architect.core.md"), { repoRoot, provider: "gemni" });
     assert.equal(result.ok, false);
     assert.equal(result.errors[0].code, "PROVIDER");
     assert.match(result.errors[0].message, /gemni/);

@@ -8,7 +8,7 @@ Status: agreed in Session 1 (1 September 2026); updated for Sprint 3. Package-lo
 source  →  load  →  parse  →  validate  →  resolve  →  instantiate  →  supervise
                                                       └─ mock (Sprint 1)
                                                       └─ gemini, xai (Sprint 2)
-                                                      └─ mastra agent (Sprint 3)
+                                                      └─ runtime: direct, or a Mastra agent (Sprint 3)
 ```
 
 | Stage | Sprint | Notes |
@@ -17,7 +17,7 @@ source  →  load  →  parse  →  validate  →  resolve  →  instantiate  �
 | Parse | 1, 3 | Markdown ATX `##` headings → section map (required headings match case-insensitively). Extract `**Skill:**` and `**MCP:**` refs and the `### Refusal Criteria` body onto `ir.refusalCriteria`. Pure: no env access. |
 | Validate | 1, 3 | Required headings + a non-empty `### Refusal Criteria` under Rules & Constraints. Fail closed (`MISSING_REFUSAL`). |
 | Resolve | 3 | `resolve.js`: skill slugs to `skills/{category}/{name}.md`, MCP ids to `mcp-protocols/{id}.md` or `.json`. Fails closed, collects every error. See Resolution below. |
-| Instantiate | 3 | `runtime/mastra.js` builds a Mastra agent from the IR (`--provider mastra`). The `mock` provider still returns a deterministic stand-in. See Mastra runtime below. |
+| Instantiate | 3 | The provider is chosen by policy; the runtime by a separate switch. `runtime/mastra.js` builds a Mastra agent from the IR around the chosen provider's model (`--runtime mastra`). `mock` always runs direct. See Mastra runtime below. |
 | Supervise | 2–3 | Timeouts, fallback list, structured errors, stderr audit JSON (`audit.js` builds the record; the CLI writes it). Actions run `parse`, `validate`, `resolve`, then `run:<provider>`. |
 
 Studio (Sprint 4) and Arena (Sprint 5) sit on top of `supervise`.
@@ -43,15 +43,17 @@ See `src/ir.js` and REQUIREMENTS.md §5. `id` is `{domain}/{name}` derived from 
 
 ## Provider policy
 
-Configuration, not code. Providers are `mock` (Sprint 1), `gemini` and `xai` (Sprint 2), and `mastra` (Sprint 3). Every live provider is called through NewPush's generative AI gateway with one virtual key (`AI_GW_API_KEY`) resolved by `infisical run` / `op run`. Provider credentials stay with NewPush. Never `dotenv`.
+Configuration, not code. Providers are `mock` (Sprint 1) and `gemini` and `xai` (Sprint 2). The runtime is a separate switch: `direct` (default) or `mastra` (Sprint 3), set by `--runtime` or `NOEMI_RUNTIME`. Every live provider is called through NewPush's generative AI gateway with one virtual key (`AI_GW_API_KEY`) resolved by `infisical run` / `op run`. Provider credentials stay with NewPush. Never `dotenv`.
 
-Model policy plumbing: `config.js` maps `NOEMI_PREFERRED_PROVIDER` and `NOEMI_FALLBACK_PROVIDERS` to `modelPolicy` (read at call time; empty values count as unset). `compileSource` passes it into `parseBlueprint`, which never touches the environment.
+Model policy plumbing: `config.js` maps `NOEMI_PREFERRED_PROVIDER` and `NOEMI_FALLBACK_PROVIDERS` to `modelPolicy` (read at call time; empty values count as unset). `compileSource` passes it into `parseBlueprint`, which never touches the environment. `loadRuntime` (also in `config.js`) reads `NOEMI_RUNTIME` the same way.
+
+**Provider and runtime are two layers.** `compile.js` holds a `DIRECT` table (the hand-rolled call per provider) and a `LIVE` table (how each live provider is reached through the gateway: `timeoutVar`, `modelId`). Under `--runtime mastra` each live provider's entry runs `runMastra(ir, input, { provider, ...LIVE[name] })` instead; `mock` has no `LIVE` entry and always runs direct. The model comes from the provider's own setting (`XAI_MODEL`, `GEMINI_MODEL`), exposed as `gatewayModelId()` by each provider module, so there is one place to configure a model. Fallback therefore works between model providers with the runtime held fixed. An unknown runtime is `RUNTIME`; `mastra` as a provider name is `PROVIDER`.
 
 Fallback triggers: timeout, 429 / 5xx / network failure after backoff (`providers/gateway.js`, whose `withGatewayRetry` is the single retry policy for `postJson` and the Mastra runtime alike). A missing key, bad gateway config, an unknown provider name, or an empty/blocked response fails closed up front or immediately, never falls back. A mock-only environment must still complete `npm test`.
 
 ## Mastra runtime
 
-`runtime/mastra.js` exports `buildMastraAgent(ir, config)` (IR to agent, no model call), `runMastra(ir, prompt)` (provider-shaped, registered in `compile.js` as `mastra`), and `loadMastraConfig()` (checked up front for every `mastra` in the provider chain). `@mastra/core` is a dependency of this package only, pinned exactly (`1.71.0`), imported lazily so a mock-only run never loads it.
+`runtime/mastra.js` exports `buildMastraAgent(ir, config)` (IR to agent, no model call), `runMastra(ir, prompt, target, deps)` (`target` is the `LIVE` entry plus the provider name; the result reports the model provider as `provider` and `runtime: "mastra"`), and `loadMastraConfig(target)` (checked up front for every live provider in the chain when the runtime is `mastra`). `@mastra/core` is a dependency of this package only, pinned exactly (`1.71.0`), imported lazily so a mock-only run never loads it.
 
 **Refusal Criteria.** The agent's `instructions` are `buildSystemPrompt(ir)`, so the persona's criteria are copied verbatim into the system slot, as for Gemini and xAI. `buildMastraAgent` throws `MISSING_REFUSAL` for an IR without them: `validate.js` already stops that case, but Studio and Arena will call the runtime directly.
 

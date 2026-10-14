@@ -1,8 +1,8 @@
 # Blueprint Compiler
 
 Turns a NoéMI Markdown persona into a Blueprint IR and runs it on a configured
-model provider (`mock`, `gemini`, `xai` for Grok, and `mastra`, which runs the
-persona as a Mastra agent), falling back to the next provider when one is
+model provider (`mock`, `gemini`, and `xai` for Grok), either directly or as a
+Mastra agent (`--runtime mastra`), falling back to the next provider when one is
 unavailable. The persona can come from a local file, an http(s) URL, or the
 versioned registry.
 
@@ -24,7 +24,8 @@ node src/cli.js compile fixtures/architect.core.md --provider mock --prompt "hel
 
 All live providers go through NewPush's generative AI gateway: `gemini` uses
 the Google-native surface (`/google/v1beta/models/{model}:generateContent`), while
-`xai` and `mastra` use the OpenAI-compatible surface (`/v1/chat/completions`).
+`xai` uses the OpenAI-compatible surface (`/v1/chat/completions`), and so does the
+Mastra runtime for every provider.
 One gateway virtual key authenticates all of them as `Authorization: Bearer`. It is not a Google or
 xAI credential; never send it to those providers directly.
 
@@ -33,7 +34,7 @@ Keys are injected at runtime and never written to disk. Do not add a `.env` file
 ```bash
 infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --provider gemini
 infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --provider xai
-infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --provider mastra
+infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --runtime mastra --provider xai
 op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.core.md
 ```
 
@@ -47,8 +48,7 @@ op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.co
 | `GEMINI_TIMEOUT_MS` | Per-request timeout | `30000` |
 | `XAI_MODEL` | Grok model (`xai/` is added if missing) | `xai/grok-4.6` |
 | `XAI_TIMEOUT_MS` | Per-request timeout | `30000` |
-| `MASTRA_MODEL` | Model for the `mastra` provider, as the gateway's OpenAI surface names it (`provider/model`) | `xai/grok-4.6` |
-| `MASTRA_TIMEOUT_MS` | Per-request timeout for `mastra` | `30000` |
+| `NOEMI_RUNTIME` | How the chosen provider's model is called: `direct` or `mastra` (see [Runtimes](#runtimes)). `--runtime` overrides it | `direct` |
 | `AI_GW_MAX_RETRIES` | Retries per provider on 429 / 5xx / network failure, before falling back | `3` |
 | `AI_GW_RETRY_BASE_MS` | First backoff delay; doubles each retry (capped at 8s, plus jitter) | `1000` |
 | `NOEMI_HTTP_ALLOWED_HOSTS` | Comma-separated host allowlist for http(s) and registry personas. Empty means any https host | none |
@@ -66,7 +66,7 @@ Failure handling, in order:
 
 1. **Up front, before any provider runs.** Every name in `[preferred, ...fallbacks]`
    must be a known provider (`PROVIDER`), and every live provider in that chain
-   must have valid gateway config (`mastra` also needs a valid `MASTRA_MODEL`): key set, `AI_GW_BASE_URL` an https URL (http
+   must have valid gateway config (under `--runtime mastra` this includes the model id): key set, `AI_GW_BASE_URL` an https URL (http
    only for localhost), timeouts and retry settings whole numbers
    (`PROVIDER_CONFIG`). A typo in a fallback no longer waits for the preferred
    provider to fail. Repeated names run once.
@@ -78,30 +78,53 @@ Failure handling, in order:
 
 All live providers send the same system prompt (`src/providers/prompt.js`) with the
 persona's Refusal Criteria copied verbatim: Gemini as `systemInstruction`, xAI and
-Mastra as the `system` message. The user prompt is never mixed into it.
+the Mastra runtime as the `system` message. The user prompt is never mixed into it.
 
 Provider names for `--provider`, `NOEMI_PREFERRED_PROVIDER` and
-`NOEMI_FALLBACK_PROVIDERS` are `mock`, `gemini`, `xai` and `mastra`. `xai` is the
+`NOEMI_FALLBACK_PROVIDERS` are `mock`, `gemini` and `xai`. `mastra` is a runtime, not a provider name, and is
+rejected as one (`PROVIDER`); see [Runtimes](#runtimes). `xai` is the
 provider name used in `docs/model-routing.json`; `grok` is not an alias. (That
 file calls Google's provider `google`; this package's name for it is `gemini`.)
 
-## Mastra runtime
+## Runtimes
 
-`--provider mastra` builds a real `@mastra/core` agent from the IR
-(`src/runtime/mastra.js`) and runs it against the gateway's OpenAI-compatible
-surface with the same `AI_GW_API_KEY`. The persona's Refusal Criteria are the
-agent's instructions, copied verbatim; the runtime refuses to build an agent for
-an IR that has none (`MISSING_REFUSAL`).
+Provider and runtime are two separate choices. The **provider** (`mock`, `gemini`,
+`xai`) decides which model answers. The **runtime** decides how that model is called:
 
-It behaves like the other live providers: the same retry policy
-(`AI_GW_MAX_RETRIES`, `AI_GW_RETRY_BASE_MS`), 429 / 5xx / network failure / timeout
-fall back, and 4xx, bad config and `PROVIDER_EMPTY` fail closed. Mastra reports
-those failures differently from the hand-rolled providers (it can resolve
-successfully with empty text or `finishReason: "aborted"`), so the runtime
+- `direct` (default): the hand-rolled gateway call in `src/providers/`.
+- `mastra`: the same model, run as a real `@mastra/core` agent built from the IR
+  (`src/runtime/mastra.js`) against the gateway's OpenAI-compatible surface with the
+  same `AI_GW_API_KEY`.
+
+Select it with `--runtime mastra` or `NOEMI_RUNTIME=mastra`. Provider selection and
+fallback work exactly as before, so "Mastra on Gemini, falling back to xAI" is:
+
+```bash
+NOEMI_FALLBACK_PROVIDERS=xai,mock \
+  node src/cli.js compile fixtures/architect.core.md --runtime mastra --provider gemini
+```
+
+Mastra takes its model and timeout from the provider's own settings (`XAI_MODEL`,
+`GEMINI_MODEL`, `XAI_TIMEOUT_MS`, `GEMINI_TIMEOUT_MS`), so each model is configured
+once. There is no Mastra-specific model setting. `mock` has no model and always runs
+direct, even with `--runtime mastra`.
+
+The persona's Refusal Criteria are the agent's instructions, copied verbatim; the
+runtime refuses to build an agent for an IR that has none (`MISSING_REFUSAL`).
+
+The runtime adds no failure rules of its own: the chosen provider's rules apply
+unchanged (same retry policy `AI_GW_MAX_RETRIES` / `AI_GW_RETRY_BASE_MS`; 429 / 5xx /
+network failure / timeout fall back; 4xx, bad config and `PROVIDER_EMPTY` fail
+closed). Mastra reports those failures differently from the hand-rolled providers (it
+can resolve successfully with empty text or `finishReason: "aborted"`), so the runtime
 translates them; ARCHITECTURE.md ("Mastra runtime") has the spike findings.
 
+Successful runs report both layers: `run.provider` is the model provider and
+`run.runtime` is `direct` or `mastra`. The audit record's `actions` read
+`run:<provider>+mastra` for a Mastra run.
+
 `@mastra/core` is a dependency of this package only, pinned exactly, and is
-imported lazily, so mock-only runs never load it. It must never be added to the
+imported lazily, so direct runs never load it. It must never be added to the
 repository root `package.json`.
 
 The runtime does not read skill or MCP *content* yet; `resolved` proves the files
@@ -167,7 +190,7 @@ record's `risks` lists what failed first.
 |---|---|
 | 1 | Parse, validate, mock provider |
 | 2 | Config-driven selection, Gemini + xAI (Grok), fallback |
-| 3 | Skill/MCP resolution, Mastra runtime (`--provider mastra`), HTTP + registry loaders |
+| 3 | Skill/MCP resolution, Mastra runtime (`--runtime mastra`), HTTP + registry loaders |
 | 4 | Studio. See REQUIREMENTS.md |
 | 5 | Arena. See REQUIREMENTS.md |
 

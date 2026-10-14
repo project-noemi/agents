@@ -173,8 +173,8 @@ This package is accepted for Sprint 1 when all of the following hold:
 Sprint 3 is accepted when all of the following hold, in addition to section 9:
 
 1. `npm test` inside `tools/blueprint-compiler` is green with no network and no API keys. Tests that need a real Mastra agent use a loopback server, never the internet.
-2. `node src/cli.js compile <persona> --provider mastra` builds a Mastra agent from the IR and runs it through the gateway's OpenAI-compatible surface with `AI_GW_API_KEY`. The persona's Refusal Criteria are in the system message verbatim. An IR without them is refused (`MISSING_REFUSAL`).
-3. The `mastra` provider follows the same rules as `gemini` and `xai`: 429 / 5xx / network failure / timeout fall back after one shared retry policy; a missing key, bad config, other 4xx, and `PROVIDER_EMPTY` fail closed; nothing but the audit line reaches stderr.
+2. `node src/cli.js compile <persona> --runtime mastra --provider xai` builds a Mastra agent from the IR and runs it through the gateway's OpenAI-compatible surface with `AI_GW_API_KEY`. The persona's Refusal Criteria are in the system message verbatim. An IR without them is refused (`MISSING_REFUSAL`).
+3. The `mastra` runtime adds no failure rules of its own; the chosen provider's rules (`gemini` or `xai`) apply unchanged: 429 / 5xx / network failure / timeout fall back after one shared retry policy; a missing key, bad config, other 4xx, and `PROVIDER_EMPTY` fail closed; nothing but the audit line reaches stderr.
 4. A persona loaded from an `https://` URL or from the registry (`registry:domain/name[@version]`) takes the same validate and resolve path as a local file. A remote persona with no Refusal Criteria fails `MISSING_REFUSAL`; one with escaping skill refs fails `BAD_SLUG`.
 5. The HTTP loader is https-only (http for localhost), refuses credentials / query / fragment, does not follow redirects, and enforces a timeout and a size cap.
 6. `@mastra/core` appears only in this package's `package.json`, pinned exactly. Root `npm run validate` still passes on a spec-only clone.

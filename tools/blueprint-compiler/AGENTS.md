@@ -32,9 +32,9 @@ Node.js 24 is the baseline. Conventional commits: `feat(compiler)`, `fix(validat
 # 📝 Compiler contract
 
 - Input is a NoéMI Markdown persona (`docs/AGENT_TEMPLATE.md` headings).
-- Output of Sprint 1 is a Blueprint IR plus a mock completion, not a live model call. From Sprint 3, `--provider mastra` also runs the persona as a Mastra agent (`runtime/mastra.js`) through the gateway.
+- Output of Sprint 1 is a Blueprint IR plus a mock completion, not a live model call. From Sprint 3, `--runtime mastra` also runs the persona as a Mastra agent (`runtime/mastra.js`) through the gateway.
 - Missing, empty, or misplaced Refusal Criteria is a hard error (`MISSING_REFUSAL`). A prose mention does not count.
-- `parse.js` is pure. Environment is read only in `config.js` (model policy, resolver repo root, loader settings), the provider modules, and `runtime/mastra.js` (through `gateway.js`). Loaders take their settings as arguments and never read `process.env`.
+- `parse.js` is pure. Environment is read only in `config.js` (model policy, runtime, resolver repo root, loader settings), the provider modules, and `runtime/mastra.js` (through `gateway.js`). Loaders take their settings as arguments and never read `process.env`.
 - Extract `**Skill:** \`category/name\`` references onto `ir.skills`.
 - Extract `**MCP:** \`slug\`` references onto `ir.mcp` and the `### Refusal Criteria` body onto `ir.refusalCriteria`. Slugs are stored raw; safety checks belong to the resolver.
 - `resolve.js` fails closed on any bad, missing, or escaping ref (`stage: "resolve"`), reports every error at once, and returns repo-relative paths beside the IR. No filesystem path ever appears in an error message.

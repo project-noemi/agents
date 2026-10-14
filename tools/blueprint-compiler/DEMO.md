@@ -64,7 +64,7 @@ Terminal B is our stand-in for the NewPush gateway.
 
 ```bash
 export AI_GW_API_KEY=demo AI_GW_BASE_URL=http://127.0.0.1:8787
-node src/cli.js compile fixtures/architect.core.md --provider mastra --prompt "review src/parse.js"
+node src/cli.js compile fixtures/architect.core.md --runtime mastra --provider xai --prompt "review src/parse.js"
 ```
 
 Say: this is a real `@mastra/core` Agent built from the IR, talking to the
@@ -77,11 +77,11 @@ echoes that back.
 
 ```bash
 AI_GW_MAX_RETRIES=0 NOEMI_FALLBACK_PROVIDERS=mock \
-  node src/cli.js compile fixtures/architect.core.md --provider mastra
+  node src/cli.js compile fixtures/architect.core.md --runtime mastra --provider xai
 ```
 
 Say: a 503 falls back to the next provider and the audit record says so
-(`fallback-from:mastra`, `run:mock`). Nothing is silently swapped in.
+(`fallback-from:xai`, `run:mock`). Nothing is silently swapped in.
 
 **Fail closed.** Restart B as `FAKE_GW_FAIL=403 node demo/fake-gateway.mjs`, run the
 same command (keep `NOEMI_FALLBACK_PROVIDERS=mock`). Say: a 403 is a setup
@@ -111,7 +111,7 @@ redirects, size and time caps, optional host allowlist.
 
 ```bash
 infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --provider xai
-infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --provider mastra
+infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --runtime mastra --provider xai
 ```
 
 Say: same code path, real gateway. The key is injected at runtime and never

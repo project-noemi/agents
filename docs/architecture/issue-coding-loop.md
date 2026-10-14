@@ -87,8 +87,9 @@ Mastra remains a *candidate* later host for a durable issue webhook. It is
 not how Fable/Opus learn to drive Grok. Classman curriculum delivery is out
 of this repository's purview.
 
-The `noemi-conductor` GitHub App is still planned, not provisioned. Do not
-post conductor comments as `noemi-agent` or the reviewer.
+The `noemi-conductor` GitHub App is provisioned (App id `5066927`) and installed
+on all repositories in `newpush`, `project-noemi`, and `newpush-labs` (Decision
+[2026-09-26-0001]). Do not post conductor comments as `noemi-agent` or the reviewer.
 
 **Plug a different host** (preference order):
 
@@ -110,7 +111,7 @@ long-running webhook or Fable-with-tools. Do not adopt it to get skip/bot/scan
 
 | Stage | Identity | May do | Must not do |
 |---|---|---|---|
-| A, B, B′ comments and labels | `noemi-conductor` (planned) | Read issues, comment, apply `noemi:*` labels | Write code, open PRs, review PRs, approve, merge |
+| A, B, B′ comments and labels | `noemi-conductor` (provisioned) | Read issues, comment, apply `noemi:*` labels | Write code, open PRs, review PRs, approve, merge |
 | C — implement | `noemi-agent` | Open branches and PRs | Approve or merge |
 | D — PR red-team | `noemi-reviewer-bot[bot]` | Post review findings | Author code, approve, merge |
 | Merge | Human Accelerator | Approve and merge | Hand those acts to any machine identity |
@@ -119,7 +120,7 @@ Producer, conductor, and reviewer are three identities. Sharing the reviewer
 App with the conductor would mix issue chatter with review findings and
 collapse attribution. Sharing `noemi-agent` with the conductor would make the
 coding PR look like it was opened by the same actor that planned it. The
-conductor App is **planned, not provisioned** — see `docs/MACHINE_IDENTITY.md`.
+conductor App is **provisioned** — see `docs/MACHINE_IDENTITY.md` (Decision [2026-09-26-0001]).
 
 ## Pickup
 
@@ -156,8 +157,8 @@ GitHub issue opened
                 ▼
   Stage B′  Gemini Pro family      red-team the plan
         │
-        ├─ fail, cycles < max → revise plan, repeat B′
-        ├─ fail, cycles = max → noemi:needs-info, STOP
+        ├─ fail, cycles remain → revision prompt on the plan, repeat B′
+        ├─ unchanged plan or cycles = max → noemi:needs-info, STOP
         └─ pass
                 ▼
   Stage C   Grok latest family     implement as noemi-agent → branch + PR
@@ -190,9 +191,20 @@ The red-team family (Gemini Pro, same selection rule as the fleet reviewer)
 attacks the plan, not the future diff. Verdicts:
 
 - **pass** — proceed to Stage C
-- **fail** and `cycle < planRedTeam.maxCycles` — conductor revises the plan
-  (Stage B model family) and repeats B′
-- **fail** and `cycle == maxCycles` — apply `noemi:needs-info`, comment the
+- **fail** and cycles remain — B′ writes a revision prompt from the findings.
+  The host executes that prompt on the plan (not on the code, and not on the
+  issue), then repeats B′. A revision that does not change the plan, drops
+  the skip-red-team record, or adds a path that is not a repository file
+  grounded in the issue stops the cycle. A source file the issue names stays
+  even when this checkout does not contain it. A finding that asks for a path
+  the issue does not name is recorded under Stop conditions; the revision does
+  not invent that path. A plan that says the goal cannot be done, that contains
+  a skip-red-team instruction, or that says a required path was not named is
+  `needs-info` and does not proceed to Stage C. With no reviser, invalid files may
+  still be dropped and the plan re-formatted; an unchanged plan stops. The
+  same draft is not resubmitted. Until Stage B has an unattended resolver,
+  `--live-critic` executes the prompt with the same Gemini Pro caller as B′.
+- **fail** at `planRedTeam.maxCycles` — apply `noemi:needs-info`, comment the
   unresolved findings, **stop**. Never start Stage C on a rejected plan.
 
 Default `maxCycles` is 3 (`docs/model-routing.json` → `planRedTeam`).
@@ -204,16 +216,23 @@ Default `maxCycles` is 3 (`docs/model-routing.json` → `planRedTeam`).
 as `noemi-agent`. Label `noemi:in-progress`. Open a PR against `develop` (then
 `dev`). Never against `main` when an integration branch exists (Decision
 [2026-08-16-0003]). `--implement` prepares the envelope (`opened: false`).
-`--implement --open-pr` calls Grok (`coding-loop/writer.js`) and opens the
-PR with `AGENT_GH_TOKEN` (`coding-loop/dispatch.js`). Pickup does not open
-PRs just because the producer token is present.
+`--implement --open-pr` reads the allow-listed files from the base branch,
+calls Grok for one JSON object (`coding-loop/writer.js`), and opens the
+PR with `AGENT_GH_TOKEN` (`coding-loop/dispatch.js`). The body starts with
+`Closes #N`, or with `Part of #N` when the accepted plan says the agent does
+not finish the work. Pickup does not open PRs just because the producer
+token is present. When a conductor token is present, the loop applies one
+`noemi:*` label and removes the other `noemi:*` labels. An opened PR is
+`noemi:review`.
 
 ### Stage D — PR red-team
 
 Reuse the existing fleet reviewer (`scripts/review-pr.js` /
 `noemi-reviewer-bot[bot]`). Do not add a second Gemini reviewer. Label
 `noemi:review`. Humans still own approval and merge.
-`coding-loop/stage-d.js` only delegates once a PR URL exists.
+`coding-loop/stage-d.js` records the handoff once a PR URL exists. It does not
+call the reviewer. The target repository's installed review workflow is
+Stage D.
 
 Pickup is the reusable workflow `.github/workflows/coding-loop.yml` and
 `templates/ci/coding-loop-caller.yml`. Budget is fail-closed
@@ -318,7 +337,7 @@ metering are schema fields, not implemented product.
 ## Out of scope for this spec
 
 - Stripe, invoices, customer self-serve key UI
-- Provisioning the `noemi-conductor` GitHub App
+- Re-provisioning the `noemi-conductor` GitHub App (installed; Decision [2026-09-26-0001])
 - Auto-merge of coding PRs
 - A second Gemini reviewer beside `noemi-reviewer-bot`
 - Acting on issues in customer orgs we do not operate

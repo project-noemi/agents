@@ -20,11 +20,11 @@
 const fs = require('fs');
 const path = require('path');
 const { gh } = require('../scripts/github-client.js');
-const { issueFromGitHub } = require('./intake.js');
+const { issueFromGitHub, labelsOf } = require('./intake.js');
 const { completeThroughStageB, loadRouting } = require('./plan.js');
 const { assertProducerToken, openImplementationPr, prepareImplementation } = require('./dispatch.js');
 const { resolveProducerToken } = require('../scripts/agent-token.js');
-const { critiquePlanLive } = require('./critic.js');
+const { critiquePlanLive, revisePlanLive } = require('./critic.js');
 const { assertWriterKey, draftChanges } = require('./writer.js');
 const { mintGithubAppInstallationToken } = require('../scripts/github-app-token.js');
 const { scanIssueBody } = require('./scan.js');
@@ -155,12 +155,28 @@ function readToken(env = process.env) {
     || '';
 }
 
+// Reads use the conductor token already resolved above, including an
+// installation token minted from the App. --post only controls the comment
+// and the label; it must not be required to keep that token (Decision
+// [2026-10-03-0002]).
+function issueReadToken(conductor, env = process.env) {
+  return conductor || readToken(env);
+}
+
 async function implementFromPlan({ args, issue, plan }) {
   const branches = ['develop', 'dev', 'main'];
   const prepared = prepareImplementation({ issue, plan, branches });
   if (!args.openPr || prepared.status !== 'ready') return prepared;
 
-  const drafted = await draftChanges({ issue, plan, env: process.env, profile: args.profile });
+  const drafted = await draftChanges({
+    issue,
+    plan,
+    env: process.env,
+    profile: args.profile,
+    repo: args.repo,
+    base: prepared.base,
+    token: resolveProducerToken(process.env).token,
+  });
   if (drafted.status === 'refused') {
     return {
       ...prepared,
@@ -232,9 +248,9 @@ async function main() {
     }
   }
 
-  const token = args.post ? conductor : readToken();
+  const token = issueReadToken(conductor);
   if (!token) {
-    process.stderr.write('✖ Need a GitHub token to read the issue (CONDUCTOR_GH_TOKEN, GH_TOKEN, or GITHUB_TOKEN).\n');
+    process.stderr.write('✖ Need a conductor token to read the issue (CONDUCTOR_APP_ID + CONDUCTOR_APP_PRIVATE_KEY, or CONDUCTOR_GH_TOKEN). GH_TOKEN and GITHUB_TOKEN also work for a local read.\n');
     process.exit(2);
   }
 
@@ -250,18 +266,14 @@ async function main() {
     budget: gateInputs.budget,
     routing: loadRouting(repoRoot),
     critic: args.liveCritic ? critiquePlanLive : undefined,
+    revise: args.liveCritic
+      ? (plan, findings, prompt) => revisePlanLive(plan, findings, { prompt })
+      : undefined,
     profile: args.profile,
+    repoRoot,
   });
 
   if (args.post && intake.tier !== 'SKIPPED') {
-    const label = (plan.status === 'accepted' || plan.status === 'needs-info')
-      ? plan.label
-      : intake.label;
-    await gh(`/repos/${args.repo}/issues/${args.issue}/labels`, {
-      token: conductor,
-      method: 'POST',
-      body: { labels: [label] },
-    });
     const comment = plan.status === 'accepted'
       ? plan.plan
       : plan.status === 'needs-info'
@@ -280,6 +292,24 @@ async function main() {
     ? await implementFromPlan({ args, issue, plan })
     : null;
   const review = prepareReview({ implementation });
+  const label = activeLoopLabel({
+    post: args.post,
+    intake,
+    plan,
+    implementation,
+    review,
+  });
+  if (label && conductor) {
+    await syncNoemiLabel({
+      repo: args.repo,
+      number: args.issue,
+      label,
+      current: issue.labels,
+      token: conductor,
+    });
+  } else if (label) {
+    process.stderr.write('✖ conductor token missing; left the issue label unchanged.\n');
+  }
 
   process.stderr.write(`${JSON.stringify({
     task: 'Issue-loop Stage A through Stage C',
@@ -297,14 +327,49 @@ async function main() {
     risks: [
       intake.mode === 'heuristic' ? 'sufficiency is heuristic until the Stage A model is wired' : null,
       plan.mode === 'heuristic' && plan.status === 'accepted' ? 'Stage B′ used the structural critic; pass --live-critic for Gemini' : null,
-      plan.status === 'needs-info' ? 'Stage B′ hit the cycle limit' : null,
+      plan.status === 'needs-info'
+        ? (Number.isInteger(plan.maxCycles) && plan.cycles < plan.maxCycles
+          ? 'Stage B′ stopped because the plan was not revised'
+          : 'Stage B′ hit the cycle limit')
+        : null,
       implementation && implementation.status === 'ready' && implementation.opened !== true
         ? 'Stage C envelope ready; pass --open-pr to draft with Grok and open as noemi-agent'
         : null,
     ].filter(Boolean),
-    result: (implementation && implementation.label) || plan.label || intake.label,
+    result: label || plan.label || intake.label,
   })}\n`);
   process.stdout.write(`${JSON.stringify({ intake, plan, implementation, review }, null, 2)}\n`);
+}
+
+function activeLoopLabel({ post, intake, plan, implementation, review } = {}) {
+  if (implementation && implementation.opened) {
+    if (review && review.status === 'delegated' && review.label) return review.label;
+    return implementation.label || '';
+  }
+  if (!post || !intake || intake.tier === 'SKIPPED') return '';
+  if (plan && (plan.status === 'accepted' || plan.status === 'needs-info')) return plan.label || '';
+  return intake.label || '';
+}
+
+async function syncNoemiLabel({ repo, number, label, current, token, ghImpl } = {}) {
+  const call = ghImpl || gh;
+  const names = labelsOf({ labels: current });
+  for (const name of names) {
+    if (!name.startsWith('noemi:') || name === label) continue;
+    const encoded = encodeURIComponent(name);
+    try {
+      await call(`/repos/${repo}/issues/${number}/labels/${encoded}`, { token, method: 'DELETE' });
+    } catch (err) {
+      if (!err || err.status !== 404) throw err;
+    }
+  }
+  if (label && !names.includes(label)) {
+    await call(`/repos/${repo}/issues/${number}/labels`, {
+      token,
+      method: 'POST',
+      body: { labels: [label] },
+    });
+  }
 }
 
 function exitCodeForError(err) {
@@ -319,5 +384,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  parseArgs, buildGateInputs, resolveScanInput, loadTenant, assertRepoIssue, exitCodeForError, implementFromPlan,
+  parseArgs, buildGateInputs, resolveScanInput, loadTenant, assertRepoIssue, exitCodeForError, implementFromPlan, issueReadToken,
+  activeLoopLabel, syncNoemiLabel,
 };

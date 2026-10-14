@@ -77,7 +77,8 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr }}
           INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
         run: |
-          # infisical run injects AGENT_GH_TOKEN; the script's gh calls pick it
-          # up via GH_TOKEN so the entry PR is authored by noemi-agent.
+          # GH_TOKEN starts as the fine-grained PAT. The classic PAT is passed
+          # beside it; the script switches only after HTTP 404, and only as
+          # noemi-agent.
           infisical run --projectId="$INFISICAL_PROJECT_ID" --env=dev -- \
-            bash -c 'GH_TOKEN="$AGENT_GH_TOKEN" node scripts/calibration-watch.js'
+            bash -c 'GH_TOKEN="$AGENT_GH_TOKEN" AGENT_GH_TOKEN_CLASSIC="$AGENT_GH_TOKEN_CLASSIC" node scripts/calibration-watch.js'

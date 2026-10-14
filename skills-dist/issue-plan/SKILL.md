@@ -60,9 +60,25 @@ from coding a rejected idea.
    is a plan critique consumed by the conductor, not a GitHub PR review.
    Verdict is `pass` or `fail`. `fail` requires at least one finding with
    severity `high` or `critical` against `docs/AI_REVIEW_GOVERNANCE.md`.
-5. **Cycle** — On `fail`, if `len(prior_cycles) + 1 < cycle_limit`, revise the
-   plan (Stage B family) addressing the findings and repeat step 4. Increment
-   the cycle count each red-team call.
+5. **Cycle** — On `fail`, if `len(prior_cycles) + 1 < cycle_limit`, write a
+   revision prompt from the findings and execute that prompt on the plan,
+   then repeat step 4. The prompt revises the plan only. It does not edit
+   code and it does not edit the issue. A revision that does not change the
+   plan, drops the skip-red-team record, or adds a path that is not a
+   repository file grounded in the issue stops the cycle. Invalid files
+   (hostnames, URLs, `dist` / `coverage` / `node_modules`, `../`, absolute
+   paths, directories) are dropped rather than kept. A source file the issue
+   names stays even when this checkout does not contain it. When a finding
+   asks for a path the issue does not name, the revision records that gap
+   under Stop conditions and does not invent the path. A plan that says the
+   goal cannot be done, that contains a skip-red-team instruction in any
+   spacing, or that says a required path was not named in the issue is
+   `needs-info`. The unnamed-path finding stops the cycle immediately. With no reviser, invalid
+   files may still be dropped and the plan re-formatted; if that does not change
+   the plan, the first fail stops. The same draft is not resubmitted.
+   Increment the cycle count on each red-team call. An empty file list is
+   `needs-info` immediately. Until Stage B has an unattended resolver,
+   `--live-critic` executes the prompt with the same Gemini Pro caller as B′.
 6. **Limit** — On `fail` at `cycle_limit`, do **not** dispatch coding. Set
    `status: needs-info`, instruct the conductor to apply `noemi:needs-info`,
    and return the unresolved findings.

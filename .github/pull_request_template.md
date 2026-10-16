@@ -8,6 +8,13 @@
 
 - 
 
+## Stacked PRs
+
+- [ ] Not part of a stack
+- [ ] Ship together with #N. Merge from the bottom up into develop.
+
+> See [docs/DEV_AGENT_PROMPT.md § Graphite stacked PRs](../docs/DEV_AGENT_PROMPT.md#graphite-stacked-prs) for full rules.
+
 ## Audience Impact
 
 - [ ] Client / Buyer path

@@ -282,3 +282,15 @@ fleet-reviewer org **variables**: `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`,
 workflow mints `GCP_ACCESS_TOKEN` via `google-github-actions/auth`. One-time
 pool/provider setup: [`docs/examples/cross-model-review-setup.md`](../docs/examples/cross-model-review-setup.md)
 Part 1.
+
+## Graphite stacked PRs
+
+1. Detecting a stack: PR descriptions mention "Stack:" or "Base PR", or sequential PRs are based on each other's branches.
+2. Never merge a child PR into its parent branch. The merge target is always `develop`. Never change a PR's base by hand.
+3. Merge from the bottom up into `develop`, in one Graphite stack merge or through the Graphite merge queue.
+4. If an upper PR is ready first, leave it open until everything below it has landed.
+5. After anything lands on `develop`, run `gt sync`, `gt restack`, then `gt submit --stack`.
+6. To fix a lower PR, use `gt modify` on that branch, then `gt restack` and `gt submit --stack`. Force-pushing is expected on stacked branches. Do not use "merge develop in, no rebase, no force-push" on stacked branches; that rule applies only to non-stacked branches.
+7. Keep stacks to 3–5 PRs of about 500 changed lines each. Split larger plans into several short stacks.
+8. Ship-together notes must say "Ship together with #N. Merge from the bottom up into develop", never "Merge with #N".
+9. Run the AI reviewer once per revision (or on demand), not on every push.

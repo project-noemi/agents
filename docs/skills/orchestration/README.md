@@ -9,6 +9,7 @@ Skills for coordinating work across multiple agents.
 | [Dispatch & Coordinate](../../../skills/orchestration/dispatch-coordinate.md) | Delegate tasks to sub-agents and aggregate outputs | Video Content Manager, Issue Conductor |
 | [Governed Loop](../../../skills/orchestration/governed-loop.md) | Run a mission-aligned loop with machine-checkable done-conditions, budgets, recursion guards, and escalation | Doc run, Admin Override Watch, calibration watch, PR merge gate |
 | [Issue Plan](../../../skills/orchestration/issue-plan.md) | Draft an implementation plan and red-team it until pass or cycle limit | Issue Conductor |
+| [Graphite Stacked PRs](../../../skills/orchestration/graphite-stacked-prs.md) | Stack only on PRs whose gates have all cleared; restack after merges; land bottom-up through Graphite with explicit human approval | Coding agents in Graphite-enabled repos |
 
 ## Pattern
 

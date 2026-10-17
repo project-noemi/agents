@@ -31,6 +31,7 @@
     "orchestration/governed-loop",
     "orchestration/issue-plan",
     "orchestration/spec-author",
+    "orchestration/graphite-stacked-prs",
     "operations/meeting-minutes",
     "operations/annual-calendar",
     "operations/speaker-brief"

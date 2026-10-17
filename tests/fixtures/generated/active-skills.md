@@ -1,6 +1,6 @@
 ## Active Skills
 
-16 reusable skills available. Agents reference these in their Workflow sections.
+17 reusable skills available. Agents reference these in their Workflow sections.
 Summaries only: **read the full skill spec before executing it** — the Procedure, Boundaries, and Refusal Criteria that govern execution live in the spec, not here.
 All skills, always: adhere to the defined Boundaries and **never exceed authorized tool usage**; each skill's hard gates (`Ask First` / `Never`) are reproduced below verbatim.
 
@@ -94,6 +94,13 @@ All skills, always: adhere to the defined Boundaries and **never exceed authoriz
 - **Purpose:** Produce a new or revised agent persona or reusable skill that can pass `scripts/audit-repo.js` and `npm test`.
 - **Ask First:** A new `agents/{domain}/` directory that does not yet exist
 - **Never:** Hand-write `GEMINI.md`, `CLAUDE.md`, or `skills-dist/`. Open a
+
+### Graphite Stacked PRs — Orchestration Skill
+
+- **Spec:** `skills/orchestration/graphite-stacked-prs.md`
+- **Purpose:** Stack, restack, and land pull requests in a Graphite-enabled repository (the `gt` CLI, the Graphite app, and the Graphite merge queue) without letting a stack collapse.
+- **Ask First:** Landing any PR, arming merge-when-ready, or applying a merge-queue label (explicit approval from the accountable human naming the PR). Stacks taller than 5 PRs. Force-deleting branches or running `gt sync --force`.
+- **Never:** Stack on a PR whose gates have not all cleared. Approve a PR as an agent. Merge through the GitHub UI or API, arm GitHub auto-merge, or use admin or ruleset bypass when Graphite is the merge path. Merge a child PR into its parent branch or change a PR's base by hand.
 
 ### Meeting Minutes — Operations Skill
 

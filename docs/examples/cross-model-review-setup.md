@@ -645,6 +645,16 @@ Are risks disclosed?
 
 Only now: correctness, security, tests, maintainability.
 
+### Overriding a failed gate
+
+If a human has accepted a premise, framing, or code finding, an allowlisted
+actor can post `/ai-review override <gate> sha:<head-sha> reason: <why>` and
+re-run the review so the later gates still get evaluated. The gate shows as
+OVERRIDDEN, never as passed, and a new push makes the override stale. The
+allowlist (`NOEMI_REVIEW_OVERRIDE_ACTORS`) starts empty. Overrides happen only
+at the owner's direction via the Dep 12 PR Watch Bot; the coding bot never
+overrides its own work. Details: `docs/AI_REVIEW_OVERRIDE.md`.
+
 ## What you do with the findings
 
 Findings arrive with severities (`critical`, `high`, `medium`, `low`) defined in

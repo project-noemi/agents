@@ -48,6 +48,10 @@ In practice:
 * validate them against real business use cases
 * gradually extend the system with additional agents, skills, and integrations
 
+### Layering your own rules on top of AGENTS.md
+
+Keep `AGENTS.md` as the shared upstream baseline and put organization rules in **configuration layers**: an MSP/MSSP layer (`org/<msp>/AGENTS.md`), a customer layer (`org/<customer>/AGENTS.md`), and a gitignored `AGENTS.local.md`. They load in the order listed in a committed `AGENTS.layers` manifest, and later layers win. Upstream syncs never touch them. See [docs/configuration-layers.md](docs/configuration-layers.md) and the template [org/example/AGENTS.md](org/example/AGENTS.md).
+
 ---
 
 ### Staying Aligned with a Moving Architecture

@@ -12,6 +12,7 @@ const {
     findPlaceholderViolations,
     buildSkillsDist
 } = require('./context_helpers');
+const { auditConfigLayers, buildContextFile } = require('./context_layers');
 
 const repoRoot = path.join(__dirname, '..');
 const agentsDir = path.join(repoRoot, 'agents');
@@ -196,15 +197,37 @@ function checkSkills() {
 }
 
 function checkGeneratedOutputs() {
+    // Expected content = the `@AGENTS.md` pointer plus, only when configuration
+    // layers resolve on this checkout, the generated layer import block
+    // (scripts/context_layers.js). Upstream ships no live layers, so here the
+    // expectation is still exactly CONTEXT_POINTER (Decision [2026-09-22-0001]).
+    let expected;
+    try {
+        expected = buildContextFile({ repoRoot, env: process.env, pointer: CONTEXT_POINTER }).content;
+    } catch (error) {
+        fail(error.message);
+        return;
+    }
     for (const outputPath of generatedOutputs) {
         if (!fs.existsSync(outputPath)) {
             fail(`${path.basename(outputPath)} is missing — run \`npm run generate\`.`);
             continue;
         }
         const content = fs.readFileSync(outputPath, 'utf8');
-        if (content !== CONTEXT_POINTER) {
-            fail(`${path.basename(outputPath)} must be exactly ${JSON.stringify(CONTEXT_POINTER)} (Decision [2026-09-22-0001]).`);
+        if (content !== expected) {
+            fail(`${path.basename(outputPath)} must be exactly ${JSON.stringify(expected)} (Decision [2026-09-22-0001]; configuration layers per docs/configuration-layers.md) — run \`npm run generate\`.`);
         }
+    }
+}
+
+// Configuration layers hook (docs/configuration-layers.md): the AGENTS.md
+// section exists and is last, the org/example template exists, AGENTS.local.md
+// is gitignored, and every path in AGENTS.layers / AGENTS.layers.example is
+// well-formed. Missing optional layer files are deliberately NOT a failure.
+function checkConfigLayers() {
+    console.log('Auditing configuration layers hook (AGENTS.layers)...');
+    for (const message of auditConfigLayers(repoRoot)) {
+        fail(message);
     }
 }
 
@@ -439,6 +462,7 @@ function main() {
     checkPersonas();
     checkSkills();
     checkGeneratedOutputs();
+    checkConfigLayers();
     checkSkillsDistDeterminism();
     checkLicensingPosture();
     checkPhaseZeroKit();

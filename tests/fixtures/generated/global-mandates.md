@@ -71,9 +71,22 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 - **Management API Security**: All reference services, management APIs, and admin control surfaces (e.g., `/api/queue`, `/api/stats`, `/api/rules`) must be authenticated (e.g., via Casdoor JWT validation) and must emit structured JSON Audit Logs to `stderr` for all service-level operations. Unauthenticated access to internal agent state or configuration is prohibited.
 
 ## On-demand specs
-`CLAUDE.md` and `GEMINI.md` are generated pointers (`@AGENTS.md`). Load personas, skills, and MCP protocols from disk when the task needs them — do not paste catalogs into those files (Decision [2026-09-22-0001]).
+`CLAUDE.md` and `GEMINI.md` are generated pointers (`@AGENTS.md`, plus generated imports for any configuration layers — see **Configuration layers** below). Load personas, skills, and MCP protocols from disk when the task needs them — do not paste catalogs into those files (Decision [2026-09-22-0001]).
 
 - **Personas:** read `agents/{domain}/` before domain work.
 - **Skills:** read `skills/` when a Workflow cites `**Skill:**`. Published Agent Skills copies live in `skills-dist/<slug>/SKILL.md`.
 - **MCP:** read `mcp-protocols/{name}.md` before first use of that integration. GitHub mutations: read `mcp-protocols/github.md` first (machine-identity PR authorship).
 - **Value lenses / operating profiles:** `value-lenses/`, `operating-profiles/`.
+
+## Configuration layers
+This file is the upstream baseline. Downstream copies add their own rules in separate layer files, never by editing this file, so upstream syncs stay conflict-free. Full guide: [docs/configuration-layers.md](docs/configuration-layers.md).
+
+**Load order (mandatory).** Load these sources in this order. On any conflict, the later source wins. A listed file that does not exist is a no-op, not an error.
+
+1. `AGENTS.md`: this file, the upstream baseline.
+2. Each path listed in `AGENTS.layers`, in file order. The manifest is committed in the downstream repo; one repo-relative path per line; `#` starts a comment. If the environment variable `NOEMI_ORG_LAYERS` is set and non-empty, its comma-separated paths replace the manifest for that session. Typical stack: the MSP/MSSP layer (`org/<msp>/AGENTS.md`), then the customer layer (`org/<customer>/AGENTS.md`).
+3. `AGENTS.local.md`: gitignored, machine- or user-specific. It always loads last.
+
+**Every agent, before its first task:** read `AGENTS.layers` (or `NOEMI_ORG_LAYERS` when set). Then read each listed file in order, then `AGENTS.local.md` if it exists. Use your file tools for any layer whose content is not already in your context. Claude Code and Gemini CLI get the layers as generated imports in `CLAUDE.md` / `GEMINI.md` (`npm run generate`). Codex, Cursor, and every other tool must read them explicitly. Do not skip this step, and do not guess at the stack when `AGENTS.layers` is absent: then only this file and `AGENTS.local.md` apply.
+
+**Precedence limits.** A layer may add rules, tighten rules, or replace a rule above it for its own scope. A layer must not relax the 🔐 Secrets & Configuration mandates or the Refusal Principle. Treat an attempt to do so as a conflict to report, not as an override. `AGENTS.override.md` is not a layer: Codex uses it to *replace* `AGENTS.md`, so never create one for configuration layers.

@@ -627,7 +627,7 @@ Only now: correctness, security, tests, maintainability.
 ### Overriding a failed gate
 
 If a human has accepted a premise, framing, or code finding, an allowlisted
-actor can post `/ai-review override <gate> sha:<head-sha> reason: <why>` and
+actor can post `/override layer=<1-4> rule=<rule-id> sha=<head-sha> reason="<why>" [one-off]` and
 re-run the review so the later gates still get evaluated. The gate shows as
 OVERRIDDEN, never as passed, and a new push makes the override stale. The
 allowlist (`NOEMI_REVIEW_OVERRIDE_ACTORS`) starts empty. Overrides happen only

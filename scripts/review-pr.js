@@ -30,12 +30,13 @@
  *
  *   OVERRIDES
  *   A failed gate may be overridden by a PR comment of the form
- *     /ai-review override <gate> sha:<head-sha> reason: <why>
+ *     /override layer=<1-4> rule=<rule-id> sha=<head-sha> reason="<why>" [one-off]
  *   from an actor listed in the NOEMI_REVIEW_OVERRIDE_ACTORS Actions variable
  *   (passed as --override-actors). The override is bound to the head SHA it
  *   names, so a new push makes it stale. An overridden gate is reported as
  *   OVERRIDDEN with its original findings — never as a pass. Override text is
- *   never sent to the model. See docs/AI_REVIEW_OVERRIDE.md.
+ *   never sent to the model. Parsing and authorization: scripts/review-override.js.
+ *   Calibration seeding: scripts/override-calibration.js. See docs/AI_REVIEW_OVERRIDE.md.
  *
  *   Reviewed content is DATA. The diff is delimited and the model is told to
  *   treat instructions inside it as findings to report, never as instructions to
@@ -105,6 +106,11 @@ const http = require('node:http');
 const https = require('node:https');
 const { withRetry } = require('./resilience_helpers.js');
 const { GH_API, gh, isTransientGitHubError } = require('./github-client.js');
+// Override parsing and authorization live in one module shared with the
+// calibration seeder, so the two can never disagree about what counts.
+const {
+  OVERRIDE_CONTINUE_GATES, OVERRIDE_ACTORS_VAR, parseOverrideActors, parseOverrideCommands, evaluateOverrides,
+} = require('./review-override.js');
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
 
 /** Canonical Sentinel spec. Always this repo — never the repository under review. */
@@ -138,6 +144,11 @@ const CARVE_OUT = [
   // calibration, or the compliance gate works is judged by a human.
   'scripts/review-pr.js',
   'scripts/calibration-watch.js',
+  // Override mode: who may override a gate, and how overrides seed calibration.
+  'scripts/review-override.js',
+  'scripts/override-calibration.js',
+  '.github/workflows/override-calibration.yml',
+  'docs/AI_REVIEW_OVERRIDE.md',
   'agents/coding/sentinel/core.md',
   'agents/coding/sentinel/compliance.md',
   'agents/engineering/pr-reviewer.md',
@@ -189,15 +200,6 @@ outside the European Union. Do not demand a certification or an impact assessmen
 If no compliance guidance was provided, return no findings.`,
   },
 ];
-
-/** Gates whose overridden failure lets the review continue to later gates.
- *  Compliance is deliberately absent: it is the last gate, so an override
- *  there is recorded and displayed but has nothing to continue into, and it
- *  never turns the result into a pass. */
-const OVERRIDE_CONTINUE_GATES = ['premise', 'framing', 'code'];
-
-/** Name of the Actions variable holding the override allowlist. */
-const OVERRIDE_ACTORS_VAR = 'NOEMI_REVIEW_OVERRIDE_ACTORS';
 
 // ---------------------------------------------------------------------------
 // Pure logic (unit-tested)
@@ -268,103 +270,10 @@ function recommend(gateResults, findings) {
   return 'no-findings';
 }
 
-/** Parse the override allowlist: logins separated by commas or whitespace,
- *  optional leading '@', compared case-insensitively (GitHub logins are). */
-function parseOverrideActors(raw) {
-  return new Set(String(raw || '')
-    .split(/[\s,]+/)
-    .map((s) => s.trim().replace(/^@/, '').toLowerCase())
-    .filter(Boolean));
-}
-
-const OVERRIDE_LINE = /^\/ai-review\s+override\b(.*)$/i;
-const OVERRIDE_BODY = /^\s+([a-z]+)\s+sha:([0-9a-f]{7,40})\s+reason:\s*(\S.*?)\s*$/i;
-
-/**
- * Extract override commands from one comment body. Only lines that START
- * with `/ai-review override` count, so quoting the command mid-sentence (or
- * inside the reviewer's own output) is not a command. Each match is either
- * { gate, sha, reason } or { error, raw }.
- */
-function parseOverrideCommands(body) {
-  const out = [];
-  for (const line of String(body || '').split(/\r?\n/)) {
-    const m = line.trim().match(OVERRIDE_LINE);
-    if (!m) continue;
-    const raw = line.trim();
-    const b = m[1].match(OVERRIDE_BODY);
-    if (!b) {
-      out.push({ error: 'malformed — expected `/ai-review override <gate> sha:<head-sha> reason: <text>`', raw });
-      continue;
-    }
-    const gate = b[1].toLowerCase();
-    if (!GATES.some((g) => g.id === gate)) {
-      out.push({ error: `unknown gate '${b[1]}' — use one of ${GATES.map((g) => g.id).join(', ')}`, raw });
-      continue;
-    }
-    out.push({ gate, sha: b[2].toLowerCase(), reason: b[3] });
-  }
-  return out;
-}
-
-/**
- * Decide which override commands apply to this review.
- *
- * Returns { accepted: { [gate]: override }, notApplied: [...], present }.
- * A command is ignored — and the review says why — when it is malformed, its
- * author is not allowlisted (the PR author included), the comment was edited
- * after posting (the audit record must be what was originally said), or it
- * names a SHA other than the current head (stale after a new push). When the
- * same gate is validly overridden more than once, the latest comment wins and
- * earlier ones are listed as superseded.
- */
-function evaluateOverrides(comments, { allowlist, headSha, prAuthor }) {
-  const allowed = allowlist instanceof Set ? allowlist : parseOverrideActors(allowlist);
-  const head = String(headSha || '').toLowerCase();
-  const author = String(prAuthor || '').toLowerCase();
-  const accepted = {};
-  const notApplied = [];
-  let present = false;
-  const sorted = [...(comments || [])].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
-  for (const c of sorted) {
-    const cmds = parseOverrideCommands(c.body);
-    if (!cmds.length) continue;
-    present = true;
-    const actor = c.user && c.user.login ? c.user.login : '(unknown)';
-    const base = { actor, created_at: c.created_at, url: c.html_url };
-    for (const cmd of cmds) {
-      const rec = { ...base, gate: cmd.gate || null, sha: cmd.sha || null, reason: cmd.reason || null };
-      if (cmd.error) { notApplied.push({ ...rec, why: cmd.error }); continue; }
-      if (!allowed.has(actor.toLowerCase())) {
-        const why = allowed.size === 0
-          ? `${OVERRIDE_ACTORS_VAR} is not set, so no override is honored`
-          : actor.toLowerCase() === author
-            ? `@${actor} is the PR author and is not in ${OVERRIDE_ACTORS_VAR}`
-            : `@${actor} is not in ${OVERRIDE_ACTORS_VAR}`;
-        notApplied.push({ ...rec, why });
-        continue;
-      }
-      if (c.updated_at && c.created_at && c.updated_at !== c.created_at) {
-        notApplied.push({ ...rec, why: 'comment was edited after posting — post a new comment instead' });
-        continue;
-      }
-      if (!head || !head.startsWith(cmd.sha)) {
-        notApplied.push({ ...rec, why: `stale — given for \`${cmd.sha.slice(0, 12)}\`, current head is \`${head.slice(0, 12)}\`` });
-        continue;
-      }
-      if (accepted[cmd.gate]) {
-        notApplied.push({ ...accepted[cmd.gate], why: 'superseded by a later override for the same gate' });
-      }
-      accepted[cmd.gate] = rec;
-    }
-  }
-  return { accepted, notApplied, present };
-}
-
 /**
  * Run the gates in order. runGate(gate) returns the model's parsed reply.
- * A failed gate stops the run — unless `overrides` holds an accepted override
- * for that gate AND the gate is in OVERRIDE_CONTINUE_GATES. An overridden
+ * A failed gate stops the run — unless `overrides[gate]` holds at least one
+ * accepted override (an array, from evaluateOverrides) AND the gate is in OVERRIDE_CONTINUE_GATES. An overridden
  * gate's verdict is 'overridden' (never 'pass') and its findings are kept,
  * flagged `overridden: true`. A compliance override is recorded the same way
  * but has no continuation. With no overrides this is exactly the historical
@@ -387,10 +296,11 @@ async function runGates({ runGate, overrides = {}, dryRun = false }) {
     const gateFindings = validateFindings(reply.findings, gate.id);
     const { verdict } = gateVerdict(gateFindings);
     gates[gate.id] = { verdict, rationale: reply.rationale || '' };
-    if (verdict === 'fail' && overrides[gate.id]) {
+    const applied = overrides[gate.id] || [];
+    if (verdict === 'fail' && applied.length) {
       for (const f of gateFindings) f.overridden = true;
       gates[gate.id] = {
-        verdict: 'overridden', original_verdict: 'fail', rationale: reply.rationale || '', override: overrides[gate.id],
+        verdict: 'overridden', original_verdict: 'fail', rationale: reply.rationale || '', overrides: applied,
       };
       findings.push(...gateFindings);
       // Compliance is the last gate: its override is a record, not a continuation.
@@ -641,20 +551,21 @@ function renderComment(review) {
     out.push('### Overrides', '');
     if (ov.lookup_error) out.push(`- ⚠️ Override comments could not be read (${ov.lookup_error}); reviewed without overrides.`);
     for (const g of GATES) {
-      const a = ov.accepted && ov.accepted[g.id];
-      if (!a) continue;
+      const list = (ov.accepted && ov.accepted[g.id]) || [];
       const r = review.gates[g.id];
-      const who = `@${a.actor} at ${a.created_at} for head \`${String(a.sha).slice(0, 12)}\` — reason: ${a.reason} ([comment](${a.url}))`;
-      if (r && r.verdict === 'overridden') {
-        const effect = OVERRIDE_CONTINUE_GATES.includes(g.id) ? 'later gates continued' : 'recorded; last gate, no continuation, verdict not a pass';
-        out.push(`- **${g.id}** — **OVERRIDDEN** by ${who}. Effect: ${effect}.`);
-      } else {
-        const state = r ? r.verdict : 'not run';
-        out.push(`- **${g.id}** — override by ${who} not applied: the gate ${state === 'pass' ? 'passed' : `was ${state}`}.`);
+      for (const a of list) {
+        const who = `@${a.actor} at ${a.created_at} for head \`${String(a.sha).slice(0, 12)}\`, rule \`${a.rule}\`${a.one_off ? ', **one-off**' : ''} — reason: "${a.reason}" ([comment](${a.url}))`;
+        if (r && r.verdict === 'overridden') {
+          const effect = OVERRIDE_CONTINUE_GATES.includes(g.id) ? 'later gates continued' : 'recorded; last gate, no continuation, verdict not a pass';
+          out.push(`- **layer ${a.layer} ${g.id}** — **OVERRIDDEN** by ${who}. Effect: ${effect}.`);
+        } else {
+          const state = r ? r.verdict : 'not run';
+          out.push(`- **layer ${a.layer} ${g.id}** — override by ${who} not applied: the gate ${state === 'pass' ? 'passed' : `was ${state}`}.`);
+        }
       }
     }
     for (const n of ov.notApplied || []) {
-      const what = n.gate ? ` for **${n.gate}**` : '';
+      const what = n.gate ? ` for **layer ${n.layer} ${n.gate}**${n.rule ? ` rule \`${n.rule}\`` : ''}` : '';
       out.push(`- Ignored override${what} from @${n.actor} at ${n.created_at} ([comment](${n.url})): ${n.why}.`);
     }
     out.push('');

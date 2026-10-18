@@ -35,7 +35,7 @@ Run these checks in parallel:
 1. **RDAP/WHOIS Lookup:**
    - Query the reported IP via RDAP (e.g., `https://rdap.db.ripe.net/ip/{ip}` for RIPE, ARIN RDAP for US).
    - Record netname, AS number, and allocation holder.
-   - Note: Shared datacenter IPs (e.g., RackForest netname, AS62214) are not conclusive proof either way.
+   - Note: Shared datacenter or colocation ranges (the upstream provider's netname/ASN) are not conclusive proof either way.
 
 2. **DNS and CDN Check:**
    - Query A/AAAA records for the domain.
@@ -140,7 +140,7 @@ Send a brief factual reply to the complainant:
 
 - **If content was disabled:** "Access to the referenced material at `{url}` was disabled on `{timestamp}` UTC."
 - **If not our service:** "The URL `{url}` is not hosted on our infrastructure. The responsible network's abuse contact is `{correct_abuse_contact}`."
-- **No commentary** on timing, no admissions, no legal arguments.
+- Keep complainant confirmations factual: state what action was taken and when, without legal arguments.
 
 If `ticket_system` MCP available: post as a public ticket reply. Otherwise: escalate to human operator to send.
 
@@ -214,7 +214,7 @@ Example output:
 
 ```json
 {
-  "ticket_id": "T20261018.0042",
+  "ticket_id": "ABUSE-0001",
   "action_taken": "content_disabled",
   "action_timestamp": "2026-10-18T14:23:00Z",
   "verification_status": "success",
@@ -258,7 +258,7 @@ Example output:
 2. **Secrets in SecretOps Only:** Never hardcode, log, or write API keys, database URLs, or control panel credentials to disk. Always use `infisical run` or `op run` wrappers.
 3. **Legal Review for Counter-Notices:** Do not restore content or make legal determinations. Forward counter-notices to Legal; await their decision.
 4. **Jurisdiction-Specific Compliance:** Adhere to the legal framework's action deadlines, notice elements, and customer rights (e.g., Ekertv. 8 business days, DMCA 10-14 business days).
-5. **No Admissions:** Customer and complainant notices are factual only. No commentary on timing, no admissions of liability, no legal arguments.
+5. **Factual Communication:** Customer and complainant notices are factual only. State actions taken and timestamps, without commentary on response speed, liability statements, or legal arguments.
 6. **Verification Before Confirmation:** Always re-test the URL (public and origin) after disabling. Do not confirm to complainant until verification succeeds.
 7. **Defective Notice Escalation:** If notice is missing required elements or shows red flags (competitor complaint, public domain claim, etc.), escalate to Legal before taking action.
 8. **Repeat-Infringer Transparency:** Log all notices for repeat-infringer tracking, but termination decisions require human (management + Legal) approval and separate AUP review.
@@ -286,7 +286,7 @@ Emit separately to `stderr` or the organization's audit channel (e.g., `logging-
   "task": "abuse-takedown",
   "inputs": [
     "jurisdiction: us-dmca",
-    "ticket: T20261018.0042",
+    "ticket: ABUSE-0001",
     "notice_urls: 1",
     "customer_language: en"
   ],
@@ -321,7 +321,7 @@ Emit separately to `stderr` or the organization's audit channel (e.g., `logging-
   "notice": "Dear Abuse Team, I am the copyright holder of 'Example Movie 2026'. The following URL hosts an unauthorized copy: https://example-customer.net/movies/example-movie.mp4 (IP 203.0.113.42). I declare under penalty of perjury that this is accurate. Signed, Jane Doe, jane@example-studio.com, 555-1234.",
   "jurisdiction": "us-dmca",
   "ticket_system": "autotask",
-  "ticket_id": "T20261018.0042",
+  "ticket_id": "ABUSE-0001",
   "control_system": "whmcs",
   "customer_language": "en"
 }
@@ -343,7 +343,7 @@ Emit separately to `stderr` or the organization's audit channel (e.g., `logging-
 **Output:**
 ```json
 {
-  "ticket_id": "T20261018.0042",
+  "ticket_id": "ABUSE-0001",
   "action_taken": "content_disabled",
   "action_timestamp": "2026-10-18T14:23:00Z",
   "verification_status": "success",
@@ -361,7 +361,7 @@ Emit separately to `stderr` or the organization's audit channel (e.g., `logging-
   "notice": "Content at https://example-cdn.net/infringing.jpg (IP 198.51.100.10) violates EU copyright. Rights holder: Acme Publishing. Contact: legal@acme.eu.",
   "jurisdiction": "eu-dsa",
   "ticket_system": "autotask",
-  "ticket_id": "T20261018.0055"
+  "ticket_id": "ABUSE-0002"
 }
 ```
 
@@ -378,7 +378,7 @@ Emit separately to `stderr` or the organization's audit channel (e.g., `logging-
 **Output:**
 ```json
 {
-  "ticket_id": "T20261018.0055",
+  "ticket_id": "ABUSE-0002",
   "action_taken": "not_ours_referred",
   "complainant_notice_sent": true,
   "escalations": []
@@ -393,7 +393,7 @@ Emit separately to `stderr` or the organization's audit channel (e.g., `logging-
   "notice": "A https://pelda-ugyfel.hu/jogvedett-kep.png URL-en jogsértő tartalmat találtam. Jogosult: Példa Kiadó Kft. Kapcsolat: jog@pelda-kiado.hu.",
   "jurisdiction": "hu-ekertv",
   "ticket_system": "autotask",
-  "ticket_id": "T20261018.0067",
+  "ticket_id": "ABUSE-0003",
   "control_system": "whmcs",
   "customer_language": "hu"
 }
@@ -406,7 +406,7 @@ Emit separately to `stderr` or the organization's audit channel (e.g., `logging-
 4. Disabled via web server rule.
 5. Verification: 403 Forbidden.
 6. **Bilingual customer notice sent** (Hungarian first, then English):
-   - Subject: "Szerzői jogsértési értesítés – a tartalomhoz való hozzáférés letiltása [T20261018.0067]"
+   - Subject: "Szerzői jogsértési értesítés – a tartalomhoz való hozzáférés letiltása [ABUSE-0003]"
    - Body: Hungarian Ekertv. 13 § notice, 8 business days to object, English translation below.
 7. Complainant confirmation sent (English).
 8. No prior notices.
@@ -414,7 +414,7 @@ Emit separately to `stderr` or the organization's audit channel (e.g., `logging-
 **Output:**
 ```json
 {
-  "ticket_id": "T20261018.0067",
+  "ticket_id": "ABUSE-0003",
   "action_taken": "content_disabled",
   "action_timestamp": "2026-10-18T15:10:00Z",
   "verification_status": "success",

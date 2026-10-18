@@ -1,6 +1,6 @@
 ## Active Skills
 
-16 reusable skills available. Agents reference these in their Workflow sections.
+17 reusable skills available. Agents reference these in their Workflow sections.
 Summaries only: **read the full skill spec before executing it** — the Procedure, Boundaries, and Refusal Criteria that govern execution live in the spec, not here.
 All skills, always: adhere to the defined Boundaries and **never exceed authorized tool usage**; each skill's hard gates (`Ask First` / `Never`) are reproduced below verbatim.
 
@@ -115,3 +115,10 @@ All skills, always: adhere to the defined Boundaries and **never exceed authoriz
 - **Purpose:** Prepare a practical speaker-session brief from an approved programme objective and available logistics.
 - **Ask First:** Expand the approved audience or purpose, use private biographical/contact information, or exceed an already agreed budget in a proposed plan.
 - **Never:** Invent credentials or consent, present unverified availability as confirmed, publish private data, or send invitations, book venues, or spend funds.
+
+### Abuse Takedown — Operations Skill
+
+- **Spec:** `skills/operations/abuse-takedown.md`
+- **Purpose:** Execute a compliant copyright, DMCA, or other abuse takedown notice workflow for hosting and MSP providers, balancing legal mandates with customer rights and operational safety.
+- **Ask First:** Suspending entire service (vs. disabling specific content), handling notices in jurisdictions not yet parameterized in this skill, accessing server configs directly (requires operator SSH), terminating a repeat-infringer account (requires management + Legal approval).
+- **Never:** Disable content without a validated notice and human approval, restore content without Legal clearance, handle credentials, make legal determinations, admit liability or comment on response timing to complainants, proceed with defective or fraudulent notices, bypass repeat-infringer tracking.

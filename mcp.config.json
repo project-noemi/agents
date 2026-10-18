@@ -33,6 +33,7 @@
     "orchestration/spec-author",
     "operations/meeting-minutes",
     "operations/annual-calendar",
-    "operations/speaker-brief"
+    "operations/speaker-brief",
+    "operations/abuse-takedown"
   ]
 }

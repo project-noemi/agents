@@ -14,8 +14,6 @@
     the next upstream change look like a conflict.
   - When you replace an upstream rule, say so in "Overrides of earlier layers"
     so agents (and reviewers) do not have to guess which rule applies.
-  - A layer may not relax the Secrets & Configuration mandates or the Refusal
-    Principle in AGENTS.md.
   - Never put secrets, tokens, customer PII, or internal hostnames that are
     themselves sensitive in a layer. Reference vault paths or SecretOps
     project names instead.

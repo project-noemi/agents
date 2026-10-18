@@ -23,8 +23,6 @@ Layers 2 and 3 are selected by a committed manifest, `AGENTS.layers`. A reposito
 
 On any conflict, **the later source wins**. A listed file that does not exist is a no-op, not an error, so a manifest can list a layer before it is vendored in.
 
-One limit applies on top of "later wins": a layer may add rules, tighten rules, or replace a rule for its own scope, but it must not relax the 🔐 Secrets & Configuration mandates or the Refusal Principle in `AGENTS.md`. Agents treat such an attempt as a conflict to report, not as an override.
-
 Layers should say what they replace. The template [`org/example/AGENTS.md`](../org/example/AGENTS.md) has an **Overrides of earlier layers** section for that, so agents never have to infer which of two contradictory rules applies.
 
 ## Files

@@ -91,4 +91,4 @@ This file is the upstream baseline. Downstream copies add their own rules in sep
 
 **Every agent, before its first task:** read `AGENTS.layers` (or `NOEMI_ORG_LAYERS` when set). Then read each listed file in order, then `AGENTS.local.md` if it exists. Use your file tools for any layer whose content is not already in your context. Claude Code and Gemini CLI get the layers as generated imports in `CLAUDE.md` / `GEMINI.md` (`npm run generate`). Codex, Cursor, and every other tool must read them explicitly. Do not skip this step, and do not guess at the stack when `AGENTS.layers` is absent: then only this file and `AGENTS.local.md` apply.
 
-**Precedence limits.** A layer may add rules, tighten rules, or replace a rule above it for its own scope. A layer must not relax the 🔐 Secrets & Configuration mandates or the Refusal Principle. Treat an attempt to do so as a conflict to report, not as an override. `AGENTS.override.md` is not a layer: Codex uses it to *replace* `AGENTS.md`, so never create one for configuration layers.
+**Not a layer.** `AGENTS.override.md` is not a layer: Codex uses it to *replace* `AGENTS.md`, so never create one for configuration layers.

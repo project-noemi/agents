@@ -1,0 +1,12 @@
+{
+  "$comment": "Format reference for AGENTS.waivers.json (committed downstream; upstream ships none). A waiver turns an otherwise-FAIL relaxation of a core rule (secrets.*, refusal.*) into a WARN that is listed under Waivers on every `npm run audit`. Required: rule, reason, owner. Optional: expires (YYYY-MM-DD, inclusive, UTC; an expired waiver no longer counts) and layer (limit the waiver to one layer file). See docs/configuration-layers.md#compliance.",
+  "waivers": [
+    {
+      "rule": "secrets.fetch-on-demand",
+      "layer": "org/example-customer/AGENTS.md",
+      "reason": "Air-gapped lab without vault access; credentials come from the lab's sealed secret store, mounted read-only at runtime.",
+      "owner": "security-lead@example.com",
+      "expires": "2027-03-31"
+    }
+  ]
+}

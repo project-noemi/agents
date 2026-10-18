@@ -14,6 +14,20 @@
     the next upstream change look like a conflict.
   - When you replace an upstream rule, say so in "Overrides of earlier layers"
     so agents (and reviewers) do not have to guess which rule applies.
+  - Baseline rules that compliance tracks carry a stable ID in AGENTS.md
+    (an HTML comment of the form "rule: secrets.no-hardcode"). A layer may
+    override any of them. When it does, put an HTML comment of the form
+    "override: <rule-id> relax" (or clarify / tighten) on the line with the
+    replacement text; the entries below show the exact syntax.
+    `npm run audit` reports every relaxation on every run:
+      - relaxing a core rule (secrets.*, refusal.*) without a waiver: FAIL
+      - the same with an active entry in AGENTS.waivers.json: WARN, and
+        listed under "Waivers" in every report
+      - relaxing a preference rule: WARN
+      - clarify / tighten: PASS
+    An unmarked rewording that looks like a relaxation is reported as a
+    heuristic WARN. Compliance is a report: it does not stop an agent from
+    following this layer at runtime.
   - Never put secrets, tokens, customer PII, or internal hostnames that are
     themselves sensitive in a layer. Reference vault paths or SecretOps
     project names instead.
@@ -60,7 +74,7 @@
 
 ## Secrets
 
-- Secrets resolve at runtime from the organization's vault project through `infisical run` or `op run`, exactly as the baseline requires. This layer only names where to look: the SecretOps project for this repository is recorded in the repository README, never in this file.
+- Secrets resolve at runtime from the organization's vault project through `infisical run` or `op run`, exactly as the baseline requires. This layer only names where to look: the SecretOps project for this repository is recorded in the repository README, never in this file. <!-- override: secrets.fetch-on-demand clarify -->
 
 ## Escalation
 
@@ -72,6 +86,7 @@
 <!--
   List every upstream (or MSP) rule this layer replaces, with the replacement.
   Leave the list empty rather than deleting the section, so agents can see
-  that nothing is overridden. Example entry:
+  that nothing is overridden. Mark each entry with its rule ID. Example entry
+  (a preference rule, so compliance reports it as WARN):
 -->
-- Replaces upstream "AI Model Baseline" for this organization's interactive sessions only: use the model routing configured by the organization's gateway. Reference workflows, lab examples, and smoke tests keep the upstream pin.
+- Replaces upstream "AI Model Baseline" for this organization's interactive sessions only: use the model routing configured by the organization's gateway. Reference workflows, lab examples, and smoke tests keep the upstream pin. <!-- override: coding.model-baseline relax -->

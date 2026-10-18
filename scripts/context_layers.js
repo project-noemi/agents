@@ -139,14 +139,23 @@ function resolveLayers({ repoRoot, env = process.env } = {}) {
     const present = [];
     const missing = [];
     if (errors.length === 0) {
-        for (const layerPath of declared) {
+        const realRoot = fs.realpathSync(repoRoot);
+        entries.forEach((entry, index) => {
+            const layerPath = declared[index];
             const full = path.join(repoRoot, layerPath);
-            if (fs.existsSync(full) && fs.statSync(full).isFile()) {
-                present.push(layerPath);
-            } else {
+            if (!(fs.existsSync(full) && fs.statSync(full).isFile())) {
                 missing.push(layerPath);
+                return;
             }
-        }
+            // A symlink must not smuggle a file from outside the repository.
+            const real = fs.realpathSync(full);
+            const relative = path.relative(realRoot, real);
+            if (relative.startsWith('..') || path.isAbsolute(relative)) {
+                errors.push({ ...entry, error: 'resolves (via symlink) outside the repository' });
+                return;
+            }
+            present.push(layerPath);
+        });
     }
 
     const local = fs.existsSync(path.join(repoRoot, LOCAL_LAYER));

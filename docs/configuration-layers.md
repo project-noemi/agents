@@ -39,7 +39,7 @@ org/acme/AGENTS.md
 ```
 
 - One repo-relative path per line. `#` starts a comment, either for the whole line or after whitespace.
-- Paths must stay inside the repository: no absolute paths, no `~`, no `..`, no backslashes, no whitespace, no leading `@`. Markdown files only.
+- Paths must stay inside the repository: no absolute paths, no `~`, no `..`, no backslashes, no whitespace, no leading `@`. Markdown files only. A listed file that is a symlink resolving outside the repository is rejected.
 - Do not list `AGENTS.md` (always first), `AGENTS.local.md` (always last) or `AGENTS.override.md` (see the Codex notes below).
 - Upstream ships [`AGENTS.layers.example`](../AGENTS.layers.example) as the format reference and **no live `AGENTS.layers`**. Downstream repos copy the example to `AGENTS.layers`.
 
@@ -237,7 +237,7 @@ Reference the rule ID on the line with the replacement text:
 | `relax` | core | active | **WARN**, listed under Waivers |
 | `relax` | preference | not needed | **WARN** |
 | `clarify` / `tighten` | any | not needed | **PASS** |
-| unknown rule ID or action | n/a | n/a | **WARN** |
+| unknown rule ID or action, or a malformed `override:` marker | n/a | n/a | **WARN** |
 
 `AGENTS.local.md` is evaluated like any other layer when present.
 
@@ -261,9 +261,9 @@ Waivers live in a committed `AGENTS.waivers.json` downstream. Upstream ships onl
 }
 ```
 
-- `rule`, `reason` and `owner` are required. A waiver missing any of them is a FAIL.
-- `expires` is optional (`YYYY-MM-DD`, valid through the end of that day, UTC). An **expired waiver no longer counts**: the relaxation is FAIL again, and the waiver is listed as `expired`.
-- `layer` is optional and limits the waiver to one layer file.
+- `rule`, `reason` and `owner` are required. A waiver missing any of them is a FAIL. Use a **role or team handle** for `owner` (e.g. `security-lead@…`, `@org/security`), not a personal name: every report, including CI logs, prints it.
+- `expires` is optional (`YYYY-MM-DD`, a real calendar date, valid through the end of that day, UTC). An **expired waiver no longer counts**: the relaxation is FAIL again, and the waiver is listed as `expired`.
+- `layer` is optional and limits the waiver to one layer file. It must be a well-formed repo-relative path, and it is normalized, so `./org/acme/AGENTS.md` matches `org/acme/AGENTS.md`.
 - Every run lists every waiver (active or expired, in use or unused) under **Waivers**. Review them on a fixed cadence, for example quarterly, and prefer short expiries.
 
 ### What compliance does not do

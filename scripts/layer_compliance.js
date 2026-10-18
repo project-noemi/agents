@@ -22,13 +22,16 @@
 
 const fs = require('fs');
 const path = require('path');
-const { EXAMPLE_LAYER, LOCAL_LAYER, resolveLayers } = require('./context_layers');
+const { EXAMPLE_LAYER, LOCAL_LAYER, resolveLayers, validateLayerPath } = require('./context_layers');
 
 const WAIVERS_FILE = 'AGENTS.waivers.json';
 const WAIVERS_EXAMPLE_FILE = 'AGENTS.waivers.example.json';
 const RULE_ID = '[a-z0-9]+(?:[.-][a-z0-9]+)+';
 const RULE_MARKER = new RegExp(`<!--\\s*rule:\\s*(${RULE_ID})\\s*(?:\\((core|preference)\\))?\\s*-->`, 'g');
-const OVERRIDE_MARKER = /<!--\s*override:\s*(\S+)\s+(\S+)\s*-->/g;
+// Any comment that starts with "override:" is parsed, so a malformed marker
+// (missing action, bad ID) is reported instead of silently ignored.
+const OVERRIDE_COMMENT = /<!--\s*override:([\s\S]*?)-->/g;
+const OVERRIDE_BODY = new RegExp(`^\\s*(${RULE_ID})\\s+([a-z]+)\\s*$`, 'i');
 const OVERRIDE_ACTIONS = new Set(['relax', 'clarify', 'tighten']);
 
 /** Core rules the baseline must always tag. Losing one is a FAIL. */
@@ -72,12 +75,21 @@ function parseBaselineRules(text) {
     return { rules, errors };
 }
 
-/** Parse override markers from a layer. Returns [{ rule, action, line }]. */
+/**
+ * Parse override markers from a layer. Returns [{ rule, action, line }];
+ * a marker that does not match "<rule-id> <action>" yields { malformed, raw }.
+ */
 function parseOverrides(text) {
     const overrides = [];
     String(text).split(/\r?\n/).forEach((line, index) => {
-        for (const match of line.matchAll(OVERRIDE_MARKER)) {
-            overrides.push({ rule: match[1], action: match[2].toLowerCase(), line: index + 1 });
+        for (const match of line.matchAll(OVERRIDE_COMMENT)) {
+            const body = match[1];
+            const parsed = body.match(OVERRIDE_BODY);
+            if (parsed) {
+                overrides.push({ rule: parsed[1], action: parsed[2].toLowerCase(), line: index + 1 });
+            } else {
+                overrides.push({ malformed: true, raw: body.trim(), line: index + 1 });
+            }
         }
     });
     return overrides;
@@ -101,8 +113,13 @@ function scanHeuristics(text) {
     return hits;
 }
 
+/** Strict calendar date: rejects 2026-02-30, which Date.parse would roll over. */
 function isIsoDate(value) {
-    return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return false;
+    }
+    const parsed = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
 /**
@@ -133,8 +150,13 @@ function parseWaivers(text, fileName) {
         if (waiver?.expires !== undefined && !isIsoDate(waiver.expires)) {
             problems.push('"expires" must be a YYYY-MM-DD date');
         }
-        if (waiver?.layer !== undefined && (typeof waiver.layer !== 'string' || waiver.layer.trim() === '')) {
-            problems.push('"layer" must be a non-empty path when present');
+        if (waiver?.layer !== undefined) {
+            const layerError = typeof waiver.layer === 'string' && waiver.layer.trim() !== ''
+                ? (waiver.layer.trim() === LOCAL_LAYER ? null : validateLayerPath(waiver.layer.trim()))
+                : 'must be a non-empty path';
+            if (layerError) {
+                problems.push(`"layer" ${layerError}`);
+            }
         }
         if (problems.length) {
             errors.push(`${where}: ${problems.join('; ')}.`);
@@ -145,7 +167,7 @@ function parseWaivers(text, fileName) {
             reason: waiver.reason.trim(),
             owner: waiver.owner.trim(),
             expires: waiver.expires || null,
-            layer: waiver.layer ? waiver.layer.trim() : null
+            layer: waiver.layer ? path.posix.normalize(waiver.layer.trim()) : null
         });
     });
     return { waivers, errors };
@@ -225,6 +247,10 @@ function evaluateLayerCompliance({ repoRoot, env = process.env, today = todayIso
         const relaxed = new Set();
         for (const override of overrides) {
             const where = `${layer}:${override.line}`;
+            if (override.malformed) {
+                add('WARN', `${where}: malformed override marker "override:${override.raw}" (expected "<!-- override: <rule-id> relax|clarify|tighten -->").`, { layer });
+                continue;
+            }
             const rule = rules.get(override.rule);
             if (!OVERRIDE_ACTIONS.has(override.action)) {
                 add('WARN', `${where}: override of "${override.rule}" uses unknown action "${override.action}" (use relax, clarify or tighten).`, { rule: override.rule, layer });
@@ -266,8 +292,9 @@ function evaluateLayerCompliance({ repoRoot, env = process.env, today = todayIso
     const templatePath = path.join(repoRoot, EXAMPLE_LAYER);
     if (fs.existsSync(templatePath)) {
         for (const override of parseOverrides(fs.readFileSync(templatePath, 'utf8'))) {
-            if (!OVERRIDE_ACTIONS.has(override.action) || !rules.has(override.rule)) {
-                add('FAIL', `${EXAMPLE_LAYER}:${override.line}: template override marker "${override.rule} ${override.action}" is invalid.`);
+            if (override.malformed || !OVERRIDE_ACTIONS.has(override.action) || !rules.has(override.rule)) {
+                const shown = override.malformed ? override.raw : `${override.rule} ${override.action}`;
+                add('FAIL', `${EXAMPLE_LAYER}:${override.line}: template override marker "${shown}" is invalid.`);
             }
         }
     }

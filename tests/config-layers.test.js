@@ -161,3 +161,25 @@ test('audit flags a missing hook, template, or gitignore entry', () => {
         fs.rmSync(dir, { recursive: true, force: true });
     }
 });
+
+test('a layer that is a symlink to a file outside the repository is rejected', (t) => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'noemi-outside-'));
+    fs.writeFileSync(path.join(outside, 'secret.md'), '# not a layer\n');
+    const dir = fixtureRepo({ 'AGENTS.md': '# Base\n', 'AGENTS.layers': 'org/evil/AGENTS.md\n' });
+    try {
+        fs.mkdirSync(path.join(dir, 'org/evil'), { recursive: true });
+        try {
+            fs.symlinkSync(path.join(outside, 'secret.md'), path.join(dir, 'org/evil/AGENTS.md'));
+        } catch (error) {
+            t.skip(`symlinks unavailable: ${error.message}`);
+            return;
+        }
+        const resolved = resolveLayers({ repoRoot: dir, env: {} });
+        assert.equal(resolved.errors.length, 1);
+        assert.match(resolved.errors[0].error, /outside the repository/);
+        assert.throws(() => buildContextFile({ repoRoot: dir, env: {}, pointer: CONTEXT_POINTER }), /outside the repository/);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+        fs.rmSync(outside, { recursive: true, force: true });
+    }
+});

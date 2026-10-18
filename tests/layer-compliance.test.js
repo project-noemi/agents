@@ -227,3 +227,41 @@ test('audit CLI: summary is the first line; --json is machine-readable; flags pa
     const bad = spawnSync('node', ['scripts/audit-repo.js', '--nope'], { cwd: repoRoot, encoding: 'utf8', env });
     assert.equal(bad.status, 64);
 });
+
+test('malformed override markers are reported (WARN), never silently ignored', () => {
+    const result = evaluate({
+        'AGENTS.layers': 'org/acme/AGENTS.md\n',
+        'org/acme/AGENTS.md': '<!-- override: secrets.no-hardcode -->\n<!--override:Bad_ID relax-->\n<!-- override: secrets.no-hardcode relax-->\n'
+    });
+    assert.deepEqual(levels(result), ['WARN', 'WARN', 'FAIL']);
+    assert.match(result.findings[0].message, /malformed override marker/);
+});
+
+test('waiver expiry must be a real calendar date', () => {
+    for (const bad of ['2026-02-30', '2026-13-01', '2026-1-1', '']) {
+        const parsed = parseWaivers(JSON.stringify({ waivers: [{ rule: 'secrets.no-hardcode', reason: 'r', owner: 'o', expires: bad }] }), 'w');
+        assert.equal(parsed.errors.length, 1, `expected rejection of expires=${JSON.stringify(bad)}`);
+    }
+    assert.deepEqual(parseWaivers(JSON.stringify({ waivers: [{ rule: 'x.y', reason: 'r', owner: 'o', expires: '2028-02-29' }] }), 'w').errors, []);
+});
+
+test('waiver layer paths are validated and normalized', () => {
+    const bad = parseWaivers(JSON.stringify({ waivers: [{ rule: 'x.y', reason: 'r', owner: 'o', layer: '../outside.md' }] }), 'w');
+    assert.equal(bad.errors.length, 1);
+    assert.match(bad.errors[0], /"layer"/);
+    const local = parseWaivers(JSON.stringify({ waivers: [{ rule: 'x.y', reason: 'r', owner: 'o', layer: 'AGENTS.local.md' }] }), 'w');
+    assert.deepEqual(local.errors, []);
+
+    const result = evaluate({
+        'AGENTS.layers': 'org/acme/AGENTS.md\n',
+        'org/acme/AGENTS.md': '<!-- override: secrets.no-hardcode relax -->\n',
+        'AGENTS.waivers.json': JSON.stringify({ waivers: [{ rule: 'secrets.no-hardcode', reason: 'r', owner: 'o', layer: './org/acme/AGENTS.md' }] })
+    });
+    assert.deepEqual(levels(result), ['WARN'], 'a ./-prefixed layer path must still match');
+});
+
+test('a malformed live waivers file is FAIL', () => {
+    const result = evaluate({ 'AGENTS.waivers.json': '{ not json' });
+    assert.deepEqual(levels(result), ['FAIL']);
+    assert.match(result.findings[0].message, /invalid JSON/);
+});

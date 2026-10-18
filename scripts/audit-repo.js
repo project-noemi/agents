@@ -12,6 +12,8 @@ const {
     findPlaceholderViolations,
     buildSkillsDist
 } = require('./context_helpers');
+const { auditConfigLayers, buildContextFile } = require('./context_layers');
+const { buildComplianceReport, evaluateLayerCompliance, todayIso } = require('./layer_compliance');
 
 const repoRoot = path.join(__dirname, '..');
 const agentsDir = path.join(repoRoot, 'agents');
@@ -28,11 +30,32 @@ const REQUIRED_ENGAGEMENT_SECTIONS = [
     'Audit Notes'
 ];
 
-let failed = false;
+// Compliance levels (docs/configuration-layers.md § Compliance): every check
+// records PASS / WARN / FAIL findings. FAIL exits 1. WARN exits 0 unless
+// --fail-on-warn or COMPLIANCE_FAIL_ON_WARN=1, then exits 2. The report opens
+// with a one-line summary; --json prints a machine-readable report instead and
+// --json-file=<path> writes one alongside the text report.
+const findings = [];
+const logLines = [];
+const pendingStderr = [];
+let currentCheck = 'setup';
 
-function fail(message) {
-    failed = true;
-    console.error(`AUDIT FAIL: ${message}`);
+function log(message) {
+    logLines.push(message);
+}
+
+function record(level, message, extra = {}) {
+    findings.push({ level, check: currentCheck, message, ...extra });
+}
+
+function fail(message, extra) {
+    record('FAIL', message, extra);
+    pendingStderr.push(`AUDIT FAIL: ${message}`);
+}
+
+function warn(message, extra) {
+    record('WARN', message, extra);
+    pendingStderr.push(`AUDIT WARN: ${message}`);
 }
 
 // Mandatory Audit Log JSON schema keys per Requirement §3 (Decision [2026-05-20]).
@@ -139,7 +162,7 @@ function auditFile(filePath, requiredSections) {
 }
 
 function checkPersonas() {
-    console.log('Auditing agent specifications...');
+    log('Auditing agent specifications...');
     const agents = discoverAgents(agentsDir);
     for (const agent of agents) {
         const fullPath = path.join(repoRoot, agent.path);
@@ -151,13 +174,13 @@ function checkPersonas() {
 
         auditFile(fullPath, REQUIRED_AGENT_SECTIONS);
     }
-    console.log(`Audited ${agents.length} agents.`);
+    log(`Audited ${agents.length} agents.`);
 }
 
 function checkSkills() {
-    console.log('Auditing reusable skills...');
+    log('Auditing reusable skills...');
     if (!fs.existsSync(skillsDir)) {
-        console.warn('Skills directory not found, skipping skills audit.');
+        log('Skills directory not found, skipping skills audit.');
         return;
     }
 
@@ -192,18 +215,63 @@ function checkSkills() {
     for (const fullPath of skillFiles) {
         auditFile(fullPath, REQUIRED_SKILL_SECTIONS);
     }
-    console.log(`Audited ${skillFiles.length} skills.`);
+    log(`Audited ${skillFiles.length} skills.`);
 }
 
 function checkGeneratedOutputs() {
+    // Expected content = the `@AGENTS.md` pointer plus, only when configuration
+    // layers resolve on this checkout, the generated layer import block
+    // (scripts/context_layers.js). Upstream ships no live layers, so here the
+    // expectation is still exactly CONTEXT_POINTER (Decision [2026-09-22-0001]).
+    let expected;
+    try {
+        expected = buildContextFile({ repoRoot, env: process.env, pointer: CONTEXT_POINTER }).content;
+    } catch (error) {
+        fail(error.message);
+        return;
+    }
     for (const outputPath of generatedOutputs) {
         if (!fs.existsSync(outputPath)) {
             fail(`${path.basename(outputPath)} is missing — run \`npm run generate\`.`);
             continue;
         }
         const content = fs.readFileSync(outputPath, 'utf8');
-        if (content !== CONTEXT_POINTER) {
-            fail(`${path.basename(outputPath)} must be exactly ${JSON.stringify(CONTEXT_POINTER)} (Decision [2026-09-22-0001]).`);
+        if (content !== expected) {
+            fail(`${path.basename(outputPath)} must be exactly ${JSON.stringify(expected)} (Decision [2026-09-22-0001]; configuration layers per docs/configuration-layers.md) — run \`npm run generate\`.`);
+        }
+    }
+}
+
+// Configuration layers hook (docs/configuration-layers.md): the AGENTS.md
+// section exists and is last, the org/example template exists, AGENTS.local.md
+// is gitignored, and every path in AGENTS.layers / AGENTS.layers.example is
+// well-formed. Missing optional layer files are deliberately NOT a failure.
+function checkConfigLayers() {
+    log('Auditing configuration layers hook (AGENTS.layers)...');
+    for (const message of auditConfigLayers(repoRoot)) {
+        fail(message);
+    }
+}
+
+// Layer compliance: layers may override any baseline rule (later wins), so
+// this check REPORTS loosened rules instead of blocking them. Severity depends
+// on what was loosened: an unwaived core (secrets.* / refusal.*) relaxation is
+// FAIL, a waived one or a preference relaxation is WARN, a clarification is
+// PASS. See scripts/layer_compliance.js.
+let waiverReport = [];
+function checkLayerCompliance() {
+    log('Auditing layer compliance (rule IDs, overrides, waivers)...');
+    const result = evaluateLayerCompliance({ repoRoot, env: process.env, today: todayIso() });
+    waiverReport = result.waivers;
+    log(`Active layers: ${result.layers.length ? result.layers.join(' -> ') : 'none (baseline only)'}.`);
+    for (const finding of result.findings) {
+        const { level, message, check, ...extra } = finding;
+        if (level === 'FAIL') {
+            fail(message, extra);
+        } else if (level === 'WARN') {
+            warn(message, extra);
+        } else {
+            record('PASS', message, extra);
         }
     }
 }
@@ -240,7 +308,7 @@ function checkInlineSafetyContract() {
 // in memory and demanding byte equality makes manual edits, stale files, and
 // missing artifacts all loud (Decision: skills.sh Phase 1 distribution).
 function checkSkillsDistDeterminism() {
-    console.log('Auditing skills-dist build artifacts (determinism)...');
+    log('Auditing skills-dist build artifacts (determinism)...');
 
     let expected;
     try {
@@ -323,7 +391,7 @@ function checkLicensingPosture() {
 // (Decision [2026-07-05-0011]). Requirement §1 enumerates the kit's contents; a missing
 // file breaks the buyer's first-contact experience and fails the audit as a fatal error.
 function checkPhaseZeroKit() {
-    console.log('Auditing Phase 0 Assessment Kit inventory...');
+    log('Auditing Phase 0 Assessment Kit inventory...');
     const kitDir = path.join(repoRoot, 'docs/phase-zero-assessment');
     if (!fs.existsSync(kitDir)) {
         fail('docs/phase-zero-assessment/ directory is missing; Requirement §1 mandates the Phase 0 Assessment Kit.');
@@ -347,7 +415,7 @@ const MERGE_GATE_PATH = '.github/workflows/require-develop-source.yml';
 const CANONICAL_GATE_CONDITION = 'if [[ "${{ github.head_ref }}" != "develop" ]]; then';
 
 function checkBibleEdition() {
-    console.log('Auditing Bible edition stamp (CalVer, not SemVer)...');
+    log('Auditing Bible edition stamp (CalVer, not SemVer)...');
     const { checkBibleEditionFile } = require('./bible-edition');
     for (const error of checkBibleEditionFile(repoRoot)) {
         fail(error);
@@ -355,7 +423,7 @@ function checkBibleEdition() {
 }
 
 function checkMergeGateInvariant() {
-    console.log('Auditing merge-gate invariant (develop is the only PR source into main)...');
+    log('Auditing merge-gate invariant (develop is the only PR source into main)...');
     const gatePath = path.join(repoRoot, MERGE_GATE_PATH);
     if (!fs.existsSync(gatePath)) {
         fail(`${MERGE_GATE_PATH} is missing; Requirement §7 mandates the develop-only merge gate.`);
@@ -381,7 +449,7 @@ function checkMergeGateInvariant() {
 }
 
 function checkBranchModel() {
-    console.log('Auditing branch model (PR targets and registered integration branches)...');
+    log('Auditing branch model (PR targets and registered integration branches)...');
     const { loadBranchModel, validateModel, activeIntegrationBranches } = require('./branch-model');
 
     let model;
@@ -433,24 +501,123 @@ function checkBranchModel() {
     }
 }
 
-function main() {
-    checkTemplates();
-    checkInlineSafetyContract();
-    checkPersonas();
-    checkSkills();
-    checkGeneratedOutputs();
-    checkSkillsDistDeterminism();
-    checkLicensingPosture();
-    checkPhaseZeroKit();
-    checkMergeGateInvariant();
-    checkBranchModel();
-    checkBibleEdition();
+const CHECKS = [
+    checkTemplates,
+    checkInlineSafetyContract,
+    checkPersonas,
+    checkSkills,
+    checkGeneratedOutputs,
+    checkConfigLayers,
+    checkLayerCompliance,
+    checkSkillsDistDeterminism,
+    checkLicensingPosture,
+    checkPhaseZeroKit,
+    checkMergeGateInvariant,
+    checkBranchModel,
+    checkBibleEdition
+];
 
-    if (failed) {
-        process.exit(1);
+function parseArgs(argv) {
+    const options = { json: false, jsonFile: null, failOnWarn: process.env.COMPLIANCE_FAIL_ON_WARN === '1' };
+    for (const arg of argv) {
+        if (arg === '--json') {
+            options.json = true;
+        } else if (arg.startsWith('--json-file=')) {
+            options.jsonFile = arg.slice('--json-file='.length);
+        } else if (arg === '--fail-on-warn') {
+            options.failOnWarn = true;
+        } else {
+            console.error(`Unknown argument: ${arg} (supported: --json, --json-file=<path>, --fail-on-warn)`);
+            process.exit(64);
+        }
     }
-
-    console.log('Repository audit passed.');
+    return options;
 }
 
-main();
+function annotate(level, message) {
+    if (process.env.GITHUB_ACTIONS !== 'true') {
+        return;
+    }
+    const escaped = String(message).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+    console.log(`::${level === 'FAIL' ? 'error' : 'warning'} title=Compliance ${level}::${escaped}`);
+}
+
+function main() {
+    const options = parseArgs(process.argv.slice(2));
+
+    for (const check of CHECKS) {
+        currentCheck = check.name;
+        try {
+            check();
+        } catch (error) {
+            fail(`${check.name} crashed: ${error.message}`);
+        }
+    }
+    currentCheck = 'report';
+
+    const report = buildComplianceReport({
+        checkNames: CHECKS.map((check) => check.name),
+        findings,
+        waivers: waiverReport,
+        failOnWarn: options.failOnWarn
+    });
+    const { checks, status, exitCode, summary: summaryLine } = report;
+
+    if (options.jsonFile) {
+        fs.mkdirSync(path.dirname(path.resolve(options.jsonFile)), { recursive: true });
+        fs.writeFileSync(options.jsonFile, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+    }
+
+    if (options.json) {
+        process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+        process.exit(exitCode);
+    }
+
+    // Summary first, then the per-finding stderr lines (kept for log scrapers
+    // and annotations), then the full report.
+    console.log(summaryLine);
+    for (const line of pendingStderr) {
+        console.error(line);
+    }
+
+    const out = [''];
+    for (const level of ['FAIL', 'WARN']) {
+        const items = findings.filter((finding) => finding.level === level);
+        out.push(`${level} (${items.length})`);
+        for (const item of items) {
+            out.push(`  - [${item.check}] ${item.message}`);
+            annotate(level, item.message);
+        }
+        out.push('');
+    }
+    out.push(`Waivers (${waiverReport.length})`);
+    for (const waiver of waiverReport) {
+        out.push(`  - ${waiver.rule}${waiver.layer ? ` @ ${waiver.layer}` : ''}: ${waiver.status}${waiver.used ? ', in use' : ', unused'}`
+            + ` | owner: ${waiver.owner} | expires: ${waiver.expires || 'never'} | reason: ${waiver.reason}`);
+    }
+    out.push('');
+    const passes = findings.filter((finding) => finding.level === 'PASS');
+    if (passes.length) {
+        out.push(`Clarifications / tightenings (${passes.length})`);
+        for (const item of passes) {
+            out.push(`  - ${item.message}`);
+        }
+        out.push('');
+    }
+    out.push('Checks');
+    for (const check of checks) {
+        out.push(`  ${check.level.padEnd(4)} ${check.name}`);
+    }
+    out.push('', 'Details', ...logLines.map((line) => `  ${line}`), '');
+    if (exitCode === 0) {
+        out.push(status === 'PASS' ? 'Repository audit passed.' : 'Repository audit passed with warnings (use --fail-on-warn or COMPLIANCE_FAIL_ON_WARN=1 to block).');
+    } else if (exitCode === 2) {
+        out.push('Repository audit: WARN treated as failure (--fail-on-warn / COMPLIANCE_FAIL_ON_WARN=1).');
+    }
+    console.log(out.join('\n'));
+    process.exit(exitCode);
+}
+
+if (require.main === module) {
+    main();
+}

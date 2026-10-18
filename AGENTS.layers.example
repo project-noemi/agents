@@ -1,0 +1,34 @@
+# AGENTS.layers.example: format reference for the configuration layer manifest.
+#
+# Downstream repos copy this file to AGENTS.layers (committed) and edit it.
+# Upstream project-noemi/agents ships no live AGENTS.layers.
+#
+# Rules (enforced by `npm run audit`):
+#   - one repo-relative path per line; `#` starts a comment
+#   - no absolute paths, no `~`, no `..`, no whitespace, no leading `@`
+#   - markdown files only (.md)
+#   - do not list AGENTS.md (always first), AGENTS.local.md (always last),
+#     or AGENTS.override.md (Codex treats it as a replacement, not a layer)
+#
+# Order is precedence: AGENTS.md loads first, then these lines top to bottom,
+# then AGENTS.local.md. Later sources win on conflict. A listed file that does
+# not exist is skipped, so a layer may be listed before it is vendored in.
+#
+# NOEMI_ORG_LAYERS="a.md,b.md" replaces this list for one session (CI, tests).
+#
+# Layers may override any baseline rule. Mark relaxations with
+# <!-- override: <rule-id> relax --> in the layer; core relaxations need a
+# waiver in AGENTS.waivers.json (see AGENTS.waivers.example.json).
+#
+# After editing AGENTS.layers, run `npm run generate` and commit CLAUDE.md and
+# GEMINI.md so Claude Code and Gemini CLI import the same stack.
+
+# 1. MSP / MSSP layer: owned by the managing company, vendored read-only
+#    (see docs/configuration-layers.md, "How an MSP adds its layer").
+org/example-msp/AGENTS.md
+
+# 2. Customer layer: owned by this repository.
+org/example-customer/AGENTS.md
+
+# To try the upstream template as a layer, uncomment:
+# org/example/AGENTS.md

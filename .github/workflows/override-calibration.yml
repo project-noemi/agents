@@ -1,0 +1,138 @@
+# Override → calibration seeding (docs/AI_REVIEW_OVERRIDE.md).
+#
+# On a NEW pull-request comment containing `/override ...`, records the
+# override as evidence on ONE open DRAFT calibration PR per rule ID (opening one
+# when none is open) and links the source PR and calibration PR both ways.
+# Unauthorized or malformed commands are flagged on the source PR and seed
+# nothing. Nothing is applied automatically: calibration PRs are drafts that a
+# human edits and merges.
+#
+# issue_comment SAFETY
+#   - Runs the workflow and scripts from the DEFAULT branch only. The PR's code
+#     is never checked out or executed, in any job.
+#   - The comment body is untrusted. It is never interpolated into a `run:`
+#     script; the scripts read it from $GITHUB_EVENT_PATH as data.
+#   - Authorization happens in `screen`, which holds no write token and no
+#     secret. `seed` re-checks independently before writing anything.
+#   - Only `created` comments are handled. Edits never re-seed, so editing or
+#     deleting a comment cannot change the recorded evidence.
+#
+# LEAST PRIVILEGE
+#   workflow default: contents: read
+#   screen: contents: read (checkout only)
+#   flag:   contents: read, pull-requests: write (GITHUB_TOKEN posts the notice)
+#   seed:   contents: read, id-token: write (OIDC → Infisical → noemi-agent).
+#           Branch, evidence file, draft PR, and labels are written as
+#           noemi-agent, like calibration-watch.yml: PRs opened by
+#           GITHUB_TOKEN never trigger workflows, so their checks would never
+#           report.
+#
+# The allowlist comes from vars.NOEMI_REVIEW_OVERRIDE_ACTORS and is passed as a
+# command-line argument, never via env, so `infisical run` cannot supply it.
+name: Override Calibration
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  screen:
+    name: Screen override command
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/override')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      accepted: ${{ steps.screen.outputs.accepted }}
+      ignored: ${{ steps.screen.outputs.ignored }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Parse and authorize
+        id: screen
+        env:
+          OVERRIDE_ACTORS: ${{ vars.NOEMI_REVIEW_OVERRIDE_ACTORS }}
+        run: node scripts/override-calibration.js screen --override-actors "$OVERRIDE_ACTORS"
+
+  flag:
+    name: Flag unaccepted override command
+    needs: screen
+    if: needs.screen.outputs.ignored != '' && needs.screen.outputs.ignored != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Post notice on the source PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OVERRIDE_ACTORS: ${{ vars.NOEMI_REVIEW_OVERRIDE_ACTORS }}
+        run: node scripts/override-calibration.js flag --override-actors "$OVERRIDE_ACTORS"
+
+  seed:
+    name: Seed calibration draft
+    needs: screen
+    if: needs.screen.outputs.accepted != '' && needs.screen.outputs.accepted != '0'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check configuration
+        id: config
+        env:
+          PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+          IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
+        run: |
+          if [[ -z "$PROJECT_ID" || -z "$IDENTITY_ID" ]]; then
+            echo "::error title=Override calibration not configured::Infisical variables missing; the accepted override was NOT recorded."
+            exit 1
+          fi
+      - name: Install Infisical CLI
+        run: |
+          curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
+          sudo apt-get install -y infisical
+      - name: Authenticate to Infisical via OIDC
+        env:
+          IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
+          OIDC_AUDIENCE: ${{ vars.INFISICAL_OIDC_AUDIENCE || 'infisical' }}
+        run: |
+          JWT=$(curl -sH "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${OIDC_AUDIENCE}" | jq -r .value)
+          if [[ -z "$JWT" || "$JWT" == "null" ]]; then
+            echo "::error title=OIDC token unavailable::Could not mint a GitHub identity token."
+            exit 1
+          fi
+          TOKEN=$(infisical login --method=oidc-auth \
+            --machine-identity-id="$IDENTITY_ID" --jwt="$JWT" --plain --silent)
+          echo "::add-mask::$TOKEN"
+          echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+      - name: Record evidence on the calibration draft
+        env:
+          INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+          OVERRIDE_ACTORS: ${{ vars.NOEMI_REVIEW_OVERRIDE_ACTORS }}
+        run: |
+          infisical run --projectId="$INFISICAL_PROJECT_ID" --env=dev -- \
+            bash -c 'GH_TOKEN="$AGENT_GH_TOKEN" node scripts/override-calibration.js seed --override-actors "$0"' "$OVERRIDE_ACTORS"

@@ -52,7 +52,7 @@ Jurisdiction-specific frameworks (US DMCA 512, EU DSA, national laws) and biling
 
 3. **Ownership Verification:** Run in parallel:
    - **RDAP/WHOIS:** Validate IP with parser; query via HTTP client library (never shell commands). Record netname, ASN.
-   - **DNS:** Validate domain; query via DNS library or DNS-over-HTTPS. If behind CDN, test origin directly using HTTP client with custom resolver or safe argv array (`subprocess.run(['curl', '-sk', '--max-time', '10', '--resolve', f'{validated_domain}:443:{validated_ip}', ...], shell=False)`). Never build shell commands by string concatenation.
+   - **DNS:** Validate domain; query via DNS library or DNS-over-HTTPS. If behind CDN, test origin directly using HTTP client with custom resolver or safe argv array (`subprocess.run(['curl', '-sS', '--max-time', '10', '--resolve', f'{validated_domain}:443:{validated_ip}', f'https://{validated_domain}{validated_path}'], shell=False)`), so SNI/Host match the real hostname and the certificate is validated against it. If certificate validation fails at the origin, do not disable verification; record the result as 'unverified' and escalate to a human operator rather than treating it as confirmation of infringing content. Never use an unverified response as grounds for suspension. Never build shell commands by string concatenation.
    - **Control Panel:** Search via MCP structured API (not string-built queries). If no MCP, escalate to human lookup.
    - **Verdict:** Ours (service identified), Not ours (provide correct abuse contact), Uncertain (escalate).
 

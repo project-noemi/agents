@@ -11,14 +11,14 @@ metadata:
 > `Ask First` / `Never` gates, and an audit-log contract, and passed
 > cross-model review before publication.
 >
-> **Generated file — do not edit.** Built from [`skills/operations/abuse-takedown.md`](https://github.com/project-noemi/agents/blob/main/skills/operations/abuse-takedown.md)
+> **Generated file — do not edit.** Built from [`skills/compliance/abuse-takedown.md`](https://github.com/project-noemi/agents/blob/main/skills/compliance/abuse-takedown.md)
 > in [project-noemi/agents](https://github.com/project-noemi/agents) by `node scripts/generate_all.js`.
 >
 > **License:** Functional Source License, Version 1.1, Apache 2.0 Future
 > License (FSL-1.1-Apache-2.0) — see [LICENSE](https://github.com/project-noemi/agents/blob/main/LICENSE)
 > before redistribution or commercial use.
 
-# Abuse Takedown — Operations Skill
+# Abuse Takedown — Compliance Skill
 
 ## Global Mandates
 

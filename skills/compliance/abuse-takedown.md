@@ -1,4 +1,4 @@
-# Abuse Takedown — Operations Skill
+# Abuse Takedown — Compliance Skill
 
 ## Purpose
 

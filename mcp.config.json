@@ -27,13 +27,13 @@
     "reporting/release-herald",
     "security/hmac-sign-submit",
     "security/pii-scan",
+    "compliance/abuse-takedown",
     "orchestration/dispatch-coordinate",
     "orchestration/governed-loop",
     "orchestration/issue-plan",
     "orchestration/spec-author",
     "operations/meeting-minutes",
     "operations/annual-calendar",
-    "operations/speaker-brief",
-    "operations/abuse-takedown"
+    "operations/speaker-brief"
   ]
 }

@@ -67,6 +67,13 @@ All skills, always: adhere to the defined Boundaries and **never exceed authoriz
 - **Ask First:** Changing redaction patterns. Allowing a Confidential payload through in `report_only` mode.
 - **Never:** Forward unscanned payloads to public APIs. Include actual PII values in scan result logs. Attempt to answer the user's underlying question — this skill is a compliance filter only.
 
+### Abuse Takedown — Compliance Skill
+
+- **Spec:** `skills/compliance/abuse-takedown.md`
+- **Purpose:** Execute a compliant copyright, DMCA, or other abuse takedown notice workflow for hosting and MSP providers, balancing legal mandates with customer rights and operational safety.
+- **Ask First:** Suspending entire service (vs. disabling specific content), handling notices in jurisdictions not yet parameterized in this skill, accessing server configs directly (requires operator SSH), terminating a repeat-infringer account (requires management + Legal approval).
+- **Never:** Disable content without a validated notice and human approval, restore content without Legal clearance, handle credentials, make legal determinations, admit liability or comment on response timing to complainants, proceed with defective or fraudulent notices, bypass repeat-infringer tracking.
+
 ### Dispatch & Coordinate — Orchestration Skill
 
 - **Spec:** `skills/orchestration/dispatch-coordinate.md`
@@ -115,10 +122,3 @@ All skills, always: adhere to the defined Boundaries and **never exceed authoriz
 - **Purpose:** Prepare a practical speaker-session brief from an approved programme objective and available logistics.
 - **Ask First:** Expand the approved audience or purpose, use private biographical/contact information, or exceed an already agreed budget in a proposed plan.
 - **Never:** Invent credentials or consent, present unverified availability as confirmed, publish private data, or send invitations, book venues, or spend funds.
-
-### Abuse Takedown — Operations Skill
-
-- **Spec:** `skills/operations/abuse-takedown.md`
-- **Purpose:** Execute a compliant copyright, DMCA, or other abuse takedown notice workflow for hosting and MSP providers, balancing legal mandates with customer rights and operational safety.
-- **Ask First:** Suspending entire service (vs. disabling specific content), handling notices in jurisdictions not yet parameterized in this skill, accessing server configs directly (requires operator SSH), terminating a repeat-infringer account (requires management + Legal approval).
-- **Never:** Disable content without a validated notice and human approval, restore content without Legal clearance, handle credentials, make legal determinations, admit liability or comment on response timing to complainants, proceed with defective or fraudulent notices, bypass repeat-infringer tracking.

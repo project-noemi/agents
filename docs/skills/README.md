@@ -14,8 +14,9 @@ Agents (who)  →  compose  →  Skills (what)  →  use  →  MCP Protocols (ho
 | [Verification](verification/) | Pre-Flight Check, Cross-Reference | Validate preconditions; verify claims against source of truth |
 | [Reporting](reporting/) | Structured Report, Alert & Notify | Standardized report generation; Slack/email delivery |
 | [Security](security/) | HMAC Sign & Submit, PII Scan | Cryptographic payload signing; data privacy scanning |
+| [Compliance](compliance/) | Abuse Takedown | Legal/regulatory compliance workflows; copyright enforcement, abuse handling |
 | [Orchestration](orchestration/) | Dispatch & Coordinate, Issue Plan | Sub-agent delegation; issue plan plus plan red-team cycle |
-| [Operations](operations/) | Meeting Minutes, Annual Calendar, Speaker Brief, Abuse Takedown | Evidence-based club records, year planning, programme preparation, and abuse/DMCA compliance |
+| [Operations](operations/) | Meeting Minutes, Annual Calendar, Speaker Brief | Evidence-based club records, year planning, and programme preparation |
 
 ## How Skills Work
 

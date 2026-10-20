@@ -57,3 +57,7 @@ export const routeFetch = (byPrefix) => async (url, init) => {
   if (!prefix) throw new Error(`unexpected request to ${href}`);
   return byPrefix[prefix](url, init);
 };
+
+// A real Response, so loaders exercise real headers and body streaming.
+export const textResponse = (body, { status = 200, headers = { "content-type": "text/plain; charset=utf-8" } } = {}) =>
+  new Response(body, { status, headers });

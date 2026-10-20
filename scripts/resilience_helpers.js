@@ -18,6 +18,8 @@
  * @param {number} options.maxDelayMs - Maximum delay cap in ms (default: 30000)
  * @param {number} options.jitterFactor - Jitter multiplier 0-1 (default: 0.2)
  * @param {Function} options.retryIf - Predicate: (err) => bool, default retries all errors
+ * @param {Function} options.onRetry - ({ attempt, maxRetries, delay, err }) => void.
+ *   Default logs to console.warn; pass a no-op when stderr is reserved (e.g. JSON audit output).
  * @returns {Promise<*>}
  */
 async function withRetry(fn, options = {}) {
@@ -27,6 +29,8 @@ async function withRetry(fn, options = {}) {
     maxDelayMs = 30000,
     jitterFactor = 0.2,
     retryIf = () => true,
+    onRetry = ({ attempt, maxRetries: max, delay, err }) =>
+      console.warn(`[resilience] Attempt ${attempt}/${max} failed: ${err.message}. Retrying in ${delay}ms...`),
   } = options;
 
   let lastError;
@@ -41,7 +45,7 @@ async function withRetry(fn, options = {}) {
       const exponentialDelay = Math.min(baseDelayMs * Math.pow(2, attempt), maxDelayMs);
       const jitter = exponentialDelay * jitterFactor * Math.random();
       const delay = Math.round(exponentialDelay + jitter);
-      console.warn(`[resilience] Attempt ${attempt + 1}/${maxRetries} failed: ${err.message}. Retrying in ${delay}ms...`);
+      onRetry({ attempt: attempt + 1, maxRetries, delay, err });
       await sleep(delay);
     }
   }

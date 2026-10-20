@@ -1,15 +1,19 @@
 /**
  * Shared provider fallback utility.
  *
- * Retry behavior belongs to http.js / withRetry().
+ * Retry behavior belongs to gateway.js (withRetry from
+ * scripts/resilience_helpers.js).
  * This utility is responsible only for switching to the
  * next configured provider after a provider-availability error.
  *
- * Fallback-worthy errors:
+ * Fallback-worthy errors (after gateway.js's retries are exhausted):
  *   - 429: rate limited
  *   - 5xx: provider/server failure
  *   - TypeError: fetch failed (network failure)
  *   - TimeoutError: request timed out
+ *
+ * PROVIDER_CONFIG and PROVIDER_EMPTY are never fallback-worthy: bad setup
+ * and blocked/empty responses fail closed.
  *
  * Other errors are thrown immediately because they generally
  * represent bad configuration, invalid input, validation errors,
@@ -47,6 +51,34 @@ export function isRegisteredProvider(providers, name) {
     && typeof providers[name] === 'function';
 }
 
+/**
+ * The ordered, de-duplicated provider chain. Throws code PROVIDER before any
+ * provider runs if a name is unknown -- a typo in NOEMI_FALLBACK_PROVIDERS
+ * must not surface only after the preferred provider has already failed.
+ */
+export function providerOrder({ preferred, fallbacks = [], providers }) {
+  if (!providers || typeof providers !== 'object') {
+    throw new Error('No providers were supplied.');
+  }
+
+  const order = [...new Set([preferred, ...fallbacks].filter(Boolean))];
+  const unknown = order.filter((name) => !isRegisteredProvider(providers, name));
+  if (unknown.length) {
+    const err = new Error(
+      `Unknown provider${unknown.length > 1 ? 's' : ''} ${unknown.map((n) => `"${n}"`).join(', ')}. ` +
+      `Known: ${Object.keys(providers).join(', ')}.`
+    );
+    err.code = 'PROVIDER';
+    throw err;
+  }
+  if (!order.length) {
+    const err = new Error('No available providers could handle the request.');
+    err.code = 'PROVIDER';
+    throw err;
+  }
+  return order;
+}
+
 export async function runWithFallbacks({
   preferred,
   fallbacks = [],
@@ -54,23 +86,13 @@ export async function runWithFallbacks({
   input,
   onFallback
 }) {
-  if (!providers || typeof providers !== 'object') {
-    throw new Error('No providers were supplied.');
-  }
-
-  const order = [
-    preferred,
-    ...fallbacks,
-  ].filter(Boolean);
+  const order = providerOrder({ preferred, fallbacks, providers });
 
   let lastFallbackError = null;
 
-    for (const providerName of order) {
-    if (!isRegisteredProvider(providers, providerName)) continue;
-    const provider = providers[providerName];
-
+  for (const providerName of order) {
     try {
-      return await provider(input);
+      return await providers[providerName](input);
     } catch (error) {
       if (!isFallbackError(error)) throw error;
       lastFallbackError = error;
@@ -78,9 +100,5 @@ export async function runWithFallbacks({
     }
   }
 
-  if (lastFallbackError) throw lastFallbackError; 
-
-  const err = new Error('No available providers could handle the request.');
-  err.code = 'PROVIDER';
-  throw err;
+  throw lastFallbackError;
 }

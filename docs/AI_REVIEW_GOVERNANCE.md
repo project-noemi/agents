@@ -45,6 +45,16 @@ See `docs/MACHINE_IDENTITY.md` for provisioning.
 Reviews run in sequence. A failed gate stops the review; later gates are
 skipped, not merely failed.
 
+**Override mode** is the one exception: an allowlisted human
+(`NOEMI_REVIEW_OVERRIDE_ACTORS`) can override a failed premise, framing, or
+code gate for one head SHA with a PR comment, and the later gates then run. The
+overridden gate is reported as OVERRIDDEN with its original findings, never as
+a pass. A compliance override is recorded only. Overrides happen only at the
+owner's direction, relayed through the Dep 12 PR Watch Bot; the coding bot
+never overrides its own work. Each accepted override is snapshotted as
+evidence on a draft calibration PR per rule ID, which a human reviews and
+merges. See `docs/AI_REVIEW_OVERRIDE.md`.
+
 | Gate | 4D dimension | Question |
 |---|---|---|
 | 1. Premise | Delegation | Should this change exist at all? |

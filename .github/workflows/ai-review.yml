@@ -58,11 +58,17 @@
 # Configuration comes from Actions VARIABLES resolved in the caller's context —
 # set them at the ORGANIZATION level so member repos need none of their own.
 # No credential is stored in GitHub. The GitHub token comes from Infisical via
-# OIDC, and Google access comes from Workload Identity Federation — required
-# here, since org policy disallows API keys and service-account keys alike.
-# When the Infisical project holds AI_GW_API_TOKEN, review-pr.js sends the
-# gates through the NewPush AI gateway instead and the federated token goes
-# unused; it stays as the fallback (Decision [2026-10-22-0001]).
+# OIDC. The model route (Decision [2026-10-22-0003]):
+#   gateway — the Infisical project holds AI_GW_API_TOKEN (or AI_GW_API_KEY):
+#             gates go to the NewPush AI gateway; no Google credential is used.
+#   vertex  — direct Vertex through Workload Identity Federation
+#             (GCP_WIF_PROVIDER + GCP_SERVICE_ACCOUNT). Org policy disallows
+#             Google API keys and service-account keys, so federation is the
+#             only direct path.
+# AI_REVIEW_ROUTE (Actions variable): auto (default: gateway when the vault has
+# the key, else vertex), gateway, or vertex. `vertex` strips the gateway key
+# from the review step, so the direct path stays usable on purpose. Only the
+# Infisical variables are required; the GCP variables only for vertex.
 #
 # The carve-out, gate ordering, and severity rubric are enforced inside
 # scripts/review-pr.js — deliberately not duplicated here. Two copies of a
@@ -119,14 +125,12 @@ jobs:
         env:
           PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
           IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
-          WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
-          GCP_SA: ${{ vars.GCP_SERVICE_ACCOUNT }}
         run: |
+          # Only Infisical is required. The GCP variables are needed only for
+          # the direct Vertex route; a gateway-only organization has none.
           missing=()
           [[ -z "${PROJECT_ID}"   ]] && missing+=(INFISICAL_PROJECT_ID)
           [[ -z "${IDENTITY_ID}"  ]] && missing+=(INFISICAL_IDENTITY_ID)
-          [[ -z "${WIF_PROVIDER}" ]] && missing+=(GCP_WIF_PROVIDER)
-          [[ -z "${GCP_SA}"       ]] && missing+=(GCP_SERVICE_ACCOUNT)
           if (( ${#missing[@]} )); then
             echo "configured=false" >> "$GITHUB_OUTPUT"
             echo "missing=${missing[*]}" >> "$GITHUB_OUTPUT"
@@ -205,23 +209,19 @@ jobs:
           missing=()
           [[ -z "${PROJECT_ID}"   ]] && missing+=(INFISICAL_PROJECT_ID)
           [[ -z "${IDENTITY_ID}"  ]] && missing+=(INFISICAL_IDENTITY_ID)
-          [[ -z "${WIF_PROVIDER}" ]] && missing+=(GCP_WIF_PROVIDER)
-          [[ -z "${GCP_SA}"       ]] && missing+=(GCP_SERVICE_ACCOUNT)
           if (( ${#missing[@]} )); then
             echo "::error title=Privileged advisory misconfiguration::This job should only run when config is available, but variables are missing: ${missing[*]}. Check job conditions."
             exit 1
           fi
+          # Direct Vertex is available only with both federation variables.
+          if [[ -n "${WIF_PROVIDER}" && -n "${GCP_SA}" ]]; then
+            echo "wif=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "wif=false" >> "$GITHUB_OUTPUT"
+          fi
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
       # Federation, not a key.
-      - name: Authenticate to Google Cloud (Workload Identity Federation)
-        id: gcpauth
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
-          token_format: access_token
-
       - name: Install Infisical CLI
         run: |
           curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
@@ -243,6 +243,49 @@ jobs:
             --machine-identity-id="$IDENTITY_ID" --jwt="$JWT" --plain --silent)
           echo "::add-mask::$TOKEN"
           echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      # Model route, decided before any Google credential is minted. Checks
+      # only whether the vault holds a gateway key; the value is never read
+      # into this step.
+      - name: Resolve model route
+        id: route
+        env:
+          PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+          WANT: ${{ vars.AI_REVIEW_ROUTE || 'auto' }}
+          WIF: ${{ steps.config.outputs.wif }}
+        run: |
+          if infisical run --projectId="$PROJECT_ID" --env=dev --silent -- \
+              bash -c '[[ -n "${AI_GW_API_TOKEN:-}${AI_GW_API_KEY:-}" ]]'; then
+            gateway=true
+          else
+            gateway=false
+          fi
+          case "$WANT" in
+            auto)    if [[ "$gateway" == true ]]; then route=gateway; else route=vertex; fi ;;
+            gateway) route=gateway ;;
+            vertex)  route=vertex ;;
+            *) echo "::error title=Bad AI_REVIEW_ROUTE::Use auto, gateway or vertex (got '${WANT}')."; exit 1 ;;
+          esac
+          if [[ "$route" == gateway && "$gateway" != true ]]; then
+            echo "::error title=No gateway key::AI_REVIEW_ROUTE=gateway, but the Infisical project has no AI_GW_API_TOKEN."
+            exit 1
+          fi
+          if [[ "$route" == vertex && "$WIF" != true ]]; then
+            echo "::error title=No model route::Store AI_GW_API_TOKEN in the Infisical project (gateway), or set GCP_WIF_PROVIDER and GCP_SERVICE_ACCOUNT (direct Vertex)."
+            exit 1
+          fi
+          echo "route=${route}" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Model route::${route}"
+
+      # Direct Vertex only. Skipped on the gateway route.
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        id: gcpauth
+        if: steps.route.outputs.route == 'vertex'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
 
       - name: Resolve reviewer App ID
         id: appid
@@ -296,6 +339,7 @@ jobs:
           GEMINI_REVIEW_FLOOR: ${{ vars.GEMINI_REVIEW_FLOOR || 'pro' }}
           INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
+          MODEL_ROUTE: ${{ steps.route.outputs.route }}
           GCP_ACCESS_TOKEN: ${{ steps.gcpauth.outputs.access_token }}
           GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT || 'project-noemi' }}
           GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'global' }}
@@ -309,9 +353,15 @@ jobs:
           export REVIEW_HALT_FILE="$RUNNER_TEMP/ai-review-halt"
           export REVIEW_FINDINGS_FILE="$RUNNER_TEMP/ai-review-findings.json"
           rm -f "$REVIEW_HALT_FILE" "$REVIEW_FINDINGS_FILE"
+          # The vertex route hides the vault's gateway key from review-pr.js,
+          # which would otherwise prefer it (scripts/model-config.js).
+          strip=()
+          if [[ "$MODEL_ROUTE" == vertex ]]; then
+            strip=(env -u AI_GW_API_TOKEN -u AI_GW_API_KEY)
+          fi
           set +e
           infisical run --projectId="$INFISICAL_PROJECT_ID" --env=dev -- \
-            node scripts/review-pr.js --pr "$PR_NUMBER" --floor pro --prefer-pro --prefer-preview-pro --allow-preview
+            "${strip[@]}" node scripts/review-pr.js --pr "$PR_NUMBER" --floor pro --prefer-pro --prefer-preview-pro --allow-preview
           code=$?
           set -e
           if [[ -f "$REVIEW_HALT_FILE" ]]; then

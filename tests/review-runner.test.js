@@ -1164,3 +1164,26 @@ test('carve-out: the model route and chat client are governance files', () => {
         'scripts/model-config.js', 'scripts/model-chat.js',
     ]);
 });
+
+test('workflow: model route — only Infisical is required; WIF runs on the vertex route only', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
+    const advisory = yml.slice(yml.indexOf('\n  advisory:'));
+    // A gateway-only organization has no GCP variables: they are not "missing".
+    const configStep = advisory.slice(advisory.indexOf('Check reviewer configuration'), advisory.indexOf('Install Infisical CLI'));
+    assert.doesNotMatch(configStep, /missing\+=\(GCP_/);
+    const fork = yml.slice(yml.indexOf('\n  fork-notice:'), yml.indexOf('\n  advisory:'));
+    assert.doesNotMatch(fork, /missing\+=\(GCP_/);
+    // The route is decided after Infisical login and before any Google credential.
+    const order = ['Authenticate to Infisical via OIDC', 'Resolve model route', 'Authenticate to Google Cloud']
+        .map((name) => advisory.indexOf(name));
+    assert.ok(order.every((i) => i > -1) && order[0] < order[1] && order[1] < order[2], 'login → route → GCP');
+    assert.match(advisory, /id: gcpauth\n\s+if: steps\.route\.outputs\.route == 'vertex'/);
+    assert.match(advisory, /AI_REVIEW_ROUTE \|\| 'auto'/);
+    // Presence only: the gateway key is never read into the route step.
+    const route = advisory.slice(advisory.indexOf('Resolve model route'), advisory.indexOf('Authenticate to Google Cloud'));
+    assert.match(route, /bash -c '\[\[ -n "\$\{AI_GW_API_TOKEN:-\}\$\{AI_GW_API_KEY:-\}" \]\]'/);
+    assert.doesNotMatch(route, /secrets get AI_GW/);
+    // Forcing vertex hides the gateway key from review-pr.js, which would otherwise prefer it.
+    assert.match(advisory, /strip=\(env -u AI_GW_API_TOKEN -u AI_GW_API_KEY\)/);
+    assert.match(advisory, /"\$\{strip\[@\]\}" node scripts\/review-pr\.js/);
+});

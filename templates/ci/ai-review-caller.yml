@@ -6,8 +6,11 @@
 # docs/examples/cross-model-review-setup.md (Fleet deployment).
 #
 # Requires only organization-level Actions VARIABLES (no secrets in this repo):
-#   GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT, GOOGLE_CLOUD_PROJECT,
 #   INFISICAL_PROJECT_ID, INFISICAL_IDENTITY_ID
+# Model route: the NewPush AI gateway when that Infisical project holds
+# AI_GW_API_TOKEN; otherwise direct Vertex, which also needs
+#   GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT, GOOGLE_CLOUD_PROJECT
+# AI_REVIEW_ROUTE (auto | gateway | vertex) forces one route.
 #
 # The review is ADVISORY: it posts findings as a comment and never approves,
 # merges, or blocks. Do not add it to required status checks.

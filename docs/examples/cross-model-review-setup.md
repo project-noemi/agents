@@ -226,14 +226,23 @@ Settings → Secrets and variables → Actions → **Variables** tab. None is a
 secret, and the tab matters: Secrets are masked and write-only, which makes
 non-secrets harder to audit.
 
+Only the two Infisical variables are always required. The model route is
+decided per run (Decision [2026-10-22-0003]): when the Infisical project holds
+`AI_GW_API_TOKEN`, the gates go to the NewPush AI gateway and no GCP variable is
+needed. Without that key, the review calls Vertex directly and needs the GCP
+variables. `AI_REVIEW_ROUTE` (`auto`, `gateway`, `vertex`; default `auto`)
+forces one route; `vertex` hides the gateway key from the review, so the direct
+path stays usable.
+
 | Variable | Value |
 |---|---|
-| `GCP_WIF_PROVIDER` | `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github-provider` |
-| `GCP_SERVICE_ACCOUNT` | `noemi-reviewer@project-noemi.iam.gserviceaccount.com` |
-| `GOOGLE_CLOUD_PROJECT` | `project-noemi` |
-| `GOOGLE_CLOUD_LOCATION` | `us-central1` |
-| `INFISICAL_PROJECT_ID` | your Infisical workspace ID |
-| `INFISICAL_IDENTITY_ID` | your Infisical machine identity ID |
+| `INFISICAL_PROJECT_ID` | your Infisical workspace ID (required) |
+| `INFISICAL_IDENTITY_ID` | your Infisical machine identity ID (required) |
+| `AI_REVIEW_ROUTE` | optional: `auto` (default), `gateway`, or `vertex` |
+| `GCP_WIF_PROVIDER` | vertex route only: `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github-provider` |
+| `GCP_SERVICE_ACCOUNT` | vertex route only: `noemi-reviewer@project-noemi.iam.gserviceaccount.com` |
+| `GOOGLE_CLOUD_PROJECT` | vertex route only: `project-noemi` |
+| `GOOGLE_CLOUD_LOCATION` | vertex route only: `us-central1` |
 
 ⚠️ `GCP_WIF_PROVIDER` takes the project **number**, not the project ID. Using the
 ID fails with a message that does not mention which field is wrong.
@@ -686,9 +695,10 @@ need no configuration of their own (Org Settings → Secrets and variables →
 Actions → Variables, or `gh variable set NAME --org ORG --visibility all`,
 which requires `admin:org` scope):
 
-`GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, `GOOGLE_CLOUD_PROJECT`,
 `INFISICAL_PROJECT_ID`, `INFISICAL_IDENTITY_ID` — same values as the
-repository-level ones documented above. (`GOOGLE_CLOUD_LOCATION` defaults to
+repository-level ones documented above. With `AI_GW_API_TOKEN` in that
+Infisical project, that is all the model route needs. For the direct Vertex
+route also set `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, `GOOGLE_CLOUD_PROJECT`. (`GOOGLE_CLOUD_LOCATION` defaults to
 `global` and can be omitted.) Optional: `GEMINI_REVIEW_MODEL` (`auto` discovers
 the highest Pro preview, else a stable Pro; set an explicit id to pin) and
 `REVIEWER_APP_ID`.

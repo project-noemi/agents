@@ -1157,6 +1157,10 @@ test('critiquePlanLive: Gemini pass after structural pass; fail is not accepted'
     scan: { status: 'APPROVED' },
   });
   const drafted = draftPlan({ issue: issue({ body: sufficientBody }), intake });
+  // Stop conditions are about the work. The cycle limit is the loop's, enforced
+  // in code; naming it in the plan read as leaked internals to the red-team.
+  assert.doesNotMatch(drafted.plan, /planRedTeam|maxCycles|Stage B′/);
+  assert.match(drafted.plan, /The change needs a file that is not in the Files list\./);
   const passed = await critiquePlanLive(drafted, {
     callModel: async () => ({ verdict: 'pass', findings: [] }),
   });
@@ -2103,4 +2107,40 @@ test('plan red-team: a model timeout during revision re-queues instead of postin
     }),
     (err) => err.code === 'model-timeout',
   );
+});
+
+test('plan file: --plan-in implements only the accepted plan for the same, unchanged issue', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const { readPlanFile, writePlanFile, parseArgs } = require('../coding-loop/run.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-file-'));
+  const file = path.join(dir, 'plan.json');
+  const accepted = { status: 'accepted', plan: '## Goal\nx', files: ['README.md'] };
+  const intake = { tier: 'ACTIONABLE' };
+  const at = '2026-10-22T10:00:00Z';
+  try {
+    writePlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, profile: 'code', intake, plan: accepted });
+    assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+    assert.deepEqual(readPlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, profile: 'code' }), { intake, plan: accepted });
+    const refused = (opts) => assert.throws(() => readPlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, profile: 'code', ...opts }), (err) => err.status === 409);
+    refused({ issue: '8' });
+    refused({ repo: 'o/other' });
+    refused({ updatedAt: '2026-10-22T11:00:00Z' });
+    refused({ profile: 'spec' });
+    writePlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, intake, plan: { ...accepted, status: 'needs-info' } });
+    refused({});
+    assert.throws(() => readPlanFile(path.join(dir, 'missing.json'), { repo: 'o/r', issue: '7', updatedAt: at }), /cannot read the plan file \(ENOENT\)/);
+    // A non-plan file is refused without quoting its contents.
+    const other = path.join(dir, 'passwd');
+    fs.writeFileSync(other, 'root:x:0:0:secret-line\n');
+    assert.throws(
+      () => readPlanFile(other, { repo: 'o/r', issue: '7', updatedAt: at }),
+      (err) => err.status === 409 && /not valid JSON/.test(err.message) && !/root|secret-line/.test(err.message),
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  const args = parseArgs(['--plan-out', '/tmp/a.json', '--plan-in', '/tmp/b.json']);
+  assert.equal(args.planOut, '/tmp/a.json');
+  assert.equal(args.planIn, '/tmp/b.json');
 });

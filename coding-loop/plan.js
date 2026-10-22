@@ -6,7 +6,8 @@
  * Drafts a checkable plan from an ACTIONABLE Stage A result, then runs
  * Stage B′ (structural, plus optional live Gemini via `critic`).
  * status is refused | accepted | needs-info. accepted requires B′ pass.
- * A critic throw (429/5xx after retry) is not a plan verdict — re-queue.
+ * A critic throw is not a plan verdict: 429/5xx after retry re-queues, and
+ * `budget-or-forbidden` (gateway budget or model access) stops the run.
  *
  * Plan files are a filtered subset of PATH_RE hits: hostnames, URLs,
  * build-artifact segments, leftover `..` segments, POSIX-absolute and
@@ -28,6 +29,12 @@ const path = require('path');
 const { PATH_RE, issueText } = require('./sufficiency.js');
 const { normalizeRepoPath } = require('./writer.js');
 const { isTransientHttpError } = require('./http.js');
+
+const MODEL_STOP_CODES = new Set(['budget-or-forbidden', 'model-timeout', 'model-network']);
+
+function isModelStop(err) {
+  return Boolean(err) && MODEL_STOP_CODES.has(err.code);
+}
 
 const PLAN_HEADINGS = ['## Goal', '## Files', '## Tests', '## Risks', '## Stop conditions'];
 const ISSUE_CLIP = 12000;
@@ -482,7 +489,9 @@ async function runPlanRedTeam(plan, { maxCycles, critic, revise, issueText: issu
       try {
         revised = await Promise.resolve(revise(current, findings, prompt));
       } catch (err) {
-        if (isTransientHttpError(err)) throw err;
+        // An outage (including a model timeout) re-queues. A spent budget or a
+        // model the key may not call stops the run. None is a plan finding.
+        if (isTransientHttpError(err) || isModelStop(err)) throw err;
         return needsInfo(current, premiseFinding(
           `Revision failed: ${err && err.message ? err.message : 'unknown error'}.`,
         ));

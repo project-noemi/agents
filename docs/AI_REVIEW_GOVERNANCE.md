@@ -96,6 +96,7 @@ The reviewer halts and escalates to human review when a diff touches:
 - `docs/MACHINE_IDENTITY.md` (the identity register)
 - this document
 - `scripts/review-pr.js` and `scripts/calibration-watch.js`
+- `scripts/model-config.js` and `scripts/model-chat.js` (the model route and the chat call every gate uses)
 - `agents/coding/sentinel/core.md` and `agents/coding/sentinel/compliance.md`
 - `agents/engineering/pr-reviewer.md`
 
@@ -117,6 +118,14 @@ fall back to the highest-generation **stable Pro**. Flash is still refused
 pin; `auto` or an empty value discovers. A pin that is missing from the
 catalogue, or that is not a usable Gemini text model, halts rather than
 silently reviewing on a different model.
+
+With a NewPush AI gateway key (`AI_GW_API_TOKEN`, Decision [2026-10-22-0001])
+there is no discovery. The review pin is `GEMINI_REVIEW_MODEL` with the
+`google/` prefix added when missing, and `auto` or empty means
+`google/gemini-3.1-pro-preview`. An explicit pin that is not in the key's
+model list halts. The default pin missing, or a gateway error during a gate,
+fails the run; it is never a halt, because a halt passes the required check. The
+floor and preview flags apply only to Vertex discovery.
 
 **This does not change the `models/gemini-3.8-flash` pin in `CLAUDE.md`.** That
 pin governs reference workflows, lab examples, and smoke tests, where

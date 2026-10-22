@@ -142,13 +142,21 @@ The environment holds:
   plus `CONDUCTOR_APP_PRIVATE_KEY`, or `CONDUCTOR_GH_TOKEN`)
 - a producer token to open the pull request (`AGENT_GH_TOKEN`). The conductor
   token is refused for that step
-- a writer credential: `XAI_API_KEY`, or your organization's OpenAI-compatible
-  gateway (`AI_GW_API_TOKEN` and `AI_GW_BASE_URL`)
-- for `--live-critic`, application-default credentials on a laptop, or
-  Workload Identity Federation in Actions (`CODING_LOOP_LIVE_CRITIC=true` and
-  the same `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, and
-  `GOOGLE_CLOUD_PROJECT` variables as the fleet reviewer). There is no Gemini
-  API key
+- a model credential. One config (`scripts/model-config.js`) picks the route
+  for the writer and the critic:
+  - **NewPush AI gateway (main route):** `AI_GW_API_TOKEN` (alias
+    `AI_GW_API_KEY`). `AI_GW_BASE_URL` is optional and defaults to
+    `https://ai-gw.newpush.com`. With this key set, `--live-critic` uses the
+    gateway and does not need `gcloud`, and the writer uses the gateway even
+    when `XAI_API_KEY` is also set
+  - **Direct provider access (no gateway key):** `XAI_API_KEY` for the writer,
+    and for `--live-critic` application-default credentials on a laptop, or
+    Workload Identity Federation in Actions (`CODING_LOOP_LIVE_CRITIC=true` and
+    the same `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, and
+    `GOOGLE_CLOUD_PROJECT` variables as the fleet reviewer). There is no Gemini
+    API key
+  - a gateway 403, or a refusal whose body says the budget is spent, stops the
+    run. It is not an outage and is not re-queued
 
 A successful run opens a pull request as the producer, with base `develop`.
 The body starts with `Closes #N`, or with `Part of #N` when the accepted plan
@@ -198,8 +206,11 @@ file the issue names is kept even when this checkout does not contain it,
 because this repo is the loop blueprint and the issue may target another
 clone. Other paths are kept only when they exist as files inside the clone. Structural critique always runs (headings, files, no
 skip-red-team, no leftover registry or escaping paths). `--live-critic` then calls
-Gemini Pro (ADC, same selection rule as the fleet reviewer). On a fail with
-cycles remaining, B′ writes a revision prompt and that same Gemini caller
+Gemini Pro: the gateway critic pin (`google/gemini-3.1-pro-preview`, override
+`GEMINI_CRITIC_MODEL`) with a gateway key, else Vertex through ADC with the same
+selection rule as the fleet reviewer. On a fail with
+cycles remaining, B′ writes a revision prompt and the plan writer (gateway pin
+`google/gemini-4-argon`, override `PLAN_MODEL`, any gateway provider; not the red-team model)
 executes it on the plan before the next pass. A revision that does not
 change the plan, drops the skip-red-team record, or adds a path the issue
 did not name stops the cycle. Without `--live-critic`, B′ may still drop
@@ -214,10 +225,12 @@ re-queues — it is not an `accepted` plan.
 conductor token is refused.
 
 `--implement --open-pr` drafts files with Grok. Auth is Fetch-on-Demand:
-`XAI_API_KEY` against `https://api.x.ai/v1`, **or** NewPush gateway
-`AI_GW_API_TOKEN` / `AI_GW_API_KEY` at `https://ai-gw.newpush.com/v1` (override
-`AI_GW_BASE_URL`). Gateway model ids are `provider/id`; the writer pins
-`xai/grok-4.6` unless `XAI_CODE_MODEL` is set. The request sets
+NewPush gateway `AI_GW_API_TOKEN` / `AI_GW_API_KEY` at
+`https://ai-gw.newpush.com/v1` (override `AI_GW_BASE_URL`), which wins when set,
+**else** `XAI_API_KEY` against `https://api.x.ai/v1`. Gateway model ids are
+`provider/id`; the writer pins `xai/grok-4.6` unless `XAI_CODE_MODEL` is set
+(a bare id gets the `xai/` prefix). On the gateway the pin is the model: no
+catalogue pick and no substitute. The request sets
 `max_completion_tokens` (default 65536, override `XAI_MAX_TOKENS`) so thinking
 tokens are not taken from the file JSON. The NewPush gateway is LiteLLM and
 rejects that field for `grok-4.6` unless the body also sends
@@ -242,7 +255,7 @@ Pickup: install `templates/ci/coding-loop-caller.yml` and set
 reviewer) passes `--live-critic`; unset, Stage B′ stays structural. The
 reusable workflow prepares the envelope; opening a PR is a separate
 producer invocation with `AGENT_GH_TOKEN` (or `AGENT_GH_TOKEN_CLASSIC` +
-`AGENT_GH_USE_CLASSIC=1`) and `XAI_API_KEY` or `AI_GW_API_TOKEN`+`AI_GW_BASE_URL`.
+`AGENT_GH_USE_CLASSIC=1`) and `AI_GW_API_TOKEN` or `XAI_API_KEY`.
 Stage D delegates to the fleet reviewer when a PR URL exists
 (`coding-loop/stage-d.js`). The reviewer reads
 `agents/coding/sentinel/compliance.md` from this blueprint, next to the
@@ -260,10 +273,15 @@ label, and an opened pull request is `noemi:review` even without `--post`.
 See
 [`docs/MACHINE_IDENTITY.md`](../docs/MACHINE_IDENTITY.md) for the App.
 
-## Gemini B′: laptop ADC vs Actions WIF
+## Gemini B′: gateway key, laptop ADC, or Actions WIF
 
-`--live-critic` never uses a Gemini API key. Org policy on `project-noemi`
-disallows API keys and service-account key files.
+With `AI_GW_API_TOKEN` in the environment, `--live-critic` goes through the
+NewPush AI gateway and nothing below is needed. The virtual key is not a Gemini
+API key; Google credentials stay on the gateway (Decision [2026-10-22-0001]).
+
+Without a gateway key, `--live-critic` calls Vertex directly and never uses a
+Gemini API key. Org policy on `project-noemi` disallows API keys and
+service-account key files.
 
 **Laptop (this is what local live-fire needs):**
 

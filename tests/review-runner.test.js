@@ -1183,6 +1183,9 @@ test('workflow: model route — only Infisical is required; WIF runs on the vert
     const route = advisory.slice(advisory.indexOf('Resolve model route'), advisory.indexOf('Authenticate to Google Cloud'));
     assert.match(route, /bash -c '\[\[ -n "\$\{AI_GW_API_TOKEN:-\}\$\{AI_GW_API_KEY:-\}" \]\]'/);
     assert.doesNotMatch(route, /secrets get AI_GW/);
+    // PR YAML + main's scripts: an older reviewer cannot use the gateway, so auto stays on vertex.
+    assert.match(route, /\[\[ -f scripts\/model-config\.js \]\]/);
+    assert.match(route, /\$gateway" == true && "\$supports" == true \]\]; then route=gateway/);
     // Forcing vertex hides the gateway key from review-pr.js, which would otherwise prefer it.
     assert.match(advisory, /strip=\(env -u AI_GW_API_TOKEN -u AI_GW_API_KEY\)/);
     assert.match(advisory, /"\$\{strip\[@\]\}" node scripts\/review-pr\.js/);

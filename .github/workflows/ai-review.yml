@@ -246,7 +246,11 @@ jobs:
 
       # Model route, decided before any Google credential is minted. Checks
       # only whether the vault holds a gateway key; the value is never read
-      # into this step.
+      # into this step. It also checks that the checked-out reviewer can use
+      # the gateway: on pull_request this YAML comes from the PR while the
+      # scripts come from tooling-ref (main), and a reviewer without
+      # scripts/model-config.js reads only Google credentials. Then `auto`
+      # stays on vertex.
       - name: Resolve model route
         id: route
         env:
@@ -260,12 +264,20 @@ jobs:
           else
             gateway=false
           fi
+          if [[ -f scripts/model-config.js ]]; then supports=true; else supports=false; fi
           case "$WANT" in
-            auto)    if [[ "$gateway" == true ]]; then route=gateway; else route=vertex; fi ;;
+            auto)    if [[ "$gateway" == true && "$supports" == true ]]; then route=gateway; else route=vertex; fi ;;
             gateway) route=gateway ;;
             vertex)  route=vertex ;;
             *) echo "::error title=Bad AI_REVIEW_ROUTE::Use auto, gateway or vertex (got '${WANT}')."; exit 1 ;;
           esac
+          if [[ "$gateway" == true && "$supports" != true && "$WANT" == auto ]]; then
+            echo "::notice title=Gateway not used::The reviewer at this tooling ref predates the gateway route; using vertex."
+          fi
+          if [[ "$route" == gateway && "$supports" != true ]]; then
+            echo "::error title=Reviewer too old::AI_REVIEW_ROUTE=gateway, but the reviewer at this tooling ref has no gateway support (scripts/model-config.js)."
+            exit 1
+          fi
           if [[ "$route" == gateway && "$gateway" != true ]]; then
             echo "::error title=No gateway key::AI_REVIEW_ROUTE=gateway, but the Infisical project has no AI_GW_API_TOKEN."
             exit 1

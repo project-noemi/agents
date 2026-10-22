@@ -27,6 +27,7 @@
     "reporting/release-herald",
     "security/hmac-sign-submit",
     "security/pii-scan",
+    "compliance/abuse-takedown",
     "orchestration/dispatch-coordinate",
     "orchestration/governed-loop",
     "orchestration/issue-plan",

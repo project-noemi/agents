@@ -158,6 +158,22 @@ The environment holds:
   - a gateway 403, or a refusal whose body says the budget is spent, stops the
     run. It is not an outage and is not re-queued
 
+To approve the plan before anything is written, run it in two steps. The first
+run plans only and saves the result; the second implements exactly that plan
+and does not plan again:
+
+```bash
+node coding-loop/run.js --repo your-org/your-repo --issue N \
+  --scan --budget-ok --live-critic --plan-out plan.json
+# read plan.json, then:
+node coding-loop/run.js --repo your-org/your-repo --issue N \
+  --scan --budget-ok --plan-in plan.json --post --implement --open-pr
+```
+
+`--plan-in` is refused when the plan was not accepted, names another issue or
+profile, or the issue changed on GitHub after it was planned. NoéMi Code's
+`/issue` command uses these two steps.
+
 A successful run opens a pull request as the producer, with base `develop`.
 The body starts with `Closes #N`, or with `Part of #N` when the accepted plan
 says the agent does not finish the work. With a conductor token, the issue

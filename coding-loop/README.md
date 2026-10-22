@@ -65,6 +65,15 @@ Edit **your** `tenants/internal.json` (or add `tenants/{company}.json`):
 Do not hardcode your org name into `coding-loop/`. The runner reads the
 tenant file.
 
+`orgs` is for the operator's **own** orgs. Client orgs do not go in a tenant
+file. A client repo is entitled when your conductor App is installed there
+(not suspended) **and** `NOEMI_CLIENT_REGISTRY` has an `active` row for that
+installation's GitHub account ID, and the run names a requester with write
+access (`--requested-by`). The registry is JSON injected from the vault
+(`infisical run`), shaped by `docs/client-registry.schema.json`; never
+commit it, because it lists who your clients are. See
+[Client entitlement](../docs/architecture/issue-coding-loop.md#client-entitlement).
+
 ### 3. Provision three identities (or reuse two)
 
 | Role | Identity | Token / App | May |
@@ -199,8 +208,9 @@ wired.
 
 ## Stage A today
 
-Hard gates: `noemi:skip`, bot authors, empty/template body, tenant, scan,
-budget (`coding-loop/intake.js`). Then sufficiency (`coding-loop/sufficiency.js`):
+Hard gates: `noemi:skip`, bot authors, empty/template body, tenant or
+client entitlement plus a write-access requester (`coding-loop/entitlement.js`),
+scan, budget (`coding-loop/intake.js`). Then sufficiency (`coding-loop/sufficiency.js`):
 observable problem, in-scope path, checkable done condition. All three are
 required. The pass is a conservative heuristic until Fable is wired; it
 still never defaults to `ACTIONABLE`.

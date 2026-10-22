@@ -227,7 +227,7 @@ function draftPlan({ issue, intake, scan, routing, profile, repoRoot } = {}) {
   ];
   const stops = [
     'A required file or done-condition was guessed, not stated.',
-    'Stage B′ returns fail at planRedTeam.maxCycles.',
+    'The change needs a file that is not in the Files list.',
   ];
 
   if (SKIP_B_PRIME_RE.test(text)) {
@@ -445,7 +445,7 @@ function rebuildPlan(plan, files) {
   ];
   const stops = Array.isArray(plan.stops) ? plan.stops : [
     'A required file or done-condition was guessed, not stated.',
-    'Stage B′ returns fail at planRedTeam.maxCycles.',
+    'The change needs a file that is not in the Files list.',
   ];
   return {
     ...plan,

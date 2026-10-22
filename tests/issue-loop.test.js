@@ -1157,6 +1157,10 @@ test('critiquePlanLive: Gemini pass after structural pass; fail is not accepted'
     scan: { status: 'APPROVED' },
   });
   const drafted = draftPlan({ issue: issue({ body: sufficientBody }), intake });
+  // Stop conditions are about the work. The cycle limit is the loop's, enforced
+  // in code; naming it in the plan read as leaked internals to the red-team.
+  assert.doesNotMatch(drafted.plan, /planRedTeam|maxCycles|Stage B′/);
+  assert.match(drafted.plan, /The change needs a file that is not in the Files list\./);
   const passed = await critiquePlanLive(drafted, {
     callModel: async () => ({ verdict: 'pass', findings: [] }),
   });

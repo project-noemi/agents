@@ -153,7 +153,7 @@ GitHub issue opened
         ├─ out of scope / unsafe → noemi:wont-act, STOP
         └─ actionable
                 ▼
-  Stage B   Fable 5 Max family     plan comment + noemi:planned
+  Stage B   Gemini Argon family    plan comment + noemi:planned
                 ▼
   Stage B′  Gemini Pro family      red-team the plan
         │
@@ -285,7 +285,8 @@ PR to that file, not a host-framework deploy.
 
 | Stage | Family | Host today |
 |---|---|---|
-| triage / plan | Fable 5 Max | Heuristic in `coding-loop/`; live Fable in Claude Code via Orchestrator `model` |
+| triage | Fable 5 Max | Heuristic in `coding-loop/`; live Fable in Claude Code via Orchestrator `model` |
+| plan | Gemini Argon (`google/gemini-4-argon`) | Draft is heuristic in `coding-loop/`; revisions use the plan pin through `critic.revisePlanLive` |
 | code | Grok latest, effort xHigh | CLI `XAI_API_KEY` (`writer.js`); interactive `/grok-build:delegate` |
 | redteam | Gemini Pro | `critic.js` / fleet `review-pr.js` |
 | bulk | Gemini Flash (highest 3.x) or Sonnet 5 | Claude Code Orchestrator; **not** fleet PR review |

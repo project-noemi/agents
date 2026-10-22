@@ -60,6 +60,9 @@
 # No credential is stored in GitHub. The GitHub token comes from Infisical via
 # OIDC, and Google access comes from Workload Identity Federation — required
 # here, since org policy disallows API keys and service-account keys alike.
+# When the Infisical project holds AI_GW_API_TOKEN, review-pr.js sends the
+# gates through the NewPush AI gateway instead and the federated token goes
+# unused; it stays as the fallback (Decision [2026-10-22-0001]).
 #
 # The carve-out, gate ordering, and severity rubric are enforced inside
 # scripts/review-pr.js — deliberately not duplicated here. Two copies of a

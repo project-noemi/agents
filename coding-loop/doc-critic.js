@@ -14,6 +14,9 @@
  *                              (same selection as Stage B′) only attacks the
  *                              evidence and scope of a structurally sound set.
  *
+ * The model route (NewPush AI gateway, else Vertex ADC) comes from
+ * scripts/model-config.js through critic.callCriticModel.
+ *
  * A model outage is not a verdict: 429/5xx retry, then throw so the host
  * re-queues. `accepted` is never inferred from a missing or malformed reply.
  */
@@ -21,7 +24,7 @@
 const path = require('node:path');
 const { withRetry } = require('../scripts/resilience_helpers.js');
 const { modelRetryOptions } = require('./http.js');
-const { callGeminiJson, resolveCriticModel, BLOCKING, SEVERITIES } = require('./critic.js');
+const { callCriticModel, BLOCKING, SEVERITIES } = require('./critic.js');
 const { scanIssueBody } = require('./scan.js');
 const { SKIP_B_PRIME_RE } = require('./plan.js');
 
@@ -316,18 +319,7 @@ function normalizeDocCritique(reply, structural) {
 }
 
 async function liveCallModel(changeSet, opts = {}) {
-  const { backendConfig } = require('../scripts/resolve-gemini-model.js');
-  const { getAccessToken } = require('../scripts/gcp-token.js');
-  const cfg = opts.cfg || backendConfig();
-  const token = opts.token || await getAccessToken();
-  const model = opts.model || await resolveCriticModel({ token, cfg, pin: opts.pin });
-  return callGeminiJson({
-    model,
-    prompt: buildDocCriticPrompt(changeSet),
-    token,
-    cfg,
-    fetchImpl: opts.fetchImpl,
-  });
+  return callCriticModel(buildDocCriticPrompt(changeSet), opts);
 }
 
 async function critiqueChangeSetLive(changeSet, opts = {}) {

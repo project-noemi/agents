@@ -13,8 +13,11 @@
  * --post requires CONDUCTOR_GH_TOKEN or CONDUCTOR_APP_ID+CONDUCTOR_APP_PRIVATE_KEY.
  * --implement / --open-pr require AGENT_GH_TOKEN (or AGENT_GH_TOKEN_CLASSIC
  * when AGENT_GH_USE_CLASSIC=1).
- * --open-pr also requires XAI_API_KEY or AI_GW_API_TOKEN+AI_GW_BASE_URL, then opens the PR.
- * --live-critic requires ADC (GCP_ACCESS_TOKEN or gcloud) and calls Gemini.
+ * --open-pr also requires a writer credential, then opens the PR.
+ * Model route (scripts/model-config.js): AI_GW_API_TOKEN (or AI_GW_API_KEY)
+ * sends the writer and --live-critic through the NewPush AI gateway, with
+ * AI_GW_BASE_URL optional. Without a gateway key the writer needs XAI_API_KEY
+ * and --live-critic needs ADC (GCP_ACCESS_TOKEN or gcloud) for Vertex Gemini.
  */
 
 const fs = require('fs');
@@ -28,6 +31,7 @@ const { critiquePlanLive, revisePlanLive } = require('./critic.js');
 const { assertWriterKey, draftChanges } = require('./writer.js');
 const { mintGithubAppInstallationToken } = require('../scripts/github-app-token.js');
 const { scanIssueBody } = require('./scan.js');
+const { loadModelConfig } = require('../scripts/model-config.js');
 const { prepareReview } = require('./stage-d.js');
 const { resolveProfile } = require('./profile.js');
 
@@ -71,7 +75,7 @@ function parseArgs(argv) {
           + '--profile spec constrains Stage B/C to markdown under agents/, skills/, docs/agents/ (writing personas and skills).\n'
           + '--implement prepares a noemi-agent PR envelope.\n'
           + '--open-pr (with --implement) drafts files via Grok and opens the PR as noemi-agent.\n'
-          + '--live-critic runs Gemini Pro for Stage B′; without it B′ is structural only.\n');
+          + '--live-critic runs Gemini Pro for Stage B′ (gateway key, else Vertex ADC); without it B′ is structural only.\n');
         process.exit(0);
         break;
       default:
@@ -319,6 +323,7 @@ async function main() {
       `implement=${args.implement}`,
       `openPr=${args.openPr}`,
       `liveCritic=${args.liveCritic}`,
+      `modelRoute=${loadModelConfig(process.env).mode}`,
       `scan=${args.scanStatus || (args.scan ? 'local' : 'UNSCANNED')}`,
       `profile=${args.profile || 'code'}`,
       `budget=${args.budgetState || 'unverified'}`,

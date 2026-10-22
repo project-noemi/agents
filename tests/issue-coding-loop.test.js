@@ -35,7 +35,9 @@ test('model-routing.json declares reviewer-style selection and a plan cycle limi
   }
 
   assert.equal(routing.stages.triage.provider, 'anthropic');
-  assert.equal(routing.stages.plan.provider, 'anthropic');
+  assert.equal(routing.stages.plan.provider, 'google');
+  assert.equal(routing.stages.plan.family, 'gemini-argon');
+  assert.notEqual(routing.stages.plan.family, routing.stages.redteam.family, 'plan author must not be its red-team');
   assert.equal(routing.stages.code.provider, 'xai');
   assert.equal(routing.stages.code.effort, 'xhigh');
   assert.equal(routing.stages.redteam.provider, 'google');

@@ -17,9 +17,10 @@
       "selection": "highest-preview-then-stable"
     },
     "plan": {
-      "provider": "anthropic",
-      "family": "fable-5-max",
-      "selection": "highest-preview-then-stable"
+      "provider": "google",
+      "family": "gemini-argon",
+      "selection": "highest-preview-then-stable",
+      "$comment": "Writes and revises the Stage B plan. Gateway pin google/gemini-4-argon (override PLAN_MODEL with any gateway provider/id, e.g. anthropic/<id>; the provider is a business choice), set in scripts/model-config.js. Deliberately a different model from redteam (Gemini Pro), so the plan is not attacked by its author (Decision [2026-10-22-0002])."
     },
     "code": {
       "provider": "xai",

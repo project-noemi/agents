@@ -1190,3 +1190,28 @@ test('workflow: model route — only Infisical is required; WIF runs on the vert
     assert.match(advisory, /strip=\(env -u AI_GW_API_TOKEN -u AI_GW_API_KEY\)/);
     assert.match(advisory, /"\$\{strip\[@\]\}" node scripts\/review-pr\.js/);
 });
+
+test('workflow: credentials come from Infisical when configured, else from named Actions secrets', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
+    const advisory = yml.slice(yml.indexOf('\n  advisory:'));
+    // Vault mode wins when both variables exist; one without the other is an error.
+    assert.match(advisory, /echo "mode=vault"/);
+    assert.match(advisory, /echo "mode=direct"/);
+    assert.match(advisory, /Half-configured vault/);
+    // Infisical runs only in vault mode.
+    assert.match(advisory, /name: Install Infisical CLI\n\s+if: steps\.config\.outputs\.mode == 'vault'/);
+    assert.match(advisory, /name: Authenticate to Infisical via OIDC\n\s+if: steps\.config\.outputs\.mode == 'vault'/);
+    // Direct mode: secrets declared for workflow_call, presence checked as a boolean.
+    assert.match(yml, /secrets:\n\s+AI_GW_API_TOKEN:\n[\s\S]*?required: false/);
+    assert.match(advisory, /DIRECT_GATEWAY: \$\{\{ secrets\.AI_GW_API_TOKEN != '' \}\}/);
+    // An in-repo branch runs the privileged job without Infisical variables; a fork does not.
+    assert.match(yml, /vars\.INFISICAL_PROJECT_ID != '' \|\| github\.event\.pull_request\.head\.repo\.full_name == github\.repository/);
+    // Without a reviewer App in direct mode, github-actions[bot] posts.
+    assert.match(advisory, /steps\.apptoken\.outputs\.token == '' && steps\.config\.outputs\.mode == 'direct' && github\.token/);
+    // Direct-mode values never stay in the environment of the vault branch.
+    assert.match(advisory, /unset DIRECT_GATEWAY_KEY FALLBACK_GH_TOKEN/);
+    const caller = fs.readFileSync(path.join(__dirname, '..', 'templates/ci/ai-review-caller.yml'), 'utf8');
+    assert.match(caller, /AI_GW_API_TOKEN: \$\{\{ secrets\.AI_GW_API_TOKEN \}\}/);
+    assert.match(caller, /REVIEWER_APP_PRIVATE_KEY: \$\{\{ secrets\.REVIEWER_APP_PRIVATE_KEY \}\}/);
+    assert.doesNotMatch(caller.replace(/#.*$/gm, ''), /secrets: inherit/);
+});

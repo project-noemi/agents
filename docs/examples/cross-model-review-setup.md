@@ -442,7 +442,16 @@ copying them into GitHub repository secrets — but then every secret lives in t
 places and must be rotated in both. People forget the second one.
 
 Instead, GitHub proves its identity to Infisical and receives temporary access.
-**No secret is stored in GitHub at all.**
+**No secret is stored in GitHub at all.** This is vault mode, and it wins
+whenever `INFISICAL_PROJECT_ID` and `INFISICAL_IDENTITY_ID` are set.
+
+**Direct mode (no Infisical).** An organization without a vault can store two
+Actions secrets instead: `AI_GW_API_TOKEN` (its NewPush AI gateway key) and
+`REVIEWER_APP_PRIVATE_KEY` with the `REVIEWER_APP_ID` variable (its own
+reviewer App). The caller template passes exactly these two by name, never
+`secrets: inherit`. Without a reviewer App, comments are posted with the
+workflow's `GITHUB_TOKEN` as `github-actions[bot]`. Both secrets live in GitHub
+and must be rotated there (Decision [2026-10-22-0004]).
 
 ## Create an Infisical machine identity
 

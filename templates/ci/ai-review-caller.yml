@@ -5,12 +5,16 @@
 # never change. Deployed by scripts/deploy-ai-review.sh; documented in
 # docs/examples/cross-model-review-setup.md (Fleet deployment).
 #
-# Requires only organization-level Actions VARIABLES (no secrets in this repo):
-#   INFISICAL_PROJECT_ID, INFISICAL_IDENTITY_ID
-# Model route: the NewPush AI gateway when that Infisical project holds
-# AI_GW_API_TOKEN; otherwise direct Vertex, which also needs
-#   GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT, GOOGLE_CLOUD_PROJECT
-# AI_REVIEW_ROUTE (auto | gateway | vertex) forces one route.
+# Credentials, one of (Decision [2026-10-22-0004]):
+#   vault  — organization VARIABLES INFISICAL_PROJECT_ID, INFISICAL_IDENTITY_ID;
+#            the vault holds AI_GW_API_TOKEN and the reviewer App key. Nothing
+#            is stored in GitHub. Wins when configured.
+#   direct — organization SECRETS AI_GW_API_TOKEN and REVIEWER_APP_PRIVATE_KEY
+#            plus the REVIEWER_APP_ID variable, passed below. Without the App,
+#            comments come from github-actions[bot].
+# Model route: the NewPush AI gateway when AI_GW_API_TOKEN exists; otherwise
+# direct Vertex, which needs GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT,
+# GOOGLE_CLOUD_PROJECT. AI_REVIEW_ROUTE (auto | gateway | vertex) forces one.
 #
 # The review is ADVISORY: it posts findings as a comment and never approves,
 # merges, or blocks. Do not add it to required status checks.
@@ -38,6 +42,11 @@ jobs:
     # @develop pin would let any merge to develop change review behavior
     # fleet-wide with no gate.
     uses: project-noemi/agents/.github/workflows/ai-review.yml@main
+    # Only these two, by name, and only used in direct mode. Never
+    # `secrets: inherit`: the reviewer gets no other secret of this repository.
+    secrets:
+      AI_GW_API_TOKEN: ${{ secrets.AI_GW_API_TOKEN }}
+      REVIEWER_APP_PRIVATE_KEY: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
     permissions:
       contents: read
       pull-requests: write

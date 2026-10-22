@@ -436,7 +436,8 @@ async function main() {
       `scan=${args.scanStatus || (args.scan ? 'local' : 'UNSCANNED')}`,
       `profile=${args.profile || 'code'}`,
       `budget=${args.budgetState || 'unverified'}`,
-      `requestedBy=${args.requestedBy || 'none'}`,
+      // The requester's permission, never their login: audit logs carry no PII (AGENTS.md).
+      `requester=${trigger ? (trigger.error ? 'unverified' : trigger.permission) : 'none'}`,
     ],
     actions: [intake.tier, plan.status, implementation && implementation.status, ...(intake.reasons || [])].filter(Boolean),
     risks: [

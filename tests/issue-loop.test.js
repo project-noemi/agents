@@ -2129,7 +2129,14 @@ test('plan file: --plan-in implements only the accepted plan for the same, uncha
     refused({ profile: 'spec' });
     writePlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, intake, plan: { ...accepted, status: 'needs-info' } });
     refused({});
-    assert.throws(() => readPlanFile(path.join(dir, 'missing.json'), { repo: 'o/r', issue: '7', updatedAt: at }), /cannot read/);
+    assert.throws(() => readPlanFile(path.join(dir, 'missing.json'), { repo: 'o/r', issue: '7', updatedAt: at }), /cannot read the plan file \(ENOENT\)/);
+    // A non-plan file is refused without quoting its contents.
+    const other = path.join(dir, 'passwd');
+    fs.writeFileSync(other, 'root:x:0:0:secret-line\n');
+    assert.throws(
+      () => readPlanFile(other, { repo: 'o/r', issue: '7', updatedAt: at }),
+      (err) => err.status === 409 && /not valid JSON/.test(err.message) && !/root|secret-line/.test(err.message),
+    );
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

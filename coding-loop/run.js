@@ -204,11 +204,19 @@ function readPlanFile(file, { repo, issue, updatedAt, profile }) {
     err.status = 409;
     return err;
   };
+  // Never echo the parser's message: a SyntaxError quotes the start of the
+  // file, which would print a non-plan file's contents. Name the cause only.
+  let text;
+  try {
+    text = fs.readFileSync(file, 'utf8');
+  } catch (err) {
+    throw refuse(`cannot read the plan file (${(err && err.code) || 'read error'})`);
+  }
   let record;
   try {
-    record = JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch (err) {
-    throw refuse(`cannot read ${file} (${err.message})`);
+    record = JSON.parse(text);
+  } catch {
+    throw refuse('the plan file is not valid JSON');
   }
   if (!record || record.version !== PLAN_FILE_VERSION) throw refuse('unknown plan file version');
   if (record.repo !== repo || record.issue !== Number(issue)) {

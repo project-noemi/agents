@@ -25,12 +25,19 @@
  *   --plan-in FILE   skip Stage A/B and implement that accepted plan. Refused
  *                    when the plan was not accepted, names another issue,
  *                    or the issue changed on GitHub after it was planned.
+ *
+ * Client orgs (not on the tenant's `orgs` list) are entitled only when the
+ * conductor App is installed there and NOEMI_CLIENT_REGISTRY has an active
+ * row for that account, and --requested-by names a user with write access
+ * (coding-loop/entitlement.js, Decision [2026-10-22-0005]). Both are checked
+ * again on --plan-in, so an uninstall or suspension stops implementation.
  */
 
 const fs = require('fs');
 const path = require('path');
 const { gh } = require('../scripts/github-client.js');
-const { issueFromGitHub, labelsOf } = require('./intake.js');
+const { entitlementGate, issueFromGitHub, labelsOf } = require('./intake.js');
+const { resolveEntitlement, resolveTrigger } = require('./entitlement.js');
 const { completeThroughStageB, loadRouting } = require('./plan.js');
 const { assertProducerToken, openImplementationPr, prepareImplementation } = require('./dispatch.js');
 const { resolveProducerToken } = require('../scripts/agent-token.js');
@@ -70,6 +77,7 @@ function parseArgs(argv) {
       case '--live-critic': args.liveCritic = true; break;
       case '--heuristic-critic': args.liveCritic = false; break;
       case '--tenant': args.tenantPath = argv[++i]; break;
+      case '--requested-by': args.requestedBy = String(argv[++i] || '').replace(/^@/, ''); break;
       case '--scan': args.scan = true; break;
       case '--scan-status': args.scanStatus = argv[++i]; break;
       case '--budget-ok': args.budgetState = 'ok'; break;
@@ -78,13 +86,14 @@ function parseArgs(argv) {
       case '--plan-out': args.planOut = argv[++i]; break;
       case '--plan-in': args.planIn = argv[++i]; break;
       case '--help':
-        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--implement] [--open-pr] [--live-critic] [--profile code|spec] [--tenant path] [--plan-out file | --plan-in file] (--scan | --scan-status APPROVED|BLOCKED|REDACTED) (--budget-ok | --budget-exhausted)\n'
+        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--implement] [--open-pr] [--live-critic] [--profile code|spec] [--tenant path] [--requested-by login] [--plan-out file | --plan-in file] (--scan | --scan-status APPROVED|BLOCKED|REDACTED) (--budget-ok | --budget-exhausted)\n'
           + 'Omitting both --scan and --scan-status, or omitting the budget assertion, classifies the issue as REFUSED (fail closed).\n'
           + '--scan runs coding-loop/scan.js on the fetched issue; it is not implied by omitting --scan-status.\n'
           + '--profile spec constrains Stage B/C to markdown under agents/, skills/, docs/agents/ (writing personas and skills).\n'
           + '--implement prepares a noemi-agent PR envelope.\n'
           + '--open-pr (with --implement) drafts files via Grok and opens the PR as noemi-agent.\n'
           + '--live-critic runs Gemini Pro for Stage B′ (gateway key, else Vertex ADC); without it B′ is structural only.\n'
+          + 'Orgs outside the tenant need the conductor App installed and an active row in NOEMI_CLIENT_REGISTRY, plus --requested-by a user with write access.\n'
           + '--plan-out writes the accepted-or-not plan to a file; --plan-in implements that accepted plan without planning again.\n');
         process.exit(0);
         break;
@@ -232,6 +241,20 @@ function readPlanFile(file, { repo, issue, updatedAt, profile }) {
   return { intake: record.intake, plan: record.plan };
 }
 
+/**
+ * --plan-in skips Stage A, so re-check the entitlement gates the plan was
+ * made under: an uninstall, a suspension or a lost write permission between
+ * planning and implementing must stop the run (status 403).
+ */
+function assertStillEntitled({ issue, tenant, entitlement, trigger }) {
+  const allowed = entitlementGate({ issue, tenant, entitlement, trigger });
+  if (!allowed.ok) {
+    const err = new Error(`--plan-in refused: ${allowed.reason}`);
+    err.status = 403;
+    throw err;
+  }
+}
+
 async function implementFromPlan({ args, issue, plan }) {
   const branches = ['develop', 'dev', 'main'];
   const prepared = prepareImplementation({ issue, plan, branches });
@@ -328,6 +351,11 @@ async function main() {
   const issue = issueFromGitHub(args.repo, payload);
   const gateInputs = buildGateInputs(args);
   const scan = resolveScanInput(args, issue);
+  const entitlement = await resolveEntitlement({ repo: args.repo, tenant, env: process.env });
+  const trigger = await resolveTrigger({
+    repo: args.repo, login: args.requestedBy, token, ghImpl: gh,
+  });
+  if (args.planIn) assertStillEntitled({ issue, tenant, entitlement, trigger });
   const { intake, plan } = args.planIn
     ? readPlanFile(args.planIn, {
       repo: args.repo, issue: args.issue, updatedAt: payload.updated_at, profile: args.profile,
@@ -335,6 +363,8 @@ async function main() {
     : await completeThroughStageB({
       issue,
       tenant,
+      entitlement,
+      trigger,
       scan,
       budget: gateInputs.budget,
       routing: loadRouting(repoRoot),
@@ -406,6 +436,8 @@ async function main() {
       `scan=${args.scanStatus || (args.scan ? 'local' : 'UNSCANNED')}`,
       `profile=${args.profile || 'code'}`,
       `budget=${args.budgetState || 'unverified'}`,
+      // The requester's permission, never their login: audit logs carry no PII (AGENTS.md).
+      `requester=${trigger ? (trigger.error ? 'unverified' : trigger.permission) : 'none'}`,
     ],
     actions: [intake.tier, plan.status, implementation && implementation.status, ...(intake.reasons || [])].filter(Boolean),
     risks: [
@@ -469,5 +501,5 @@ if (require.main === module) {
 
 module.exports = {
   parseArgs, buildGateInputs, resolveScanInput, loadTenant, assertRepoIssue, exitCodeForError, implementFromPlan, issueReadToken,
-  activeLoopLabel, syncNoemiLabel, readPlanFile, writePlanFile,
+  activeLoopLabel, syncNoemiLabel, readPlanFile, writePlanFile, assertStillEntitled,
 };

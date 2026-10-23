@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://project-noemi.dev/schemas/client-registry.schema.json",
+  "title": "NoéMI issue-coding-loop client registry",
+  "description": "NOEMI_CLIENT_REGISTRY: client orgs entitled to the operator's pool tenant (Decision [2026-10-22-0005]). Injected from the vault at runtime; never committed. A client is entitled only when the conductor App is installed on the repo AND its account has an active row here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["clients"],
+  "properties": {
+    "clients": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["account_id", "status"],
+        "properties": {
+          "account_id": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "GitHub account ID of the org or user the App is installed on. Stable across renames; the login is not used for matching."
+          },
+          "login": {
+            "type": "string",
+            "description": "Human label only. Not used for matching."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "suspended"]
+          },
+          "repos": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "Optional owner/name allowlist inside the installation. Missing or empty means every repo the installation covers."
+          }
+        }
+      }
+    }
+  }
+}

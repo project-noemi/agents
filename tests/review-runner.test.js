@@ -1010,3 +1010,208 @@ test('callGemini: HTTP 503 is retried; a later JSON body is parsed', async () =>
         else process.env.GEMINI_RETRY_BASE_MS = prev;
     }
 });
+// --- gateway route (Decision [2026-10-22-0001]) ----------------------------
+
+test('review route: gateway key reads no Google credential; no key falls back to ADC', async () => {
+    const {
+        resolveReviewRoute, reviewAuthLabel, reviewBackendLabel,
+    } = require('../scripts/review-pr.js');
+    let tokenCalls = 0;
+    const tokenImpl = async () => { tokenCalls += 1; return 'ya29'; };
+    const gw = await resolveReviewRoute({ env: { AI_GW_API_TOKEN: 'gw-test', GCP_ACCESS_TOKEN: 'ya29' }, tokenImpl });
+    assert.equal(gw.mode, 'gateway');
+    assert.equal(gw.token, null);
+    assert.equal(tokenCalls, 0);
+    assert.equal(gw.config.stages.review.model, 'google/gemini-3.1-pro-preview');
+    assert.equal(reviewBackendLabel(gw), 'gateway');
+    assert.equal(reviewAuthLabel(gw), 'AI_GW_API_TOKEN');
+
+    const dry = await resolveReviewRoute({ env: { AI_GW_API_TOKEN: 'gw-test' }, dryRun: true, tokenImpl });
+    assert.equal(dry.mode, 'dry-run');
+    assert.equal(reviewBackendLabel(dry), 'dry-run');
+
+    await withEnv({ GEMINI_BACKEND: 'generativelanguage' }, async () => {
+        const native = await resolveReviewRoute({ env: {}, tokenImpl });
+        assert.equal(native.mode, 'native');
+        assert.equal(native.token, 'ya29');
+        assert.equal(tokenCalls, 1);
+    });
+});
+
+test('review gateway: workflow default GEMINI_REVIEW_MODEL=auto takes the gateway pin', () => {
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw', GEMINI_REVIEW_MODEL: 'auto' });
+    assert.equal(config.stages.review.model, 'google/gemini-3.1-pro-preview');
+});
+
+test('review gateway: a pin missing from the key model list is null (main halts)', async () => {
+    const { confirmGatewayPin } = require('../scripts/review-pr.js');
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw-test' });
+    const listing = (ids) => async (url) => {
+        assert.equal(url, 'https://ai-gw.newpush.com/v1/models');
+        return { ok: true, status: 200, json: async () => ({ data: ids.map((id) => ({ id })) }) };
+    };
+    assert.equal(
+        await confirmGatewayPin(config, listing(['google/gemini-3.1-pro-preview', 'xai/grok-4.6'])),
+        'google/gemini-3.1-pro-preview',
+    );
+    assert.equal(await confirmGatewayPin(config, listing(['google/gemini-3.8-flash'])), null);
+    assert.equal(
+        await confirmGatewayPin(config, listing(['google/*'])),
+        'google/gemini-3.1-pro-preview',
+        'a provider wildcard route serves the pin',
+    );
+});
+
+test('review gateway: --model sets the pin; only an explicit pin may halt', () => {
+    const { gatewayReviewPin } = require('../scripts/review-pr.js');
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw' });
+    assert.deepEqual(gatewayReviewPin(config, 'gemini-x-pro'), { model: 'google/gemini-x-pro', explicit: true });
+    assert.deepEqual(gatewayReviewPin(config, 'auto'), { model: 'google/gemini-3.1-pro-preview', explicit: false });
+    assert.deepEqual(gatewayReviewPin(config, ''), { model: 'google/gemini-3.1-pro-preview', explicit: false });
+    const pinned = loadModelConfig({ AI_GW_API_TOKEN: 'gw', GEMINI_REVIEW_MODEL: 'gemini-y' });
+    assert.deepEqual(gatewayReviewPin(pinned, ''), { model: 'google/gemini-y', explicit: true });
+});
+
+test('review gateway: an unparseable gate reply is not retried, as on Vertex', async () => {
+    const { callGatewayGate } = require('../scripts/review-pr.js');
+    const prev = process.env.GEMINI_RETRY_BASE_MS;
+    process.env.GEMINI_RETRY_BASE_MS = '1';
+    let calls = 0;
+    try {
+        await assert.rejects(
+            () => callGatewayGate('google/x', 'p', { openaiBase: 'https://ai-gw.newpush.com/v1', apiKey: 'gw-test' }, async () => {
+                calls += 1;
+                return { ok: true, status: 200, json: async () => ({ choices: [{ finish_reason: 'length', message: { content: 'I think' } }] }) };
+            }),
+            (err) => err.code === 'unparseable-json',
+        );
+        assert.equal(calls, 1);
+    } finally {
+        if (prev === undefined) delete process.env.GEMINI_RETRY_BASE_MS;
+        else process.env.GEMINI_RETRY_BASE_MS = prev;
+    }
+});
+
+test('review gateway: a gate reply renders the same comment shape as Vertex', async () => {
+    const { callGatewayGate, validateFindings, gateVerdict } = require('../scripts/review-pr.js');
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw-test' });
+    const seen = [];
+    const fetchImpl = async (url, opts) => {
+        seen.push({ url, body: JSON.parse(opts.body) });
+        return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+                choices: [{
+                    finish_reason: 'stop',
+                    message: {
+                        content: '{"findings":[{"severity":"high","file":"a.js","line":3,"claim":"unchecked input","evidence":"e"}],"rationale":"r"}',
+                        reasoning_content: '{"findings":[]}',
+                    },
+                }],
+            }),
+        };
+    };
+    const reply = await callGatewayGate('google/gemini-3.1-pro-preview', 'gate prompt', config.gateway, fetchImpl);
+    assert.equal(seen[0].url, 'https://ai-gw.newpush.com/v1/chat/completions');
+    assert.equal(seen[0].body.model, 'google/gemini-3.1-pro-preview');
+    assert.deepEqual(seen[0].body.response_format, { type: 'json_object' });
+    const findings = validateFindings(reply.findings, 'code');
+    const comment = renderComment({
+        model: 'google/gemini-3.1-pro-preview', reviewed_at: 'now', pr: 'o/r#1',
+        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: gateVerdict(findings).verdict }, compliance: { verdict: 'skipped' } },
+        findings, recommendation: 'request-changes', remediation_prompt: null,
+    });
+    assert.match(comment, /google\/gemini-3\.1-pro-preview/);
+    assert.match(comment, /unchecked input/);
+});
+
+test('review gateway: 403 is not retried; 503 is', async () => {
+    const { callGatewayGate } = require('../scripts/review-pr.js');
+    const gateway = { openaiBase: 'https://ai-gw.newpush.com/v1', apiKey: 'gw-test' };
+    const prev = process.env.GEMINI_RETRY_BASE_MS;
+    process.env.GEMINI_RETRY_BASE_MS = '1';
+    try {
+        let calls = 0;
+        await assert.rejects(
+            () => callGatewayGate('google/x', 'p', gateway, async () => {
+                calls += 1;
+                return { ok: false, status: 403, text: async () => '{"error":{"type":"team_model_access_denied"}}' };
+            }),
+            (err) => err.code === 'budget-or-forbidden',
+        );
+        assert.equal(calls, 1);
+        calls = 0;
+        const out = await callGatewayGate('google/x', 'p', gateway, async () => {
+            calls += 1;
+            if (calls === 1) return { ok: false, status: 503, text: async () => 'busy' };
+            return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: '{"findings":[],"rationale":"ok"}' } }] }) };
+        });
+        assert.deepEqual(out, { findings: [], rationale: 'ok' });
+        assert.equal(calls, 2);
+    } finally {
+        if (prev === undefined) delete process.env.GEMINI_RETRY_BASE_MS;
+        else process.env.GEMINI_RETRY_BASE_MS = prev;
+    }
+});
+
+test('carve-out: the model route and chat client are governance files', () => {
+    assert.deepEqual(detectCarveOut(['scripts/model-config.js', 'scripts/model-chat.js']), [
+        'scripts/model-config.js', 'scripts/model-chat.js',
+    ]);
+});
+
+test('workflow: model route — only Infisical is required; WIF runs on the vertex route only', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
+    const advisory = yml.slice(yml.indexOf('\n  advisory:'));
+    // A gateway-only organization has no GCP variables: they are not "missing".
+    const configStep = advisory.slice(advisory.indexOf('Check reviewer configuration'), advisory.indexOf('Install Infisical CLI'));
+    assert.doesNotMatch(configStep, /missing\+=\(GCP_/);
+    const fork = yml.slice(yml.indexOf('\n  fork-notice:'), yml.indexOf('\n  advisory:'));
+    assert.doesNotMatch(fork, /missing\+=\(GCP_/);
+    // The route is decided after Infisical login and before any Google credential.
+    const order = ['Authenticate to Infisical via OIDC', 'Resolve model route', 'Authenticate to Google Cloud']
+        .map((name) => advisory.indexOf(name));
+    assert.ok(order.every((i) => i > -1) && order[0] < order[1] && order[1] < order[2], 'login → route → GCP');
+    assert.match(advisory, /id: gcpauth\n\s+if: steps\.route\.outputs\.route == 'vertex'/);
+    assert.match(advisory, /AI_REVIEW_ROUTE \|\| 'auto'/);
+    // Presence only: the gateway key is never read into the route step.
+    const route = advisory.slice(advisory.indexOf('Resolve model route'), advisory.indexOf('Authenticate to Google Cloud'));
+    assert.match(route, /bash -c '\[\[ -n "\$\{AI_GW_API_TOKEN:-\}\$\{AI_GW_API_KEY:-\}" \]\]'/);
+    assert.doesNotMatch(route, /secrets get AI_GW/);
+    // PR YAML + main's scripts: an older reviewer cannot use the gateway, so auto stays on vertex.
+    assert.match(route, /\[\[ -f scripts\/model-config\.js \]\]/);
+    assert.match(route, /\$gateway" == true && "\$supports" == true \]\]; then route=gateway/);
+    // Forcing vertex hides the gateway key from review-pr.js, which would otherwise prefer it.
+    assert.match(advisory, /strip=\(env -u AI_GW_API_TOKEN -u AI_GW_API_KEY\)/);
+    assert.match(advisory, /"\$\{strip\[@\]\}" node scripts\/review-pr\.js/);
+});
+
+test('workflow: credentials come from Infisical when configured, else from named Actions secrets', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
+    const advisory = yml.slice(yml.indexOf('\n  advisory:'));
+    // Vault mode wins when both variables exist; one without the other is an error.
+    assert.match(advisory, /echo "mode=vault"/);
+    assert.match(advisory, /echo "mode=direct"/);
+    assert.match(advisory, /Half-configured vault/);
+    // Infisical runs only in vault mode.
+    assert.match(advisory, /name: Install Infisical CLI\n\s+if: steps\.config\.outputs\.mode == 'vault'/);
+    assert.match(advisory, /name: Authenticate to Infisical via OIDC\n\s+if: steps\.config\.outputs\.mode == 'vault'/);
+    // Direct mode: secrets declared for workflow_call, presence checked as a boolean.
+    assert.match(yml, /secrets:\n\s+AI_GW_API_TOKEN:\n[\s\S]*?required: false/);
+    assert.match(advisory, /DIRECT_GATEWAY: \$\{\{ secrets\.AI_GW_API_TOKEN != '' \}\}/);
+    // An in-repo branch runs the privileged job without Infisical variables; a fork does not.
+    assert.match(yml, /vars\.INFISICAL_PROJECT_ID != '' \|\| github\.event\.pull_request\.head\.repo\.full_name == github\.repository/);
+    // Without a reviewer App in direct mode, github-actions[bot] posts.
+    assert.match(advisory, /steps\.apptoken\.outputs\.token == '' && steps\.config\.outputs\.mode == 'direct' && github\.token/);
+    // Direct-mode values never stay in the environment of the vault branch.
+    assert.match(advisory, /unset DIRECT_GATEWAY_KEY FALLBACK_GH_TOKEN/);
+    const caller = fs.readFileSync(path.join(__dirname, '..', 'templates/ci/ai-review-caller.yml'), 'utf8');
+    assert.match(caller, /AI_GW_API_TOKEN: \$\{\{ secrets\.AI_GW_API_TOKEN \}\}/);
+    assert.match(caller, /REVIEWER_APP_PRIVATE_KEY: \$\{\{ secrets\.REVIEWER_APP_PRIVATE_KEY \}\}/);
+    assert.doesNotMatch(caller.replace(/#.*$/gm, ''), /secrets: inherit/);
+});

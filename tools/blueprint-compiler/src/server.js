@@ -168,6 +168,7 @@ export function createServer(opts = {}) {
         // `||`: an empty prompt gets the same default as the CLI.
         prompt: prompt || undefined,
         onStart: (started) => send({ type: "start", ...started }),
+        onToken: (text) => send({ type: "token", text }),
       });
     } catch (err) {
       result = internalFailure(err);
@@ -176,7 +177,6 @@ export function createServer(opts = {}) {
 
     if (result.ok) {
       const { provider: answeredBy, runtime: via, model, usage, fallbacks, output } = result.run;
-      send({ type: "token", text: output });
       send({ type: "done", provider: answeredBy, runtime: via, model, usage, fallbacks });
     } else {
       send({ type: "error", stage: result.stage, errors: result.errors });

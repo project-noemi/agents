@@ -45,8 +45,9 @@ export async function* readSse(response) {
 }
 
 /** Read Gemini's native SSE stream and extract candidate text deltas. */
-export async function* readGeminiSse(response) {
+export async function* readGeminiSse(response, onUsage) {
   for await (const data of readSse(response)) {
+    if (data.usageMetadata) onUsage?.(data.usageMetadata);
     const candidate = data.candidates?.[0];
     const reason = candidate?.finishReason;
     if (data.promptFeedback?.blockReason) {

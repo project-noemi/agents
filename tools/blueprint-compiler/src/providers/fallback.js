@@ -94,11 +94,12 @@ export async function runWithFallbacks({
 
   for (const providerName of order) {
     try {
-      return await providers[providerName](input, (chunk) => {
+      const emit = typeof onToken === "function" ? (chunk) => {
         if (typeof chunk !== "string" || chunk.length === 0) return;
         outputStarted = true;
-        onToken?.(chunk);
-      });
+        onToken(chunk);
+      } : undefined;
+      return await providers[providerName](input, emit);
     } catch (error) {
       // Once a token is visible to the caller, switching providers would mix
       // answers and misrepresent provenance. Surface the failure instead.

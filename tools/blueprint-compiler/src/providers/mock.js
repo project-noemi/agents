@@ -3,8 +3,11 @@
  * @param {import("../ir.js").BlueprintIR} ir
  * @param {string} prompt
  */
-export async function runMock(ir, prompt) {
+export async function runMock(ir, prompt, opts = {}) {
   const role = (ir.sections.Role ?? "").split("\n")[0];
+  if (typeof opts.onToken === "function") {
+    for (const chunk of output.match(/\\S+\\s*/g) ?? []) opts.onToken(chunk);
+  }
   return {
     provider: "mock",
     model: "mock-hello-world",

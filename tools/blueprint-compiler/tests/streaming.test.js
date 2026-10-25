@@ -3,6 +3,7 @@ import test from "node:test";
 import { runWithFallbacks } from "../src/providers/fallback.js";
 import { readSse } from "../src/providers/streaming.js";
 import { runXai } from "../src/providers/xai.js";
+import { runGemini } from "../src/providers/gemini.js";
 import { withEnv, withFetch, textResponse } from "./helpers/fake-network.js";
 
 test("SSE parser handles records split across network chunks", async () => {
@@ -86,6 +87,34 @@ test("xAI provider forwards fake SSE deltas and reports final usage", async () =
     assert.deepEqual(seen, ["Hello", " world"]);
     assert.equal(result.output, "Hello world");
     assert.equal(result.usage.inputTokens, 4);
+    assert.equal(result.usage.outputTokens, 2);
+  }));
+});
+
+test("Gemini provider forwards fake SSE deltas and terminal usage", async () => {
+  const seen = [];
+  const sse = [
+    'data: {"candidates":[{"content":{"parts":[{"text":"Gem"}]}}]}\\n\\n',
+    'data: {"candidates":[{"content":{"parts":[{"text":"ini"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":2}}\\n\\n',
+  ].join("");
+  const fakeFetch = async (url, init) => {
+    assert.match(String(url), /streamGenerateContent\\?alt=sse$/);
+    assert.equal(init.headers.Authorization, "Bearer placeholder-gateway-key");
+    return textResponse(sse, { headers: { "content-type": "text/event-stream" } });
+  };
+  const ir = {
+    id: "coding/test", title: "Test", sections: { Role: "Test role" },
+    refusalCriteria: "Refuse unsafe requests.", skills: [], mcp: [],
+  };
+  await withEnv({
+    AI_GW_API_KEY: "placeholder-gateway-key",
+    AI_GW_MAX_RETRIES: "0",
+    GEMINI_MODEL: "gemini-3.8-flash",
+  }, () => withFetch(fakeFetch, async () => {
+    const result = await runGemini(ir, "say hello", { onToken: (delta) => seen.push(delta) });
+    assert.deepEqual(seen, ["Gem", "ini"]);
+    assert.equal(result.output, "Gemini");
+    assert.equal(result.usage.inputTokens, 3);
     assert.equal(result.usage.outputTokens, 2);
   }));
 });

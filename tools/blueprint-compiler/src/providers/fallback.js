@@ -84,17 +84,25 @@ export async function runWithFallbacks({
   fallbacks = [],
   providers,
   input,
-  onFallback
+  onFallback,
+  onToken,
 }) {
   const order = providerOrder({ preferred, fallbacks, providers });
 
   let lastFallbackError = null;
+  let outputStarted = false;
 
   for (const providerName of order) {
     try {
-      return await providers[providerName](input);
+      return await providers[providerName](input, (chunk) => {
+        if (typeof chunk !== "string" || chunk.length === 0) return;
+        outputStarted = true;
+        onToken?.(chunk);
+      });
     } catch (error) {
-      if (!isFallbackError(error)) throw error;
+      // Once a token is visible to the caller, switching providers would mix
+      // answers and misrepresent provenance. Surface the failure instead.
+      if (outputStarted || !isFallbackError(error)) throw error;
       lastFallbackError = error;
       onFallback?.({ provider: providerName, error });
     }

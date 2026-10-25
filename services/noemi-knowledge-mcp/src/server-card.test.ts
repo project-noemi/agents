@@ -9,6 +9,9 @@ describe("buildServerCard", () => {
       SERVICE_VERSION: "0.1.0",
     });
     expect(card.name).toBe("com.newpush/noemi-knowledge-mcp");
+    expect(card.description).toMatch(/read-only/i);
+    expect(card.description).toMatch(/public documents only/i);
+    expect(card.description).toMatch(/no sign-in/i);
     expect(card.remotes).toEqual([
       {
         type: "streamable-http",

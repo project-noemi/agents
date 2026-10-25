@@ -56,6 +56,10 @@ op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.co
 | `NOEMI_LOADER_MAX_BYTES` | Size cap for a remote persona | `262144` |
 | `NOEMI_REGISTRY_URL` | Registry base URL (see [Loaders](#loaders)) | `https://raw.githubusercontent.com/project-noemi/agents` |
 | `NOEMI_REGISTRY_VERSION` | Version used when a registry ref has no `@version` | `main` |
+| `NOEMI_STUDIO_HOST` | Address the Studio server binds to | `127.0.0.1` |
+| `NOEMI_STUDIO_PORT` | Studio server port (the Studio dev proxy expects `8787`) | `8787` |
+| `NOEMI_STUDIO_MAX_BODY_BYTES` | Request body cap for the Studio server | `524288` |
+| `NOEMI_STUDIO_ORIGIN` | Single CORS origin allowed to call the Studio server. Unset means same-origin only (the Vite proxy) | none |
 | `NOEMI_REPO_ROOT` | Root that `skills/` and `mcp-protocols/` resolve against. Use an absolute path; a relative one resolves against the current directory. Not a secret | this clone's root |
 
 A 401 from the gateway means the virtual key is missing or invalid; a 403 means
@@ -153,6 +157,41 @@ The registry maps `domain/name[@version]` to
 are matched against strict patterns before a URL is built. **The layout is our
 assumption** (the public repo addressed by release tag); it lives in one function,
 `registryUrl()`, so changing it is a one-line edit.
+
+## Studio server
+
+`src/server.js` connects NoéMI Studio (`studio/`) to the compiler. It is
+`node:http` with no dependencies, and it follows the contract in
+`studio/src/api/types.ts`.
+
+```bash
+NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com npm run studio
+# live providers: infisical run --env=dev -- env NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com npm run studio
+cd studio && VITE_STUDIO_BACKEND=http npm run dev
+```
+
+| Route | Body | Response |
+|---|---|---|
+| `GET /api/health` | | `{ ok: true }` |
+| `GET /api/providers` | | `{ providers, runtimes }`, names only |
+| `POST /api/validate` | `{ input }` | `{ ok, ir, resolved }` or `{ ok: false, stage, errors }`; no provider runs |
+| `POST /api/run` | `{ input, prompt?, provider?, runtime? }` | `text/event-stream`: `start`, `token`, `done`, or one `error` |
+
+`input` is `{ kind: "text", markdown }`, `{ kind: "url", url }` or
+`{ kind: "registry", ref }`. There is no file kind. Providers do not stream yet,
+so `token` carries the whole output in one event.
+
+- **Allowlist first.** The server refuses to start unless `NOEMI_HTTP_ALLOWED_HOSTS`
+  lists at least one host. The registry's host must be on it too.
+- **Keys stay here.** `AI_GW_API_KEY` is read only by this process. No response
+  carries it, and unexpected errors return a fixed message instead of the exception.
+- **Audit.** Each request writes one JSON record to stderr. Pasted text is logged
+  by size, URLs by host and registry refs by their vetted name. The record never
+  holds the prompt, persona text, output, client address or headers, and it lists
+  error codes rather than messages.
+- Bodies must be `application/json` and fit under the size cap. The `Host` header
+  must be loopback, the bound host or the CORS origin's host, which blocks DNS rebinding.
+- Saving blueprints (`/api/blueprints`) is not implemented yet and returns 404.
 
 ## Skill and MCP resolution
 

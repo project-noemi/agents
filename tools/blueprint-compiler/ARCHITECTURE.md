@@ -98,12 +98,18 @@ Known dependency note: `npm audit` reports a moderate, transitive finding (`spri
 - `text/html` responses are rejected
 - optional host allowlist (`NOEMI_HTTP_ALLOWED_HOSTS`)
 
-**Residual risk (SSRF).** With no allowlist, any https host is allowed, including ones that resolve to private addresses. That is acceptable for a CLI a developer runs on their own machine. **Studio must set an allowlist, or add address filtering, before it accepts a user-typed URL.**
+**Residual risk (SSRF).** With no allowlist, any https host is allowed, including ones that resolve to private addresses. That is acceptable for a CLI a developer runs on their own machine. **Studio must set an allowlist, or add address filtering, before it accepts a user-typed URL.** The Studio server enforces this: it will not start with an empty `NOEMI_HTTP_ALLOWED_HOSTS` (`loadServerConfig`).
 
 **Registry (`loadRegistry`).** A ref is `domain/name[@version]`. Segments must be lowercase-hyphen (at most 64 characters) and the version a tag or branch name with no slash, validated before any URL is built, so neither can add a path segment, query, or host. The URL is then fetched by `loadHttp`, inheriting every rule above.
 
 > **Assumption to confirm with the client.** The 5 August brief never fixed a registry layout. We assumed the public repo addressed by release tag (releases are already tagged `YYYY.MM.DD`):
 > `{NOEMI_REGISTRY_URL}/{version}/agents/{domain}/{name}/core.md`, with the base defaulting to `https://raw.githubusercontent.com/project-noemi/agents` and the version to `main`. It is isolated in `registryUrl()`.
+
+## Studio server
+
+`server.js` (Sprint 4) is the only path from a browser into the compiler. It calls the same `compileText` / `compileUrl` / `compileRegistry` entry points as the CLI. `/api/validate` passes `checkOnly`, which stops at `checkSource` (parse, validate, resolve). `/api/run` streams Server-Sent Events. `compileSource` fires `onStart` after every check and provider preflight has passed, and the result becomes a `token` event and a `done` event. Pasted Markdown keeps parse.js's in-memory source `{ kind: "file", ref: "<string>" }`, so the client-agreed IR is unchanged, and it is held to the same `NOEMI_LOADER_MAX_BYTES` cap as a URL.
+
+Trust boundary: keys and loader settings are server-side and read once at startup. Browser input is limited to text, an allowlisted URL or a registry ref, never a path. Records come from `auditFromRequest`, which logs inputs by kind and size or host, and errors by code only.
 
 ## Non-goals (Sprint 1–5)
 

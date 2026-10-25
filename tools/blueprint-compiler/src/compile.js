@@ -3,7 +3,7 @@ import { validateBlueprint } from "./validate.js";
 import { resolveBlueprint } from "./resolve.js";
 import { loadLoaderConfig, loadModelPolicy, loadResolverConfig, loadRuntime, RUNTIMES } from "./config.js";
 import { loadFile } from "./loaders/file.js";
-import { loadHttp } from "./loaders/http.js";
+import { loadError, loadHttp } from "./loaders/http.js";
 import { loadRegistry } from "./loaders/registry.js";
 import { runMock } from "./providers/mock.js";
 import { runGemini, gatewayModelId as geminiModelId, TIMEOUT_VAR as GEMINI_TIMEOUT_VAR } from "./providers/gemini.js";
@@ -41,16 +41,18 @@ function toCompileError(err) {
 
 const describeFailure = (e) => (Number.isInteger(e.status) ? `HTTP ${e.status}` : e.name);
 
+/** Provider names a caller may ask for (CLI --provider, Studio). */
+export const PROVIDERS = Object.keys(DIRECT);
+
 /**
- * Compile persona Markdown from any source (file, http, or registry).
- * Never loads the persona and never logs; callers (CLI, Studio) decide how to log.
- * The only filesystem access is the resolver's read-only existence checks under
- * repoRoot, and only when the persona has **Skill:** or **MCP:** refs.
+ * Parse, validate and resolve persona Markdown without running a provider.
+ * compileSource runs exactly these checks first, so a persona that passes here
+ * fails later only at the provider stage.
  * @param {string} markdown
  * @param {import("./ir.js").SourceRef} source
- * @param {{ prompt?: string, provider?: string, runtime?: string, repoRoot?: string }} [opts]
+ * @param {{ repoRoot?: string }} [opts]
  */
-export async function compileSource(markdown, source, opts = {}) {
+export async function checkSource(markdown, source, opts = {}) {
   const ir = parseBlueprint(markdown, { source, modelPolicy: loadModelPolicy() });
 
   const errors = validateBlueprint(ir);
@@ -64,6 +66,24 @@ export async function compileSource(markdown, source, opts = {}) {
   if (refErrors.length) {
     return { ok: false, stage: "resolve", errors: refErrors };
   }
+  return { ok: true, ir, resolved };
+}
+
+/**
+ * Compile persona Markdown from any source (file, http, or registry).
+ * Never loads the persona and never logs; callers (CLI, Studio) decide how to log.
+ * The only filesystem access is the resolver's read-only existence checks under
+ * repoRoot, and only when the persona has **Skill:** or **MCP:** refs.
+ * @param {string} markdown
+ * @param {import("./ir.js").SourceRef} source
+ * @param {{ prompt?: string, provider?: string, runtime?: string, repoRoot?: string,
+ *   onStart?: (run: { provider: string, runtime: string }) => void }} [opts]
+ *   onStart fires once every check has passed, just before the first provider runs.
+ */
+export async function compileSource(markdown, source, opts = {}) {
+  const checked = await checkSource(markdown, source, opts);
+  if (!checked.ok) return checked;
+  const { ir, resolved } = checked;
 
   const preferred = opts.provider ?? ir.modelPolicy.preferred ?? "mock";
   const fallbacks = ir.modelPolicy.fallbacks ?? [];
@@ -106,6 +126,7 @@ export async function compileSource(markdown, source, opts = {}) {
   }
 
   const fallbacksUsed = [];
+  opts.onStart?.({ provider: preferred, runtime });
 
   try {
     const run = await runWithFallbacks({
@@ -126,6 +147,7 @@ const LOAD_CODES = new Set(["LOAD", "LOAD_CONFIG"]);
 
 // Every loader ends here, so a persona from a file, a URL, or the registry takes
 // the identical compileSource path (validate, resolve, run) and fails the same way.
+// opts.checkOnly stops after resolve (checkSource) instead of running a provider.
 async function loadThenCompile(load, label, opts) {
   let loaded;
   try {
@@ -134,11 +156,31 @@ async function loadThenCompile(load, label, opts) {
     if (!LOAD_CODES.has(err.code)) throw err;   // real bugs still throw
     return { ok: false, stage: "load", errors: [{ code: err.code, message: err.message, path: label }] };
   }
-  return compileSource(loaded.markdown, loaded.source, opts);
+  const next = opts.checkOnly ? checkSource : compileSource;
+  return next(loaded.markdown, loaded.source, opts);
 }
 
 // opts.loader overrides the env-derived loader settings (tests, Studio).
 const loaderConfig = (opts) => ({ ...loadLoaderConfig(), ...opts.loader });
+
+// The label parse.js already uses for Markdown that has no file behind it.
+const TEXT_REF = "<string>";
+
+/**
+ * Compile persona Markdown pasted into Studio. Nothing is fetched, but the
+ * loader size cap still applies so text and URLs share one limit.
+ * @param {string} markdown
+ * @param {Parameters<typeof compileUrl>[1] & { checkOnly?: boolean }} [opts]
+ */
+export function compileText(markdown, opts = {}) {
+  return loadThenCompile(() => {
+    const { maxBytes } = loaderConfig(opts);
+    if (Buffer.byteLength(markdown, "utf8") > maxBytes) {
+      throw loadError(`Persona is larger than the ${maxBytes}-byte limit.`);
+    }
+    return { markdown, source: { kind: "file", ref: TEXT_REF } };
+  }, TEXT_REF, opts);
+}
 
 /**
  * @param {string} filePath
@@ -151,7 +193,7 @@ export function compileFile(filePath, opts = {}) {
 /**
  * Compile a persona served over http(s). See loaders/http.js for the limits.
  * @param {string} url
- * @param {{ prompt?: string, provider?: string, runtime?: string, repoRoot?: string,
+ * @param {{ prompt?: string, provider?: string, runtime?: string, repoRoot?: string, checkOnly?: boolean,
  *   loader?: { allowedHosts?: string[], timeoutMs?: number, maxBytes?: number } }} [opts]
  */
 export function compileUrl(url, opts = {}) {

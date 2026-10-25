@@ -54,13 +54,11 @@ export async function runGemini(ir, prompt, opts = {}) {
       }
       return res;
     }, config);
-    for await (const delta of readGeminiSse(response)) {
+    for await (const delta of readGeminiSse(response, (metadata) => { usage = metadata; })) {
       text += delta;
       opts.onToken(delta);
     }
-    // Native Gemini streaming usage metadata is often only present in the
-    // terminal chunk. readGeminiSse intentionally yields text only, so counts
-    // remain zero unless a later gateway contract exposes terminal usage.
+    // Usage metadata is captured from the terminal stream chunk when supplied.
   }
 
   if (!text.trim()) throw emptyError("Gemini returned an empty response.");

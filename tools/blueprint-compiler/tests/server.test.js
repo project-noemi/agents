@@ -181,18 +181,21 @@ test("server: a registry on a host outside the allowlist is refused", async () =
   }));
 });
 
-test("server: run streams start, token, done with the mock provider", async () => {
+test("server: run streams incremental mock tokens and usage", async () => {
   await withEnv(clean, () => withStudio({}, async ({ base, audit, rawAudit }) => {
     const prompt = "summarize the private notes of Jane Example";
     const { events } = await runEvents(base, {
       input: { kind: "text", markdown: architect }, prompt, provider: "mock", runtime: "direct",
     });
-    assert.deepEqual(events.map((e) => e.type), ["start", "token", "done"]);
+    assert.equal(events[0].type, "start");
+    assert.equal(events.at(-1).type, "done");
+    assert.ok(events.slice(1, -1).every((e) => e.type === "token"));
     assert.deepEqual(events[0], { type: "start", provider: "mock", runtime: "direct" });
-    assert.match(events[1].text, /^\[mock\] compiled coding\/architect/);
-    assert.match(events[1].text, /Jane Example/);
-    assert.equal(events[2].provider, "mock");
-    assert.deepEqual(events[2].fallbacks, []);
+    const streamed = events.slice(1, -1).map((e) => e.text).join("");
+    assert.match(streamed, /^\\[mock\\] compiled coding\\/architect/);
+    assert.match(streamed, /Jane Example/);
+    assert.equal(events.at(-1).provider, "mock");
+    assert.deepEqual(events.at(-1).fallbacks, []);
 
     const [record] = audit();
     assert.equal(record.task, "studio:run:coding/architect");

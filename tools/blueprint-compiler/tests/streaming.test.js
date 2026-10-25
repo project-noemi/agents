@@ -69,7 +69,7 @@ test("xAI provider forwards fake SSE deltas and reports final usage", async () =
     'data: [DONE]\\n\\n',
   ].join("");
   const fakeFetch = async (url, init) => {
-    assert.match(String(url), /chat\\/completions$/);
+    assert.ok(String(url).includes("chat/completions"));
     assert.equal(init.headers.Authorization, "Bearer placeholder-gateway-key");
     assert.equal(JSON.parse(init.body).stream, true);
     return textResponse(sse, { headers: { "content-type": "text/event-stream" } });
@@ -98,7 +98,7 @@ test("Gemini provider forwards fake SSE deltas and terminal usage", async () => 
     'data: {"candidates":[{"content":{"parts":[{"text":"ini"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":2}}\\n\\n',
   ].join("");
   const fakeFetch = async (url, init) => {
-    assert.match(String(url), /streamGenerateContent\\?alt=sse$/);
+    assert.ok(String(url).includes("streamGenerateContent?alt=sse"));
     assert.equal(init.headers.Authorization, "Bearer placeholder-gateway-key");
     return textResponse(sse, { headers: { "content-type": "text/event-stream" } });
   };

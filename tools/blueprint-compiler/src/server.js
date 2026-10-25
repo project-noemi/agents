@@ -11,9 +11,9 @@
  * `input` is { kind: "text", markdown } | { kind: "url", url } | { kind: "registry", ref }.
  * There is no file kind: a browser never names a path on this machine.
  *
- * The run stream sends `data: <json>` events: one `start` once every check has
- * passed, one `token` with the whole output (providers do not stream yet), then
- * `done`; or a single `error` in place of any of them.
+ * The run stream sends `data: <json>` events: one `start` after validation,
+ * incremental `token` deltas, then `done`; or an `error`. Fallback is allowed
+ * only before the first emitted token.
  *
  * Trust boundary:
  *   - Gateway keys stay in this process's environment. Responses are built only

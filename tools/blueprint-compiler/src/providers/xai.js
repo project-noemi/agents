@@ -1,76 +1,92 @@
 /**
- * Sprint 2 provider. Calls xAI (Grok) through NewPush's generative AI
- * gateway. Grok is only served on the gateway's OpenAI surface:
- * POST {gateway}/v1/chat/completions. Key, origin, timeout and retry come
- * from gateway.js; the virtual key never goes to api.x.ai.
- *
- * Mirrors mock.js's and gemini.js's signature and return shape so compile.js
- * can treat every provider interchangeably.
- *
- * @param {import("../ir.js").BlueprintIR} ir
- * @param {string} prompt
+ * xAI (Grok) provider over NewPush's OpenAI-compatible gateway.
+ * Streaming is opt-in through onToken so the same adapter works for callers
+ * that still want a single completed result.
  */
 import { emptyError, loadGatewayConfig, postJson } from "./gateway.js";
 import { buildSystemPrompt } from "./prompt.js";
+import { readSse } from "./streaming.js";
 
-// On the gateway's OpenAI surface the model is always `provider/id`.
 const DEFAULT_MODEL = "xai/grok-4.6";
 export const TIMEOUT_VAR = "XAI_TIMEOUT_MS";
 
-/**
- * Accept a bare `grok-4.6` from config, but always use `xai/grok-4.6`: the
- * gateway rejects bare ids on its OpenAI surface. The Mastra runtime uses the
- * same id, so one XAI_MODEL setting drives both runtimes.
- */
 export const gatewayModelId = (env = process.env) => {
   const configured = env.XAI_MODEL || DEFAULT_MODEL;
   return configured.startsWith("xai/") ? configured : `xai/${configured}`;
 };
 
-export async function runXai(ir, prompt) {
+export async function runXai(ir, prompt, opts = {}) {
   const config = loadGatewayConfig({ timeoutVar: TIMEOUT_VAR });
   const model = gatewayModelId();
-
   const started = Date.now();
-  const data = await postJson(
-    `${config.gateway}/v1/chat/completions`,
-    {
-      model,
-      messages: [
+  let text = "";
+  let usage = {};
+
+  if (typeof opts.onToken !== "function") {
+    const data = await postJson(
+      `${config.gateway}/v1/chat/completions`,
+      { model, messages: [
         { role: "system", content: buildSystemPrompt(ir) },
         { role: "user", content: prompt },
-      ],
-    },
-    config,
-    "xai"
-  );
+      ] },
+      config,
+      "xai"
+    );
+    const choice = data.choices?.[0];
+    if (!choice || choice.finish_reason === "content_filter" || choice.message?.refusal) {
+      throw emptyError("xAI returned a blocked or unusable response.");
+    }
+    text = choice.message?.content ?? "";
+    usage = data.usage ?? {};
+  } else {
+    const attempt = async () => {
+      const response = await fetch(`${config.gateway}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.apiKey}` },
+        body: JSON.stringify({
+          model,
+          stream: true,
+          stream_options: { include_usage: true },
+          messages: [
+            { role: "system", content: buildSystemPrompt(ir) },
+            { role: "user", content: prompt },
+          ],
+        }),
+        signal: AbortSignal.timeout(config.timeoutMs),
+      });
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        const err = new Error(`NewPush AI gateway (xai) returned ${response.status}: ${body.slice(0, 300)}`);
+        err.status = response.status;
+        throw err;
+      }
+      return response;
+    };
+    // Reuse the same retry policy as the non-streaming provider. It applies
+    // before a response stream is returned; post-header errors cannot retry.
+    const { withGatewayRetry } = await import("./gateway.js");
+    const response = await withGatewayRetry(attempt, config);
+    for await (const data of readSse(response)) {
+      if (data.usage) usage = data.usage;
+      const choice = data.choices?.[0];
+      if (choice?.finish_reason === "content_filter" || choice?.delta?.refusal) {
+        throw emptyError("xAI filtered or refused the response.");
+      }
+      const delta = choice?.delta?.content;
+      if (typeof delta === "string" && delta.length) {
+        text += delta;
+        opts.onToken(delta);
+      }
+    }
+  }
 
-  const choice = data.choices?.[0];
-  if (!choice) {
-    throw emptyError("xAI returned no choices.");
-  }
-  if (choice.finish_reason === "content_filter") {
-    throw emptyError("xAI filtered the response (finish_reason content_filter).");
-  }
-  if (choice.message?.refusal) {
-    throw emptyError(`xAI refused: ${String(choice.message.refusal).slice(0, 200)}`);
-  }
-  const text = choice.message?.content ?? "";
-  if (typeof text !== "string" || !text.trim()) {
-    throw emptyError("xAI returned an empty response.");
-  }
-
-  const usage = data.usage ?? {};
+  if (typeof text !== "string" || !text.trim()) throw emptyError("xAI returned an empty response.");
   return {
-    provider: "xai",
-    model,
-    output: text,
+    provider: "xai", model, output: text,
     usage: {
       inputTokens: usage.prompt_tokens ?? 0,
       outputTokens: usage.completion_tokens ?? 0,
       latencyMs: Date.now() - started,
-      // Like gemini.js: not priced yet -- revisit with the LLM Arena
-      // scoreboard (Sprint 5), which needs real cost numbers.
       costUsd: 0,
     },
   };

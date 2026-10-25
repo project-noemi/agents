@@ -104,8 +104,8 @@ export async function compileSource(markdown, source, opts = {}) {
     Object.entries(DIRECT).map(([name, run]) => [
       name,
       runtime === "mastra" && LIVE[name]
-        ? (input) => runMastra(ir, input, { provider: name, ...LIVE[name] })
-        : (input) => run(ir, input),
+        ? (input, onToken) => runMastra(ir, input, { provider: name, ...LIVE[name] }, undefined, { onToken })
+        : (input, onToken) => run(ir, input, { onToken }),
     ])
   );
 
@@ -134,6 +134,7 @@ export async function compileSource(markdown, source, opts = {}) {
       input: opts.prompt ?? "Hello from the Blueprint Compiler.",
       onFallback: ({ provider, error }) =>
         fallbacksUsed.push({ provider, reason: describeFailure(error) }),
+      onToken: opts.onToken,
     });
     // mock under --runtime mastra still runs direct, and says so.
     return { ok: true, ir, resolved, run: { ...run, runtime: run.runtime ?? "direct", fallbacks: fallbacksUsed } };

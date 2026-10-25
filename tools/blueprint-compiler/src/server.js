@@ -176,7 +176,7 @@ export function createServer(opts = {}) {
     log.result = result;
 
     if (result.ok) {
-      const { provider: answeredBy, runtime: via, model, usage, fallbacks, output } = result.run;
+      const { provider: answeredBy, runtime: via, model, usage, fallbacks } = result.run;
       send({ type: "done", provider: answeredBy, runtime: via, model, usage, fallbacks });
     } else {
       send({ type: "error", stage: result.stage, errors: result.errors });

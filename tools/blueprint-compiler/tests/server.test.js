@@ -192,7 +192,7 @@ test("server: run streams incremental mock tokens and usage", async () => {
     assert.ok(events.slice(1, -1).every((e) => e.type === "token"));
     assert.deepEqual(events[0], { type: "start", provider: "mock", runtime: "direct" });
     const streamed = events.slice(1, -1).map((e) => e.text).join("");
-    assert.match(streamed, /^\\[mock\\] compiled coding\\/architect/);
+    assert.ok(streamed.startsWith("[mock] compiled coding/architect"));
     assert.match(streamed, /Jane Example/);
     assert.equal(events.at(-1).provider, "mock");
     assert.deepEqual(events.at(-1).fallbacks, []);

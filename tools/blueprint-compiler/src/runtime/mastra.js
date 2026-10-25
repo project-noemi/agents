@@ -160,39 +160,57 @@ function assertUsable(result) {
  * @param {MastraTarget} target
  * @param {{ Agent?: Function, noopLogger?: object }} [deps]
  */
-export async function runMastra(ir, prompt, target, deps = {}) {
+export async function runMastra(ir, prompt, target, deps = {}, opts = {}) {
   const config = loadMastraConfig(target);
   const agent = await buildMastraAgent(ir, config, deps);
-
   const started = Date.now();
+  const streaming = typeof opts.onToken === "function";
+
   const attempt = async () => {
-    // Fresh signal per attempt, as in gateway.js. Mastra resolves (rather than
-    // rejects) with finishReason "aborted" on timeout, so check the signal too.
     const signal = AbortSignal.timeout(config.timeoutMs);
-    let result;
     try {
-      // maxRetries 0: retrying is withGatewayRetry's job, so there is one policy.
-      result = await agent.generate(prompt, { maxRetries: 0, abortSignal: signal });
+      if (!streaming) {
+        const result = await agent.generate(prompt, { maxRetries: 0, abortSignal: signal });
+        if (signal.aborted) throw normalizeError(null, signal);
+        return { result, output: result.text ?? "" };
+      }
+
+      const result = await agent.stream(prompt, { maxRetries: 0, abortSignal: signal });
+      let output = "";
+      for await (const part of result.fullStream) {
+        if (signal.aborted) throw normalizeError(null, signal);
+        if (part.type === "text-delta") {
+          const delta = part.text ?? part.textDelta ?? "";
+          if (typeof delta === "string" && delta.length) {
+            output += delta;
+            opts.onToken(delta);
+          }
+        } else if (part.type === "error") {
+          throw normalizeError(part.error ?? part, signal);
+        }
+      }
+      return { result, output };
     } catch (err) {
       throw normalizeError(err, signal);
     }
-    if (signal.aborted) throw normalizeError(null, signal);
-    return result;
   };
 
-  const result = await withGatewayRetry(attempt, config);
-  assertUsable(result);
+  // Retry only failures before a stream is returned / before tokens are emitted.
+  // The outer fallback utility independently prevents switching providers once
+  // opts.onToken has been called.
+  const streamed = await withGatewayRetry(attempt, config);
+  const result = streamed.result;
+  assertUsable({ ...result, text: streamed.output });
 
   return {
     provider: target.provider,
     runtime: "mastra",
     model: config.model,
-    output: result.text,
+    output: streamed.output,
     usage: {
       inputTokens: result.usage?.inputTokens ?? 0,
       outputTokens: result.usage?.outputTokens ?? 0,
       latencyMs: Date.now() - started,
-      // Not priced yet, like gemini.js / xai.js: revisit with the Arena scoreboard.
       costUsd: 0,
     },
   };

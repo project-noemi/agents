@@ -62,10 +62,35 @@ test("config: a missing key fails closed and is never fallback-worthy", () => {
 // ------------------------------------------------- build (fake Agent, no I/O)
 
 class FakeAgent {
-  constructor(opts) { this.opts = opts; FakeAgent.last = this; }
-  __setLogger(l) { this.logger = l; }
-  async generate(prompt, options) { return FakeAgent.script(prompt, options, this); }
+  constructor(opts) {
+    this.opts = opts;
+    FakeAgent.last = this;
+  }
+
+  __setLogger(l) {
+    this.logger = l;
+  }
+
+  async generate(prompt, options) {
+    return FakeAgent.script(prompt, options, this);
+  }
+
+  async stream(prompt, options) {
+    const result = await FakeAgent.script(prompt, options, this);
+
+    return {
+      textStream: (async function* () {
+        if (typeof result.text === "string" && result.text.length > 0) {
+          yield result.text;
+        }
+      })(),
+      usage: Promise.resolve(result.usage ?? {}),
+      finishReason: Promise.resolve(result.finishReason),
+      tripwire: result.tripwire,
+    };
+  }
 }
+
 const noopLogger = { marker: "noop" };
 const deps = { Agent: FakeAgent, noopLogger };
 

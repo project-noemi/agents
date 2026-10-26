@@ -61,3 +61,17 @@ export const routeFetch = (byPrefix) => async (url, init) => {
 // A real Response, so loaders exercise real headers and body streaming.
 export const textResponse = (body, { status = 200, headers = { "content-type": "text/plain; charset=utf-8" } } = {}) =>
   new Response(body, { status, headers });
+
+// A real SSE Response for testing providers that consume streamed responses.
+export const sseResponse = (
+  events,
+  {
+    status = 200,
+    headers = { "content-type": "text/event-stream" },
+  } = {}
+) =>
+  new Response(
+    events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("") +
+      "data: [DONE]\n\n",
+    { status, headers }
+  );

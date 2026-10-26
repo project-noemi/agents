@@ -165,19 +165,38 @@ export function createServer(opts = {}) {
       result = await load(body.input, {
         provider,
         runtime,
-        // `||`: an empty prompt gets the same default as the CLI.
         prompt: prompt || undefined,
         onStart: (started) => send({ type: "start", ...started }),
+        onToken: (text) => send({ type: "token", text }),
       });
     } catch (err) {
       result = internalFailure(err);
     }
     log.result = result;
-
+ 
     if (result.ok) {
-      const { provider: answeredBy, runtime: via, model, usage, fallbacks, output } = result.run;
-      send({ type: "token", text: output });
-      send({ type: "done", provider: answeredBy, runtime: via, model, usage, fallbacks });
+      const {
+        provider: answeredBy,
+        runtime: via,
+        model,
+        usage,
+        fallbacks,
+        output,
+      } = result.run;
+
+      // Send output if the runtime did not already stream it.
+      if (typeof output === "string" && output.length > 0) {
+        send({ type: "token", text: output });
+      }
+
+      send({
+        type: "done",
+        provider: answeredBy,
+        runtime: via,
+        model,
+        usage,
+        fallbacks,
+      });
     } else {
       send({ type: "error", stage: result.stage, errors: result.errors });
     }

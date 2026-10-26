@@ -14,6 +14,7 @@ import {
   GATEWAY_GEMINI,
   GATEWAY_XAI,
   timeoutFailure,
+  sseResponse,
 } from "./helpers/fake-network.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -27,7 +28,16 @@ const gatewayKey = { AI_GW_API_KEY: "gw-key", AI_GW_BASE_URL: undefined };
 test("preferred xai succeeds: no fallback, gemini is never contacted", async () => {
   await withEnv({ ...gatewayKey, NOEMI_FALLBACK_PROVIDERS: "gemini,mock" }, () =>
     withFetch(
-      routeFetch({ [GATEWAY_XAI]: async () => jsonResponse(xaiBody("from grok")) }),
+      routeFetch({
+        [GATEWAY_XAI]: async () =>
+          sseResponse([
+            { choices: [{ index: 0, delta: { content: "from grok" } }] },
+            {
+              choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+              usage: { prompt_tokens: 1, completion_tokens: 1 },
+            },
+          ]),
+      }),
       async () => {
         const result = await compileFile(persona, { repoRoot, provider: "xai" });
         assert.equal(result.run.provider, "xai");
@@ -43,7 +53,21 @@ test("xai 503 falls back to gemini (a real provider, not mock)", async () => {
     withFetch(
       routeFetch({
         [GATEWAY_XAI]: async () => errorResponse(503),
-        [GATEWAY_GEMINI]: async () => jsonResponse(geminiBody("from gemini")),
+        [GATEWAY_GEMINI]: async () =>
+          sseResponse([
+            {
+              candidates: [
+                {
+                  content: { parts: [{ text: "from gemini" }] },
+                  finishReason: "STOP",
+                },
+              ],
+              usageMetadata: {
+                promptTokenCount: 1,
+                candidatesTokenCount: 1,
+              },
+            },
+          ]),
       }),
       async () => {
         const result = await compileFile(persona, { repoRoot, provider: "xai" });
@@ -59,7 +83,14 @@ test("gemini 429 falls back to xai", async () => {
     withFetch(
       routeFetch({
         [GATEWAY_GEMINI]: async () => errorResponse(429),
-        [GATEWAY_XAI]: async () => jsonResponse(xaiBody("from grok")),
+        [GATEWAY_XAI]: async () =>
+          sseResponse([
+            { choices: [{ index: 0, delta: { content: "from grok" } }] },
+            {
+              choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+              usage: { prompt_tokens: 1, completion_tokens: 1 },
+            },
+          ]),
       }),
       async () => {
         const result = await compileFile(persona, { repoRoot, provider: "gemini" });
@@ -122,7 +153,21 @@ test("config alone selects xai first, then the configured fallbacks in order", a
       withFetch(
         routeFetch({
           [GATEWAY_XAI]: async () => errorResponse(502),
-          [GATEWAY_GEMINI]: async () => jsonResponse(geminiBody("from gemini")),
+          [GATEWAY_GEMINI]: async () =>
+            sseResponse([
+              {
+                candidates: [
+                  {
+                    content: { parts: [{ text: "from gemini" }] },
+                    finishReason: "STOP",
+                  },
+                ],
+                usageMetadata: {
+                  promptTokenCount: 1,
+                  candidatesTokenCount: 1,
+                },
+              },
+            ]),
         }),
         async () => {
           const result = await compileFile(persona, { repoRoot });

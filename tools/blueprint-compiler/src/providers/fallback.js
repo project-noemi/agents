@@ -94,7 +94,8 @@ export async function runWithFallbacks({
     try {
       return await providers[providerName](input);
     } catch (error) {
-      if (!isFallbackError(error)) throw error;
+      // Never switch providers after any output has already been emitted.
+      if (error?.noFallback || !isFallbackError(error)) throw error;
       lastFallbackError = error;
       onFallback?.({ provider: providerName, error });
     }

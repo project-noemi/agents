@@ -187,12 +187,20 @@ test("server: run streams start, token, done with the mock provider", async () =
     const { events } = await runEvents(base, {
       input: { kind: "text", markdown: architect }, prompt, provider: "mock", runtime: "direct",
     });
-    assert.deepEqual(events.map((e) => e.type), ["start", "token", "done"]);
+
+    assert.equal(events[0].type, "start");
     assert.deepEqual(events[0], { type: "start", provider: "mock", runtime: "direct" });
-    assert.match(events[1].text, /^\[mock\] compiled coding\/architect/);
-    assert.match(events[1].text, /Jane Example/);
-    assert.equal(events[2].provider, "mock");
-    assert.deepEqual(events[2].fallbacks, []);
+
+    const tokenEvents = events.filter((event) => event.type === "token");
+    assert.ok(tokenEvents.length > 0, "the provider emits token chunks");
+
+    const streamedOutput = tokenEvents.map((event) => event.text).join("");
+    assert.match(streamedOutput, /^\[mock\] compiled coding\/architect/);
+    assert.match(streamedOutput, /Jane Example/);
+
+    assert.equal(events.at(-1).type, "done");
+    assert.equal(events.at(-1).provider, "mock");
+    assert.deepEqual(events.at(-1).fallbacks, []);
 
     const [record] = audit();
     assert.equal(record.task, "studio:run:coding/architect");
@@ -224,10 +232,14 @@ test("server: keys stay on the server through a live call and a fallback", async
     await withEnv({ ...clean, AI_GW_API_KEY: CANARY, AI_GW_BASE_URL: gw, AI_GW_MAX_RETRIES: "0", NOEMI_FALLBACK_PROVIDERS: "mock" },
       () => withStudio({}, async ({ base, audit, rawAudit }) => {
         const { events, raw } = await runEvents(base, { input: { kind: "text", markdown: architect }, prompt: "hi", provider: "xai" });
-        assert.deepEqual(events.map((e) => e.type), ["start", "token", "done"]);
+
+        assert.equal(events[0].type, "start");
         assert.deepEqual(events[0], { type: "start", provider: "xai", runtime: "direct" });
-        assert.equal(events[2].provider, "mock");
-        assert.deepEqual(events[2].fallbacks, [{ provider: "xai", reason: "HTTP 503" }]);
+        assert.ok(events.some((event) => event.type === "token"));
+        assert.equal(events.at(-1).type, "done");
+        assert.equal(events.at(-1).provider, "mock");
+        assert.deepEqual(events.at(-1).fallbacks, [{ provider: "xai", reason: "HTTP 503" }]);
+
         assert.deepEqual(audit()[0].actions, ["parse", "validate", "resolve", "fallback-from:xai", "run:mock"]);
 
         assert.ok(seen.length > 0 && seen.every((h) => h === `Bearer ${CANARY}`), "the gateway got the key");

@@ -77,7 +77,8 @@ export async function checkSource(markdown, source, opts = {}) {
  * @param {string} markdown
  * @param {import("./ir.js").SourceRef} source
  * @param {{ prompt?: string, provider?: string, runtime?: string, repoRoot?: string,
- *   onStart?: (run: { provider: string, runtime: string }) => void }} [opts]
+ *   onStart?: (run: { provider: string, runtime: string }) => void,
+ *   onToken?: (text: string) => void, }} [opts]
  *   onStart fires once every check has passed, just before the first provider runs.
  */
 export async function compileSource(markdown, source, opts = {}) {
@@ -104,8 +105,12 @@ export async function compileSource(markdown, source, opts = {}) {
     Object.entries(DIRECT).map(([name, run]) => [
       name,
       runtime === "mastra" && LIVE[name]
-        ? (input) => runMastra(ir, input, { provider: name, ...LIVE[name] })
-        : (input) => run(ir, input),
+        ? (input) => runMastra(ir, input, {
+            provider: name,
+            ...LIVE[name],
+            onToken: opts.onToken,
+          })
+        : (input) => run(ir, input, { onToken: opts.onToken }),
     ])
   );
 

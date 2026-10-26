@@ -6,9 +6,8 @@ import {
   withEnv,
   withFetch,
   recordFetch,
-  jsonResponse,
+  sseResponse,
   errorResponse,
-  xaiBody,
   networkFailure,
   timeoutFailure,
 } from "./helpers/fake-network.js";
@@ -19,6 +18,12 @@ const ir = {
   sections: { Role: "Keep structure sound.\nReview diffs for drift." },
   skills: ["verification/pre-flight-check"],
 };
+
+const xaiSse = (text, usage = { prompt_tokens: 1, completion_tokens: 1 }) =>
+  sseResponse([
+    { choices: [{ index: 0, delta: { content: text } }] },
+    { choices: [{ index: 0, delta: {}, finish_reason: "stop" }], usage },
+  ]);
 
 test("missing AI_GW_API_KEY fails closed without ever calling fetch", async () => {
   await withEnv({ AI_GW_API_KEY: undefined }, () =>
@@ -44,7 +49,7 @@ test("missing AI_GW_API_KEY fails closed without ever calling fetch", async () =
 
 test("a successful call returns the mock.js-shaped result with real usage", async () => {
   const fake = recordFetch(async () =>
-    jsonResponse(xaiBody("hello from grok", { prompt_tokens: 42, completion_tokens: 7 }))
+    xaiSse("hello from grok", { prompt_tokens: 42, completion_tokens: 7 })
   );
   await withEnv({ AI_GW_API_KEY: "test-key", XAI_MODEL: undefined }, () =>
     withFetch(fake, async () => {
@@ -62,7 +67,7 @@ test("a successful call returns the mock.js-shaped result with real usage", asyn
 });
 
 test("the request targets the gateway's chat/completions with a Bearer header and the key never in the URL", async () => {
-  const fake = recordFetch(async () => jsonResponse(xaiBody("ok")));
+  const fake = recordFetch(async () => xaiSse("ok"));
   await withEnv({ AI_GW_API_KEY: "test-key", AI_GW_BASE_URL: undefined, XAI_MODEL: "xai/grok-build-0.1" }, () =>
     withFetch(fake, async () => {
       await runXai(ir, "hello");
@@ -74,6 +79,8 @@ test("the request targets the gateway's chat/completions with a Bearer header an
 
       const body = JSON.parse(init.body);
       assert.equal(body.model, "xai/grok-build-0.1");
+      assert.equal(body.stream, true);
+      assert.deepEqual(body.stream_options, { include_usage: true });
       assert.equal(body.messages[0].role, "system");
       assert.match(body.messages[0].content, /Architect — Coding Agent/);
       assert.match(body.messages[0].content, /verification\/pre-flight-check/);
@@ -83,7 +90,7 @@ test("the request targets the gateway's chat/completions with a Bearer header an
 });
 
 test("a bare model id is sent with the xai/ prefix the gateway requires", async () => {
-  const fake = recordFetch(async () => jsonResponse(xaiBody("ok")));
+  const fake = recordFetch(async () => xaiSse("ok"));
   await withEnv({ AI_GW_API_KEY: "test-key", XAI_MODEL: "grok-4.3" }, () =>
     withFetch(fake, async () => {
       const result = await runXai(ir, "hello");
@@ -94,7 +101,7 @@ test("a bare model id is sent with the xai/ prefix the gateway requires", async 
 });
 
 test("AI_GW_BASE_URL overrides the gateway origin", async () => {
-  const fake = recordFetch(async () => jsonResponse(xaiBody("ok")));
+  const fake = recordFetch(async () => xaiSse("ok"));
   await withEnv({ AI_GW_API_KEY: "test-key", AI_GW_BASE_URL: "https://gw.example.test/" }, () =>
     withFetch(fake, async () => {
       await runXai(ir, "hello");
@@ -148,7 +155,7 @@ test("a raw network failure (fetch throwing TypeError) propagates unmodified", a
 });
 
 test("every request carries a timeout signal so a hung call can fall back", async () => {
-  const fake = recordFetch(async () => jsonResponse(xaiBody("ok")));
+  const fake = recordFetch(async () => xaiSse("ok"));
   await withEnv({ AI_GW_API_KEY: "test-key" }, () =>
     withFetch(fake, async () => {
       await runXai(ir, "hello");
@@ -166,16 +173,20 @@ test("a timeout propagates as TimeoutError (fallback-eligible)", async () => {
 });
 
 test("an empty or filtered completion fails closed with PROVIDER_EMPTY", async () => {
-  const bodies = [
-    { choices: [] },
-    xaiBody(""),
-    xaiBody("   "),
-    { choices: [{ index: 0, message: { role: "assistant", content: "partial" }, finish_reason: "content_filter" }] },
-    { choices: [{ index: 0, message: { role: "assistant", content: null, refusal: "no" }, finish_reason: "stop" }] },
+  const responses = [
+    sseResponse([{ choices: [] }]),
+    sseResponse([{ choices: [{ index: 0, delta: { content: "" } }] }]),
+    sseResponse([{ choices: [{ index: 0, delta: { content: "   " } }] }]),
+    sseResponse([
+      { choices: [{ index: 0, delta: { content: "partial" }, finish_reason: "content_filter" }] },
+    ]),
+    sseResponse([
+      { choices: [{ index: 0, delta: { refusal: "no" }, finish_reason: "stop" }] },
+    ]),
   ];
-  for (const body of bodies) {
+  for (const response of responses) {
     await withEnv({ AI_GW_API_KEY: "test-key" }, () =>
-      withFetch(async () => jsonResponse(body), async () => {
+      withFetch(async () => response, async () => {
         await assert.rejects(() => runXai(ir, "hello"), (err) => {
           assert.equal(err.code, "PROVIDER_EMPTY");
           assert.equal(isFallbackError(err), false, "a blocked/empty answer must not fall back");

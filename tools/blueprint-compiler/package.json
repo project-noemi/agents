@@ -15,5 +15,8 @@
     "compile": "node src/cli.js",
     "studio": "node src/server.js",
     "test": "node --import ./tests/helpers/setup.js --test --test-concurrency=1 tests/*.test.js"
+  },
+  "dependencies": {
+    "@mastra/core": "^1.79.0"
   }
 }

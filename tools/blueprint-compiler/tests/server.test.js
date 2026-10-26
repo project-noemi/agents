@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import http from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,15 +44,17 @@ async function withPersonaHost(routes, fn) {
 /** Start the Studio server with `env`; fn gets { base, audit } where audit is every record written. */
 async function withStudio(env, fn) {
   const lines = [];
+  // Run history is written on every /api/run: keep it out of the real data folder.
+  const dataDir = await mkdtemp(join(tmpdir(), "studio-data-"));
   const server = createServer({
-    env: { NOEMI_HTTP_ALLOWED_HOSTS: "127.0.0.1", ...env },
+    env: { NOEMI_HTTP_ALLOWED_HOSTS: "127.0.0.1", NOEMI_STUDIO_DATA_DIR: dataDir, ...env },
     repoRoot: fixtures,
     audit: { write: (s) => lines.push(s) },
   });
   const base = await listen(server);
   try {
     return await fn({ base, audit: () => lines.map((l) => JSON.parse(l)), rawAudit: () => lines.join("") });
-  } finally { await close(server); }
+  } finally { await close(server); await rm(dataDir, { recursive: true, force: true }); }
 }
 
 const post = (base, path, body) => fetch(`${base}${path}`, {
@@ -270,7 +274,7 @@ test("server: rejects malformed requests before compiling", async () => {
       [() => post(base, "/api/validate", { input: { kind: "text", markdown: "x".repeat(30_000) } }), 413],
       [() => fetch(`${base}/api/validate`, { ...json, headers: { "content-type": "text/plain" }, body: "{}" }), 415],
       [() => fetch(`${base}/api/validate`, { ...json, body: "{" }), 400],
-      [() => fetch(`${base}/api/blueprints`), 404],
+      [() => fetch(`${base}/api/blueprints/not-an-id`), 404],
       [() => fetch(`${base}/api/secret-path-jane`), 404],
     ];
     for (const [send, status] of cases) {

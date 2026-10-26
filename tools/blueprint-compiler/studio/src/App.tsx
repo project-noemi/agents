@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, backend } from './api'
-import type { SavedBlueprintSummary, ValidateResult } from './api'
+import type { RunRecord, SavedBlueprintSummary, ValidateResult } from './api'
 import { BlueprintForm } from './components/BlueprintForm'
 import { BlueprintTable } from './components/BlueprintTable'
+import { RunTable } from './components/RunTable'
 import { StreamView } from './components/StreamView'
 import { ValidationPanel } from './components/ValidationPanel'
 import { EMPTY_FORM, IDLE_RUN, toInput } from './state'
@@ -14,6 +15,7 @@ function App() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [saved, setSaved] = useState<SavedBlueprintSummary[]>([])
   const [validation, setValidation] = useState<ValidateResult>()
+  const [runs, setRuns] = useState<RunRecord[]>([])
   const [run, setRun] = useState<RunState>(IDLE_RUN)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string>()
@@ -27,12 +29,24 @@ function App() {
     }
   }, [])
 
-  // Initial load of the saved list.
+  const refreshRuns = useCallback(async () => {
+    try {
+      setRuns(await api.listRuns())
+    } catch (err) {
+      setNotice(`Could not load run history: ${describe(err)}`)
+    }
+  }, [])
+
+  // Initial load of the saved list and the run history.
   useEffect(() => {
     let live = true
     api.listBlueprints().then(
       (items) => live && setSaved(items),
       (err) => live && setNotice(`Could not load saved blueprints: ${describe(err)}`),
+    )
+    api.listRuns().then(
+      (items) => live && setRuns(items),
+      (err) => live && setNotice(`Could not load run history: ${describe(err)}`),
     )
     return () => {
       live = false
@@ -78,6 +92,13 @@ function App() {
       setValidation(undefined)
     })
 
+  const onRename = (id: string, name: string) =>
+    withBusy(async () => {
+      const renamed = await api.renameBlueprint(id, name)
+      if (form.id === id) setForm({ ...form, name: renamed.name })
+      await Promise.all([refreshSaved(), refreshRuns()])
+    })
+
   const onDelete = (id: string) =>
     withBusy(async () => {
       await api.deleteBlueprint(id)
@@ -99,7 +120,14 @@ function App() {
     setRun({ status: 'running', text: '' })
     try {
       const events = api.run(
-        { input: toInput(form), prompt: form.prompt, provider: form.provider, runtime: form.runtime },
+        {
+          input: toInput(form),
+          // Only a saved blueprint that is still the one in the editor links its history rows.
+          blueprintId: form.sourceKind === 'text' ? form.id : undefined,
+          prompt: form.prompt,
+          provider: form.provider,
+          runtime: form.runtime,
+        },
         controller.signal,
       )
       for await (const event of events) {
@@ -114,6 +142,8 @@ function App() {
       else setRun((r) => ({ ...r, status: 'error', message: describe(err) }))
     } finally {
       abortRef.current = null
+      // The server records a run before it sends the closing event.
+      void refreshRuns()
     }
   }
 
@@ -134,7 +164,7 @@ function App() {
 
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Saved blueprints</h2>
-        <BlueprintTable items={saved} selectedId={form.id} onOpen={onOpen} onDelete={onDelete} />
+        <BlueprintTable items={saved} selectedId={form.id} onOpen={onOpen} onRename={onRename} onDelete={onDelete} />
       </section>
 
       <section className="space-y-2">
@@ -156,6 +186,11 @@ function App() {
       <section className="space-y-2">
         <h2 className="text-lg font-semibold">Output</h2>
         <StreamView run={run} />
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold">Run history</h2>
+        <RunTable runs={runs} blueprints={saved} onRefresh={refreshRuns} />
       </section>
     </main>
   )

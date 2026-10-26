@@ -1,5 +1,6 @@
 import type {
   BlueprintInput,
+  RunRecord,
   RunRequest,
   SavedBlueprint,
   SavedBlueprintSummary,
@@ -8,9 +9,8 @@ import type {
   ValidateResult,
 } from './types'
 
-// Adapter for the real Studio server. The routes below are a proposal; change
-// them here, in one place, once the backend contract is agreed. In dev, Vite
-// proxies /api to the server (see vite.config.ts).
+// Adapter for the real Studio server (routes: src/server.js). They are kept in
+// this one file. In dev, Vite proxies /api to the server (see vite.config.ts).
 const BASE = '/api'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -82,6 +82,14 @@ export const httpApi: StudioApi = {
           body: JSON.stringify(body),
         })
       : request<SavedBlueprint>('/blueprints', { method: 'POST', body: JSON.stringify(body) }),
+
+  renameBlueprint: (id, name) =>
+    request<SavedBlueprint>(`/blueprints/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }),
+
+  listRuns: () => request<RunRecord[]>('/runs'),
 
   deleteBlueprint: (id) =>
     request<void>(`/blueprints/${encodeURIComponent(id)}`, { method: 'DELETE' }),

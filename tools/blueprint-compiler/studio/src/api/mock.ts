@@ -2,6 +2,7 @@ import type {
   BlueprintIR,
   BlueprintInput,
   CompileError,
+  RunRecord,
   RunRequest,
   SavedBlueprint,
   StreamEvent,
@@ -74,6 +75,29 @@ function put(name: string, markdown: string, id = String(nextId++)): SavedBluepr
 }
 
 put('architect (sample)', SAMPLE)
+
+// Run history, newest first, kept in memory like the saved blueprints.
+const history: RunRecord[] = []
+let nextRunId = 1
+
+function logRun(
+  req: RunRequest,
+  started: number,
+  rest: Pick<RunRecord, 'blueprint' | 'outcome'> & Partial<RunRecord>,
+) {
+  history.unshift({
+    id: String(nextRunId++),
+    at: new Date().toISOString(),
+    durationMs: Date.now() - started,
+    blueprintId: req.blueprintId,
+    provider: 'mock',
+    runtime: 'direct',
+    inputTokens: 0,
+    outputTokens: 0,
+    fallbacks: [],
+    ...rest,
+  })
+}
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -156,8 +180,15 @@ export const mockApi: StudioApi = {
   },
 
   async *run(req: RunRequest, signal?: AbortSignal): AsyncGenerator<StreamEvent> {
+    const runStarted = Date.now()
     const result = validateInput(req.input)
     if (!result.ok) {
+      logRun(req, runStarted, {
+        blueprint: req.input.kind,
+        outcome: 'error',
+        stage: result.stage,
+        errorCodes: result.errors.map((e) => e.code),
+      })
       yield { type: 'error', stage: result.stage, errors: result.errors }
       return
     }
@@ -176,6 +207,7 @@ export const mockApi: StudioApi = {
       await sleep(40)
       yield { type: 'token', text: chunk }
     }
+    logRun(req, runStarted, { blueprint: result.ir.id, model: 'mock-hello-world', outcome: 'ok' })
     yield {
       type: 'done',
       provider: 'mock',
@@ -201,7 +233,17 @@ export const mockApi: StudioApi = {
     return put(name, markdown, id)
   },
 
+  async renameBlueprint(id, name) {
+    const saved = store.get(id)
+    if (!saved) throw new Error('Blueprint not found.')
+    return put(name, saved.markdown, id)
+  },
+
   async deleteBlueprint(id) {
     store.delete(id)
+  },
+
+  async listRuns() {
+    return [...history]
   },
 }

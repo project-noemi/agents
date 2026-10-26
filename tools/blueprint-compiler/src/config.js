@@ -74,6 +74,11 @@ const DEFAULT_STUDIO_HOST = "127.0.0.1";
 const DEFAULT_STUDIO_PORT = 8787;
 // Room for the largest persona the loaders accept plus JSON escaping and a prompt.
 const DEFAULT_STUDIO_MAX_BODY_BYTES = 512 * 1024;
+// Saved blueprints and run history live together in this one folder. It is
+// git-ignored (see .gitignore). Tests point NOEMI_STUDIO_DATA_DIR at a temp folder.
+const DEFAULT_DATA_DIR = resolve(fileURLToPath(new URL("../data", import.meta.url)));
+const DEFAULT_MAX_BLUEPRINTS = 200;
+const DEFAULT_MAX_RUNS = 500;
 
 function serverError(message) {
   const err = new Error(message);
@@ -106,6 +111,16 @@ export function loadServerConfig(env = process.env) {
     throw serverError(err.message);
   }
 
+  let maxBlueprints;
+  let maxRuns;
+  try {
+    maxBlueprints = loaderInt(env, "NOEMI_STUDIO_MAX_BLUEPRINTS", DEFAULT_MAX_BLUEPRINTS);
+    maxRuns = loaderInt(env, "NOEMI_STUDIO_MAX_RUNS", DEFAULT_MAX_RUNS);
+  } catch (err) {
+    throw serverError(err.message);
+  }
+  const dataOverride = env.NOEMI_STUDIO_DATA_DIR?.trim();
+
   // Optional single CORS origin, for a Studio served from somewhere other than
   // the Vite proxy. Unset means same-origin only.
   const rawOrigin = env.NOEMI_STUDIO_ORIGIN?.trim();
@@ -122,6 +137,9 @@ export function loadServerConfig(env = process.env) {
     host: env.NOEMI_STUDIO_HOST?.trim() || DEFAULT_STUDIO_HOST,
     port: port ? Number(port) : DEFAULT_STUDIO_PORT,
     maxBodyBytes,
+    dataDir: dataOverride ? resolve(dataOverride) : DEFAULT_DATA_DIR,
+    maxBlueprints,
+    maxRuns,
     origin,
     loader,
   };

@@ -256,3 +256,21 @@ this clone's real `skills/`. The CLI tests clear the variable and cover the defa
 - [DEMO.md](DEMO.md) — offline demo script
 - [AGENTS.md](AGENTS.md) — secrets, loop, and package contract
 - [GIT-WORKFLOW.md](GIT-WORKFLOW.md) — branch map, staying up to date, and opening PRs
+
+
+
+1. Environment table rows (after NOEMI_STUDIO_ORIGIN)
+
+| NOEMI_STUDIO_DATA_DIR | The one folder for saved blueprints and run history. Created on first use, git-ignored | data/ in this package | | NOEMI_STUDIO_MAX_BLUEPRINTS | Most blueprints that can be saved | 200 | | NOEMI_STUDIO_MAX_RUNS | Run-history rows kept, oldest dropped first | 500 |
+
+2. Studio route table rows (after POST /api/run)
+
+| GET /api/runs[?limit=N] | | run history, newest first (1 to 500, default 100) | | GET /api/blueprints | | saved blueprints: [{ id, name, updatedAt }] | | POST /api/blueprints | { name, markdown } | 201 with the saved blueprint | | GET /api/blueprints/:id | | { id, name, markdown, createdAt, updatedAt } | | PUT /api/blueprints/:id | { name, markdown } | the updated blueprint | | PATCH /api/blueprints/:id | { name } | rename; the Markdown is kept | | DELETE /api/blueprints/:id | | 204 |
+
+/api/run also accepts an optional blueprintId (a saved blueprint's id) so the history row can show the blueprint's current name.
+
+3. Replace the bullet "Saving blueprints (/api/blueprints) is not implemented yet and returns 404."
+Saved blueprints and run history live in one folder (NOEMI_STUDIO_DATA_DIR). Each blueprint is <id>.json, where the id is 24 server-made hex characters. The display name is stored inside the file and never used as a file name, so a name like ../../x is only text. An id that is not 24 lowercase hex characters is a 404 before any file is touched. Links in the folder are ignored. Writes are atomic. /api/run adds one row to runs.jsonl: provider, runtime, model, duration, tokens, outcome (ok, fallback, error) and error codes. It never stores the prompt, the persona text, the output or error messages. History is best effort: an unwritable folder does not fail a run. data/ is plain local files: back it up, or point NOEMI_STUDIO_DATA_DIR somewhere that is.
+4. package .gitignore
+
+Add data/ (done in the .gitignore in this folder).

@@ -32,7 +32,7 @@ export type ResolvedRefs = {
   mcp: { ref: string; id: string; path: string }[]
 }
 
-export type Stage = 'load' | 'parse' | 'validate' | 'resolve' | 'provider'
+export type Stage = 'load' | 'parse' | 'validate' | 'resolve' | 'provider' | 'internal'
 
 export type CompileFailure = {
   ok: false
@@ -67,6 +67,7 @@ export type Runtime = (typeof RUNTIMES)[number]
 
 export type RunRequest = {
   input: BlueprintInput
+  blueprintId?: string // links the history row to a saved blueprint
   prompt: string
   provider: Provider
   runtime: Runtime
@@ -94,6 +95,29 @@ export type SavedBlueprintSummary = {
 
 export type SavedBlueprint = SavedBlueprintSummary & { markdown: string }
 
+// One row of run history. The server never stores the prompt, the persona text,
+// the output or error messages: only codes.
+//   provider/runtime: who answered, or what was asked for if nothing answered.
+//   blueprint: the compiled id (e.g. coding/architect), or the input kind when it failed to load.
+export type RunOutcome = 'ok' | 'fallback' | 'error'
+
+export type RunRecord = {
+  id: string
+  at: string
+  durationMs: number
+  blueprintId?: string
+  blueprint: string
+  provider: string | null
+  runtime: string | null
+  model?: string
+  inputTokens: number
+  outputTokens: number
+  outcome: RunOutcome
+  stage?: Stage
+  errorCodes?: string[]
+  fallbacks: { provider: string; reason: string }[]
+}
+
 export interface StudioApi {
   validate(input: BlueprintInput): Promise<ValidateResult>
   run(request: RunRequest, signal?: AbortSignal): AsyncIterable<StreamEvent>
@@ -101,5 +125,8 @@ export interface StudioApi {
   getBlueprint(id: string): Promise<SavedBlueprint>
   // No id creates a new blueprint; an id overwrites that one.
   saveBlueprint(blueprint: { id?: string; name: string; markdown: string }): Promise<SavedBlueprint>
+  renameBlueprint(id: string, name: string): Promise<SavedBlueprint>
   deleteBlueprint(id: string): Promise<void>
+  // Newest first.
+  listRuns(): Promise<RunRecord[]>
 }

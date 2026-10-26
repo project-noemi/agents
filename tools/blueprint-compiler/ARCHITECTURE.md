@@ -109,6 +109,8 @@ Known dependency note: `npm audit` reports a moderate, transitive finding (`spri
 
 `server.js` (Sprint 4) is the only path from a browser into the compiler. It calls the same `compileText` / `compileUrl` / `compileRegistry` entry points as the CLI. `/api/validate` passes `checkOnly`, which stops at `checkSource` (parse, validate, resolve). `/api/run` streams Server-Sent Events. `compileSource` fires `onStart` after every check and provider preflight has passed, and the result becomes a `token` event and a `done` event. Pasted Markdown keeps parse.js's in-memory source `{ kind: "file", ref: "<string>" }`, so the client-agreed IR is unchanged, and it is held to the same `NOEMI_LOADER_MAX_BYTES` cap as a URL.
 
+**Storage.** `store/blueprints.js` and `store/runs.js` (shared helpers in `store/files.js`) keep saved blueprints and run history in one folder, `NOEMI_STUDIO_DATA_DIR`. File names come from server-generated ids or fixed constants, never from browser input. `runRecordFrom` is pure and builds history rows from a finished run by the audit rule: kinds, sizes, hosts and codes, no prompt, persona text, output or messages. The server records a run before it sends the closing `done` or `error` event, so a client that refreshes its table then sees it.
+
 Trust boundary: keys and loader settings are server-side and read once at startup. Browser input is limited to text, an allowlisted URL or a registry ref, never a path. Records come from `auditFromRequest`, which logs inputs by kind and size or host, and errors by code only.
 
 ## Non-goals (Sprint 1–5)

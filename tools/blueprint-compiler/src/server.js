@@ -3,10 +3,17 @@
  * Sprint 4 Studio server: the one place a browser reaches the compiler.
  * Routes and event shapes follow studio/src/api/http.ts and types.ts.
  *
- *   GET  /api/health      { ok: true }
- *   GET  /api/providers   { providers, runtimes }
- *   POST /api/validate    { input } -> JSON
- *   POST /api/run         { input, prompt, provider?, runtime? } -> SSE
+ *   GET    /api/health            { ok: true }
+ *   GET    /api/providers         { providers, runtimes }
+ *   POST   /api/validate          { input } -> JSON
+ *   POST   /api/run               { input, prompt, provider?, runtime?, blueprintId? } -> SSE
+ *   GET    /api/runs[?limit=N]    run history, newest first
+ *   GET    /api/blueprints        saved blueprints (summaries)
+ *   POST   /api/blueprints        { name, markdown } -> 201 saved blueprint
+ *   GET    /api/blueprints/:id    one saved blueprint
+ *   PUT    /api/blueprints/:id    { name, markdown }
+ *   PATCH  /api/blueprints/:id    { name }  (rename)
+ *   DELETE /api/blueprints/:id    204
  *
  * `input` is { kind: "text", markdown } | { kind: "url", url } | { kind: "registry", ref }.
  *
@@ -16,11 +23,12 @@
  *   - JSON bodies are size-capped.
  *   - The Host header is restricted to allowed hosts.
  *   - One audit record is written per request.
+ *   - Saved blueprints and run history live in one folder (NOEMI_STUDIO_DATA_DIR).
+ *     File names come from server-made ids, never from browser input.
  */
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import {
-  checkSource,
   compileRegistry,
   compileText,
   compileUrl,
@@ -28,10 +36,16 @@ import {
 } from "./compile.js";
 import { loadServerConfig, RUNTIMES } from "./config.js";
 import { auditFromRequest, writeAudit } from "./audit.js";
+import { createBlueprintStore, ID } from "./store/blueprints.js";
+import { StoreError } from "./store/files.js";
+import { createRunStore, runRecordFrom } from "./store/runs.js";
 
 const MAX_PROMPT_CHARS = 16_000;
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 const INPUT_KINDS = ["text", "url", "registry"];
+const STORE_STATUS = { NOT_FOUND: 404, INVALID: 400, TOO_LARGE: 413, LIMIT: 409 };
+const DEFAULT_RUN_LIMIT = 100;
+const MAX_RUN_LIMIT = 500;
 
 class RequestError extends Error {
   constructor(status, message) {
@@ -122,6 +136,18 @@ const internalFailure = (err) => ({
   ],
 });
 
+/** Store failures with a known code become 4xx; anything else stays a 500. */
+async function viaStore(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err instanceof StoreError && STORE_STATUS[err.code]) {
+      throw new RequestError(STORE_STATUS[err.code], err.message);
+    }
+    throw err;
+  }
+}
+
 /**
  * Build the Studio server.
  * @param {{ env?: NodeJS.ProcessEnv, repoRoot?: string, audit?: NodeJS.WritableStream }} [opts]
@@ -129,6 +155,13 @@ const internalFailure = (err) => ({
 export function createServer(opts = {}) {
   const config = loadServerConfig(opts.env ?? process.env);
   const audit = opts.audit ?? process.stderr;
+
+  const blueprints = createBlueprintStore({
+    dir: config.dataDir,
+    maxBytes: config.loader.maxBytes,
+    maxItems: config.maxBlueprints,
+  });
+  const runs = createRunStore({ dir: config.dataDir, maxRuns: config.maxRuns });
 
   const allowedHostnames = new Set([
     ...LOOPBACK,
@@ -158,6 +191,16 @@ export function createServer(opts = {}) {
     return compileRegistry(input.ref, options);
   };
 
+  async function readObject(req) {
+    const body = await readJson(req, config.maxBodyBytes);
+
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      throw new RequestError(400, "Request body must be a JSON object.");
+    }
+
+    return body;
+  }
+
   async function validate(req, res, log) {
     const body = await readJson(req, config.maxBodyBytes);
     checkInput(body?.input);
@@ -181,7 +224,7 @@ export function createServer(opts = {}) {
     checkInput(body?.input);
     log.input = body.input;
 
-    const { provider, runtime, prompt } = body;
+    const { provider, runtime, prompt, blueprintId } = body;
 
     if (provider !== undefined && !PROVIDERS.includes(provider)) {
       throw new RequestError(
@@ -205,6 +248,14 @@ export function createServer(opts = {}) {
         400,
         `prompt must be a string of at most ${MAX_PROMPT_CHARS} characters.`,
       );
+    }
+
+    // Only links a history row to a saved blueprint. Never used as a path.
+    if (
+      blueprintId !== undefined &&
+      !(typeof blueprintId === "string" && ID.test(blueprintId))
+    ) {
+      throw new RequestError(400, "blueprintId must be a saved blueprint id.");
     }
 
     log.provider = provider;
@@ -233,6 +284,7 @@ export function createServer(opts = {}) {
     // This is the only result declaration in the run() function.
     let streamedOutput = false;
     let result;
+    const startedAt = Date.now();
 
     try {
       result = await load(body.input, {
@@ -260,6 +312,24 @@ export function createServer(opts = {}) {
     }
 
     log.result = result;
+
+    // Record the run BEFORE the closing event, so a client that refreshes its
+    // table on `done` or `error` always sees it. History is best effort: if the
+    // data folder is unwritable the run still completes.
+    try {
+      await runs.append(
+        runRecordFrom({
+          input: body.input,
+          provider,
+          runtime,
+          blueprintId,
+          result,
+          durationMs: Date.now() - startedAt,
+        }),
+      );
+    } catch {
+      // Intentionally ignored; see above.
+    }
 
     if (result.ok) {
       const {
@@ -300,26 +370,85 @@ export function createServer(opts = {}) {
     res.end();
   }
 
-  const routes = {
-    "GET /api/health": (_req, res) => {
+  async function listRuns(req, res) {
+    const raw = new URL(req.url ?? "/", "http://localhost").searchParams.get("limit");
+    const limit = raw === null ? DEFAULT_RUN_LIMIT : Number(raw);
+
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_RUN_LIMIT) {
+      throw new RequestError(
+        400,
+        `limit must be a whole number from 1 to ${MAX_RUN_LIMIT}.`,
+      );
+    }
+
+    sendJson(res, 200, await runs.list(limit));
+  }
+
+  const route = (method, pattern, name, handler) => ({ method, pattern, name, handler });
+  const BP = /^\/api\/blueprints\/([^/]+)$/;
+
+  const routes = [
+    route("GET", /^\/api\/health$/, "health", (_req, res) => {
       sendJson(res, 200, { ok: true });
-    },
-    "GET /api/providers": (_req, res) => {
-      sendJson(res, 200, {
-        providers: PROVIDERS,
-        runtimes: RUNTIMES,
-      });
-    },
-    "POST /api/validate": validate,
-    "POST /api/run": run,
-  };
+    }),
+    route("GET", /^\/api\/providers$/, "providers", (_req, res) => {
+      sendJson(res, 200, { providers: PROVIDERS, runtimes: RUNTIMES });
+    }),
+    route("POST", /^\/api\/validate$/, "validate", validate),
+    route("POST", /^\/api\/run$/, "run", run),
+    route("GET", /^\/api\/runs$/, "runs.list", listRuns),
+
+    route("GET", /^\/api\/blueprints$/, "blueprints.list", async (_req, res) => {
+      sendJson(res, 200, await viaStore(() => blueprints.list()));
+    }),
+    route("POST", /^\/api\/blueprints$/, "blueprints.create", async (req, res) => {
+      const { name, markdown } = await readObject(req);
+      sendJson(res, 201, await viaStore(() => blueprints.create({ name, markdown })));
+    }),
+    route("GET", BP, "blueprints.get", async (_req, res, _log, [id]) => {
+      sendJson(res, 200, await viaStore(() => blueprints.get(id)));
+    }),
+    route("PUT", BP, "blueprints.update", async (req, res, _log, [id]) => {
+      const { name, markdown } = await readObject(req);
+
+      // PUT replaces; a missing field is a client bug, not "keep the old one".
+      if (typeof name !== "string" || typeof markdown !== "string") {
+        throw new RequestError(400, "name and markdown must both be strings.");
+      }
+
+      sendJson(res, 200, await viaStore(() => blueprints.update(id, { name, markdown })));
+    }),
+    route("PATCH", BP, "blueprints.rename", async (req, res, _log, [id]) => {
+      const { name } = await readObject(req);
+
+      if (typeof name !== "string") {
+        throw new RequestError(400, "name must be a string.");
+      }
+
+      sendJson(res, 200, await viaStore(() => blueprints.update(id, { name })));
+    }),
+    route("DELETE", BP, "blueprints.delete", async (_req, res, _log, [id]) => {
+      await viaStore(() => blueprints.remove(id));
+      res.writeHead(204, { "cache-control": "no-store" });
+      res.end();
+    }),
+  ];
+
+  function match(method, path) {
+    for (const r of routes) {
+      if (r.method !== method) continue;
+      const m = r.pattern.exec(path);
+      if (m) return { route: r, params: m.slice(1) };
+    }
+    return null;
+  }
 
   return http.createServer(async (req, res) => {
     const path = (req.url ?? "/").split("?")[0];
-    const known = `${req.method} ${path}` in routes;
+    const found = match(req.method, path);
 
     const log = {
-      route: known ? path.replace(/^\/api\//, "") : `${req.method}:unknown`,
+      route: found ? found.route.name : `${req.method}:unknown`,
     };
 
     if (config.origin) {
@@ -344,7 +473,7 @@ export function createServer(opts = {}) {
         log.route = "preflight";
 
         res.writeHead(204, {
-          "access-control-allow-methods": "GET, POST",
+          "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE",
           "access-control-allow-headers": "content-type",
           "access-control-max-age": "600",
         });
@@ -353,18 +482,11 @@ export function createServer(opts = {}) {
         return;
       }
 
-      const handler = routes[`${req.method} ${path}`];
-
-      if (!handler) {
-        throw new RequestError(
-          404,
-          path.startsWith("/api/blueprints")
-            ? "Saving blueprints is not available on this server yet."
-            : "Not found.",
-        );
+      if (!found) {
+        throw new RequestError(404, "Not found.");
       }
 
-      await handler(req, res, log);
+      await found.route.handler(req, res, log, found.params);
     } catch (err) {
       if (err instanceof RequestError) {
         log.rejected = {

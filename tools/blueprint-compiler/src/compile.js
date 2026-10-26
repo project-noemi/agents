@@ -1,23 +1,38 @@
+
 import { parseBlueprint } from "./parse.js";
 import { validateBlueprint } from "./validate.js";
 import { resolveBlueprint } from "./resolve.js";
-import { loadLoaderConfig, loadModelPolicy, loadResolverConfig, loadRuntime, RUNTIMES } from "./config.js";
+import {
+  loadLoaderConfig,
+  loadModelPolicy,
+  loadResolverConfig,
+  loadRuntime,
+  RUNTIMES,
+} from "./config.js";
 import { loadFile } from "./loaders/file.js";
 import { loadError, loadHttp } from "./loaders/http.js";
 import { loadRegistry } from "./loaders/registry.js";
 import { runMock } from "./providers/mock.js";
-import { runGemini, gatewayModelId as geminiModelId, TIMEOUT_VAR as GEMINI_TIMEOUT_VAR } from "./providers/gemini.js";
-import { runXai, gatewayModelId as xaiModelId, TIMEOUT_VAR as XAI_TIMEOUT_VAR } from "./providers/xai.js";
+import {
+  runGemini,
+  gatewayModelId as geminiModelId,
+  TIMEOUT_VAR as GEMINI_TIMEOUT_VAR,
+} from "./providers/gemini.js";
+import {
+  runXai,
+  gatewayModelId as xaiModelId,
+  TIMEOUT_VAR as XAI_TIMEOUT_VAR,
+} from "./providers/xai.js";
 import { runMastra, loadMastraConfig } from "./runtime/mastra.js";
 import { loadGatewayConfig } from "./providers/gateway.js";
-import { isFallbackError, providerOrder, runWithFallbacks } from "./providers/fallback.js";
+import {
+  isFallbackError,
+  providerOrder,
+  runWithFallbacks,
+} from "./providers/fallback.js";
 
-// Two layers, kept apart:
-//   provider = which model answers (mock, gemini, xai): NOEMI_PREFERRED_PROVIDER / fallbacks
-//   runtime  = how it is called (direct, mastra):       --runtime / NOEMI_RUNTIME
-// DIRECT is the hand-rolled call for each provider. LIVE says how each live
-// provider is reached through the gateway, which is all the Mastra runtime needs.
-// mock has no model, so it has no LIVE entry and always runs direct.
+// Provider = which model answers.
+// Runtime = how the model is called.
 const DIRECT = { mock: runMock, gemini: runGemini, xai: runXai };
 const LIVE = {
   gemini: { timeoutVar: GEMINI_TIMEOUT_VAR, modelId: geminiModelId },
@@ -26,108 +41,149 @@ const LIVE = {
 
 const isProviderError = (e) =>
   (typeof e?.code === "string" && e.code.startsWith("PROVIDER")) ||
-  Number.isInteger(e?.status) || isFallbackError(e);
+  Number.isInteger(e?.status) ||
+  isFallbackError(e);
 
 function toCompileError(err) {
   return {
-    // DOMException (e.g. TimeoutError) carries a NUMERIC .code (23); only trust string codes.
-    code: typeof err.code === "string"
-      ? err.code
-      : Number.isInteger(err.status) ? "PROVIDER_HTTP" : "PROVIDER_UNAVAILABLE",
+    code:
+      typeof err.code === "string"
+        ? err.code
+        : Number.isInteger(err.status)
+          ? "PROVIDER_HTTP"
+          : "PROVIDER_UNAVAILABLE",
     message: err.message,
     ...(Number.isInteger(err.status) ? { status: err.status } : {}),
   };
 }
 
-const describeFailure = (e) => (Number.isInteger(e.status) ? `HTTP ${e.status}` : e.name);
+const describeFailure = (e) =>
+  Number.isInteger(e.status) ? `HTTP ${e.status}` : e.name;
 
-/** Provider names a caller may ask for (CLI --provider, Studio). */
 export const PROVIDERS = Object.keys(DIRECT);
 
 /**
  * Parse, validate and resolve persona Markdown without running a provider.
- * compileSource runs exactly these checks first, so a persona that passes here
- * fails later only at the provider stage.
- * @param {string} markdown
- * @param {import("./ir.js").SourceRef} source
- * @param {{ repoRoot?: string }} [opts]
  */
 export async function checkSource(markdown, source, opts = {}) {
-  const ir = parseBlueprint(markdown, { source, modelPolicy: loadModelPolicy() });
+  const ir = parseBlueprint(markdown, {
+    source,
+    modelPolicy: loadModelPolicy(),
+  });
 
   const errors = validateBlueprint(ir);
   if (errors.length) {
     return { ok: false, stage: "validate", errors };
   }
 
-  // `||`, not `??`: an empty repoRoot means "unset", as in config.js.
   const repoRoot = opts.repoRoot || loadResolverConfig().repoRoot;
-  const { resolved, errors: refErrors } = await resolveBlueprint(ir, { repoRoot });
+  const { resolved, errors: refErrors } = await resolveBlueprint(ir, {
+    repoRoot,
+  });
+
   if (refErrors.length) {
     return { ok: false, stage: "resolve", errors: refErrors };
   }
+
   return { ok: true, ir, resolved };
 }
 
 /**
- * Compile persona Markdown from any source (file, http, or registry).
- * Never loads the persona and never logs; callers (CLI, Studio) decide how to log.
- * The only filesystem access is the resolver's read-only existence checks under
- * repoRoot, and only when the persona has **Skill:** or **MCP:** refs.
- * @param {string} markdown
- * @param {import("./ir.js").SourceRef} source
- * @param {{ prompt?: string, provider?: string, runtime?: string, repoRoot?: string,
- *   onStart?: (run: { provider: string, runtime: string }) => void,
- *   onToken?: (text: string) => void, }} [opts]
- *   onStart fires once every check has passed, just before the first provider runs.
+ * Compile persona Markdown from any source.
+ *
+ * onStart fires after validation/resolution and before the provider chain.
+ * onToken receives each text chunk as it arrives.
  */
 export async function compileSource(markdown, source, opts = {}) {
   const checked = await checkSource(markdown, source, opts);
   if (!checked.ok) return checked;
-  const { ir, resolved } = checked;
 
+  const { ir, resolved } = checked;
   const preferred = opts.provider ?? ir.modelPolicy.preferred ?? "mock";
   const fallbacks = ir.modelPolicy.fallbacks ?? [];
 
-  // Fail closed on an unknown runtime before anything runs.
   const runtime = opts.runtime || loadRuntime();
   if (!RUNTIMES.includes(runtime)) {
-    const shown = runtime.length > 40 ? `${runtime.slice(0, 37)}...` : runtime;
+    const shown =
+      runtime.length > 40 ? `${runtime.slice(0, 37)}...` : runtime;
+
     return {
       ok: false,
       stage: "provider",
-      errors: [{ code: "RUNTIME", message: `Unknown runtime "${shown}". Known: ${RUNTIMES.join(", ")}.`, path: "runtime" }],
+      errors: [
+        {
+          code: "RUNTIME",
+          message: `Unknown runtime "${shown}". Known: ${RUNTIMES.join(", ")}.`,
+          path: "runtime",
+        },
+      ],
     };
   }
 
-  // Same provider names whatever the runtime; only the call path differs.
+  // This flag covers the entire provider chain. Once true, no later provider
+  // may run, because its output would be appended to a partial answer.
+  let emittedOutput = false;
+
+  const emitToken = (text) => {
+    if (typeof text !== "string" || text.length === 0) return;
+    emittedOutput = true;
+    opts.onToken?.(text);
+  };
+
   const providers = Object.fromEntries(
     Object.entries(DIRECT).map(([name, run]) => [
       name,
-      runtime === "mastra" && LIVE[name]
-        ? (input) => runMastra(ir, input, {
-            provider: name,
-            ...LIVE[name],
-            onToken: opts.onToken,
-          })
-        : (input) => run(ir, input, { onToken: opts.onToken }),
+      async (input) => {
+        try {
+          if (runtime === "mastra" && LIVE[name]) {
+            return await runMastra(ir, input, {
+              provider: name,
+              ...LIVE[name],
+              ...(typeof opts.onToken === "function" ? { onToken: emitToken } : {}),
+            });
+          }
+
+          return await run(ir, input, { onToken: emitToken });
+        } catch (err) {
+          // Also guard against providers that fail to mark their own stream
+          // errors. The compiler is the final authority on fallback safety.
+          if (
+            emittedOutput &&
+            err &&
+            (typeof err === "object" || typeof err === "function")
+          ) {
+            err.noFallback = true;
+          }
+          throw err;
+        }
+      },
     ])
   );
 
-  // Check the whole chain before any provider runs: unknown names and bad
-  // gateway config (key, URL, timeout, and under mastra the model) fail closed
-  // up front, not mid-fallback.
+  // Validate the whole provider chain and its configuration before starting.
   const preflight = (name) => {
     const live = LIVE[name];
     if (!live) return;
-    if (runtime === "mastra") loadMastraConfig(live);
-    else loadGatewayConfig({ timeoutVar: live.timeoutVar });
+
+    if (runtime === "mastra") {
+      loadMastraConfig(live);
+    } else {
+      loadGatewayConfig({ timeoutVar: live.timeoutVar });
+    }
   };
+
   try {
-    for (const name of providerOrder({ preferred, fallbacks, providers })) preflight(name);
+    for (const name of providerOrder({ preferred, fallbacks, providers })) {
+      preflight(name);
+    }
   } catch (err) {
     if (!isProviderError(err)) throw err;
-    return { ok: false, stage: "provider", errors: [{ ...toCompileError(err), path: "provider" }] };
+
+    return {
+      ok: false,
+      stage: "provider",
+      errors: [{ ...toCompileError(err), path: "provider" }],
+    };
   }
 
   const fallbacksUsed = [];
@@ -135,81 +191,91 @@ export async function compileSource(markdown, source, opts = {}) {
 
   try {
     const run = await runWithFallbacks({
-      preferred, fallbacks, providers,
+      preferred,
+      fallbacks,
+      providers,
       input: opts.prompt ?? "Hello from the Blueprint Compiler.",
       onFallback: ({ provider, error }) =>
-        fallbacksUsed.push({ provider, reason: describeFailure(error) }),
+        fallbacksUsed.push({
+          provider,
+          reason: describeFailure(error),
+        }),
     });
-    // mock under --runtime mastra still runs direct, and says so.
-    return { ok: true, ir, resolved, run: { ...run, runtime: run.runtime ?? "direct", fallbacks: fallbacksUsed } };
+
+    return {
+      ok: true,
+      ir,
+      resolved,
+      run: {
+        ...run,
+        runtime: run.runtime ?? "direct",
+        fallbacks: fallbacksUsed,
+      },
+    };
   } catch (err) {
-    if (!isProviderError(err)) throw err;   // real bugs still throw
-    return { ok: false, stage: "provider", errors: [toCompileError(err)], fallbacks: fallbacksUsed };
+    if (!isProviderError(err)) throw err;
+
+    return {
+      ok: false,
+      stage: "provider",
+      errors: [toCompileError(err)],
+      fallbacks: fallbacksUsed,
+    };
   }
 }
 
 const LOAD_CODES = new Set(["LOAD", "LOAD_CONFIG"]);
 
-// Every loader ends here, so a persona from a file, a URL, or the registry takes
-// the identical compileSource path (validate, resolve, run) and fails the same way.
-// opts.checkOnly stops after resolve (checkSource) instead of running a provider.
 async function loadThenCompile(load, label, opts) {
   let loaded;
+
   try {
     loaded = await load();
   } catch (err) {
-    if (!LOAD_CODES.has(err.code)) throw err;   // real bugs still throw
-    return { ok: false, stage: "load", errors: [{ code: err.code, message: err.message, path: label }] };
+    if (!LOAD_CODES.has(err.code)) throw err;
+
+    return {
+      ok: false,
+      stage: "load",
+      errors: [{ code: err.code, message: err.message, path: label }],
+    };
   }
+
   const next = opts.checkOnly ? checkSource : compileSource;
   return next(loaded.markdown, loaded.source, opts);
 }
 
-// opts.loader overrides the env-derived loader settings (tests, Studio).
-const loaderConfig = (opts) => ({ ...loadLoaderConfig(), ...opts.loader });
+const loaderConfig = (opts) => ({
+  ...loadLoaderConfig(),
+  ...opts.loader,
+});
 
-// The label parse.js already uses for Markdown that has no file behind it.
 const TEXT_REF = "<string>";
 
-/**
- * Compile persona Markdown pasted into Studio. Nothing is fetched, but the
- * loader size cap still applies so text and URLs share one limit.
- * @param {string} markdown
- * @param {Parameters<typeof compileUrl>[1] & { checkOnly?: boolean }} [opts]
- */
 export function compileText(markdown, opts = {}) {
   return loadThenCompile(() => {
     const { maxBytes } = loaderConfig(opts);
+
     if (Buffer.byteLength(markdown, "utf8") > maxBytes) {
       throw loadError(`Persona is larger than the ${maxBytes}-byte limit.`);
     }
+
     return { markdown, source: { kind: "file", ref: TEXT_REF } };
   }, TEXT_REF, opts);
 }
 
-/**
- * @param {string} filePath
- * @param {{ prompt?: string, provider?: string, runtime?: string, repoRoot?: string }} [opts]
- */
 export function compileFile(filePath, opts = {}) {
   return loadThenCompile(() => loadFile(filePath), filePath, opts);
 }
 
-/**
- * Compile a persona served over http(s). See loaders/http.js for the limits.
- * @param {string} url
- * @param {{ prompt?: string, provider?: string, runtime?: string, repoRoot?: string, checkOnly?: boolean,
- *   loader?: { allowedHosts?: string[], timeoutMs?: number, maxBytes?: number } }} [opts]
- */
 export function compileUrl(url, opts = {}) {
   return loadThenCompile(() => loadHttp(url, loaderConfig(opts)), url, opts);
 }
 
-/**
- * Compile a persona from the versioned registry: `domain/name[@version]`.
- * @param {string} ref
- * @param {Parameters<typeof compileUrl>[1]} [opts] opts.loader may also set `registry: { baseUrl, defaultVersion }`
- */
 export function compileRegistry(ref, opts = {}) {
-  return loadThenCompile(() => loadRegistry(ref, loaderConfig(opts)), ref, opts);
+  return loadThenCompile(
+    () => loadRegistry(ref, loaderConfig(opts)),
+    ref,
+    opts
+  );
 }

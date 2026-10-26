@@ -3,14 +3,12 @@
  * Sprint 4 runtime: instantiate a Blueprint IR as a Mastra agent and run it
  * through NewPush's generative AI gateway (OpenAI-compatible surface).
  *
- * This is a RUNTIME, not a provider. Provider selection remains responsible
- * for choosing the preferred provider and configured fallbacks.
+ * Provider selection and cross-provider fallback remain in compile.js.
+ * Mastra is loaded lazily so direct-runtime runs do not require it at startup.
+ * Refusal Criteria are preserved verbatim in the system prompt.
  *
- * Mastra is imported lazily: direct-runtime runs never load it, and a clone
- * without installed dependencies receives a clear PROVIDER_CONFIG error.
- *
- * Refusal Criteria are preserved verbatim in the system prompt. The runtime
- * refuses to build an agent for an IR that has no non-empty Refusal Criteria.
+ * When target.onToken is supplied, use Mastra streaming. Otherwise use
+ * generate(), which preserves compatibility with non-streaming gateway calls.
  */
 import {
   configError,
@@ -21,28 +19,14 @@ import {
 } from "../providers/gateway.js";
 import { buildSystemPrompt } from "../providers/prompt.js";
 
-// Only used to label the model inside Mastra; the gateway never sees it.
 const PROVIDER_ID = "newpush";
+const BAD_FINISH = new Set([
+  "content-filter",
+  "content_filter",
+  "error",
+  "aborted",
+]);
 
-// These finish reasons mean the text cannot be trusted.
-const BAD_FINISH = new Set(["content-filter", "error", "aborted"]);
-
-/**
- * How one live provider is reached through the gateway.
- *
- * @typedef {{
- *   provider: string,
- *   timeoutVar: string,
- *   modelId: (env?: object) => string
- * }} MastraTarget
- */
-
-/**
- * Validate and resolve everything the Mastra runtime needs from the
- * environment before any request is made.
- *
- * @param {MastraTarget} target
- */
 export function loadMastraConfig({ modelId, timeoutVar }, env = process.env) {
   const gw = loadGatewayConfig({ timeoutVar }, env);
 
@@ -68,25 +52,12 @@ async function loadMastra() {
         "tools/blueprint-compiler (Mastra is a package dependency, " +
         "never a root one)."
     );
-
     err.cause = cause;
     throw err;
   }
 }
 
-/**
- * IR -> Mastra Agent. Does not call the model.
- *
- * errorProcessorDefaults: false disables Mastra's built-in error processors,
- * which can retry failed generations independently of the gateway retry policy.
- *
- * @param {import("../ir.js").BlueprintIR} ir
- * @param {ReturnType<typeof loadMastraConfig>} config
- * @param {{ Agent?: Function, noopLogger?: object }} [deps]
- */
 export async function buildMastraAgent(ir, config, deps = {}) {
-  // Defense in depth: validation should already fail closed, but Studio and
-  // Arena may call the runtime directly. Never run a persona without refusals.
   if (
     typeof ir?.refusalCriteria !== "string" ||
     !ir.refusalCriteria.trim()
@@ -111,14 +82,12 @@ export async function buildMastraAgent(ir, config, deps = {}) {
       url: config.modelUrl,
       apiKey: config.apiKey,
     },
-
-    // Retry policy belongs to withGatewayRetry(), not Mastra processors.
+    // Gateway retry policy is the only retry policy.
     errorProcessorDefaults: false,
     maxRetries: 0,
   });
 
-  // Mastra's default logger can print raw errors and request details to
-  // stderr, corrupting the CLI's one-JSON-line audit record.
+  // Keep raw errors/request details out of CLI audit output.
   agent.__setLogger?.(noopLogger);
 
   return agent;
@@ -127,8 +96,7 @@ export async function buildMastraAgent(ir, config, deps = {}) {
 const cut = (value) => String(value ?? "").slice(0, 300);
 
 /**
- * Translate Mastra / AI SDK failures into error shapes understood by
- * fallback.js. Preserve auth/config failures and unexpected programming bugs.
+ * Translate Mastra / AI SDK errors into shapes understood by fallback.js.
  */
 export function normalizeError(err, signal) {
   if (signal?.aborted) {
@@ -138,8 +106,6 @@ export function normalizeError(err, signal) {
     );
   }
 
-  // Mastra may wrap an AI SDK error. Inspect a short cause chain rather than
-  // relying on one particular wrapping depth.
   const chain = [];
   let current = err;
 
@@ -148,9 +114,6 @@ export function normalizeError(err, signal) {
     current = current.cause;
   }
 
-  // A malformed or unusable successful response must fail closed. In
-  // particular, Mastra can throw AI_InvalidResponseDataError before it
-  // returns a result when the gateway responds with choices: [].
   const invalidResponse = chain.find(
     (item) =>
       item?.name === "AI_InvalidResponseDataError" ||
@@ -172,7 +135,6 @@ export function normalizeError(err, signal) {
 
   if (call) {
     if (Number.isInteger(call.statusCode)) {
-      // A 2xx here means the body could not be read: treat it as a bad gateway.
       if (call.statusCode >= 200 && call.statusCode < 300) {
         return httpError(
           "NewPush AI gateway (mastra) returned unparseable JSON.",
@@ -186,25 +148,19 @@ export function normalizeError(err, signal) {
       );
     }
 
-    // An APICallError without an HTTP status means the connection itself
-    // failed. Match the network error shape used by gateway.js.
     return new TypeError("fetch failed", { cause: call });
   }
 
   if (chain.some((item) => item?.name === "TypeError")) {
-    // The AI SDK may dereference a missing response field. Treat malformed
-    // provider output as unusable, not as a programming-bug fallback.
     const typeError = chain.find((item) => item?.name === "TypeError");
-
     return emptyError(
       `Mastra could not read the gateway response (${cut(typeError.message)}).`
     );
   }
 
-  return err; // Unexpected bugs keep propagating.
+  return err ?? new Error("Mastra generation failed.");
 }
 
-/** Throw PROVIDER_EMPTY unless the result is text we can trust. */
 function assertUsable(result) {
   if (result?.tripwire) {
     throw emptyError(
@@ -224,64 +180,122 @@ function assertUsable(result) {
 }
 
 /**
- * Run the IR as a Mastra agent on the chosen provider's model.
+ * Run a Mastra agent.
  *
- * The output shape matches runMock / runGemini / runXai, except provider
- * identifies the actual model provider and runtime is "mastra".
+ * Without target.onToken, use generate() and return the completed response.
+ * With target.onToken, stream chunks as they arrive.
  *
- * This uses generate(), then emits the completed text through the existing
- * caller interface. It does not emit partial tokens while generation is
- * underway, so a failed attempt cannot leak partial output before fallback.
- *
- * @param {import("../ir.js").BlueprintIR} ir
- * @param {string} prompt
- * @param {MastraTarget} target
- * @param {{ Agent?: Function, noopLogger?: object }} [deps]
+ * Once a token has been emitted, an error is marked noFallback to prevent
+ * retries or provider fallback from duplicating a partial answer.
  */
 export async function runMastra(ir, prompt, target, deps = {}) {
   const config = loadMastraConfig(target);
   const agent = await buildMastraAgent(ir, config, deps);
-
   const started = Date.now();
+  const streaming = typeof target.onToken === "function";
+
+  // This spans attempts so no retry can duplicate externally emitted text.
+  let emitted = false;
 
   const attempt = async () => {
-    // A fresh timeout signal is required for each retry attempt.
     const signal = AbortSignal.timeout(config.timeoutMs);
 
-    let result;
-
     try {
-      result = await agent.generate(prompt, {
+      // Non-streaming callers retain the original JSON completion behavior.
+      // This also keeps tests and CLI callers from unnecessarily requesting
+      // an SSE response from an OpenAI-compatible gateway.
+      if (!streaming) {
+        let result;
+
+        try {
+          result = await agent.generate(prompt, {
+            abortSignal: signal,
+            maxRetries: 0,
+            modelSettings: { maxRetries: 0 },
+            maxProcessorRetries: 0,
+          });
+        } catch (err) {
+          throw normalizeError(err, signal);
+        }
+
+        if (signal.aborted) {
+          throw normalizeError(null, signal);
+        }
+
+        assertUsable(result);
+        return result;
+      }
+
+      const stream = await agent.stream(prompt, {
         abortSignal: signal,
         maxRetries: 0,
-        // AI SDK model-call retries are disabled so the gateway retry policy
-        // is the sole owner of HTTP/network retries.
-        modelSettings: {
-          maxRetries: 0,
-        },
-
-        // Do not let processors trigger additional generations on failure.
+        modelSettings: { maxRetries: 0 },
         maxProcessorRetries: 0,
       });
+
+      let streamedText = "";
+
+      for await (const chunk of stream.textStream) {
+        if (typeof chunk !== "string" || chunk.length === 0) continue;
+
+        // Mark before invoking the callback: the caller may have received it
+        // even if the callback throws.
+        emitted = true;
+        streamedText += chunk;
+        target.onToken(chunk);
+      }
+
+      if (signal.aborted) {
+        throw normalizeError(null, signal);
+      }
+
+      const [finalText, usage, finishReason] = await Promise.all([
+        stream.text,
+        stream.usage,
+        stream.finishReason,
+      ]);
+
+      if (stream.error) {
+        const streamError =
+          stream.error instanceof Error
+            ? stream.error
+            : new Error(
+                typeof stream.error === "string"
+                  ? stream.error
+                  : stream.error.message ?? "Mastra stream failed."
+              );
+        throw streamError;
+      }
+
+      const result = {
+        text:
+          typeof finalText === "string" && finalText.length > 0
+            ? finalText
+            : streamedText,
+        usage: usage ?? {},
+        finishReason,
+        tripwire: stream.tripwire,
+      };
+
+      assertUsable(result);
+      return result;
     } catch (err) {
-      throw normalizeError(err, signal);
-    }
+      const normalized = normalizeError(err, signal);
 
-    // Mastra may resolve with finishReason "aborted" instead of rejecting.
-    if (signal.aborted) {
-      throw normalizeError(null, signal);
-    }
+      // Never retry or fall back after partial output has been delivered.
+      if (emitted && normalized && typeof normalized === "object") {
+        normalized.noFallback = true;
+      }
 
-    return result;
+      throw normalized;
+    }
   };
 
-  // Only this layer retries 429, 5xx and eligible network failures.
   const result = await withGatewayRetry(attempt, config);
-
-  assertUsable(result);
-
   const usage = result.usage ?? {};
 
+  // In streaming mode, the server has already received the tokens. The full
+  // output is still returned for the usual compile/runtime result structure.
   return {
     provider: target.provider,
     runtime: "mastra",
@@ -291,7 +305,6 @@ export async function runMastra(ir, prompt, target, deps = {}) {
       inputTokens: usage.inputTokens ?? 0,
       outputTokens: usage.outputTokens ?? 0,
       latencyMs: Date.now() - started,
-      // Not priced yet, like gemini.js / xai.js.
       costUsd: 0,
     },
   };

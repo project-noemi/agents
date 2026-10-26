@@ -5,6 +5,8 @@ const path = require('path');
 
 const {
     detectCarveOut,
+    limitDiffForPrompt,
+    MAX_DIFF_FILE_CHARS,
     validateFindings,
     gateVerdict,
     recommend,
@@ -28,6 +30,17 @@ const {
 // These tests assert the properties that must hold no matter what the reviewing
 // model returns. The model is untrusted input; anything the review's integrity
 // depends on is enforced in code, and that is what is covered here.
+
+test('limitDiffForPrompt keeps a small file and omits an oversized one', () => {
+    const small = 'diff --git a/README.md b/README.md\n+hello\n';
+    const huge = `diff --git a/services/noemi-knowledge-mcp/src/corpus.generated.json b/services/noemi-knowledge-mcp/src/corpus.generated.json\n${'x'.repeat(MAX_DIFF_FILE_CHARS)}\n`;
+    const out = limitDiffForPrompt(`${small}${huge}`);
+    assert.match(out, /\+hello/);
+    assert.match(out, /Omitted from the model prompt/);
+    assert.match(out, /corpus\.generated\.json/);
+    assert.equal(out.includes('x'.repeat(80)), false);
+    assert.equal(limitDiffForPrompt(''), '');
+});
 
 test('carve-out: governance-critical paths are detected', () => {
     const files = ['README.md', '.github/CODEOWNERS', 'scripts/foo.js'];

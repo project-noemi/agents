@@ -175,6 +175,30 @@ function isBudgetOrForbidden(status, raw) {
   return STOP_TYPES.test(type) || STOP_MESSAGE.test(message);
 }
 
+/**
+ * The JSON object or array in a reply, tolerating a code fence or prose around
+ * it. Returns null when there is neither.
+ */
+function parseJsonValue(text) {
+  const raw = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  const attempt = (s) => {
+    try {
+      const value = JSON.parse(s);
+      return value && typeof value === 'object' ? value : null;
+    } catch {
+      return null;
+    }
+  };
+  const whole = attempt(raw);
+  if (whole) return whole;
+  const between = (open, close) => {
+    const start = raw.indexOf(open);
+    const end = raw.lastIndexOf(close);
+    return start >= 0 && end > start ? attempt(raw.slice(start, end + 1)) : null;
+  };
+  return between('{', '}') || between('[', ']');
+}
+
 function parseJsonObject(text) {
   const raw = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   const attempt = (s) => {
@@ -194,6 +218,9 @@ function parseJsonObject(text) {
 
 /**
  * One chat completion that must answer with one JSON object.
+ * `normalize`, when given, receives the parsed reply — an object or an array —
+ * and returns the object to use, or null to refuse it as unparseable. Without
+ * it, only an object is accepted.
  * @returns {Promise<{ json: object, model: string, finishReason: string }>}
  */
 async function chatJson({
@@ -207,6 +234,7 @@ async function chatJson({
   timeoutMs,
   label = 'Model',
   env = process.env,
+  normalize,
 } = {}) {
   const url = `${apiBase}/chat/completions`;
   const body = JSON.stringify({
@@ -263,7 +291,9 @@ async function chatJson({
   const choice = payload && payload.choices && payload.choices[0] ? payload.choices[0] : {};
   const message = choice.message || {};
   const content = typeof message.content === 'string' ? message.content : '';
-  const json = parseJsonObject(content);
+  const json = typeof normalize === 'function'
+    ? normalize(parseJsonValue(content))
+    : parseJsonObject(content);
   if (!json) {
     const reasoningLen = typeof message.reasoning_content === 'string' ? message.reasoning_content.length : 0;
     const preview = redactModelError(content, apiKey).slice(0, 120);
@@ -309,6 +339,7 @@ module.exports = {
   completionTokenFields,
   isBudgetOrForbidden,
   parseJsonObject,
+  parseJsonValue,
   postJson,
   redactModelError,
   transportError,

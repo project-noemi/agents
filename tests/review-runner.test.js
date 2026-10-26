@@ -1159,6 +1159,67 @@ test('review gateway: 403 is not retried; 503 is', async () => {
     }
 });
 
+test('normalizeGateReply: an array reply keeps every element\'s findings', () => {
+    const { normalizeGateReply } = require('../scripts/review-pr.js');
+    const object = { findings: [], rationale: 'ok' };
+    assert.equal(normalizeGateReply(object), object);
+    assert.deepEqual(normalizeGateReply([object]), { findings: [], rationale: 'ok' });
+    const split = normalizeGateReply([
+        { findings: [], rationale: 'premise holds' },
+        { findings: [{ severity: 'high', claim: 'second element' }], rationale: 'but this' },
+    ]);
+    assert.deepEqual(split.findings, [{ severity: 'high', claim: 'second element' }]);
+    assert.equal(split.rationale, 'premise holds\n\nbut this');
+    assert.equal(gateVerdict(validateFindings(split.findings, 'code')).verdict, 'fail');
+});
+
+test('normalizeGateReply: anything but an object or an array of objects is refused', () => {
+    const { normalizeGateReply } = require('../scripts/review-pr.js');
+    for (const bad of [null, [], ['text'], [{ findings: [] }, 'text'], [{ findings: 'none' }], 'x', 3]) {
+        assert.equal(normalizeGateReply(bad), null, JSON.stringify(bad));
+    }
+});
+
+test('review gateway: a gate reply wrapped in an array is reviewed, not refused', async () => {
+    const { callGatewayGate } = require('../scripts/review-pr.js');
+    const gateway = { openaiBase: 'https://ai-gw.newpush.com/v1', apiKey: 'gw-test' };
+    // The shape Gemini 3.1 Pro returned on newpush/identity#1 (2026-10-25).
+    const content = '[ { "findings": [], "rationale": "docs only" }, '
+        + '{ "findings": [{"severity":"medium","file":"README.md","line":2,"claim":"c","evidence":"e"}], "rationale": "nit" } ]';
+    const reply = await callGatewayGate('google/x', 'p', gateway, async () => ({
+        ok: true, status: 200, json: async () => ({ choices: [{ finish_reason: 'stop', message: { content } }] }),
+    }));
+    assert.equal(reply.findings.length, 1);
+    assert.equal(reply.findings[0].file, 'README.md');
+});
+
+test('review gateway: an array that is not gate objects is still unparseable', async () => {
+    const { callGatewayGate } = require('../scripts/review-pr.js');
+    const gateway = { openaiBase: 'https://ai-gw.newpush.com/v1', apiKey: 'gw-test' };
+    await assert.rejects(
+        () => callGatewayGate('google/x', 'p', gateway, async () => ({
+            ok: true, status: 200, json: async () => ({ choices: [{ finish_reason: 'stop', message: { content: '["looks fine"]' } }] }),
+        })),
+        (err) => err.code === 'unparseable-json',
+    );
+});
+
+test('callGemini: an array reply keeps its findings instead of passing in silence', async () => {
+    const { callGemini } = require('../scripts/review-pr.js');
+    const cfg = { backend: 'generativelanguage', project: '', location: 'global' };
+    const vertexReply = (text) => async () => ({
+        ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }),
+    });
+    const reply = await callGemini('models/x', 'p', 'tok', cfg, vertexReply(
+        '[{"findings":[{"severity":"critical","claim":"secret in diff"}],"rationale":"r"}]',
+    ));
+    assert.equal(gateVerdict(validateFindings(reply.findings, 'code')).verdict, 'fail');
+    await assert.rejects(
+        () => callGemini('models/x', 'p', 'tok', cfg, vertexReply('[1, 2]')),
+        /unparseable JSON/,
+    );
+});
+
 test('carve-out: the model route and chat client are governance files', () => {
     assert.deepEqual(detectCarveOut(['scripts/model-config.js', 'scripts/model-chat.js']), [
         'scripts/model-config.js', 'scripts/model-chat.js',

@@ -226,14 +226,23 @@ Settings → Secrets and variables → Actions → **Variables** tab. None is a
 secret, and the tab matters: Secrets are masked and write-only, which makes
 non-secrets harder to audit.
 
+Only the two Infisical variables are always required. The model route is
+decided per run (Decision [2026-10-22-0003]): when the Infisical project holds
+`AI_GW_API_TOKEN`, the gates go to the NewPush AI gateway and no GCP variable is
+needed. Without that key, the review calls Vertex directly and needs the GCP
+variables. `AI_REVIEW_ROUTE` (`auto`, `gateway`, `vertex`; default `auto`)
+forces one route; `vertex` hides the gateway key from the review, so the direct
+path stays usable.
+
 | Variable | Value |
 |---|---|
-| `GCP_WIF_PROVIDER` | `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github-provider` |
-| `GCP_SERVICE_ACCOUNT` | `noemi-reviewer@project-noemi.iam.gserviceaccount.com` |
-| `GOOGLE_CLOUD_PROJECT` | `project-noemi` |
-| `GOOGLE_CLOUD_LOCATION` | `us-central1` |
-| `INFISICAL_PROJECT_ID` | your Infisical workspace ID |
-| `INFISICAL_IDENTITY_ID` | your Infisical machine identity ID |
+| `INFISICAL_PROJECT_ID` | your Infisical workspace ID (required) |
+| `INFISICAL_IDENTITY_ID` | your Infisical machine identity ID (required) |
+| `AI_REVIEW_ROUTE` | optional: `auto` (default), `gateway`, or `vertex` |
+| `GCP_WIF_PROVIDER` | vertex route only: `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github-provider` |
+| `GCP_SERVICE_ACCOUNT` | vertex route only: `noemi-reviewer@project-noemi.iam.gserviceaccount.com` |
+| `GOOGLE_CLOUD_PROJECT` | vertex route only: `project-noemi` |
+| `GOOGLE_CLOUD_LOCATION` | vertex route only: `us-central1` |
 
 ⚠️ `GCP_WIF_PROVIDER` takes the project **number**, not the project ID. Using the
 ID fails with a message that does not mention which field is wrong.
@@ -433,7 +442,16 @@ copying them into GitHub repository secrets — but then every secret lives in t
 places and must be rotated in both. People forget the second one.
 
 Instead, GitHub proves its identity to Infisical and receives temporary access.
-**No secret is stored in GitHub at all.**
+**No secret is stored in GitHub at all.** This is vault mode, and it wins
+whenever `INFISICAL_PROJECT_ID` and `INFISICAL_IDENTITY_ID` are set.
+
+**Direct mode (no Infisical).** An organization without a vault can store two
+Actions secrets instead: `AI_GW_API_TOKEN` (its NewPush AI gateway key) and
+`REVIEWER_APP_PRIVATE_KEY` with the `REVIEWER_APP_ID` variable (its own
+reviewer App). The caller template passes exactly these two by name, never
+`secrets: inherit`. Without a reviewer App, comments are posted with the
+workflow's `GITHUB_TOKEN` as `github-actions[bot]`. Both secrets live in GitHub
+and must be rotated there (Decision [2026-10-22-0004]).
 
 ## Create an Infisical machine identity
 
@@ -613,7 +631,10 @@ reviewer starting at the diff approves that every time, because at the diff leve
 it looks like good work.
 
 Premise failures always come to a human. "This should not be merged at all" is
-too consequential and too debatable for automation.
+too consequential and too debatable for automation. When the person agrees, the
+playbook is to comment and close, not to ask for another revision of the same
+idea (`docs/AI_REVIEW_GOVERNANCE.md`, "When the human agrees the change should
+not exist").
 
 ### Gate 2 — Framing: *does the description match the change?*
 
@@ -686,9 +707,10 @@ need no configuration of their own (Org Settings → Secrets and variables →
 Actions → Variables, or `gh variable set NAME --org ORG --visibility all`,
 which requires `admin:org` scope):
 
-`GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, `GOOGLE_CLOUD_PROJECT`,
 `INFISICAL_PROJECT_ID`, `INFISICAL_IDENTITY_ID` — same values as the
-repository-level ones documented above. (`GOOGLE_CLOUD_LOCATION` defaults to
+repository-level ones documented above. With `AI_GW_API_TOKEN` in that
+Infisical project, that is all the model route needs. For the direct Vertex
+route also set `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, `GOOGLE_CLOUD_PROJECT`. (`GOOGLE_CLOUD_LOCATION` defaults to
 `global` and can be omitted.) Optional: `GEMINI_REVIEW_MODEL` (`auto` discovers
 the highest Pro preview, else a stable Pro; set an explicit id to pin) and
 `REVIEWER_APP_ID`.

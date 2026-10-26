@@ -3,6 +3,10 @@
 /**
  * Live Stage B′ critic (Gemini Pro, same selection rule as the fleet reviewer).
  *
+ * Route comes from scripts/model-config.js. With a gateway key the call goes
+ * to the NewPush AI gateway with the critic pin and needs no gcloud. Without
+ * one it calls Vertex with application-default credentials.
+ *
  * Structural critique always runs first. Gemini is asked only after that pass,
  * and only about premise/framing. A model outage is not a plan verdict:
  * 429/5xx retry, then throw so the host re-queues. accepted is never inferred
@@ -13,6 +17,8 @@ const {
   selectModel, listModels, resolvePinnedModel, backendConfig, generateUrl,
 } = require('../scripts/resolve-gemini-model.js');
 const { getAccessToken } = require('../scripts/gcp-token.js');
+const { loadModelConfig } = require('../scripts/model-config.js');
+const { chatJson } = require('../scripts/model-chat.js');
 const { withRetry } = require('../scripts/resilience_helpers.js');
 const { critiquePlan, buildPlanRevisionPrompt } = require('./plan.js');
 const { httpError, modelRetryOptions } = require('./http.js');
@@ -135,17 +141,52 @@ async function resolveCriticModel({ token, cfg, pin }) {
   return chosen.id;
 }
 
-async function liveCallModel(plan, opts = {}) {
+/**
+ * One Gemini call on whichever route the config selects. Shared by the plan
+ * critic, the plan reviser (`stage: 'plan'`), and the doc critic. Never
+ * retries: callers wrap it in withRetry.
+ */
+async function callCriticModel(prompt, opts = {}) {
+  const config = opts.config || loadModelConfig(opts.env || process.env);
+  const stage = opts.stage === 'plan' ? 'plan' : 'critic';
+  if (config.mode === 'gateway') {
+    const { json } = await chatJson({
+      apiBase: config.gateway.openaiBase,
+      apiKey: config.gateway.apiKey,
+      model: opts.model || config.stages[stage].model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0,
+      fetchImpl: opts.fetchImpl,
+      label: config.stages[stage].provider === 'google' ? 'Gemini' : config.stages[stage].provider,
+    });
+    return json;
+  }
+  // Direct access exists for Gemini (Vertex) only. Another provider for the
+  // plan writer is a gateway route; say so instead of sending it to Vertex.
+  if (config.stages[stage].provider !== 'google') {
+    throw httpError(
+      `${stage} model '${config.stages[stage].model}' (${config.stages[stage].provider}) needs the AI gateway; `
+      + 'set AI_GW_API_TOKEN. Direct access covers Gemini on Vertex only.',
+      400,
+    );
+  }
   const cfg = opts.cfg || backendConfig();
   const token = opts.token || await getAccessToken();
-  const model = opts.model || await resolveCriticModel({ token, cfg, pin: opts.pin });
+  // Native plan writer: PLAN_MODEL when pinned, else the same Vertex
+  // discovery as the critic (unchanged fallback).
+  const pin = opts.pin || (stage === 'plan' ? config.stages.plan.model : '');
+  const model = opts.model || await resolveCriticModel({ token, cfg, pin });
   return callGeminiJson({
     model,
-    prompt: buildCriticPrompt(plan),
+    prompt,
     token,
     cfg,
     fetchImpl: opts.fetchImpl,
   });
+}
+
+async function liveCallModel(plan, opts = {}) {
+  return callCriticModel(buildCriticPrompt(plan), opts);
 }
 
 async function critiquePlanLive(plan, opts = {}) {
@@ -164,18 +205,7 @@ async function revisePlanLive(plan, findings, opts = {}) {
   const prompt = opts.prompt || buildPlanRevisionPrompt(plan, findings, opts.issueText || '');
   const invoke = typeof opts.callModel === 'function'
     ? () => opts.callModel(plan, findings, prompt)
-    : async () => {
-      const cfg = opts.cfg || backendConfig();
-      const token = opts.token || await getAccessToken();
-      const model = opts.model || await resolveCriticModel({ token, cfg, pin: opts.pin });
-      return callGeminiJson({
-        model,
-        prompt,
-        token,
-        cfg,
-        fetchImpl: opts.fetchImpl,
-      });
-    };
+    : () => callCriticModel(prompt, { ...opts, stage: 'plan' });
   const reply = await withRetry(invoke, modelRetryOptions());
   return {
     plan: reply && typeof reply.plan === 'string' ? reply.plan : '',
@@ -187,6 +217,7 @@ module.exports = {
   BLOCKING,
   SEVERITIES,
   buildCriticPrompt,
+  callCriticModel,
   callGeminiJson,
   critiquePlanLive,
   normalizeModelCritique,

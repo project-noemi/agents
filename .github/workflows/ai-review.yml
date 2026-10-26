@@ -57,9 +57,26 @@
 #
 # Configuration comes from Actions VARIABLES resolved in the caller's context —
 # set them at the ORGANIZATION level so member repos need none of their own.
-# No credential is stored in GitHub. The GitHub token comes from Infisical via
-# OIDC, and Google access comes from Workload Identity Federation — required
-# here, since org policy disallows API keys and service-account keys alike.
+# Credential source (Decision [2026-10-22-0004]):
+#   vault  — INFISICAL_PROJECT_ID + INFISICAL_IDENTITY_ID are set: credentials
+#            come from Infisical via OIDC and nothing is stored in GitHub. Wins
+#            whenever it is configured (the NewPush fleet).
+#   direct — otherwise: Actions secrets AI_GW_API_TOKEN and
+#            REVIEWER_APP_PRIVATE_KEY (with the REVIEWER_APP_ID variable). A
+#            caller passes them explicitly (templates/ci/ai-review-caller.yml).
+#            Without a reviewer App the comment is posted with the workflow's
+#            GITHUB_TOKEN, as github-actions[bot].
+# The model route (Decision [2026-10-22-0003]):
+#   gateway — the Infisical project holds AI_GW_API_TOKEN (or AI_GW_API_KEY):
+#             gates go to the NewPush AI gateway; no Google credential is used.
+#   vertex  — direct Vertex through Workload Identity Federation
+#             (GCP_WIF_PROVIDER + GCP_SERVICE_ACCOUNT). Org policy disallows
+#             Google API keys and service-account keys, so federation is the
+#             only direct path.
+# AI_REVIEW_ROUTE (Actions variable): auto (default: gateway when the vault has
+# the key, else vertex), gateway, or vertex. `vertex` strips the gateway key
+# from the review step, so the direct path stays usable on purpose. No
+# variable is required; the GCP variables only for vertex.
 #
 # The carve-out, gate ordering, and severity rubric are enforced inside
 # scripts/review-pr.js — deliberately not duplicated here. Two copies of a
@@ -90,6 +107,14 @@ on:
         # main, not develop: reviewer scripts ride the release train like the
         # workflow itself, so the fleet runs only human-reviewed reviewer code.
         default: main
+    # Direct mode only (no Infisical). Optional: vault mode ignores them.
+    secrets:
+      AI_GW_API_TOKEN:
+        description: 'NewPush AI gateway virtual key (direct mode)'
+        required: false
+      REVIEWER_APP_PRIVATE_KEY:
+        description: 'Reviewer GitHub App private key (direct mode; with the REVIEWER_APP_ID variable)'
+        required: false
 
 permissions:
   contents: read
@@ -116,19 +141,17 @@ jobs:
         env:
           PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
           IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
-          WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
-          GCP_SA: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
         run: |
-          missing=()
-          [[ -z "${PROJECT_ID}"   ]] && missing+=(INFISICAL_PROJECT_ID)
-          [[ -z "${IDENTITY_ID}"  ]] && missing+=(INFISICAL_IDENTITY_ID)
-          [[ -z "${WIF_PROVIDER}" ]] && missing+=(GCP_WIF_PROVIDER)
-          [[ -z "${GCP_SA}"       ]] && missing+=(GCP_SERVICE_ACCOUNT)
-          if (( ${#missing[@]} )); then
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "missing=${missing[*]}" >> "$GITHUB_OUTPUT"
-          else
+          # Vault mode needs the Infisical variables; direct mode needs only
+          # the repository's own secrets, which an in-repo branch receives.
+          # A fork PR gets neither.
+          if [[ -n "${PROJECT_ID}" && -n "${IDENTITY_ID}" ]] || [[ "${HEAD_REPO}" == "${REPO}" ]]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "missing=INFISICAL_PROJECT_ID, INFISICAL_IDENTITY_ID (vault mode) or repository secrets (direct mode)" >> "$GITHUB_OUTPUT"
           fi
 
       # Warn when configuration is unavailable (fork PRs). Do NOT fail: this
@@ -162,7 +185,7 @@ jobs:
     # 5. workflow_call
     # The fork-notice job handles the unprivileged pull_request path.
     if: |
-      (github.event_name == 'pull_request' && vars.INFISICAL_PROJECT_ID != '') ||
+      (github.event_name == 'pull_request' && (vars.INFISICAL_PROJECT_ID != '' || github.event.pull_request.head.repo.full_name == github.repository)) ||
       (github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name == 'ai-review') ||
       (github.event_name == 'pull_request_target' && github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'ai-review')) ||
       github.event_name == 'workflow_dispatch' ||
@@ -199,33 +222,35 @@ jobs:
           WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
           GCP_SA: ${{ vars.GCP_SERVICE_ACCOUNT }}
         run: |
-          missing=()
-          [[ -z "${PROJECT_ID}"   ]] && missing+=(INFISICAL_PROJECT_ID)
-          [[ -z "${IDENTITY_ID}"  ]] && missing+=(INFISICAL_IDENTITY_ID)
-          [[ -z "${WIF_PROVIDER}" ]] && missing+=(GCP_WIF_PROVIDER)
-          [[ -z "${GCP_SA}"       ]] && missing+=(GCP_SERVICE_ACCOUNT)
-          if (( ${#missing[@]} )); then
-            echo "::error title=Privileged advisory misconfiguration::This job should only run when config is available, but variables are missing: ${missing[*]}. Check job conditions."
-            exit 1
+          if [[ -n "${PROJECT_ID}" && -n "${IDENTITY_ID}" ]]; then
+            echo "mode=vault" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Credentials::Infisical (vault mode)"
+          else
+            if [[ -n "${PROJECT_ID}${IDENTITY_ID}" ]]; then
+              echo "::error title=Half-configured vault::Set both INFISICAL_PROJECT_ID and INFISICAL_IDENTITY_ID, or neither (direct mode)."
+              exit 1
+            fi
+            echo "mode=direct" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Credentials::Actions secrets (direct mode)"
+          fi
+          # Direct Vertex is available only with both federation variables.
+          if [[ -n "${WIF_PROVIDER}" && -n "${GCP_SA}" ]]; then
+            echo "wif=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "wif=false" >> "$GITHUB_OUTPUT"
           fi
           echo "configured=true" >> "$GITHUB_OUTPUT"
 
       # Federation, not a key.
-      - name: Authenticate to Google Cloud (Workload Identity Federation)
-        id: gcpauth
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
-          token_format: access_token
-
       - name: Install Infisical CLI
+        if: steps.config.outputs.mode == 'vault'
         run: |
           curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
           sudo apt-get install -y infisical
           infisical --version
 
       - name: Authenticate to Infisical via OIDC
+        if: steps.config.outputs.mode == 'vault'
         env:
           IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
           OIDC_AUDIENCE: ${{ vars.INFISICAL_OIDC_AUDIENCE || 'infisical' }}
@@ -241,13 +266,89 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
 
+      # Model route, decided before any Google credential is minted. Checks
+      # only whether the vault holds a gateway key; the value is never read
+      # into this step. It also checks that the checked-out reviewer can use
+      # the gateway: on pull_request this YAML comes from the PR while the
+      # scripts come from tooling-ref (main), and a reviewer without
+      # scripts/model-config.js reads only Google credentials. Then `auto`
+      # stays on vertex.
+      - name: Resolve model route
+        id: route
+        env:
+          PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+          WANT: ${{ vars.AI_REVIEW_ROUTE || 'auto' }}
+          WIF: ${{ steps.config.outputs.wif }}
+          MODE: ${{ steps.config.outputs.mode }}
+          # A boolean, not the secret: the value never enters this step.
+          DIRECT_GATEWAY: ${{ secrets.AI_GW_API_TOKEN != '' }}
+        run: |
+          gateway=false
+          if [[ "$MODE" == vault ]]; then
+            if infisical run --projectId="$PROJECT_ID" --env=dev --silent -- \
+                bash -c '[[ -n "${AI_GW_API_TOKEN:-}${AI_GW_API_KEY:-}" ]]'; then
+              gateway=true
+            fi
+          elif [[ "$DIRECT_GATEWAY" == true ]]; then
+            gateway=true
+          fi
+          if [[ -f scripts/model-config.js ]]; then supports=true; else supports=false; fi
+          case "$WANT" in
+            auto)    if [[ "$gateway" == true && "$supports" == true ]]; then route=gateway; else route=vertex; fi ;;
+            gateway) route=gateway ;;
+            vertex)  route=vertex ;;
+            *) echo "::error title=Bad AI_REVIEW_ROUTE::Use auto, gateway or vertex (got '${WANT}')."; exit 1 ;;
+          esac
+          if [[ "$gateway" == true && "$supports" != true && "$WANT" == auto ]]; then
+            echo "::notice title=Gateway not used::The reviewer at this tooling ref predates the gateway route; using vertex."
+          fi
+          if [[ "$route" == gateway && "$supports" != true ]]; then
+            echo "::error title=Reviewer too old::AI_REVIEW_ROUTE=gateway, but the reviewer at this tooling ref has no gateway support (scripts/model-config.js)."
+            exit 1
+          fi
+          if [[ "$route" == gateway && "$gateway" != true ]]; then
+            echo "::error title=No gateway key::AI_REVIEW_ROUTE=gateway, but there is no AI_GW_API_TOKEN (Infisical project in vault mode, Actions secret in direct mode)."
+            exit 1
+          fi
+          if [[ "$route" == vertex && "$WIF" != true ]]; then
+            echo "::error title=No model route::Provide AI_GW_API_TOKEN (Infisical project, or Actions secret in direct mode) for the gateway, or set GCP_WIF_PROVIDER and GCP_SERVICE_ACCOUNT for direct Vertex."
+            exit 1
+          fi
+          echo "route=${route}" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Model route::${route}"
+
+      # Direct Vertex only. Skipped on the gateway route.
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        id: gcpauth
+        if: steps.route.outputs.route == 'vertex'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+
       - name: Resolve reviewer App ID
         id: appid
         env:
           PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
           VAR_APP_ID: ${{ vars.REVIEWER_APP_ID }}
+          MODE: ${{ steps.config.outputs.mode }}
+          DIRECT_KEY: ${{ secrets.REVIEWER_APP_PRIVATE_KEY != '' }}
         run: |
           APP_ID="${VAR_APP_ID}"
+          if [[ "$MODE" == direct ]]; then
+            # Direct mode: the variable and the Actions secret, both or neither.
+            if [[ -n "$APP_ID" && "$DIRECT_KEY" == true ]]; then
+              echo "present=true" >> "$GITHUB_OUTPUT"
+              echo "REVIEWER_APP_ID=$APP_ID" >> "$GITHUB_ENV"
+            else
+              if [[ -n "$APP_ID" || "$DIRECT_KEY" == true ]]; then
+                echo "::warning title=Reviewer App incomplete::Set both the REVIEWER_APP_ID variable and the REVIEWER_APP_PRIVATE_KEY secret. Posting as github-actions[bot]."
+              fi
+              echo "present=false" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
           if [[ -z "$APP_ID" ]]; then
             APP_ID=$(infisical secrets get REVIEWER_APP_ID \
               --projectId="$PROJECT_ID" --env=dev --plain || true)
@@ -260,7 +361,7 @@ jobs:
           fi
 
       - name: Fetch reviewer app key
-        if: steps.appid.outputs.present == 'true'
+        if: steps.appid.outputs.present == 'true' && steps.config.outputs.mode == 'vault'
         env:
           PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
         run: |
@@ -283,7 +384,7 @@ jobs:
         uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ env.REVIEWER_APP_ID }}
-          private-key: ${{ env.REVIEWER_APP_KEY }}
+          private-key: ${{ env.REVIEWER_APP_KEY || secrets.REVIEWER_APP_PRIVATE_KEY }}
 
       - name: Run three-gate review
         id: review
@@ -293,6 +394,11 @@ jobs:
           GEMINI_REVIEW_FLOOR: ${{ vars.GEMINI_REVIEW_FLOOR || 'pro' }}
           INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
+          MODEL_ROUTE: ${{ steps.route.outputs.route }}
+          MODE: ${{ steps.config.outputs.mode }}
+          DIRECT_GATEWAY_KEY: ${{ secrets.AI_GW_API_TOKEN }}
+          # Direct mode without a reviewer App: post as github-actions[bot].
+          FALLBACK_GH_TOKEN: ${{ steps.apptoken.outputs.token == '' && steps.config.outputs.mode == 'direct' && github.token || '' }}
           GCP_ACCESS_TOKEN: ${{ steps.gcpauth.outputs.access_token }}
           GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT || 'project-noemi' }}
           GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'global' }}
@@ -306,9 +412,29 @@ jobs:
           export REVIEW_HALT_FILE="$RUNNER_TEMP/ai-review-halt"
           export REVIEW_FINDINGS_FILE="$RUNNER_TEMP/ai-review-findings.json"
           rm -f "$REVIEW_HALT_FILE" "$REVIEW_FINDINGS_FILE"
+          # The vertex route hides the vault's gateway key from review-pr.js,
+          # which would otherwise prefer it (scripts/model-config.js).
+          strip=()
+          if [[ "$MODEL_ROUTE" == vertex ]]; then
+            strip=(env -u AI_GW_API_TOKEN -u AI_GW_API_KEY)
+          fi
+          args=(--pr "$PR_NUMBER" --floor pro --prefer-pro --prefer-preview-pro --allow-preview)
+          # Direct-mode values leave the environment before either branch, so
+          # they never reach review-pr.js in vault mode.
+          direct_key="$DIRECT_GATEWAY_KEY"
+          fallback_token="$FALLBACK_GH_TOKEN"
+          unset DIRECT_GATEWAY_KEY FALLBACK_GH_TOKEN
           set +e
-          infisical run --projectId="$INFISICAL_PROJECT_ID" --env=dev -- \
-            node scripts/review-pr.js --pr "$PR_NUMBER" --floor pro --prefer-pro --prefer-preview-pro --allow-preview
+          if [[ "$MODE" == vault ]]; then
+            infisical run --projectId="$INFISICAL_PROJECT_ID" --env=dev -- \
+              "${strip[@]}" node scripts/review-pr.js "${args[@]}"
+          else
+            (
+              if [[ "$MODEL_ROUTE" == gateway ]]; then export AI_GW_API_TOKEN="$direct_key"; fi
+              if [[ -n "$fallback_token" ]]; then export REVIEWER_GH_TOKEN="$fallback_token"; fi
+              exec node scripts/review-pr.js "${args[@]}"
+            )
+          fi
           code=$?
           set -e
           if [[ -f "$REVIEW_HALT_FILE" ]]; then
@@ -352,7 +478,7 @@ jobs:
             USER=$(echo "$review" | jq -r '.user')
             gh api --method PUT \
               "repos/${{ github.repository }}/pulls/${PR_NUMBER}/reviews/${REVIEW_ID}/dismissals" \
-              -f message="Advisory AI review found ${BLOCKING_COUNT} blocking finding(s) (critical or high severity) after this approval. Please review the advisory comment posted by @noemi-reviewer-bot and re-approve when findings are addressed or accepted. See docs/AI_REVIEW_GOVERNANCE.md" \
+              -f message="Advisory AI review found ${BLOCKING_COUNT} blocking finding(s) (critical or high severity) after this approval. Please review the advisory AI review comment and re-approve when findings are addressed or accepted. See docs/AI_REVIEW_GOVERNANCE.md" \
               -f event=DISMISS || true
             echo "Dismissed approval from ${USER} (review ${REVIEW_ID})"
             DISMISSED=$((DISMISSED + 1))

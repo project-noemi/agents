@@ -36,9 +36,16 @@
  *   --no-post   run the real review, print the comment instead of posting it.
  *
  * ENVIRONMENT
- *   ADC                  required unless --dry-run. No API key exists: this
- *                        organization's policy disallows API keys AND
- *                        service-account keys, so ADC is the only path.
+ *   Model route — scripts/model-config.js, the same config the coding loop uses:
+ *   AI_GW_API_TOKEN      NewPush AI gateway virtual key (alias AI_GW_API_KEY).
+ *                        When set, every gate goes to the gateway
+ *                        (`google/...` pin, default google/gemini-3.1-pro-preview)
+ *                        and ADC is not read. A NewPush virtual key is not a
+ *                        Gemini API key; Google credentials stay on the
+ *                        gateway. AI_GW_BASE_URL is optional.
+ *   ADC                  without a gateway key, required unless --dry-run.
+ *                        The organization policy disallows Gemini API keys AND
+ *                        service-account keys, so direct Vertex uses ADC.
  *                        Local: gcloud auth application-default login
  *                        CI:    google-github-actions/auth (federation)
  *   GOOGLE_CLOUD_PROJECT required for the vertex backend
@@ -62,7 +69,11 @@
  * EXIT CODES
  *   0 review completed (findings may exist — this is advisory in phase 1)
  *   2 configuration or API error
- *   3 halted BY DESIGN: carve-out, or no model met the floor
+ *   3 halted BY DESIGN: carve-out, no model met the floor, or an explicit
+ *     pin is not callable (not in the Vertex catalogue, or not in the gateway
+ *     key's model list). The DEFAULT gateway pin missing is exit 2, and so is
+ *     a gateway error during a gate: a broken setup or an outage must fail
+ *     the check, never pass it as a halt.
  *
  *   Code 3 is deliberately not 1: `infisical run` exits 1 on its own auth
  *   failures, so 1 cannot mean "halt". HOWEVER, the wrapper also COLLAPSES the
@@ -83,6 +94,8 @@ const {
   selectModel, listModels, resolvePinnedModel, backendConfig, generateUrl,
 } = require('./resolve-gemini-model.js');
 const { getAccessToken, tokenSource } = require('./gcp-token.js');
+const { loadModelConfig, toGatewayModel } = require('./model-config.js');
+const { chatJson, listChatModels } = require('./model-chat.js');
 const http = require('node:http');
 const https = require('node:https');
 const { withRetry } = require('./resilience_helpers.js');
@@ -119,6 +132,9 @@ const CARVE_OUT = [
   // The reviewer's own behavior. A pull request that changes how review,
   // calibration, or the compliance gate works is judged by a human.
   'scripts/review-pr.js',
+  // The model route and the one chat call every gate goes through.
+  'scripts/model-config.js',
+  'scripts/model-chat.js',
   'scripts/calibration-watch.js',
   'agents/coding/sentinel/core.md',
   'agents/coding/sentinel/compliance.md',
@@ -215,6 +231,24 @@ function validateFindings(raw, gateId) {
       ...(known ? {} : { severity_coerced_from: f.severity ?? null }),
     };
   });
+}
+
+/**
+ * The gate reply as one {findings, rationale} object, or null when it is not
+ * one. Gemini sometimes wraps the object in an array, or splits it across
+ * several. Every element's findings are kept: unwrapping only the first could
+ * drop a blocking finding, and an array read as an object has no `findings`
+ * at all, which would pass the gate in silence.
+ */
+function normalizeGateReply(value) {
+  const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+  if (isObject(value)) return value;
+  if (!Array.isArray(value) || value.length === 0 || !value.every(isObject)) return null;
+  if (value.some((part) => part.findings !== undefined && !Array.isArray(part.findings))) return null;
+  return {
+    findings: value.flatMap((part) => part.findings || []),
+    rationale: value.map((part) => part.rationale).filter(Boolean).join('\n\n'),
+  };
 }
 
 /** A gate passes when it produced no blocking findings. */
@@ -657,24 +691,101 @@ async function callGeminiOnce(model, prompt, token, cfg, fetchImpl) {
   }
   const body = await res.json();
   const text = body?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  let reply = null;
   try {
-    return JSON.parse(text);
+    reply = normalizeGateReply(JSON.parse(text));
   } catch {
-    // A malformed reply must not silently become "no findings".
-    throw new Error(`Model returned unparseable JSON: ${text.slice(0, 400)}`);
+    reply = null;
   }
+  // A malformed reply must not silently become "no findings".
+  if (!reply) throw new Error(`Model returned unparseable JSON: ${text.slice(0, 400)}`);
+  return reply;
+}
+
+function reviewRetryOptions() {
+  return {
+    maxRetries: 4,
+    baseDelayMs: Number(process.env.GEMINI_RETRY_BASE_MS || process.env.GITHUB_RETRY_BASE_MS || 2000),
+    maxDelayMs: 20000,
+    retryIf: isTransientGeminiError,
+  };
 }
 
 async function callGemini(model, prompt, token, cfg, fetchImpl) {
-  return withRetry(
-    () => callGeminiOnce(model, prompt, token, cfg, fetchImpl),
-    {
-      maxRetries: 4,
-      baseDelayMs: Number(process.env.GEMINI_RETRY_BASE_MS || process.env.GITHUB_RETRY_BASE_MS || 2000),
-      maxDelayMs: 20000,
-      retryIf: isTransientGeminiError,
-    },
+  return withRetry(() => callGeminiOnce(model, prompt, token, cfg, fetchImpl), reviewRetryOptions());
+}
+
+/**
+ * One gate on the gateway. Same retry rule as Vertex: 429/5xx and fast
+ * network failures retry; an inactivity timeout and 401/403 do not.
+ */
+async function callGatewayGate(model, prompt, gateway, fetchImpl) {
+  // An unparseable reply is 502 from the chat client. Vertex never retried it;
+  // a retry repeats a full Pro call for the same prose.
+  const options = reviewRetryOptions();
+  const retryIf = (err) => !(err && err.code === 'unparseable-json') && options.retryIf(err);
+  return withRetry(async () => {
+    const { json } = await chatJson({
+      apiBase: gateway.openaiBase,
+      apiKey: gateway.apiKey,
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0,
+      fetchImpl,
+      label: 'Gemini',
+      normalize: normalizeGateReply,
+    });
+    return json;
+  }, { ...options, retryIf });
+}
+
+/**
+ * Resolve the review route before any model call. Gateway mode reads no
+ * Google credential. Throws on a missing credential (exit 2 in main).
+ */
+async function resolveReviewRoute({ env = process.env, dryRun = false, tokenImpl = getAccessToken } = {}) {
+  const config = loadModelConfig(env);
+  if (dryRun) return { mode: 'dry-run', config, token: null, cfg: null };
+  if (config.mode === 'gateway') return { mode: 'gateway', config, token: null, cfg: null };
+  const cfg = backendConfig();
+  const token = await tokenImpl();
+  return { mode: 'native', config, token, cfg };
+}
+
+/**
+ * The gateway review pin: `--model` (or GEMINI_REVIEW_MODEL, its default)
+ * when set and not `auto`, else the config default.
+ */
+function gatewayReviewPin(config, cliModel) {
+  if (cliModel && String(cliModel).trim().toLowerCase() !== 'auto') {
+    return { model: toGatewayModel(cliModel, 'google'), explicit: true };
+  }
+  const stage = config.stages.review;
+  return { model: stage.model, explicit: stage.source !== 'default' };
+}
+
+/**
+ * Whether the key's model list can serve `model`. A provider wildcard
+ * (`google/*`) or `*` counts. Returns the model, or null.
+ */
+async function confirmGatewayPin(config, fetchImpl, model = config.stages.review.model) {
+  const ids = await withRetry(
+    () => listChatModels({ apiBase: config.gateway.openaiBase, apiKey: config.gateway.apiKey, fetchImpl }),
+    reviewRetryOptions(),
   );
+  const provider = model.split('/')[0];
+  return ids.includes(model) || ids.includes(`${provider}/*`) || ids.includes('*') ? model : null;
+}
+
+function reviewBackendLabel(route) {
+  if (route.mode === 'gateway') return 'gateway';
+  return route.cfg ? route.cfg.backend : 'dry-run';
+}
+
+/** Credential source name only, never its value. */
+function reviewAuthLabel(route) {
+  if (route.mode === 'gateway') return route.config.gateway.source;
+  return route.mode === 'dry-run' ? 'none' : tokenSource();
 }
 
 async function main() {
@@ -701,18 +812,16 @@ async function main() {
   const ghToken = process.env.REVIEWER_APP_TOKEN
     || process.env[perOrgKey]
     || process.env.REVIEWER_GH_TOKEN;
-  // No API-key path exists by design — see scripts/gcp-token.js.
-  let token = null;
-  let cfg = null;
-  if (!args.dryRun) {
-    try {
-      cfg = backendConfig();
-      token = await getAccessToken();
-    } catch (err) {
-      process.stderr.write(`✖ ${err.message}\n`);
-      process.exit(2);
-    }
+  // Gateway key first (scripts/model-config.js); without it, Vertex via ADC.
+  // A NewPush virtual key is not a Gemini API key — see scripts/gcp-token.js.
+  let route;
+  try {
+    route = await resolveReviewRoute({ env: process.env, dryRun: args.dryRun });
+  } catch (err) {
+    process.stderr.write(`✖ ${err.message}\n`);
+    process.exit(2);
   }
+  const { token, cfg } = route;
   // Needed in every mode: pull-request context is read over the API even on a
   // dry run, so there is no offline path here.
   if (!ghToken) {
@@ -747,7 +856,23 @@ async function main() {
 
   // --- model -------------------------------------------------------------
   let model = 'models/(dry-run)';
-  if (!args.dryRun) {
+  if (route.mode === 'gateway') {
+    // The pin is the model; no substitute is discovered. Floor and preview
+    // flags do not apply here. An explicit pin the key cannot call is a
+    // by-design halt, as on Vertex. The DEFAULT pin missing is a broken
+    // gateway setup: exit 2, so the check fails instead of going green on a
+    // halt in every repository.
+    const pin = gatewayReviewPin(route.config, args.model);
+    const pinned = await confirmGatewayPin(route.config, undefined, pin.model);
+    if (!pinned) {
+      const reason = `gateway pin '${pin.model}' is not in the key's model list`;
+      process.stderr.write(`✖ ${reason}\n`);
+      if (!pin.explicit) process.exit(2);
+      writeHaltMarker(reason);
+      process.exit(3);
+    }
+    model = pinned;
+  } else if (!args.dryRun) {
     const available = await listModels(token, cfg);
     let chosen = null;
     let tradeoff = null;
@@ -814,7 +939,10 @@ async function main() {
       continue;
     }
 
-    const reply = await callGemini(model, buildGatePrompt(gate, ctx), token, cfg);
+    const prompt = buildGatePrompt(gate, ctx);
+    const reply = route.mode === 'gateway'
+      ? await callGatewayGate(model, prompt, route.config.gateway)
+      : await callGemini(model, prompt, token, cfg);
     const gateFindings = validateFindings(reply.findings, gate.id);
     const { verdict } = gateVerdict(gateFindings);
     gates[gate.id] = { verdict, rationale: reply.rationale || '' };
@@ -846,7 +974,7 @@ async function main() {
 
   process.stderr.write(`${JSON.stringify({
     task: 'Three-gate cross-model review',
-    inputs: [`pr=${repo}#${args.pr}`, `files=${files.length}`, `model=${model}`, `floor=${args.floor}`, `sentinel=${sentinel.source}`, `backend=${cfg ? cfg.backend : 'dry-run'}`, `auth=${args.dryRun ? 'none' : tokenSource()}`],
+    inputs: [`pr=${repo}#${args.pr}`, `files=${files.length}`, `model=${model}`, `floor=${route.mode === 'gateway' ? 'n/a (gateway pin)' : args.floor}`, `sentinel=${sentinel.source}`, `backend=${reviewBackendLabel(route)}`, `auth=${reviewAuthLabel(route)}`],
     actions: GATES.map((g) => `${g.id}: ${gates[g.id].verdict}`),
     risks: findings.filter((f) => BLOCKING_SEVERITIES.includes(f.severity)).map((f) => `${f.severity}: ${f.claim}`),
     result: review.recommendation,
@@ -871,9 +999,10 @@ async function main() {
 }
 
 module.exports = {
-  detectCarveOut, validateFindings, gateVerdict, recommend, writeHaltMarker,
+  detectCarveOut, validateFindings, normalizeGateReply, gateVerdict, recommend, writeHaltMarker,
   gh, isTransientGitHubError,
-  callGemini, geminiFetchTimeoutMs, geminiPost, isTransientGeminiError, wrapGeminiFetchError, formatThrown,
+  callGemini, callGatewayGate, confirmGatewayPin, gatewayReviewPin, resolveReviewRoute, reviewAuthLabel, reviewBackendLabel,
+  geminiFetchTimeoutMs, geminiPost, isTransientGeminiError, wrapGeminiFetchError, formatThrown,
   buildGatePrompt, buildRemediationPrompt, renderComment,
   loadSentinelFromDisk, loadSentinelInstructions,
   loadComplianceFromDisk, loadComplianceGuidance,

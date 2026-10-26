@@ -11,6 +11,7 @@
  */
 
 const BOT_LOGINS = new Set(['dependabot', 'renovate', 'github-actions']);
+const WRITE_PERMISSIONS = new Set(['admin', 'maintain', 'write']);
 
 const EMPTY_SECTION_MARKERS = [
   /^_no response_$/i,
@@ -53,14 +54,7 @@ function isEmptyOrTemplate(issue) {
   return withoutHeadings.every((line) => EMPTY_SECTION_MARKERS.some((re) => re.test(line)));
 }
 
-function tenantAllows(issue, tenant) {
-  const org = issue && issue.org;
-  const repo = issue && issue.repo;
-  const orgs = (tenant && Array.isArray(tenant.orgs)) ? tenant.orgs : [];
-  if (!org || !orgs.includes(org)) {
-    return { ok: false, reason: 'outside-tenant' };
-  }
-  const repos = tenant && tenant.limits ? tenant.limits.repos : undefined;
+function repoAllowed(org, repo, repos) {
   // Missing or [] means every repo in orgs (documented internal default).
   // A present non-array is a broken allowlist — fail closed, do not treat
   // it as "allow all" (review finding on #423, merged over that fail).
@@ -74,7 +68,48 @@ function tenantAllows(issue, tenant) {
   return { ok: true };
 }
 
-function classifyIssue({ issue, tenant, scan, budget } = {}) {
+function withVia(result, via) {
+  return result.ok ? { ok: true, via } : result;
+}
+
+/**
+ * Orgs on the tenant's static list pass on the list alone. Any other org is
+ * a client and needs `entitlement` from coding-loop/entitlement.js: the
+ * conductor App installed and not suspended, AND an active registry row for
+ * the installation's account ID (Decision [2026-10-22-0005]).
+ */
+function tenantAllows(issue, tenant, entitlement) {
+  const org = issue && issue.org;
+  const repo = issue && issue.repo;
+  const orgs = (tenant && Array.isArray(tenant.orgs)) ? tenant.orgs : [];
+  if (org && orgs.includes(org)) {
+    return withVia(repoAllowed(org, repo, tenant && tenant.limits ? tenant.limits.repos : undefined), 'tenant');
+  }
+  if (!org || !entitlement) {
+    return { ok: false, reason: 'outside-tenant' };
+  }
+  if (entitlement.error) return { ok: false, reason: 'entitlement-unverified' };
+  if (!entitlement.installation) return { ok: false, reason: 'app-not-installed' };
+  if (entitlement.installation.suspended) return { ok: false, reason: 'installation-suspended' };
+  if (!entitlement.client) return { ok: false, reason: 'unregistered-client' };
+  if (entitlement.client.status !== 'active') return { ok: false, reason: 'client-suspended' };
+  return withVia(repoAllowed(org, repo, entitlement.client.repos), 'client');
+}
+
+/**
+ * Tenant or client entitlement, plus the requester check for client runs:
+ * a client run needs a named requester with write access to the repo, so an
+ * outsider on a public client repo cannot spend the shared pool.
+ */
+function entitlementGate({ issue, tenant, entitlement, trigger } = {}) {
+  const allowed = tenantAllows(issue, tenant, entitlement);
+  if (!allowed.ok || allowed.via !== 'client') return allowed;
+  if (!trigger || !trigger.login || trigger.error) return { ok: false, reason: 'trigger-unverified' };
+  if (!WRITE_PERMISSIONS.has(trigger.permission)) return { ok: false, reason: 'trigger-not-writer' };
+  return allowed;
+}
+
+function classifyIssue({ issue, tenant, entitlement, trigger, scan, budget } = {}) {
   if (!issue || typeof issue !== 'object') {
     return {
       tier: 'REFUSED',
@@ -116,7 +151,7 @@ function classifyIssue({ issue, tenant, scan, budget } = {}) {
     };
   }
 
-  const allowed = tenantAllows(issue, tenant);
+  const allowed = entitlementGate({ issue, tenant, entitlement, trigger });
   if (!allowed.ok) {
     return {
       tier: 'REFUSED',
@@ -197,6 +232,7 @@ function issueFromGitHub(repoFullName, payload) {
 module.exports = {
   BOT_LOGINS,
   classifyIssue,
+  entitlementGate,
   issueFromGitHub,
   isBotAuthor,
   isEmptyOrTemplate,

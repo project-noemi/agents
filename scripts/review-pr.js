@@ -233,6 +233,24 @@ function validateFindings(raw, gateId) {
   });
 }
 
+/**
+ * The gate reply as one {findings, rationale} object, or null when it is not
+ * one. Gemini sometimes wraps the object in an array, or splits it across
+ * several. Every element's findings are kept: unwrapping only the first could
+ * drop a blocking finding, and an array read as an object has no `findings`
+ * at all, which would pass the gate in silence.
+ */
+function normalizeGateReply(value) {
+  const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+  if (isObject(value)) return value;
+  if (!Array.isArray(value) || value.length === 0 || !value.every(isObject)) return null;
+  if (value.some((part) => part.findings !== undefined && !Array.isArray(part.findings))) return null;
+  return {
+    findings: value.flatMap((part) => part.findings || []),
+    rationale: value.map((part) => part.rationale).filter(Boolean).join('\n\n'),
+  };
+}
+
 /** A gate passes when it produced no blocking findings. */
 function gateVerdict(findings) {
   const blocking = findings.filter((f) => BLOCKING_SEVERITIES.includes(f.severity));
@@ -673,12 +691,15 @@ async function callGeminiOnce(model, prompt, token, cfg, fetchImpl) {
   }
   const body = await res.json();
   const text = body?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  let reply = null;
   try {
-    return JSON.parse(text);
+    reply = normalizeGateReply(JSON.parse(text));
   } catch {
-    // A malformed reply must not silently become "no findings".
-    throw new Error(`Model returned unparseable JSON: ${text.slice(0, 400)}`);
+    reply = null;
   }
+  // A malformed reply must not silently become "no findings".
+  if (!reply) throw new Error(`Model returned unparseable JSON: ${text.slice(0, 400)}`);
+  return reply;
 }
 
 function reviewRetryOptions() {
@@ -712,6 +733,7 @@ async function callGatewayGate(model, prompt, gateway, fetchImpl) {
       temperature: 0,
       fetchImpl,
       label: 'Gemini',
+      normalize: normalizeGateReply,
     });
     return json;
   }, { ...options, retryIf });
@@ -977,7 +999,7 @@ async function main() {
 }
 
 module.exports = {
-  detectCarveOut, validateFindings, gateVerdict, recommend, writeHaltMarker,
+  detectCarveOut, validateFindings, normalizeGateReply, gateVerdict, recommend, writeHaltMarker,
   gh, isTransientGitHubError,
   callGemini, callGatewayGate, confirmGatewayPin, gatewayReviewPin, resolveReviewRoute, reviewAuthLabel, reviewBackendLabel,
   geminiFetchTimeoutMs, geminiPost, isTransientGeminiError, wrapGeminiFetchError, formatThrown,

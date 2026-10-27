@@ -631,7 +631,10 @@ reviewer starting at the diff approves that every time, because at the diff leve
 it looks like good work.
 
 Premise failures always come to a human. "This should not be merged at all" is
-too consequential and too debatable for automation.
+too consequential and too debatable for automation. When the person agrees, the
+playbook is to comment and close, not to ask for another revision of the same
+idea (`docs/AI_REVIEW_GOVERNANCE.md`, "When the human agrees the change should
+not exist").
 
 ### Gate 2 — Framing: *does the description match the change?*
 

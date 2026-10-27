@@ -204,6 +204,33 @@ function writeHaltMarker(reason) {
   return true;
 }
 
+/** Per-file cap for the text sent to the model. Above this, the gateway 413s. */
+const MAX_DIFF_FILE_CHARS = 100000;
+
+/**
+ * Drop oversized unified-diff file sections before the prompt is built.
+ * Smaller files in the same pull request stay intact.
+ * @param {string} diff
+ * @returns {string}
+ */
+function limitDiffForPrompt(diff) {
+  if (typeof diff !== 'string' || diff.length === 0) return diff || '';
+  const parts = diff.split(/(?=^diff --git )/m);
+  return parts.map((part) => {
+    if (!part.startsWith('diff --git ') || part.length <= MAX_DIFF_FILE_CHARS) return part;
+    const newline = part.indexOf('\n');
+    const header = newline === -1 ? part : part.slice(0, newline);
+    const named = header.match(/ b\/(\S+)$/);
+    const file = named ? named[1] : 'unknown';
+    return [
+      header,
+      `Omitted from the model prompt (${part.length} characters in ${file}).`,
+      'The file remains in the pull request. It was left out so the review request fits the model gateway.',
+      '',
+    ].join('\n');
+  }).join('');
+}
+
 /** Which changed files fall inside the governance carve-out. */
 function detectCarveOut(files) {
   return files.filter((f) => CARVE_OUT.includes(f));
@@ -231,6 +258,24 @@ function validateFindings(raw, gateId) {
       ...(known ? {} : { severity_coerced_from: f.severity ?? null }),
     };
   });
+}
+
+/**
+ * The gate reply as one {findings, rationale} object, or null when it is not
+ * one. Gemini sometimes wraps the object in an array, or splits it across
+ * several. Every element's findings are kept: unwrapping only the first could
+ * drop a blocking finding, and an array read as an object has no `findings`
+ * at all, which would pass the gate in silence.
+ */
+function normalizeGateReply(value) {
+  const isObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+  if (isObject(value)) return value;
+  if (!Array.isArray(value) || value.length === 0 || !value.every(isObject)) return null;
+  if (value.some((part) => part.findings !== undefined && !Array.isArray(part.findings))) return null;
+  return {
+    findings: value.flatMap((part) => part.findings || []),
+    rationale: value.map((part) => part.rationale).filter(Boolean).join('\n\n'),
+  };
 }
 
 /** A gate passes when it produced no blocking findings. */
@@ -673,12 +718,15 @@ async function callGeminiOnce(model, prompt, token, cfg, fetchImpl) {
   }
   const body = await res.json();
   const text = body?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  let reply = null;
   try {
-    return JSON.parse(text);
+    reply = normalizeGateReply(JSON.parse(text));
   } catch {
-    // A malformed reply must not silently become "no findings".
-    throw new Error(`Model returned unparseable JSON: ${text.slice(0, 400)}`);
+    reply = null;
   }
+  // A malformed reply must not silently become "no findings".
+  if (!reply) throw new Error(`Model returned unparseable JSON: ${text.slice(0, 400)}`);
+  return reply;
 }
 
 function reviewRetryOptions() {
@@ -712,6 +760,7 @@ async function callGatewayGate(model, prompt, gateway, fetchImpl) {
       temperature: 0,
       fetchImpl,
       label: 'Gemini',
+      normalize: normalizeGateReply,
     });
     return json;
   }, { ...options, retryIf });
@@ -811,7 +860,12 @@ async function main() {
   const pr = await gh(`/repos/${repo}/pulls/${args.pr}`, { token: ghToken });
   const fileList = await gh(`/repos/${repo}/pulls/${args.pr}/files?per_page=100`, { token: ghToken });
   const files = fileList.map((f) => f.filename);
-  const diff = await gh(`/repos/${repo}/pulls/${args.pr}`, { token: ghToken, accept: 'application/vnd.github.v3.diff' });
+  const rawDiff = await gh(`/repos/${repo}/pulls/${args.pr}`, { token: ghToken, accept: 'application/vnd.github.v3.diff' });
+  // A one-line generated snapshot (corpus.generated.json) replaces the whole
+  // line on every rebuild. GitHub's diff of that line exceeds the model
+  // gateway body limit and the advisory check dies with HTTP 413 before a
+  // review exists. Omit only those oversized file sections.
+  const diff = limitDiffForPrompt(rawDiff);
 
   // --- carve-out: before any model call ----------------------------------
   const carved = detectCarveOut(files);
@@ -977,7 +1031,7 @@ async function main() {
 }
 
 module.exports = {
-  detectCarveOut, validateFindings, gateVerdict, recommend, writeHaltMarker,
+  detectCarveOut, limitDiffForPrompt, MAX_DIFF_FILE_CHARS, validateFindings, normalizeGateReply, gateVerdict, recommend, writeHaltMarker,
   gh, isTransientGitHubError,
   callGemini, callGatewayGate, confirmGatewayPin, gatewayReviewPin, resolveReviewRoute, reviewAuthLabel, reviewBackendLabel,
   geminiFetchTimeoutMs, geminiPost, isTransientGeminiError, wrapGeminiFetchError, formatThrown,

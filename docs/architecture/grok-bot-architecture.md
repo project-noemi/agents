@@ -71,7 +71,7 @@ The box cannot report its own outage, so monitoring has two halves:
 
 ## Bootstrapping A Swarm
 
-The [swarm deploy agent](../tool-usages/grok-bot-swarm-deploy-agent.md) runs as an ordinary bot. It creates other bots on the hosted service, attaches generic skills, and records each action in a reviewable log, which can be kept in the home directory or `/workspace` on the box so every bot can read it. It is rate-limited and never creates accounts or spends money without the owner's approval.
+The [swarm deploy playbook](../tool-usages/grok-bot-swarm-deploy-agent.md) is standing instructions you give a first hosted Grok Bot. That bot creates other bots on the hosted service, attaches generic skills, and records each action in a reviewable log, which can be kept in the home directory or `/workspace` on the box so every bot can read it. It is rate-limited and never creates accounts or spends money without the owner's approval.
 
 ## Design Rules
 

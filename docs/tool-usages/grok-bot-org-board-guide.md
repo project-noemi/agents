@@ -2,17 +2,17 @@
 
 > Also available as a Google Doc; the GitHub markdown is the source of truth.
 
+This is an **optional reference chart** for assigning roles to xAI's hosted Grok Bots. It is not software in this repository, and it is not a claim that companies are or should be structured this way. Use it, shrink it, or ignore it.
+
 See also: [`grok-bot-getting-started.md`](grok-bot-getting-started.md) and [`../architecture/grok-bot-architecture.md`](../architecture/grok-bot-architecture.md).
 
 ## Introduction
 
-Much of the success of American business comes from standardizing repeatable processes and management. An outside observer arriving in the United States will find that many companies are structured in a very similar way: around **seven divisions and twenty-one departments**. Department names vary from company to company, but the departments largely perform the same functions, aligned with established best practices and leading practices.
+When several Grok Bots share work, each bot needs a clearly defined role, a single human owner, and a route for escalation. The table below is one generic example with seven divisions and twenty-one departments. Names are placeholders; adapt them to your organization.
 
-This guide presents a generalized version of that structure so that readers can draw on it when setting up a team ("swarm") of Grok Bots to help run a company. Each bot takes one clearly defined role on the chart, with a single human owner and a clear route for work and escalation. The names below are generic; adapt them to your organization.
+A faster way to apply a chart is the [swarm deploy playbook](grok-bot-swarm-deploy-agent.md): you give those instructions to a first hosted Grok Bot, answer size / industry / staffing questions, and review the proposed chart before anything is created.
 
-The fastest way to apply this structure is the [swarm deploy agent](grok-bot-swarm-deploy-agent.md), which asks about company size, industry, and staffing, and then generates a chart tailored to the company.
-
-## 1. A Generalized Seven-Division, Twenty-One-Department Chart
+## 1. Example Seven-Division, Twenty-One-Department Chart
 
 | Division | Department | What it does |
 |---|---|---|
@@ -38,7 +38,7 @@ The fastest way to apply this structure is the [swarm deploy agent](grok-bot-swa
 | | 20. Legal and Risk | Contracts, compliance, insurance, risk management |
 | | 21. Strategy and Analysis | Planning, reporting, knowledge management |
 
-Treat this chart as a **reference model**, not a fixed template: the deploy agent scales it down for small companies (fewer, combined divisions) or uses it in full for established ones. For a bot team, start small: one bot can cover several departments at first, then split as volume grows. Each department has a head (a bot or a person), and each division has a lead.
+Treat this chart as a **reference model**, not a fixed template. The deploy playbook scales it down for small companies (fewer, combined divisions) or uses it in full for established ones. For a bot team, start small: one bot can cover several departments at first, then split as volume grows. Each department has a head (a bot or a person), and each division has a lead.
 
 ### Source of truth
 
@@ -123,7 +123,7 @@ Put these in one shared skill that every bot loads:
 
 ## 6. Getting Started
 
-The [swarm deploy agent](grok-bot-swarm-deploy-agent.md) can perform most of these steps for you, with owner approval. To do it by hand:
+The [swarm deploy playbook](grok-bot-swarm-deploy-agent.md) can perform most of these steps for you, with owner approval. To do it by hand:
 
 1. Draft your divisions and departments using the table above.
 2. Create the Executive Office bot first, with the routing and escalation rules.

@@ -16,9 +16,9 @@ A **Grok Bot** is a persistent, hosted assistant. Unlike a one-shot chat, a bot 
 | **Teammates** | Other bots (and people) the bot can message and delegate to. |
 | **Computer ("box")** | A persistent Linux machine with a shell, files, and a browser for work that needs real tools. |
 
-## Fastest Start: The Swarm Deploy Agent
+## Fastest Start: The Swarm Deploy Playbook
 
-To set up a whole team of bots in one step, point a fresh installation at the [swarm deploy agent](grok-bot-swarm-deploy-agent.md). It asks a few scoping questions, proposes a tailored organization chart, creates the bots with generic starter skills, and logs every action for your review. The steps below describe setting up a bot by hand.
+To set up a whole team on the **hosted Grok Bot product** (not in this repository), give a first bot the [swarm deploy playbook](grok-bot-swarm-deploy-agent.md). It asks a few scoping questions, proposes a tailored organization chart, creates the bots with generic starter skills after you approve, and logs every action for your review. The steps below describe setting up a bot by hand.
 
 ## 1. Create A Bot
 

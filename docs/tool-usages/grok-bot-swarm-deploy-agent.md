@@ -1,18 +1,18 @@
-# Grok Bot Swarm Deploy Agent
+# Grok Bot Swarm Deploy Playbook
 
 > Also available as a Google Doc; the GitHub markdown is the source of truth.
 
-The **swarm deploy agent** is a one-step way to start a company's Grok Bot team. You point a fresh Grok Bot installation at the deploy agent. It creates the bots you need, fills in the organization chart and related charts, and gives each bot a starter set of skills, so the company starts with a working team on day one.
+This is an **operator playbook for xAI's hosted Grok Bot product**. It is not an agent, skill, or runtime in this repository. You run it by giving a first hosted Grok Bot these standing instructions (or an equivalent skill on that product). That bot then proposes and, after you approve, creates the rest of the team on the same product.
 
 See also: [`grok-bot-getting-started.md`](grok-bot-getting-started.md), [`grok-bot-org-board-guide.md`](grok-bot-org-board-guide.md), and [`../architecture/grok-bot-architecture.md`](../architecture/grok-bot-architecture.md).
 
 ## 1. The One-Step Bootstrap
 
-1. Install Grok Bot and create a first bot.
-2. Point it at the swarm deploy agent (for example, by loading the deploy agent's instructions and skills).
+1. Create a first Grok Bot on the hosted product.
+2. Paste this playbook (or a skill derived from it) into that bot's standing instructions.
 3. Answer its scoping questions (Section 2).
 4. Review and approve its proposed organization chart and bot list.
-5. The deploy agent creates the bots, places each one on the chart, and attaches the starter skills.
+5. The first bot creates the other bots, places each one on the chart, and attaches the starter skills.
 6. The business owner fills in the human roles. At first, the owner can take on all of the monitoring roles personally and hand them to staff as the company grows.
 
 ```mermaid

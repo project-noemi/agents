@@ -249,10 +249,6 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 → [docs/visuals/README.md](docs/visuals/README.md)
 (System maps and flows)
 
-**Example UI style guide**
-→ [docs/examples/ui-style-guide/README.md](docs/examples/ui-style-guide/README.md)
-(Colors, type, spacing, and component patterns adapted from a production Vuetify app. An example a project can adapt.)
-
 ---
 
 > **Working in this repo?** `CLAUDE.md` and `GEMINI.md` are **generated** context files — built from `templates/context/` plus the active agents, skills, and MCP protocols. After changing any of those sources, run `node scripts/generate_all.js` to refresh them. Don't hand-edit `CLAUDE.md` or `GEMINI.md`: regeneration overwrites manual changes, and CI checks them against golden fixtures.

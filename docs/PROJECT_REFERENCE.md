@@ -813,7 +813,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`operating-profiles/`](../operating-profiles/) | Localized operating profiles (tone and cadence, not translation) |
 | [`services/noemi-knowledge-mcp/`](../services/noemi-knowledge-mcp/) | Queryable public doctrine MCP (Bible, governance, methodology, Phase 0, skills-dist) |
 | [`docs/examples/`](examples/) | Example implementations (Docker sandbox, RFP Responder, Video Automation) |
-| [`docs/examples/ui-style-guide/README.md`](examples/ui-style-guide/README.md) | Example UI style guide a project can adapt: color, type, spacing, and component patterns from a production Vuetify app |
+| [`docs/contributing/ui-style-guide.md`](contributing/ui-style-guide.md) | Contributor default for UI added to tools in this repo |
 | [`examples/rotary-club-operations/`](../examples/rotary-club-operations/) | Rotary-only example of generic club-operations skills; Rotary is not in the core registry |
 | [`docs/examples/cross-model-review-setup.md`](examples/cross-model-review-setup.md) | Beginner walkthrough: machine identities, Gemini key options, and vault-backed CI for cross-model review |
 

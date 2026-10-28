@@ -2,17 +2,24 @@
 
 > Also available as a Google Doc; the GitHub markdown is the source of truth.
 
-This is an **optional reference chart** for assigning roles to xAI's hosted Grok Bots. It is not software in this repository, and it is not a claim that companies are or should be structured this way. Use it, shrink it, or ignore it.
+This chart is the **completeness list of functions a company must have covered** so a Grok Bot swarm can run operations. It is not software in this repository. You run the swarm on **xAI's hosted Grok Bot product**.
+
+Use it in two ways:
+
+- **Existing company:** keep their division and department names. Map each seat onto a function in the table. Any function with no seat is a gap: fill it with a bot, a human, or both.
+- **Company that does not yet have a chart:** use the table as the starting organization. Names are placeholders; rename them to match the business.
+
+A seat may be a bot, a human, or a mix (human owner with a bot doing the daily work). Combined seats are fine. **Empty functions are not.**
 
 See also: [`grok-bot-getting-started.md`](grok-bot-getting-started.md) and [`../architecture/grok-bot-architecture.md`](../architecture/grok-bot-architecture.md).
 
 ## Introduction
 
-When several Grok Bots share work, each bot needs a clearly defined role, a single human owner, and a route for escalation. The table below is one generic example with seven divisions and twenty-one departments. Names are placeholders; adapt them to your organization.
+Each Grok Bot needs a clearly defined role, a single human owner, and a route for escalation. The table lists seven divisions and twenty-one departments as the functions that must be populated for the swarm to cover company operations.
 
-A faster way to apply a chart is the [swarm deploy playbook](grok-bot-swarm-deploy-agent.md): you give those instructions to a first hosted Grok Bot, answer size / industry / staffing questions, and review the proposed chart before anything is created.
+Deploy this in practice with the [swarm deploy playbook](grok-bot-swarm-deploy-agent.md): give those instructions to a first hosted Grok Bot, answer size / industry / staffing questions, review the proposed chart (including how it maps onto any existing org chart), then approve creation.
 
-## 1. Example Seven-Division, Twenty-One-Department Chart
+## 1. Functions That Must Be Covered (Seven Divisions, Twenty-One Departments)
 
 | Division | Department | What it does |
 |---|---|---|
@@ -38,7 +45,7 @@ A faster way to apply a chart is the [swarm deploy playbook](grok-bot-swarm-depl
 | | 20. Legal and Risk | Contracts, compliance, insurance, risk management |
 | | 21. Strategy and Analysis | Planning, reporting, knowledge management |
 
-Treat this chart as a **reference model**, not a fixed template. The deploy playbook scales it down for small companies (fewer, combined divisions) or uses it in full for established ones. For a bot team, start small: one bot can cover several departments at first, then split as volume grows. Each department has a head (a bot or a person), and each division has a lead.
+The deploy playbook may combine departments onto one bot in a small company, and split them as volume grows. Combined is still covered. Each department has a head (a bot, a person, or a person with a bot), and each division has a lead.
 
 ### Source of truth
 

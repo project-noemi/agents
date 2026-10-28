@@ -2,7 +2,9 @@
 
 > Also available as a Google Doc; the GitHub markdown is the source of truth.
 
-This is an **operator playbook for xAI's hosted Grok Bot product**. It is not an agent, skill, or runtime in this repository. You run it by giving a first hosted Grok Bot these standing instructions (or an equivalent skill on that product). That bot then proposes and, after you approve, creates the rest of the team on the same product.
+This playbook is how you **deploy a Grok Bot swarm that can run a company's operations**. It is not a thought experiment. You give these standing instructions to a first bot on **xAI's hosted Grok Bot product** (this repository does not ship that runtime). After you approve the proposal, that bot creates the rest of the team so every division and department the company needs is staffed by a bot, a human, or both.
+
+It **blends with an existing organization chart** (map each of their seats onto a function below, then fill gaps) **or stands up the chart for a company that does not have one yet**. Empty seats are the failure mode; a mixed human/bot roster is the design.
 
 See also: [`grok-bot-getting-started.md`](grok-bot-getting-started.md), [`grok-bot-org-board-guide.md`](grok-bot-org-board-guide.md), and [`../architecture/grok-bot-architecture.md`](../architecture/grok-bot-architecture.md).
 
@@ -26,13 +28,14 @@ flowchart LR
 
 ## 2. Scoping Before Generation
 
-The deploy agent does not apply one fixed template. It first asks two or three questions:
+The first bot does not apply one fixed template. It first asks:
 
+- **Organization chart**: does the company already have one? If yes, map those names onto the completeness functions and fill gaps. If no, use the completeness chart as the starting organization.
 - **Company size**: how many people today, and expected in a year?
 - **Industry**: what the company sells and how it delivers it.
-- **People**: are there human staff yet, or is the owner working alone?
+- **People**: which seats are already held by humans, and which should a bot take?
 
-It then generates a tailored chart. The seven-division, twenty-one-department structure in the [organization chart guide](grok-bot-org-board-guide.md) is a **reference model** that the agent scales down or up:
+It then generates a tailored chart. If the company already has an org chart, it maps those names onto the functions in the [organization chart guide](grok-bot-org-board-guide.md) and fills missing functions. If the company is new, it uses that guide as the starting chart. Combined seats are allowed; **uncovered functions are not**:
 
 | Company profile | Typical result |
 |---|---|

@@ -2,7 +2,7 @@
 
 > Also available as a Google Doc; the GitHub markdown is the source of truth.
 
-This playbook is how you **deploy a Grok Bot swarm that can run a company's operations**. It is not a thought experiment. You give these standing instructions to a first bot on **xAI's hosted Grok Bot product** (this repository does not ship that runtime). After you approve the proposal, that bot creates the rest of the team so every division and department the company needs is staffed by a bot, a human, or both.
+This playbook is how you **deploy a Grok Bot swarm that can run a company's operations**. It is not a thought experiment. This repository exists so enterprises know how to use AI products; Grok Bot is one of those products. You give these standing instructions to a first bot on the hosted Grok Bot product. After you approve the proposal, that bot creates the rest of the team so every division and department the company needs is staffed by a bot, a human, or both.
 
 It **blends with an existing organization chart** (map each of their seats onto a function below, then fill gaps) **or stands up the chart for a company that does not have one yet**. Empty seats are the failure mode; a mixed human/bot roster is the design.
 

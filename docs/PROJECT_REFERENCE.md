@@ -103,6 +103,8 @@ The strategic aim is concrete: help enterprises convert AI from a labor-displace
 
 One thing NoéMI is explicitly **not** for: individual solopreneurs or self-improvement seekers. This is for organizations — teams, departments, companies — that need to transform how work gets done across groups of people. If you are looking for individual upskilling, there are excellent resources for that. NoéMI is the architecture that makes AI work at the organizational level.
 
+This library is about **making AI products work** in that environment. The agents, skills, and [`docs/tool-usages/`](tool-usages/) guides describe how to use those products — Grok Bot, Grok Build, gateways, n8n, and the rest — so a business can deploy the most effective use of AI. Documenting an external product and how to run it inside the enterprise is the work of this repository, not a detour from it.
+
 ---
 
 ## Chapter 3: The Name Behind the Name
@@ -802,7 +804,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/frameworks/gartner-trism.md`](frameworks/gartner-trism.md) | How NoéMI maps to the AI TRiSM framework (Gartner, Inc.) |
 | [`docs/frameworks/value-lenses.md`](frameworks/value-lenses.md) | Success-criteria overlays for comparing outcomes under different enterprise logics |
 | [`docs/mcp-setup/`](mcp-setup/) | MCP server setup guides (Google Workspace, n8n, Slack, Web Search) |
-| [`docs/tool-usages/`](tool-usages/) | Tool-specific guides and integration patterns |
+| [`docs/tool-usages/`](tool-usages/) | How to use the AI products organizations actually run (vendor tools, hosted bots, gateways, orchestrators) |
 | [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) | Grok Custom Agents, Projects, Skills, and Grok Bot as the Gems / Custom GPT equivalent |
 | [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md) | Grok Build CLI / TUI: per-platform install, first win, and Fetch-on-Demand launch |
 | [`docs/tool-usages/grok-bot-getting-started.md`](tool-usages/grok-bot-getting-started.md) | Grok Bot: chat, memory, routines, skills, connectors, delegation, and approval basics |

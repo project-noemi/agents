@@ -18,7 +18,7 @@ A **Grok Bot** is a persistent, hosted assistant. Unlike a one-shot chat, a bot 
 
 ## Fastest Start: Deploy A Swarm That Can Run The Company
 
-This is the operational path, not a sketch. On the **hosted Grok Bot product**, give a first bot the [swarm deploy playbook](grok-bot-swarm-deploy-agent.md). It asks size, industry, and staffing, then proposes a chart that either **maps onto the company's existing organization** or **is the organization** for a company that does not have one yet. After you approve, it creates bots so every necessary division and department is filled by a bot, a human, or both, with a reviewable action log. The steps below describe setting up a single bot by hand.
+This is the operational path, not a sketch. This library exists so businesses can deploy AI products effectively; Grok Bot is one of those products. Give a first bot the [swarm deploy playbook](grok-bot-swarm-deploy-agent.md). It asks size, industry, and staffing, then proposes a chart that either **maps onto the company's existing organization** or **is the organization** for a company that does not have one yet. After you approve, it creates bots so every necessary division and department is filled by a bot, a human, or both, with a reviewable action log. The steps below describe setting up a single bot by hand.
 
 ## 1. Create A Bot
 

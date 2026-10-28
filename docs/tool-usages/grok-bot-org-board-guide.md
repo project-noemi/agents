@@ -2,7 +2,7 @@
 
 > Also available as a Google Doc; the GitHub markdown is the source of truth.
 
-This chart is the **completeness list of functions a company must have covered** so a Grok Bot swarm can run operations. It is not software in this repository. You run the swarm on **xAI's hosted Grok Bot product**.
+This chart is the **completeness list of functions a company must have covered** so a Grok Bot swarm can run operations. This library's job is to show how to use AI products in the enterprise; you run the swarm on the hosted Grok Bot product.
 
 Use it in two ways:
 

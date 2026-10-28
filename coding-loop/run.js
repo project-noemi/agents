@@ -13,14 +13,31 @@
  * --post requires CONDUCTOR_GH_TOKEN or CONDUCTOR_APP_ID+CONDUCTOR_APP_PRIVATE_KEY.
  * --implement / --open-pr require AGENT_GH_TOKEN (or AGENT_GH_TOKEN_CLASSIC
  * when AGENT_GH_USE_CLASSIC=1).
- * --open-pr also requires XAI_API_KEY or AI_GW_API_TOKEN+AI_GW_BASE_URL, then opens the PR.
- * --live-critic requires ADC (GCP_ACCESS_TOKEN or gcloud) and calls Gemini.
+ * --open-pr also requires a writer credential, then opens the PR.
+ * Model route (scripts/model-config.js): AI_GW_API_TOKEN (or AI_GW_API_KEY)
+ * sends the writer and --live-critic through the NewPush AI gateway, with
+ * AI_GW_BASE_URL optional. Without a gateway key the writer needs XAI_API_KEY
+ * and --live-critic needs ADC (GCP_ACCESS_TOKEN or gcloud) for Vertex Gemini.
+ *
+ * Two-step runs (a host that shows the plan before implementing it, such as
+ * NoéMi Code's /issue):
+ *   --plan-out FILE  write the Stage A/B result after B′ (mode 0600)
+ *   --plan-in FILE   skip Stage A/B and implement that accepted plan. Refused
+ *                    when the plan was not accepted, names another issue,
+ *                    or the issue changed on GitHub after it was planned.
+ *
+ * Client orgs (not on the tenant's `orgs` list) are entitled only when the
+ * conductor App is installed there and NOEMI_CLIENT_REGISTRY has an active
+ * row for that account, and --requested-by names a user with write access
+ * (coding-loop/entitlement.js, Decision [2026-10-22-0005]). Both are checked
+ * again on --plan-in, so an uninstall or suspension stops implementation.
  */
 
 const fs = require('fs');
 const path = require('path');
 const { gh } = require('../scripts/github-client.js');
-const { issueFromGitHub, labelsOf } = require('./intake.js');
+const { entitlementGate, issueFromGitHub, labelsOf } = require('./intake.js');
+const { resolveEntitlement, resolveTrigger } = require('./entitlement.js');
 const { completeThroughStageB, loadRouting } = require('./plan.js');
 const { assertProducerToken, openImplementationPr, prepareImplementation } = require('./dispatch.js');
 const { resolveProducerToken } = require('../scripts/agent-token.js');
@@ -28,6 +45,7 @@ const { critiquePlanLive, revisePlanLive } = require('./critic.js');
 const { assertWriterKey, draftChanges } = require('./writer.js');
 const { mintGithubAppInstallationToken } = require('../scripts/github-app-token.js');
 const { scanIssueBody } = require('./scan.js');
+const { loadModelConfig } = require('../scripts/model-config.js');
 const { prepareReview } = require('./stage-d.js');
 const { resolveProfile } = require('./profile.js');
 
@@ -59,19 +77,24 @@ function parseArgs(argv) {
       case '--live-critic': args.liveCritic = true; break;
       case '--heuristic-critic': args.liveCritic = false; break;
       case '--tenant': args.tenantPath = argv[++i]; break;
+      case '--requested-by': args.requestedBy = String(argv[++i] || '').replace(/^@/, ''); break;
       case '--scan': args.scan = true; break;
       case '--scan-status': args.scanStatus = argv[++i]; break;
       case '--budget-ok': args.budgetState = 'ok'; break;
       case '--budget-exhausted': args.budgetState = 'exhausted'; break;
       case '--profile': args.profile = argv[++i]; break;
+      case '--plan-out': args.planOut = argv[++i]; break;
+      case '--plan-in': args.planIn = argv[++i]; break;
       case '--help':
-        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--implement] [--open-pr] [--live-critic] [--profile code|spec] [--tenant path] (--scan | --scan-status APPROVED|BLOCKED|REDACTED) (--budget-ok | --budget-exhausted)\n'
+        process.stdout.write('Usage: coding-loop/run.js --repo owner/name --issue N [--post] [--implement] [--open-pr] [--live-critic] [--profile code|spec] [--tenant path] [--requested-by login] [--plan-out file | --plan-in file] (--scan | --scan-status APPROVED|BLOCKED|REDACTED) (--budget-ok | --budget-exhausted)\n'
           + 'Omitting both --scan and --scan-status, or omitting the budget assertion, classifies the issue as REFUSED (fail closed).\n'
           + '--scan runs coding-loop/scan.js on the fetched issue; it is not implied by omitting --scan-status.\n'
           + '--profile spec constrains Stage B/C to markdown under agents/, skills/, docs/agents/ (writing personas and skills).\n'
           + '--implement prepares a noemi-agent PR envelope.\n'
           + '--open-pr (with --implement) drafts files via Grok and opens the PR as noemi-agent.\n'
-          + '--live-critic runs Gemini Pro for Stage B′; without it B′ is structural only.\n');
+          + '--live-critic runs Gemini Pro for Stage B′ (gateway key, else Vertex ADC); without it B′ is structural only.\n'
+          + 'Orgs outside the tenant need the conductor App installed and an active row in NOEMI_CLIENT_REGISTRY, plus --requested-by a user with write access.\n'
+          + '--plan-out writes the accepted-or-not plan to a file; --plan-in implements that accepted plan without planning again.\n');
         process.exit(0);
         break;
       default:
@@ -161,6 +184,75 @@ function readToken(env = process.env) {
 // [2026-10-03-0002]).
 function issueReadToken(conductor, env = process.env) {
   return conductor || readToken(env);
+}
+
+const PLAN_FILE_VERSION = 1;
+
+/** The Stage A/B result a later --plan-in run implements unchanged. */
+function writePlanFile(file, { repo, issue, updatedAt, profile, intake, plan }) {
+  const record = {
+    version: PLAN_FILE_VERSION,
+    repo,
+    issue: Number(issue),
+    issueUpdatedAt: updatedAt || null,
+    profile: profile || 'code',
+    intake,
+    plan,
+  };
+  fs.writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`, { mode: 0o600 });
+  return record;
+}
+
+/**
+ * Read a --plan-out record for this exact issue. The plan is what a person
+ * approved; implementing anything else is refused (status 409).
+ */
+function readPlanFile(file, { repo, issue, updatedAt, profile }) {
+  const refuse = (message) => {
+    const err = new Error(`--plan-in refused: ${message}`);
+    err.status = 409;
+    return err;
+  };
+  // Never echo the parser's message: a SyntaxError quotes the start of the
+  // file, which would print a non-plan file's contents. Name the cause only.
+  let text;
+  try {
+    text = fs.readFileSync(file, 'utf8');
+  } catch (err) {
+    throw refuse(`cannot read the plan file (${(err && err.code) || 'read error'})`);
+  }
+  let record;
+  try {
+    record = JSON.parse(text);
+  } catch {
+    throw refuse('the plan file is not valid JSON');
+  }
+  if (!record || record.version !== PLAN_FILE_VERSION) throw refuse('unknown plan file version');
+  if (record.repo !== repo || record.issue !== Number(issue)) {
+    throw refuse(`the plan is for ${record.repo}#${record.issue}, not ${repo}#${issue}`);
+  }
+  if ((record.profile || 'code') !== (profile || 'code')) {
+    throw refuse(`the plan used profile ${record.profile}, not ${profile}`);
+  }
+  if (!record.plan || record.plan.status !== 'accepted') throw refuse('the plan was not accepted');
+  if (!record.issueUpdatedAt || record.issueUpdatedAt !== updatedAt) {
+    throw refuse('the issue changed after it was planned; plan it again');
+  }
+  return { intake: record.intake, plan: record.plan };
+}
+
+/**
+ * --plan-in skips Stage A, so re-check the entitlement gates the plan was
+ * made under: an uninstall, a suspension or a lost write permission between
+ * planning and implementing must stop the run (status 403).
+ */
+function assertStillEntitled({ issue, tenant, entitlement, trigger }) {
+  const allowed = entitlementGate({ issue, tenant, entitlement, trigger });
+  if (!allowed.ok) {
+    const err = new Error(`--plan-in refused: ${allowed.reason}`);
+    err.status = 403;
+    throw err;
+  }
 }
 
 async function implementFromPlan({ args, issue, plan }) {
@@ -259,19 +351,40 @@ async function main() {
   const issue = issueFromGitHub(args.repo, payload);
   const gateInputs = buildGateInputs(args);
   const scan = resolveScanInput(args, issue);
-  const { intake, plan } = await completeThroughStageB({
-    issue,
-    tenant,
-    scan,
-    budget: gateInputs.budget,
-    routing: loadRouting(repoRoot),
-    critic: args.liveCritic ? critiquePlanLive : undefined,
-    revise: args.liveCritic
-      ? (plan, findings, prompt) => revisePlanLive(plan, findings, { prompt })
-      : undefined,
-    profile: args.profile,
-    repoRoot,
+  const entitlement = await resolveEntitlement({ repo: args.repo, tenant, env: process.env });
+  const trigger = await resolveTrigger({
+    repo: args.repo, login: args.requestedBy, token, ghImpl: gh,
   });
+  if (args.planIn) assertStillEntitled({ issue, tenant, entitlement, trigger });
+  const { intake, plan } = args.planIn
+    ? readPlanFile(args.planIn, {
+      repo: args.repo, issue: args.issue, updatedAt: payload.updated_at, profile: args.profile,
+    })
+    : await completeThroughStageB({
+      issue,
+      tenant,
+      entitlement,
+      trigger,
+      scan,
+      budget: gateInputs.budget,
+      routing: loadRouting(repoRoot),
+      critic: args.liveCritic ? critiquePlanLive : undefined,
+      revise: args.liveCritic
+        ? (plan, findings, prompt) => revisePlanLive(plan, findings, { prompt })
+        : undefined,
+      profile: args.profile,
+      repoRoot,
+    });
+  if (args.planOut && !args.planIn) {
+    writePlanFile(args.planOut, {
+      repo: args.repo,
+      issue: args.issue,
+      updatedAt: payload.updated_at,
+      profile: args.profile,
+      intake,
+      plan,
+    });
+  }
 
   if (args.post && intake.tier !== 'SKIPPED') {
     const comment = plan.status === 'accepted'
@@ -319,9 +432,12 @@ async function main() {
       `implement=${args.implement}`,
       `openPr=${args.openPr}`,
       `liveCritic=${args.liveCritic}`,
+      `modelRoute=${loadModelConfig(process.env).mode}`,
       `scan=${args.scanStatus || (args.scan ? 'local' : 'UNSCANNED')}`,
       `profile=${args.profile || 'code'}`,
       `budget=${args.budgetState || 'unverified'}`,
+      // The requester's permission, never their login: audit logs carry no PII (AGENTS.md).
+      `requester=${trigger ? (trigger.error ? 'unverified' : trigger.permission) : 'none'}`,
     ],
     actions: [intake.tier, plan.status, implementation && implementation.status, ...(intake.reasons || [])].filter(Boolean),
     risks: [
@@ -385,5 +501,5 @@ if (require.main === module) {
 
 module.exports = {
   parseArgs, buildGateInputs, resolveScanInput, loadTenant, assertRepoIssue, exitCodeForError, implementFromPlan, issueReadToken,
-  activeLoopLabel, syncNoemiLabel,
+  activeLoopLabel, syncNoemiLabel, readPlanFile, writePlanFile, assertStillEntitled,
 };

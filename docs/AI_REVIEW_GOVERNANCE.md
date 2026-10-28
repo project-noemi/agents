@@ -68,6 +68,46 @@ reads as endorsed even when the reviewer never asked whether it was needed.
 verdict available. It is never auto-actioned, in any phase. The reviewer
 recommends; a human decides.
 
+### When the human agrees the change should not exist
+
+Decision [2026-10-24-0001]. Use this when a person has read the premise finding
+and agrees the change should not be in the tree. Disagreeing is a different
+path: say so, and re-approve or ask for a different change.
+
+1. Post one comment. The reviewer's comment stays. The human comment is the one
+   the contributor should answer. It has three parts:
+   - One specific thing the contribution did well, taken from the diff.
+   - Why this repository is not taking the change. Personas and skills here are
+     ones another organization could run for a problem the fleet already has.
+   - What a welcome next contribution is, when the submission was a good-faith
+     mismatch: a change to an agent or skill already in the tree, or a new one
+     whose inputs and outputs do not depend on a private script or a single
+     machine. Open it from `develop` on a branch named `<type>/<area>-<slice>`.
+     On a fork, a maintainer adds the `ai-review` label.
+2. Close the pull request. Leave the contributor's branch in place.
+3. Do not push commits onto the contributor's fork.
+4. Do not dispatch the reviewer's remediation prompt, and do not ask for a
+   larger version of the same idea in this pull request. That prompt assumes a
+   defect to fix. Agreeing with the premise means the change should not exist.
+
+When the finding is that the change is unsafe, or outside the repository's
+purpose in a way a rewrite would not cure, close it with a polite comment that
+names the boundary. Do not invite a rewritten version of that same change.
+
+Copy this shape and fill the brackets from the diff:
+
+```
+Thank you for sending this. <one specific thing the diff did well>.
+
+We are closing it without merging. <why this change does not belong in the shared library>.
+
+You are welcome to contribute again. A useful next pull request <changes an agent or skill already here, or adds one another organization could run>. Open it from `develop` on a branch named `<type>/<area>-<slice>`. On a fork, a maintainer adds the `ai-review` label.
+```
+
+Pull request 622 was the first use: a persona whose only job was to run one
+private local script. The comment named the care in the file, said why a shared
+library does not take that script, and invited a different contribution.
+
 ## Severity rubric
 
 Severity is defined **here**, outside the reviewing agent. A reviewer that both
@@ -96,6 +136,7 @@ The reviewer halts and escalates to human review when a diff touches:
 - `docs/MACHINE_IDENTITY.md` (the identity register)
 - this document
 - `scripts/review-pr.js` and `scripts/calibration-watch.js`
+- `scripts/model-config.js` and `scripts/model-chat.js` (the model route and the chat call every gate uses)
 - `agents/coding/sentinel/core.md` and `agents/coding/sentinel/compliance.md`
 - `agents/engineering/pr-reviewer.md`
 
@@ -117,6 +158,14 @@ fall back to the highest-generation **stable Pro**. Flash is still refused
 pin; `auto` or an empty value discovers. A pin that is missing from the
 catalogue, or that is not a usable Gemini text model, halts rather than
 silently reviewing on a different model.
+
+With a NewPush AI gateway key (`AI_GW_API_TOKEN`, Decision [2026-10-22-0001])
+there is no discovery. The review pin is `GEMINI_REVIEW_MODEL` with the
+`google/` prefix added when missing, and `auto` or empty means
+`google/gemini-3.1-pro-preview`. An explicit pin that is not in the key's
+model list halts. The default pin missing, or a gateway error during a gate,
+fails the run; it is never a halt, because a halt passes the required check. The
+floor and preview flags apply only to Vertex discovery.
 
 **This does not change the `models/gemini-3.8-flash` pin in `CLAUDE.md`.** That
 pin governs reference workflows, lab examples, and smoke tests, where
@@ -324,8 +373,10 @@ severity), the workflow **dismisses all existing approving reviews** on that PR:
    found N blocking finding(s) after this approval. Review advisory comment by
    @noemi-reviewer-bot and re-approve when findings are addressed or accepted."
 4. PR becomes non-mergeable (branch protection requires approval on `develop`)
-5. Maintainer reads advisory findings, then either:
-   - Requests changes from contributor, or
+5. Maintainer reads advisory findings, then:
+   - If the failed gate is premise and the maintainer agrees, follows
+     [When the human agrees the change should not exist](#when-the-human-agrees-the-change-should-not-exist).
+   - Otherwise, requests changes from the contributor, or
    - Re-approves after determining findings are addressed or acceptable
 
 **Why dismiss approvals?** Phase 1 is advisory-only — the "AI Review (advisory)"

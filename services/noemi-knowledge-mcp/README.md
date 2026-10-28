@@ -2,7 +2,7 @@
 
 Remote **Model Context Protocol** server that exposes a searchable public
 knowledge corpus for Project NoéMI (Bible, governance, methodology, Phase 0,
-`skills-dist`).
+the public getting-started guides, and `skills-dist`).
 
 This is a **real** MCP transport (Streamable HTTP at `/mcp`) on a **separate
 origin** from the marketing site. Agents use it to query Project NoéMI doctrine
@@ -57,7 +57,7 @@ api-catalog / Link discovery. Merge/promote that PR only after this host returns
 
 ## Security
 
-- Corpus is **curated public** docs only: Bible (`PROJECT_REFERENCE`), governance, methodology, Phase 0 baseline, and `skills-dist` skill markdown.
+- Corpus is **curated public** docs only: Bible (`PROJECT_REFERENCE`), governance, methodology, Phase 0 baseline, the five public getting-started guides under `docs/examples/`, and `skills-dist` skill markdown.
 - Explicitly **excluded**: `MACHINE_IDENTITY.md`, identity registers, and other internal admin-architecture docs.
 - No secrets / PII. No auth on v0.1 (read-only). Add Cloudflare Access / OAuth later if needed.
 - `/mcp` has an isolate-local SHA-256 IP rate limit (60 req / 15 min, fail-open). Pair with Cloudflare Rate Limiting / WAF for global enforcement.

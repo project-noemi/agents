@@ -4,6 +4,8 @@
 # Enable after vars.CODING_LOOP_BUDGET_OK=true and a conductor token exist.
 # Optional: vars.CODING_LOOP_LIVE_CRITIC=true plus org WIF for Gemini B′.
 # Does not approve, merge, or write code.
+# Passes exactly the two secrets the loop declares — never `secrets: inherit`,
+# which would hand every secret of this repository to the reusable workflow.
 name: Coding Loop
 
 on:
@@ -22,6 +24,8 @@ jobs:
     permissions:
       contents: read
       issues: write
-    secrets: inherit
+    secrets:
+      CONDUCTOR_GH_TOKEN: ${{ secrets.CONDUCTOR_GH_TOKEN }}
+      AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
     with:
       issue: ${{ inputs.issue || github.event.issue.number }}

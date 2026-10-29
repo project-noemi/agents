@@ -41,6 +41,17 @@ on:
         required: false
         type: string
         default: code
+    # Declared so callers pass exactly these two instead of `secrets: inherit`, which would
+    # hand every secret of the calling repository to this workflow. Both stay optional:
+    # without CONDUCTOR_GH_TOKEN the loop comments as github-actions; without AGENT_GH_TOKEN
+    # it never opens a PR.
+    secrets:
+      CONDUCTOR_GH_TOKEN:
+        description: 'Conductor installation token (comments and labels as noemi-conductor)'
+        required: false
+      AGENT_GH_TOKEN:
+        description: 'Producer token (opens the PR as noemi-agent)'
+        required: false
 
 permissions:
   contents: read

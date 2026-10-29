@@ -8,7 +8,7 @@
       "question": "What is Project NoéMI?",
       "query": "What is Project NoéMI",
       "source": "docs/PROJECT_REFERENCE.md",
-      "mustMention": ["global AI fluency accelerator", "Virtual Workforce"]
+      "mustMention": ["workshop series", "Virtual Workforce"]
     },
     {
       "id": "three-pillars",
@@ -86,6 +86,27 @@
       "query": "governed loop skill",
       "source": "skills-dist/governed-loop/SKILL.md",
       "mustMention": ["governed-loop"]
+    },
+    {
+      "id": "is-noemi-a-course",
+      "question": "Is NoéMI a training course?",
+      "query": "hands-on workshop series prompt engineering course",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["workshop"]
+    },
+    {
+      "id": "get-started-safely",
+      "question": "How do I get started safely?",
+      "query": "how do I get started safely",
+      "source": "docs/examples/zero-to-first-agent.md",
+      "mustMention": ["read-only"]
+    },
+    {
+      "id": "team-builds-first",
+      "question": "What does my team build first?",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "query": "first agents administrative overhead desks",
+      "mustMention": ["administrative"]
     }
   ]
 }

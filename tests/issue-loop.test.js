@@ -732,6 +732,26 @@ test('Stage B′: an unchanged revision, an invented path, or a dropped skip rec
     }),
     (err) => err.status === 429,
   );
+
+  // A spent gateway budget stops the run. It is not a plan finding to post.
+  await assert.rejects(
+    () => runPlanRedTeam(drafted, {
+      maxCycles: 3,
+      issueText: sufficientBody,
+      critic: async () => ({
+        verdict: 'fail',
+        findings: [{ severity: 'high', gate: 'premise', claim: 'goal is not checkable' }],
+        mode: 'gemini',
+      }),
+      revise: async () => {
+        const err = new Error('Gemini google/x → 422 budget-or-forbidden');
+        err.status = 403;
+        err.code = 'budget-or-forbidden';
+        throw err;
+      },
+    }),
+    (err) => err.code === 'budget-or-forbidden',
+  );
 });
 
 test('applyPlanRevision drops a registry host and keeps a grounded repository path', () => {
@@ -1067,6 +1087,23 @@ test('coding-loop workflow is reusable and does not default budget to ok', () =>
   assert.doesNotMatch(yml, /--profile spec/);
   assert.match(caller, /project-noemi\/agents\/\.github\/workflows\/coding-loop\.yml@main/);
   assert.match(caller, /issues:/);
+  // Fleet callers pass the declared secrets by name; `secrets: inherit` would hand every
+  // secret of the calling repository to this workflow. The App pair is the standard
+  // conductor credential (minted per run); CONDUCTOR_GH_TOKEN is the debugging override.
+  for (const name of [
+    'CONDUCTOR_APP_ID', 'CONDUCTOR_APP_PRIVATE_KEY', 'CONDUCTOR_GH_TOKEN', 'AGENT_GH_TOKEN',
+    'AI_GW_API_TOKEN', 'AI_GW_API_KEY', 'XAI_API_KEY',
+  ]) {
+    assert.match(yml, new RegExp(`^      ${name}:\\n        description:`, 'm'), `${name} declared under workflow_call.secrets`);
+    assert.match(caller, new RegExp(`^      ${name}: \\$\\{\\{ secrets\\.${name} \\}\\}$`, 'm'), `caller passes ${name}`);
+  }
+  assert.doesNotMatch(caller, /^\s+secrets:\s*inherit\s*$/m, 'caller must not use secrets: inherit');
+  // --post follows whichever conductor credential is present, not only the override token.
+  assert.match(yml, /-n "\$\{CONDUCTOR_APP_ID:-\}" && -n "\$\{CONDUCTOR_APP_PRIVATE_KEY:-\}"/);
+  // --open-pr is gated on a writer key; producer token alone still only prepares the envelope.
+  assert.match(yml, /extra\+=\(--open-pr\)/);
+  assert.match(yml, /-n "\$\{AI_GW_API_TOKEN:-\}\$\{AI_GW_API_KEY:-\}\$\{XAI_API_KEY:-\}"/);
+  assert.match(caller, /id-token: write/);
 });
 
 test('run.js: nothing asserted means nothing granted — both gates fail closed by default', () => {
@@ -1137,6 +1174,10 @@ test('critiquePlanLive: Gemini pass after structural pass; fail is not accepted'
     scan: { status: 'APPROVED' },
   });
   const drafted = draftPlan({ issue: issue({ body: sufficientBody }), intake });
+  // Stop conditions are about the work. The cycle limit is the loop's, enforced
+  // in code; naming it in the plan read as leaked internals to the red-team.
+  assert.doesNotMatch(drafted.plan, /planRedTeam|maxCycles|Stage B′/);
+  assert.match(drafted.plan, /The change needs a file that is not in the Files list\./);
   const passed = await critiquePlanLive(drafted, {
     callModel: async () => ({ verdict: 'pass', findings: [] }),
   });
@@ -1644,6 +1685,7 @@ test('CLI --open-pr without XAI_API_KEY or --implement is refused', () => {
   const env = { ...process.env, AGENT_GH_TOKEN: 'x' };
   delete env.XAI_API_KEY;
   delete env.AI_GW_API_TOKEN;
+  delete env.AI_GW_API_KEY;
   delete env.AI_GW_BASE_URL;
   delete env.AI_GW_API_BASE;
   const missingKey = spawnSync(process.execPath, [
@@ -1661,11 +1703,16 @@ test('CLI --open-pr without XAI_API_KEY or --implement is refused', () => {
   assert.throws(() => assertWriterKey({}), /XAI_API_KEY|AI_GW_API_TOKEN/);
 });
 
-test('writer auth: XAI_API_KEY uses api.x.ai; gateway token defaults to NewPush /v1', () => {
+test('writer auth: gateway key wins over XAI_API_KEY; XAI_API_KEY alone uses api.x.ai', () => {
   const { resolveWriterAuth, classifyGrok, normalizeApiBase, NEWPUSH_AI_GW_V1 } = require('../coding-loop/writer.js');
-  const xai = resolveWriterAuth({ XAI_API_KEY: 'xai', AI_GW_API_TOKEN: 'gw' });
+  const both = resolveWriterAuth({ XAI_API_KEY: 'xai', AI_GW_API_TOKEN: 'gw' });
+  assert.equal(both.source, 'AI_GW_API_TOKEN');
+  assert.equal(both.apiBase, NEWPUSH_AI_GW_V1);
+  assert.equal(both.mode, 'gateway');
+  const xai = resolveWriterAuth({ XAI_API_KEY: 'xai' });
   assert.equal(xai.source, 'XAI_API_KEY');
   assert.equal(xai.apiBase, 'https://api.x.ai/v1');
+  assert.equal(xai.mode, 'native');
   const gw = resolveWriterAuth({ AI_GW_API_TOKEN: 'gw' });
   assert.equal(gw.source, 'AI_GW_API_TOKEN');
   assert.equal(gw.apiBase, NEWPUSH_AI_GW_V1);
@@ -1761,4 +1808,356 @@ test('draftPlan spec profile refuses a code path; writer spec profile refuses it
   });
   assert.equal(slipped.status, 'refused');
   assert.ok(['writer-profile-path', 'writer-path-not-in-plan'].includes(slipped.reason));
+});
+
+// --- one model config + one chat client (Decision [2026-10-22-0001]) -------
+
+const { loadModelConfig, gatewayRoot, toGatewayModel } = require('../scripts/model-config.js');
+const { chatJson, completionTokenFields, isBudgetOrForbidden, postJson } = require('../scripts/model-chat.js');
+const { isTransientHttpError } = require('../coding-loop/http.js');
+const { callCriticModel } = require('../coding-loop/critic.js');
+
+function chatReply(content) {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => ({ choices: [{ finish_reason: 'stop', message: { content } }] }),
+  };
+}
+
+test('model config: gateway key alone selects gateway mode and the default pins', () => {
+  const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw-test' });
+  assert.equal(config.mode, 'gateway');
+  assert.equal(config.gateway.source, 'AI_GW_API_TOKEN');
+  assert.equal(config.gateway.root, 'https://ai-gw.newpush.com');
+  assert.equal(config.gateway.openaiBase, 'https://ai-gw.newpush.com/v1');
+  assert.equal(config.gateway.googleBase, 'https://ai-gw.newpush.com/google');
+  assert.equal(config.stages.code.model, 'xai/grok-4.6');
+  assert.equal(config.stages.plan.model, 'google/gemini-4-argon');
+  assert.equal(config.stages.critic.model, 'google/gemini-3.1-pro-preview');
+  assert.equal(config.stages.review.model, 'google/gemini-3.1-pro-preview');
+  assert.equal(loadModelConfig({ AI_GW_API_KEY: 'gw-test' }).gateway.source, 'AI_GW_API_KEY');
+});
+
+test('model config: gateway key plus XAI_API_KEY and GCP_ACCESS_TOKEN still selects gateway', () => {
+  const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw', XAI_API_KEY: 'xai', GCP_ACCESS_TOKEN: 'ya29' });
+  assert.equal(config.mode, 'gateway');
+  assert.equal(config.xai.source, 'XAI_API_KEY');
+});
+
+test('model config: no gateway key selects native mode with raw pins', () => {
+  const config = loadModelConfig({ XAI_API_KEY: 'xai', GEMINI_REVIEW_MODEL: 'auto', XAI_CODE_MODEL: 'grok-4.6' });
+  assert.equal(config.mode, 'native');
+  assert.equal(config.gateway, null);
+  assert.equal(config.xai.apiBase, 'https://api.x.ai/v1');
+  assert.equal(config.stages.code.model, 'grok-4.6');
+  assert.equal(config.stages.review.model, '');
+  assert.equal(config.stages.review.source, 'discover');
+  assert.equal(loadModelConfig({}).mode, 'native');
+});
+
+test('model config: native pin names map onto gateway ids; base URL accepts root, /v1 or /google', () => {
+  const config = loadModelConfig({
+    AI_GW_API_TOKEN: 'gw',
+    AI_GW_BASE_URL: 'https://ai-gw.newpush.com/v1/',
+    GEMINI_REVIEW_MODEL: 'models/gemini-3.1-pro-preview',
+    GEMINI_CRITIC_MODEL: 'auto',
+    XAI_CODE_MODEL: 'grok-build-0.1',
+  });
+  assert.equal(config.gateway.openaiBase, 'https://ai-gw.newpush.com/v1');
+  assert.equal(config.stages.review.model, 'google/gemini-3.1-pro-preview');
+  assert.equal(config.stages.review.source, 'GEMINI_REVIEW_MODEL');
+  // `auto` on the critic falls to the gateway default, not to the review pin.
+  assert.equal(config.stages.critic.model, 'google/gemini-3.1-pro-preview');
+  assert.equal(config.stages.critic.source, 'default');
+  assert.equal(config.stages.code.model, 'xai/grok-build-0.1');
+  assert.equal(gatewayRoot('https://llm.example.com/google'), 'https://llm.example.com');
+  assert.equal(toGatewayModel('publishers/google/models/gemini-x', 'google'), 'google/gemini-x');
+  assert.equal(toGatewayModel('xai/grok-4.6', 'xai'), 'xai/grok-4.6');
+});
+
+test('chat client: allowed_openai_params and timeout header go to the gateway, not to api.x.ai', async () => {
+  const seen = [];
+  const fetchImpl = async (url, opts) => {
+    seen.push({ url, headers: opts.headers, body: JSON.parse(opts.body) });
+    return chatReply('{"ok":true}');
+  };
+  const gw = await chatJson({
+    apiBase: 'https://ai-gw.newpush.com/v1', apiKey: 'gw-test', model: 'google/gemini-3.1-pro-preview',
+    messages: [{ role: 'user', content: 'x' }], fetchImpl,
+  });
+  assert.deepEqual(gw.json, { ok: true });
+  assert.equal(seen[0].url, 'https://ai-gw.newpush.com/v1/chat/completions');
+  assert.equal(seen[0].headers.Authorization, 'Bearer gw-test');
+  assert.equal(seen[0].body.model, 'google/gemini-3.1-pro-preview');
+  // Gemini: LiteLLM maps these natively. Naming them makes Vertex return 400.
+  assert.equal(seen[0].body.allowed_openai_params, undefined);
+  assert.deepEqual(seen[0].body.response_format, { type: 'json_object' });
+  assert.ok(Number(seen[0].headers['x-litellm-timeout']) > 0);
+  await chatJson({
+    apiBase: 'https://ai-gw.newpush.com/v1', apiKey: 'gw-test', model: 'xai/grok-4.6',
+    messages: [{ role: 'user', content: 'x' }], fetchImpl,
+  });
+  assert.deepEqual(seen[1].body.allowed_openai_params, ['max_completion_tokens', 'response_format']);
+  seen.splice(1, 1);
+  await chatJson({
+    apiBase: 'https://api.x.ai/v1', apiKey: 'xai-test', model: 'grok-4.6',
+    messages: [{ role: 'user', content: 'x' }], fetchImpl,
+  });
+  assert.equal(seen[1].body.allowed_openai_params, undefined);
+  assert.equal(seen[1].headers['x-litellm-timeout'], undefined);
+  assert.equal(completionTokenFields('https://api.x.ai/v1', {}).allowed_openai_params, undefined);
+});
+
+function gatewayDraftedPlan() {
+  const intake = evaluateSufficiency({ issue: issue({ body: sufficientBody }), scan: { status: 'APPROVED' } });
+  return draftPlan({ issue: issue({ body: sufficientBody }), intake });
+}
+
+test('chat client: 403 is budget-or-forbidden and is not retried by the loop', async () => {
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    return { ok: false, status: 403, text: async () => '{"error":{"type":"key_model_access_denied","message":"gw-long-secret-key echoed"}}' };
+  };
+  const prior = process.env.MODEL_RETRY_BASE_MS;
+  process.env.MODEL_RETRY_BASE_MS = '1';
+  try {
+    await assert.rejects(
+      () => critiquePlanLive(gatewayDraftedPlan(), { env: { AI_GW_API_TOKEN: 'gw-long-secret-key' }, fetchImpl }),
+      (err) => err.status === 403 && err.code === 'budget-or-forbidden'
+        && !/gw-long-secret-key/.test(err.message) && /\[redacted\] echoed/.test(err.message),
+    );
+  } finally {
+    if (prior === undefined) delete process.env.MODEL_RETRY_BASE_MS; else process.env.MODEL_RETRY_BASE_MS = prior;
+  }
+  assert.equal(calls, 1);
+});
+
+test('chat client: a budget refusal sent as 429 or 422 stops instead of retrying as a rate limit', async () => {
+  for (const status of [400, 422, 429]) {
+    await assert.rejects(
+      () => chatJson({
+        apiBase: 'https://ai-gw.newpush.com/v1', apiKey: 'gw-test', model: 'xai/grok-4.6', messages: [],
+        fetchImpl: async () => ({ ok: false, status, text: async () => '{"error":{"type":"budget_exceeded","message":"over"}}' }),
+      }),
+      (err) => err.status === 403 && err.code === 'budget-or-forbidden' && err.upstreamStatus === status,
+    );
+  }
+  assert.equal(isBudgetOrForbidden(429, '{"error":{"type":"rate_limit_error"}}'), false);
+  await assert.rejects(
+    () => chatJson({
+      apiBase: 'https://ai-gw.newpush.com/v1', apiKey: 'gw-test', model: 'xai/grok-4.6', messages: [],
+      fetchImpl: async () => ({ ok: false, status: 429, text: async () => '{"error":{"type":"rate_limit_error"}}' }),
+    }),
+    (err) => err.status === 429 && err.code === undefined,
+  );
+});
+
+test('chat client: inactivity timeout carries no status, so withRetry does not repeat it', async () => {
+  const http = require('node:http');
+  const server = http.createServer(() => { /* never answers */ });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+  try {
+    await assert.rejects(
+      () => chatJson({
+        apiBase: `http://127.0.0.1:${port}/v1`, apiKey: 'gw-test', model: 'google/x', messages: [], timeoutMs: 50,
+      }),
+      (err) => err.code === 'model-timeout' && err.status === undefined && !isTransientHttpError(err),
+    );
+  } finally {
+    server.close();
+  }
+  assert.equal(typeof postJson, 'function');
+});
+
+test('critic on gateway mode does not call getAccessToken and reads the chat completion', async () => {
+  const seen = [];
+  const reply = await callCriticModel('prompt text', {
+    env: { AI_GW_API_TOKEN: 'gw-test', XAI_API_KEY: 'xai' },
+    token: undefined,
+    fetchImpl: async (url, opts) => {
+      seen.push({ url, body: JSON.parse(opts.body) });
+      return chatReply('{"verdict":"pass","findings":[]}');
+    },
+  });
+  assert.deepEqual(reply, { verdict: 'pass', findings: [] });
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].url, 'https://ai-gw.newpush.com/v1/chat/completions');
+  assert.equal(seen[0].body.model, 'google/gemini-3.1-pro-preview');
+  assert.deepEqual(seen[0].body.messages, [{ role: 'user', content: 'prompt text' }]);
+
+  // getAccessToken would shell out to gcloud. Prove it is never reached.
+  const gcp = require('../scripts/gcp-token.js');
+  const original = gcp.getAccessToken;
+  let tokenCalls = 0;
+  gcp.getAccessToken = async () => { tokenCalls += 1; return 'ya29'; };
+  try {
+    const critique = await critiquePlanLive(gatewayDraftedPlan(), {
+      env: { AI_GW_API_TOKEN: 'gw-test' },
+      fetchImpl: async () => chatReply('{"verdict":"pass","findings":[]}'),
+    });
+    assert.equal(critique.mode, 'gemini');
+    assert.equal(critique.verdict, 'pass');
+    const models = [];
+    const revised = await revisePlanLive({ plan: 'p', files: [] }, [], {
+      prompt: 'revise', env: { AI_GW_API_TOKEN: 'gw-test' },
+      fetchImpl: async (url, opts) => {
+        models.push(JSON.parse(opts.body).model);
+        return chatReply('{"plan":"next","files":["coding-loop/run.js"]}');
+      },
+    });
+    assert.equal(revised.plan, 'next');
+    // The plan is written by Argon and attacked by 3.1 Pro, never the same model.
+    assert.deepEqual(models, ['google/gemini-4-argon']);
+    const pinnedPlan = loadModelConfig({ AI_GW_API_TOKEN: 'gw', PLAN_MODEL: 'gemini-x' });
+    assert.equal(pinnedPlan.stages.plan.model, 'google/gemini-x');
+    assert.equal(pinnedPlan.stages.critic.model, 'google/gemini-3.1-pro-preview');
+    // The plan provider is configurable: Anthropic routes through the gateway.
+    const claudePlan = loadModelConfig({ AI_GW_API_TOKEN: 'gw', PLAN_MODEL: 'anthropic/claude-x' });
+    assert.equal(claudePlan.stages.plan.model, 'anthropic/claude-x');
+    assert.equal(claudePlan.stages.plan.provider, 'anthropic');
+    const sent = [];
+    await revisePlanLive({ plan: 'p', files: [] }, [], {
+      prompt: 'revise', env: { AI_GW_API_TOKEN: 'gw-test', PLAN_MODEL: 'anthropic/claude-x' },
+      fetchImpl: async (url, opts) => { sent.push(JSON.parse(opts.body)); return chatReply('{"plan":"n","files":[]}'); },
+    });
+    assert.equal(sent[0].model, 'anthropic/claude-x');
+    assert.equal(sent[0].allowed_openai_params, undefined);
+    // Without the gateway there is no direct Anthropic path: refuse clearly.
+    await assert.rejects(
+      () => callCriticModel('p', { stage: 'plan', env: { PLAN_MODEL: 'anthropic/claude-x' } }),
+      (err) => err.status === 400 && /needs the AI gateway/.test(err.message),
+    );
+  } finally {
+    gcp.getAccessToken = original;
+  }
+  assert.equal(tokenCalls, 0);
+});
+
+test('writer on gateway: both keys set sends to the gateway host with xai/grok-4.6 and skips /models', async () => {
+  const urls = [];
+  const out = await draftChanges({
+    issue: { title: 't', body: 'b' },
+    plan: { status: 'accepted', plan: 'Edit coding-loop/run.js', files: ['coding-loop/run.js'] },
+    env: { XAI_API_KEY: 'xai-test', AI_GW_API_TOKEN: 'gw-test' },
+    fetchImpl: async (url, opts) => {
+      urls.push({ url, model: opts && opts.body ? JSON.parse(opts.body).model : null });
+      return chatReply('{"summary":"ok","files":[{"path":"coding-loop/run.js","content":"x\\n"}]}');
+    },
+  });
+  assert.equal(out.status, 'ready');
+  assert.equal(out.model, 'xai/grok-4.6');
+  assert.equal(urls.length, 1);
+  assert.equal(new URL(urls[0].url).host, 'ai-gw.newpush.com');
+  assert.equal(urls[0].model, 'xai/grok-4.6');
+});
+
+test('chat client: a 429 budget body is not retried end to end; a 429 rate limit is', async () => {
+  const prior = process.env.MODEL_RETRY_BASE_MS;
+  process.env.MODEL_RETRY_BASE_MS = '1';
+  try {
+    let calls = 0;
+    await assert.rejects(
+      () => critiquePlanLive(gatewayDraftedPlan(), {
+        env: { AI_GW_API_TOKEN: 'gw-test' },
+        fetchImpl: async () => {
+          calls += 1;
+          return { ok: false, status: 429, text: async () => '{"error":{"type":"budget_exceeded","message":"Budget has been exceeded"}}' };
+        },
+      }),
+      (err) => err.code === 'budget-or-forbidden',
+    );
+    assert.equal(calls, 1);
+    calls = 0;
+    const passed = await critiquePlanLive(gatewayDraftedPlan(), {
+      env: { AI_GW_API_TOKEN: 'gw-test' },
+      fetchImpl: async () => {
+        calls += 1;
+        if (calls === 1) return { ok: false, status: 429, text: async () => '{"error":{"type":"rate_limit_error","message":"slow down"}}' };
+        return chatReply('{"verdict":"pass","findings":[]}');
+      },
+    });
+    assert.equal(passed.verdict, 'pass');
+    assert.equal(calls, 2);
+  } finally {
+    if (prior === undefined) delete process.env.MODEL_RETRY_BASE_MS; else process.env.MODEL_RETRY_BASE_MS = prior;
+  }
+});
+
+test('chat client: budget words echoed from a prompt in a 5xx body do not stop the run', () => {
+  const echoed = JSON.stringify({ error: { type: 'internal_error', message: 'upstream failed' }, request: 'fix budget_exceeded handling' });
+  assert.equal(isBudgetOrForbidden(500, echoed), false);
+  assert.equal(isBudgetOrForbidden(502, 'gateway said budget_exceeded in plain text'), false);
+  assert.equal(isBudgetOrForbidden(400, '{"error":{"type":"auth_error","message":"ExceededBudget: End User=x"}}'), true);
+});
+
+test('chat client: network failures are 503 outages; timeouts are outages that are not retried', () => {
+  const { transportError } = require('../scripts/model-chat.js');
+  for (const code of ['ENOTFOUND', 'EHOSTUNREACH', 'ENETUNREACH', 'EPIPE', 'ECONNABORTED', 'ECONNRESET']) {
+    const err = transportError('xAI grok-4.6', Object.assign(new Error('boom'), { code }));
+    assert.equal(err.status, 503, code);
+    assert.equal(err.code, 'model-network');
+    assert.equal(isTransientHttpError(err), true);
+  }
+  const timeout = transportError('xAI grok-4.6', Object.assign(new TypeError('fetch failed'), { cause: { code: 'MODEL_INACTIVITY_TIMEOUT' } }));
+  assert.equal(timeout.code, 'model-timeout');
+  assert.equal(isTransientHttpError(timeout), false);
+});
+
+test('plan red-team: a model timeout during revision re-queues instead of posting needs-info', async () => {
+  await assert.rejects(
+    () => runPlanRedTeam(gatewayDraftedPlan(), {
+      maxCycles: 3,
+      issueText: sufficientBody,
+      critic: async () => ({
+        verdict: 'fail',
+        findings: [{ severity: 'high', gate: 'premise', claim: 'goal is not checkable' }],
+        mode: 'gemini',
+      }),
+      revise: (plan, findings, prompt) => revisePlanLive(plan, findings, {
+        prompt,
+        env: { AI_GW_API_TOKEN: 'gw-test' },
+        fetchImpl: async () => { throw Object.assign(new TypeError('fetch failed'), { cause: { code: 'MODEL_INACTIVITY_TIMEOUT' } }); },
+      }),
+    }),
+    (err) => err.code === 'model-timeout',
+  );
+});
+
+test('plan file: --plan-in implements only the accepted plan for the same, unchanged issue', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const { readPlanFile, writePlanFile, parseArgs } = require('../coding-loop/run.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-file-'));
+  const file = path.join(dir, 'plan.json');
+  const accepted = { status: 'accepted', plan: '## Goal\nx', files: ['README.md'] };
+  const intake = { tier: 'ACTIONABLE' };
+  const at = '2026-10-22T10:00:00Z';
+  try {
+    writePlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, profile: 'code', intake, plan: accepted });
+    assert.equal(fs.statSync(file).mode & 0o777, 0o600);
+    assert.deepEqual(readPlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, profile: 'code' }), { intake, plan: accepted });
+    const refused = (opts) => assert.throws(() => readPlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, profile: 'code', ...opts }), (err) => err.status === 409);
+    refused({ issue: '8' });
+    refused({ repo: 'o/other' });
+    refused({ updatedAt: '2026-10-22T11:00:00Z' });
+    refused({ profile: 'spec' });
+    writePlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, intake, plan: { ...accepted, status: 'needs-info' } });
+    refused({});
+    assert.throws(() => readPlanFile(path.join(dir, 'missing.json'), { repo: 'o/r', issue: '7', updatedAt: at }), /cannot read the plan file \(ENOENT\)/);
+    // A non-plan file is refused without quoting its contents.
+    const other = path.join(dir, 'passwd');
+    fs.writeFileSync(other, 'root:x:0:0:secret-line\n');
+    assert.throws(
+      () => readPlanFile(other, { repo: 'o/r', issue: '7', updatedAt: at }),
+      (err) => err.status === 409 && /not valid JSON/.test(err.message) && !/root|secret-line/.test(err.message),
+    );
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  const args = parseArgs(['--plan-out', '/tmp/a.json', '--plan-in', '/tmp/b.json']);
+  assert.equal(args.planOut, '/tmp/a.json');
+  assert.equal(args.planIn, '/tmp/b.json');
 });

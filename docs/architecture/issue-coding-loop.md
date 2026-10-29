@@ -153,7 +153,7 @@ GitHub issue opened
         ├─ out of scope / unsafe → noemi:wont-act, STOP
         └─ actionable
                 ▼
-  Stage B   Fable 5 Max family     plan comment + noemi:planned
+  Stage B   Gemini Argon family    plan comment + noemi:planned
                 ▼
   Stage B′  Gemini Pro family      red-team the plan
         │
@@ -220,8 +220,10 @@ as `noemi-agent`. Label `noemi:in-progress`. Open a PR against `develop` (then
 calls Grok for one JSON object (`coding-loop/writer.js`), and opens the
 PR with `AGENT_GH_TOKEN` (`coding-loop/dispatch.js`). The body starts with
 `Closes #N`, or with `Part of #N` when the accepted plan says the agent does
-not finish the work. Pickup does not open PRs just because the producer
-token is present. When a conductor token is present, the loop applies one
+not finish the work. Pickup passes `--open-pr` when the producer token and a
+writer key (`AI_GW_API_TOKEN`, else `AI_GW_API_KEY`, else `XAI_API_KEY`) are
+both present (Decision [2026-10-29-0001]); the producer token alone still
+only prepares the envelope. When a conductor token is present, the loop applies one
 `noemi:*` label and removes the other `noemi:*` labels. An opened PR is
 `noemi:review`.
 
@@ -285,7 +287,8 @@ PR to that file, not a host-framework deploy.
 
 | Stage | Family | Host today |
 |---|---|---|
-| triage / plan | Fable 5 Max | Heuristic in `coding-loop/`; live Fable in Claude Code via Orchestrator `model` |
+| triage | Fable 5 Max | Heuristic in `coding-loop/`; live Fable in Claude Code via Orchestrator `model` |
+| plan | Gemini Argon (`google/gemini-4-argon`) | Draft is heuristic in `coding-loop/`; revisions use the plan pin through `critic.revisePlanLive` |
 | code | Grok latest, effort xHigh | CLI `XAI_API_KEY` (`writer.js`); interactive `/grok-build:delegate` |
 | redteam | Gemini Pro | `critic.js` / fleet `review-pr.js` |
 | bulk | Gemini Flash (highest 3.x) or Sonnet 5 | Claude Code Orchestrator; **not** fleet PR review |
@@ -321,6 +324,37 @@ must wait for that promotion.
 committed tenant is `tenants/internal.json`: `source=newpush-pool`,
 `plan=internal`, no repo deny. BYO keys, monthly plans, and on-demand
 metering are schema fields, not implemented product.
+
+### Client entitlement
+
+Client orgs share the NewPush pool tenant; there is no tenant file per client
+and clients bring no API keys (Decision [2026-10-22-0005]). An org that is not
+on the tenant's `orgs` list is entitled only when all of these hold:
+
+1. **Installed.** The conductor App is installed on the repo and not suspended
+   (`GET /repos/{owner}/{repo}/installation` with the App JWT). The client's
+   org owner controls scope by choosing "Only select repositories".
+2. **Registered.** `NOEMI_CLIENT_REGISTRY` (JSON from the vault, shaped by
+   [`docs/client-registry.schema.json`](../client-registry.schema.json)) has an
+   `active` row for the installation's **account ID**. The App must be public
+   to be installed on client orgs, so anyone can install it; the registry is
+   NewPush's side of the grant. Rows key on the numeric account ID because
+   logins can be renamed and re-registered. Optional `repos` narrows the row.
+3. **Requested by a writer.** `--requested-by` names a user whose permission
+   on the repo is write, maintain or admin. This is the bar Copilot, Claude
+   Code GitHub Actions and Devin use, and it stops outsiders on public client
+   repos from spending the pool.
+
+Each failure refuses with its own reason: `app-not-installed`,
+`installation-suspended`, `unregistered-client`, `client-suspended`,
+`trigger-unverified`, `trigger-not-writer`, and `entitlement-unverified` when
+a lookup fails (fail closed). `--plan-in` re-checks all three, so an
+uninstall or suspension between planning and implementing stops the run.
+
+The registry is never committed: this repository is public and the list says
+who NewPush's clients are. Industry comparison and the remaining work
+(App-identity PRs on client orgs, uninstall webhooks, per-client caps, CI
+approval gate): [`github-bot-entitlement-patterns.md`](github-bot-entitlement-patterns.md).
 
 ## Cost and safety (required before org-wide pickup)
 

@@ -8,10 +8,13 @@
 const { withRetry } = require('../scripts/resilience_helpers.js');
 const { scanIssueBody } = require('./scan.js');
 const { httpError, modelRetryOptions } = require('./http.js');
+const {
+  GATEWAY_DEFAULTS, NEWPUSH_AI_GW, XAI_API, loadModelConfig, normalizeApiBase,
+} = require('../scripts/model-config.js');
+const { chatJson } = require('../scripts/model-chat.js');
 
-const XAI_API = 'https://api.x.ai/v1';
-const NEWPUSH_AI_GW_V1 = 'https://ai-gw.newpush.com/v1';
-const DEFAULT_GW_GROK_MODEL = 'xai/grok-4.6';
+const NEWPUSH_AI_GW_V1 = `${NEWPUSH_AI_GW}/v1`;
+const DEFAULT_GW_GROK_MODEL = GATEWAY_DEFAULTS.code;
 const MAX_FILES = 20;
 const MAX_FILE_CHARS = 200000;
 
@@ -34,35 +37,32 @@ function isCarvedOut(filePath) {
   return normalized === '.github/workflows' || normalized.startsWith('.github/workflows/');
 }
 
-function normalizeApiBase(url) {
-  const raw = String(url || '').trim().replace(/\/+$/, '');
-  if (!raw) return '';
-  return /\/v1$/i.test(raw) ? raw : `${raw}/v1`;
-}
-
+/**
+ * Writer credential from the one model config (scripts/model-config.js).
+ * The gateway key wins when set; XAI_API_KEY is the direct fallback.
+ */
 function resolveWriterAuth(env = process.env) {
-  if (env && env.XAI_API_KEY) {
+  const config = loadModelConfig(env);
+  if (config.mode === 'gateway') {
     return {
-      apiKey: env.XAI_API_KEY,
-      apiBase: normalizeApiBase(env.XAI_API_BASE) || XAI_API,
-      source: 'XAI_API_KEY',
-      pinDefault: '',
+      apiKey: config.gateway.apiKey,
+      apiBase: config.gateway.openaiBase,
+      source: config.gateway.source,
+      pinDefault: config.stages.code.model,
+      mode: 'gateway',
     };
   }
-  const gwKey = env && (env.AI_GW_API_TOKEN || env.AI_GW_API_KEY);
-  if (gwKey) {
-    const apiBase = normalizeApiBase(
-      env.AI_GW_BASE_URL || env.AI_GW_API_BASE || NEWPUSH_AI_GW_V1,
-    );
+  if (config.xai) {
     return {
-      apiKey: gwKey,
-      apiBase,
-      source: env.AI_GW_API_TOKEN ? 'AI_GW_API_TOKEN' : 'AI_GW_API_KEY',
-      pinDefault: DEFAULT_GW_GROK_MODEL,
+      apiKey: config.xai.apiKey,
+      apiBase: config.xai.apiBase,
+      source: config.xai.source,
+      pinDefault: '',
+      mode: 'native',
     };
   }
   const err = new Error(
-    'Stage C --open-pr requires XAI_API_KEY, or AI_GW_API_TOKEN / AI_GW_API_KEY (Fetch-on-Demand).',
+    'Stage C --open-pr requires AI_GW_API_TOKEN / AI_GW_API_KEY, or XAI_API_KEY (Fetch-on-Demand).',
   );
   err.status = 400;
   throw err;
@@ -210,45 +210,6 @@ function grokMessageText(message) {
   return message && typeof message.content === 'string' ? message.content : '';
 }
 
-function redactModelError(text, apiKey) {
-  // Strip the key this request sent before any slice. A gateway can echo a
-  // token that matches neither sk- nor Bearer (advisory code on #590).
-  // Shorter than 8 characters is not treated as a credential: deleting it
-  // would blank ordinary words in the error.
-  let out = String(text || '');
-  const secret = typeof apiKey === 'string' ? apiKey.trim() : '';
-  if (secret.length >= 8) out = out.split(secret).join('[redacted]');
-  return out
-    .replace(/sk-[A-Za-z0-9_-]+/g, 'sk-REDACTED')
-    .replace(/Bearer\s+\S+/gi, 'Bearer REDACTED')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 400);
-}
-
-/** Visible-answer cap. LiteLLM drops max_completion_tokens unless named. */
-function completionTokenFields(apiBase) {
-  const fields = {
-    max_completion_tokens: Number(process.env.XAI_MAX_TOKENS || 65536),
-    // Prose such as "I'll read the files" is not a file edit. JSON mode
-    // rejects that reply before it can be committed (Decision [2026-10-04-0003]).
-    response_format: { type: 'json_object' },
-  };
-  let host = '';
-  try {
-    host = new URL(apiBase).host;
-  } catch {
-    host = '';
-  }
-  // api.x.ai accepts these fields. The NewPush gateway is LiteLLM and
-  // returns 400 for grok-4.6 unless the request names them
-  // (Decision [2026-10-04-0002]).
-  if (host !== 'api.x.ai') {
-    fields.allowed_openai_params = ['max_completion_tokens', 'response_format'];
-  }
-  return fields;
-}
-
 async function listGrokModels({ apiKey, apiBase = XAI_API, fetchImpl = fetch }) {
   const res = await fetchImpl(`${apiBase}/models`, {
     headers: { Authorization: `Bearer ${apiKey}` },
@@ -265,52 +226,25 @@ async function callGrokJson({
   messages,
   apiKey,
   apiBase = XAI_API,
-  fetchImpl = fetch,
+  fetchImpl,
   effort = 'xhigh',
 }) {
-  const res = await fetchImpl(`${apiBase}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  try {
+    const { json } = await chatJson({
+      apiBase,
+      apiKey,
       model,
       messages,
       temperature: 0,
-      reasoning_effort: effort,
-      // max_tokens counts thinking and the visible answer together. The
-      // completion cap is the visible answer only (Decision [2026-10-04-0001]).
-      ...completionTokenFields(apiBase),
-    }),
-  });
-  if (!res.ok) {
-    let raw = '';
-    try {
-      raw = typeof res.text === 'function' ? await res.text() : '';
-    } catch {
-      raw = '';
-    }
-    const detail = redactModelError(raw, apiKey);
-    const suffix = detail ? `: ${detail}` : '';
-    throw httpError(`xAI ${model} → ${res.status}${suffix}`, res.status);
-  }
-  const body = await res.json();
-  const choice = body && body.choices && body.choices[0] ? body.choices[0] : {};
-  const message = choice.message || {};
-  try {
-    return parseJsonObject(grokMessageText(message));
+      reasoningEffort: effort,
+      fetchImpl,
+      label: 'xAI',
+    });
+    return json;
   } catch (err) {
-    if (!err || err.status !== 502) throw err;
-    const contentLen = typeof message.content === 'string' ? message.content.length : 0;
-    const reasoningLen = typeof message.reasoning_content === 'string' ? message.reasoning_content.length : 0;
-    const preview = redactModelError(typeof message.content === 'string' ? message.content : '', apiKey).slice(0, 120);
-    const previewSuffix = preview ? `: ${preview}` : '';
+    if (!err || err.code !== 'unparseable-json') throw err;
     // Same prose on every retry is not a transient outage. 422 is not retried.
-    throw httpError(
-      `Grok returned unparseable JSON (finish_reason=${choice.finish_reason || 'unknown'}, content_chars=${contentLen}, reasoning_chars=${reasoningLen})${previewSuffix}`,
-      422,
-    );
+    throw httpError(err.message.replace(/^xAI \S+ returned/, 'Grok returned'), 422);
   }
 }
 
@@ -426,10 +360,15 @@ async function draftChanges({
     ? () => callModel({ issue, plan })
     : async () => {
       const auth = resolveWriterAuth(env);
-      const ids = await listGrokModels({ apiKey: auth.apiKey, apiBase: auth.apiBase, fetchImpl });
-      const chosen = selectGrokModel(ids, { pin: env.XAI_CODE_MODEL || auth.pinDefault || '' });
+      // Gateway: the pin is the model. No catalogue pick, no substitute.
+      const modelId = auth.mode === 'gateway'
+        ? auth.pinDefault
+        : selectGrokModel(
+          await listGrokModels({ apiKey: auth.apiKey, apiBase: auth.apiBase, fetchImpl }),
+          { pin: env.XAI_CODE_MODEL || '' },
+        ).id;
       const reply = await callGrokJson({
-        model: chosen.id,
+        model: modelId,
         messages: [
           { role: 'system', content: 'You are noemi-agent. You have no tools. Reply with one JSON object and no other text.' },
           { role: 'user', content: buildWriterPrompt({ issue, plan, profile, sources }) },
@@ -438,7 +377,7 @@ async function draftChanges({
         apiBase: auth.apiBase,
         fetchImpl,
       });
-      return { ...reply, model: chosen.id };
+      return { ...reply, model: modelId };
     };
 
   const reply = await withRetry(invoke, modelRetryOptions());

@@ -2,17 +2,33 @@
 
 > **Future-Proof Your Company Against AI, By Using AI**
 
+**Start here**
+
+1. Get one safe, read-only win in about 15 minutes. The first task is administrative: an inbox, a calendar, meeting minutes, or a short report. [macOS / Linux](docs/examples/macos-linux-kickstart.md) · [Windows](docs/examples/windows-kickstart.md) · [ChromeOS](docs/examples/chromeos-kickstart.md)
+2. Secure the perimeter first. [Phase 0 Security Baseline](docs/PHASE_ZERO_SECURITY_BASELINE.md)
+3. Book a workshop. [AI readiness at noemi.newpush.com](https://noemi.newpush.com)
+
+**Safe by default**
+
+* Read-only first. The kickstart above does not send, merge, or spend.
+* Secrets are fetched on demand and are never stored in prompts. [Phase 0](docs/PHASE_ZERO_SECURITY_BASELINE.md)
+* Agent actions use a separate machine identity. [Machine identity](docs/MACHINE_IDENTITY.md)
+* A human approves every send, merge, and spend.
+* The Guardian Layer watches the agents that do the work. [Project reference](docs/PROJECT_REFERENCE.md)
+
 ---
 
 ## What This Repository Contains
 
-This repository is the **technical reference architecture and agent specification library** inspired by **Project NoéMI**—the global AI fluency accelerator program.
+This repository is the open, auditable agent library used in the NoéMI hands-on workshops, where teams build AI agents that take administrative work off their desks in the first week, then extend them into innovation, sales and profitability, safely.
 
 It provides a structured blueprint for building a **governed Virtual Workforce** using:
 
-* 31 AI agent specifications across 9 domains (coding, communication, education, engineering, guardian, infrastructure, marketing, operations, product)
-* 16 reusable skills covering classification, verification, reporting, security, orchestration, and operations
-* 17 MCP protocol definitions for safe integration with Google Workspace (Drive, Docs, Sheets, Slides, Calendar, Gmail, Meet, Chat, Keep, Forms, Contacts, Admin), Slack, GitHub, n8n, web search, and unified logging (Loki/Grafana)
+* 33 AI agent specifications across 9 domains (coding, communication, education, engineering, guardian, infrastructure, marketing, operations, product)
+* 20 skills — 19 markdown skills plus the model-fusion-consensus definition pack — covering classification, verification, reporting, security, orchestration, and operations
+* 18 MCP protocol definitions for safe integration with Google Workspace (Drive, Docs, Sheets, Slides, Calendar, Gmail, Meet, Chat, Keep, Forms, Contacts, Admin), Slack, GitHub, n8n, web search, and unified logging (Loki/Grafana)
+
+The public site's repository panel, checked on 2026-10-25, counts 12 agent units: each domain once, with the coding domain split into architect, bolt, mender, and sentinel. Skills (20) and MCP protocols (18) use the same count as that panel. The 33 above are the specification files in those units.
 * Governance frameworks aligned with **Phase 0 Security**, **AI TRiSM** (a framework defined by Gartner®, Inc.), and the **4D AI Fluency Framework** (Delegation, Description, Discernment, Diligence)
 * Value lenses and operating profiles that let teams tune agents to specific business contexts without forking the specs
 
@@ -141,7 +157,7 @@ Project NoéMI introduces the **1:50 Equilibrium**—a scalable organizational m
 
 In practice, one trained Accelerator can guide AI usage across dozens of users safely.
 
-This model is reinforced through the NoéMI training program, where participants earn **Badges of Completion (micro-credentials)** issued with **George Mason University (GMU)** across three levels:
+This model is reinforced through the NoéMI workshop series, where participants earn **Badges of Completion (micro-credentials)** issued with **George Mason University (GMU)** across three levels after a validated live deployment:
 
 * AI Fluent Professional
 * AI Implementation Specialist
@@ -185,12 +201,12 @@ Without Phase 0, scaling AI introduces risk faster than value.
 * a SaaS product
 * a no-code automation tool
 * a runtime or execution engine
-* the NoéMI training program itself
+* the NoéMI workshop series itself
 
 It is designed to work with orchestrators such as:
 
 * n8n (primary orchestration layer in the NewPush Labs stack)
-* Gemini CLI (canonical baseline pinned to Gemini 3.6 Flash)
+* Gemini CLI (canonical baseline pinned to Gemini 3.8 Flash)
 * Claude Code
 * OpenAI Codex
 * LangChain
@@ -223,7 +239,7 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 → [Club operations (Rotary example)](examples/rotary-club-operations/)
 (A generic club-operations persona plus a Rotary District 1911 deployment; minutes, calendar, and speaker-brief exercises)
 
-**Onboarding by Platform** — go straight to the guide for your machine and get one safe, read-only AI win in ~15 minutes:
+**Onboarding by Platform** — the same 15-minute read-only win as **Start here**, for the guide that matches your machine:
 → [macOS / Linux](docs/examples/macos-linux-kickstart.md)
 &nbsp;·&nbsp; [Windows](docs/examples/windows-kickstart.md)
 &nbsp;·&nbsp; [ChromeOS](docs/examples/chromeos-kickstart.md)
@@ -265,7 +281,7 @@ Beyond the license, NoéMI is built on **spec-and-governance transparency**: eve
 
 ## Context
 
-* **Project NoéMI** — the methodology, 4D framework, and GMU-backed training program
+* **Project NoéMI** — the methodology, 4D framework, and GMU-backed workshop series
 * **This repository** — the implementation blueprint for the Virtual Workforce
 * **NewPush** — the founding cybersecurity and infrastructure organization
 

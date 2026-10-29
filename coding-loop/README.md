@@ -65,6 +65,15 @@ Edit **your** `tenants/internal.json` (or add `tenants/{company}.json`):
 Do not hardcode your org name into `coding-loop/`. The runner reads the
 tenant file.
 
+`orgs` is for the operator's **own** orgs. Client orgs do not go in a tenant
+file. A client repo is entitled when your conductor App is installed there
+(not suspended) **and** `NOEMI_CLIENT_REGISTRY` has an `active` row for that
+installation's GitHub account ID, and the run names a requester with write
+access (`--requested-by`). The registry is JSON injected from the vault
+(`infisical run`), shaped by `docs/client-registry.schema.json`; never
+commit it, because it lists who your clients are. See
+[Client entitlement](../docs/architecture/issue-coding-loop.md#client-entitlement).
+
 ### 3. Provision three identities (or reuse two)
 
 | Role | Identity | Token / App | May |
@@ -142,13 +151,37 @@ The environment holds:
   plus `CONDUCTOR_APP_PRIVATE_KEY`, or `CONDUCTOR_GH_TOKEN`)
 - a producer token to open the pull request (`AGENT_GH_TOKEN`). The conductor
   token is refused for that step
-- a writer credential: `XAI_API_KEY`, or your organization's OpenAI-compatible
-  gateway (`AI_GW_API_TOKEN` and `AI_GW_BASE_URL`)
-- for `--live-critic`, application-default credentials on a laptop, or
-  Workload Identity Federation in Actions (`CODING_LOOP_LIVE_CRITIC=true` and
-  the same `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, and
-  `GOOGLE_CLOUD_PROJECT` variables as the fleet reviewer). There is no Gemini
-  API key
+- a model credential. One config (`scripts/model-config.js`) picks the route
+  for the writer and the critic:
+  - **NewPush AI gateway (main route):** `AI_GW_API_TOKEN` (alias
+    `AI_GW_API_KEY`). `AI_GW_BASE_URL` is optional and defaults to
+    `https://ai-gw.newpush.com`. With this key set, `--live-critic` uses the
+    gateway and does not need `gcloud`, and the writer uses the gateway even
+    when `XAI_API_KEY` is also set
+  - **Direct provider access (no gateway key):** `XAI_API_KEY` for the writer,
+    and for `--live-critic` application-default credentials on a laptop, or
+    Workload Identity Federation in Actions (`CODING_LOOP_LIVE_CRITIC=true` and
+    the same `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, and
+    `GOOGLE_CLOUD_PROJECT` variables as the fleet reviewer). There is no Gemini
+    API key
+  - a gateway 403, or a refusal whose body says the budget is spent, stops the
+    run. It is not an outage and is not re-queued
+
+To approve the plan before anything is written, run it in two steps. The first
+run plans only and saves the result; the second implements exactly that plan
+and does not plan again:
+
+```bash
+node coding-loop/run.js --repo your-org/your-repo --issue N \
+  --scan --budget-ok --live-critic --plan-out plan.json
+# read plan.json, then:
+node coding-loop/run.js --repo your-org/your-repo --issue N \
+  --scan --budget-ok --plan-in plan.json --post --implement --open-pr
+```
+
+`--plan-in` is refused when the plan was not accepted, names another issue or
+profile, or the issue changed on GitHub after it was planned. NoéMi Code's
+`/issue` command uses these two steps.
 
 A successful run opens a pull request as the producer, with base `develop`.
 The body starts with `Closes #N`, or with `Part of #N` when the accepted plan
@@ -175,8 +208,9 @@ wired.
 
 ## Stage A today
 
-Hard gates: `noemi:skip`, bot authors, empty/template body, tenant, scan,
-budget (`coding-loop/intake.js`). Then sufficiency (`coding-loop/sufficiency.js`):
+Hard gates: `noemi:skip`, bot authors, empty/template body, tenant or
+client entitlement plus a write-access requester (`coding-loop/entitlement.js`),
+scan, budget (`coding-loop/intake.js`). Then sufficiency (`coding-loop/sufficiency.js`):
 observable problem, in-scope path, checkable done condition. All three are
 required. The pass is a conservative heuristic until Fable is wired; it
 still never defaults to `ACTIONABLE`.
@@ -198,8 +232,11 @@ file the issue names is kept even when this checkout does not contain it,
 because this repo is the loop blueprint and the issue may target another
 clone. Other paths are kept only when they exist as files inside the clone. Structural critique always runs (headings, files, no
 skip-red-team, no leftover registry or escaping paths). `--live-critic` then calls
-Gemini Pro (ADC, same selection rule as the fleet reviewer). On a fail with
-cycles remaining, B′ writes a revision prompt and that same Gemini caller
+Gemini Pro: the gateway critic pin (`google/gemini-3.1-pro-preview`, override
+`GEMINI_CRITIC_MODEL`) with a gateway key, else Vertex through ADC with the same
+selection rule as the fleet reviewer. On a fail with
+cycles remaining, B′ writes a revision prompt and the plan writer (gateway pin
+`google/gemini-4-argon`, override `PLAN_MODEL`, any gateway provider; not the red-team model)
 executes it on the plan before the next pass. A revision that does not
 change the plan, drops the skip-red-team record, or adds a path the issue
 did not name stops the cycle. Without `--live-critic`, B′ may still drop
@@ -211,13 +248,16 @@ re-queues — it is not an `accepted` plan.
 
 `--implement` prepares a Stage C envelope (`coding-loop/dispatch.js`) for
 `noemi-agent` on `develop` (then `dev`). `AGENT_GH_TOKEN` is required; the
-conductor token is refused.
+conductor token is refused. Pickup also passes `--open-pr` when a writer key
+is present (Decision [2026-10-29-0001]).
 
 `--implement --open-pr` drafts files with Grok. Auth is Fetch-on-Demand:
-`XAI_API_KEY` against `https://api.x.ai/v1`, **or** NewPush gateway
-`AI_GW_API_TOKEN` / `AI_GW_API_KEY` at `https://ai-gw.newpush.com/v1` (override
-`AI_GW_BASE_URL`). Gateway model ids are `provider/id`; the writer pins
-`xai/grok-4.6` unless `XAI_CODE_MODEL` is set. The request sets
+NewPush gateway `AI_GW_API_TOKEN` / `AI_GW_API_KEY` at
+`https://ai-gw.newpush.com/v1` (override `AI_GW_BASE_URL`), which wins when set,
+**else** `XAI_API_KEY` against `https://api.x.ai/v1`. Gateway model ids are
+`provider/id`; the writer pins `xai/grok-4.6` unless `XAI_CODE_MODEL` is set
+(a bare id gets the `xai/` prefix). On the gateway the pin is the model: no
+catalogue pick and no substitute. The request sets
 `max_completion_tokens` (default 65536, override `XAI_MAX_TOKENS`) so thinking
 tokens are not taken from the file JSON. The NewPush gateway is LiteLLM and
 rejects that field for `grok-4.6` unless the body also sends
@@ -242,7 +282,7 @@ Pickup: install `templates/ci/coding-loop-caller.yml` and set
 reviewer) passes `--live-critic`; unset, Stage B′ stays structural. The
 reusable workflow prepares the envelope; opening a PR is a separate
 producer invocation with `AGENT_GH_TOKEN` (or `AGENT_GH_TOKEN_CLASSIC` +
-`AGENT_GH_USE_CLASSIC=1`) and `XAI_API_KEY` or `AI_GW_API_TOKEN`+`AI_GW_BASE_URL`.
+`AGENT_GH_USE_CLASSIC=1`) and `AI_GW_API_TOKEN` or `XAI_API_KEY`.
 Stage D delegates to the fleet reviewer when a PR URL exists
 (`coding-loop/stage-d.js`). The reviewer reads
 `agents/coding/sentinel/compliance.md` from this blueprint, next to the
@@ -260,10 +300,15 @@ label, and an opened pull request is `noemi:review` even without `--post`.
 See
 [`docs/MACHINE_IDENTITY.md`](../docs/MACHINE_IDENTITY.md) for the App.
 
-## Gemini B′: laptop ADC vs Actions WIF
+## Gemini B′: gateway key, laptop ADC, or Actions WIF
 
-`--live-critic` never uses a Gemini API key. Org policy on `project-noemi`
-disallows API keys and service-account key files.
+With `AI_GW_API_TOKEN` in the environment, `--live-critic` goes through the
+NewPush AI gateway and nothing below is needed. The virtual key is not a Gemini
+API key; Google credentials stay on the gateway (Decision [2026-10-22-0001]).
+
+Without a gateway key, `--live-critic` calls Vertex directly and never uses a
+Gemini API key. Org policy on `project-noemi` disallows API keys and
+service-account key files.
 
 **Laptop (this is what local live-fire needs):**
 
@@ -282,3 +327,15 @@ fleet-reviewer org **variables**: `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`,
 workflow mints `GCP_ACCESS_TOKEN` via `google-github-actions/auth`. One-time
 pool/provider setup: [`docs/examples/cross-model-review-setup.md`](../docs/examples/cross-model-review-setup.md)
 Part 1.
+
+## Graphite stacked PRs
+
+1. Detecting a stack: PR descriptions mention "Stack:" or "Base PR", or sequential PRs are based on each other's branches.
+2. Never merge a child PR into its parent branch. The merge target is always `develop`. Never change a PR's base by hand.
+3. Merge from the bottom up into `develop`, in one Graphite stack merge or through the Graphite merge queue.
+4. If an upper PR is ready first, leave it open until everything below it has landed.
+5. After anything lands on `develop`, run `gt sync`, `gt restack`, then `gt submit --stack`.
+6. To fix a lower PR, use `gt modify` on that branch, then `gt restack` and `gt submit --stack`. Force-pushing is expected on stacked branches. Do not use "merge develop in, no rebase, no force-push" on stacked branches; that rule applies only to non-stacked branches.
+7. Keep stacks to 3–5 PRs of about 500 changed lines each. Split larger plans into several short stacks.
+8. Ship-together notes must say "Ship together with #N. Merge from the bottom up into develop", never "Merge with #N".
+9. Run the AI reviewer once per revision (or on demand), not on every push.

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "owner": "Example organization platform team",
+  "description": "Copy this file to AGENTS.appetite.json or org/<customer>/appetite.json and edit it. It is the deploying organization's risk appetite, not a NoéMI moral rank. Fetch-on-Demand and named refusal criteria are the recommended default stack. Consequence classes are descriptive labels. Attestations are a log of who accepted a difference; they do not change the reporter's exit code.",
+  "failOn": [
+    {
+      "class": "credentials-in-repo",
+      "action": "relax"
+    }
+  ],
+  "attestations": [
+    {
+      "rule": "coding.model-baseline",
+      "action": "relax",
+      "owner": "platform-team",
+      "reason": "Interactive sessions use the organization gateway. Reference workflows keep the upstream pin.",
+      "review-by": "2027-04-01"
+    }
+  ]
+}

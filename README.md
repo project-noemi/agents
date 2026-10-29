@@ -66,7 +66,7 @@ In practice:
 
 ### Layering your own rules on top of AGENTS.md
 
-Keep `AGENTS.md` as the shared upstream baseline and put organization rules in **configuration layers**: an MSP/MSSP layer (`org/<msp>/AGENTS.md`), a customer layer (`org/<customer>/AGENTS.md`), and a gitignored `AGENTS.local.md`. They load in the order listed in a committed `AGENTS.layers` manifest, and later layers win. Upstream syncs never touch them. Layers may replace preference rules, but the core secrets and refusal rules can only be clarified or tightened: `npm run audit` fails any layer that tries to relax them, and agents ignore such text. The audit is not a runtime control, so keep secret scanning and pre-commit hooks in place. See [docs/configuration-layers.md](docs/configuration-layers.md) and the template [org/example/AGENTS.md](org/example/AGENTS.md).
+Keep `AGENTS.md` as the shared upstream baseline and put organization rules in **configuration layers**: an MSP/MSSP layer (`org/<msp>/AGENTS.md`), a customer layer (`org/<customer>/AGENTS.md`), and a gitignored `AGENTS.local.md`. They load in the order listed in a committed `AGENTS.layers` manifest, and later layers win. Upstream syncs never touch them. `npm run layers:diff` names which tagged rule a later layer changed and a consequence class. The deploying organization's appetite file is where "is this acceptable" lives; the shipped example treats a `credentials-in-repo` relaxation as a failure you can copy. Fetch-on-Demand and named refusal criteria are the recommended default stack. The report is not a runtime control, so keep secret scanning and pre-commit hooks in place. See [docs/configuration-layers.md](docs/configuration-layers.md) and the template [org/example/AGENTS.md](org/example/AGENTS.md).
 
 ---
 

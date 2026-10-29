@@ -21,7 +21,7 @@
 - Never force-push upstream changes over local work.
 - Both `upstream/develop` and `upstream/main` should be merged (they may contain different commits).
 - **Overrides are surfaced, not silent.** Any file where an upstream edit collided with a local customization (and our version was kept) is listed in the PR body so a reviewer can confirm we didn't drop an upstream fix we actually wanted.
-- **Organization rules live in configuration layers, not in `AGENTS.md`.** `org/<org>/AGENTS.md` layers listed in `AGENTS.layers` are never shipped upstream, so syncs do not touch them. After a sync, re-run `npm run generate` so `CLAUDE.md`/`GEMINI.md` import the current layer stack. See [configuration-layers.md](configuration-layers.md).
+- **Organization rules live in configuration layers, not in `AGENTS.md`.** `org/<org>/AGENTS.md` layers listed in `AGENTS.layers` are never shipped upstream, so syncs do not touch them. After a sync, re-run `npm run generate` so `CLAUDE.md`/`GEMINI.md` import the current layer stack, then `npm run layers:diff` to see which tagged rules the layers still override. See [configuration-layers.md](configuration-layers.md).
 
 ---
 

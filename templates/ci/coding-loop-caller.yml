@@ -1,10 +1,14 @@
 # Coding loop — fleet caller.
 #
 # Delegates to project-noemi/agents so loop logic lives in one place.
-# Enable after vars.CODING_LOOP_BUDGET_OK=true and a conductor token exist.
+# Enable after vars.CODING_LOOP_BUDGET_OK=true and the conductor credential exist:
+# CONDUCTOR_APP_ID + CONDUCTOR_APP_PRIVATE_KEY as organization secrets scoped to the
+# repositories that run the loop (docs/MACHINE_IDENTITY.md); the runtime mints a one-hour
+# installation token per run. CONDUCTOR_GH_TOKEN is the already-minted debugging override.
+# AGENT_GH_TOKEN lets the loop open the PR as noemi-agent.
 # Optional: vars.CODING_LOOP_LIVE_CRITIC=true plus org WIF for Gemini B′.
 # Does not approve, merge, or write code.
-# Passes exactly the two secrets the loop declares — never `secrets: inherit`,
+# Passes exactly the secrets the loop declares — never `secrets: inherit`,
 # which would hand every secret of this repository to the reusable workflow.
 name: Coding Loop
 
@@ -25,6 +29,8 @@ jobs:
       contents: read
       issues: write
     secrets:
+      CONDUCTOR_APP_ID: ${{ secrets.CONDUCTOR_APP_ID }}
+      CONDUCTOR_APP_PRIVATE_KEY: ${{ secrets.CONDUCTOR_APP_PRIVATE_KEY }}
       CONDUCTOR_GH_TOKEN: ${{ secrets.CONDUCTOR_GH_TOKEN }}
       AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
     with:

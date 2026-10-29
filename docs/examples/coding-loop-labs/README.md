@@ -116,7 +116,7 @@ was missing.
 
 | Command | Expect |
 |---|---|
-| `--post` without `CONDUCTOR_GH_TOKEN` | exit 2 |
+| `--post` without a conductor credential (`CONDUCTOR_GH_TOKEN`, or `CONDUCTOR_APP_ID` + `CONDUCTOR_APP_PRIVATE_KEY`) | exit 2 |
 | `--implement` without `AGENT_GH_TOKEN` | exit 2 |
 | `--open-pr` without `--implement` or without `XAI_API_KEY` | exit 2 |
 

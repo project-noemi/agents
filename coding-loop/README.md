@@ -248,7 +248,8 @@ re-queues — it is not an `accepted` plan.
 
 `--implement` prepares a Stage C envelope (`coding-loop/dispatch.js`) for
 `noemi-agent` on `develop` (then `dev`). `AGENT_GH_TOKEN` is required; the
-conductor token is refused.
+conductor token is refused. Pickup also passes `--open-pr` when a writer key
+is present (Decision [2026-10-29-0001]).
 
 `--implement --open-pr` drafts files with Grok. Auth is Fetch-on-Demand:
 NewPush gateway `AI_GW_API_TOKEN` / `AI_GW_API_KEY` at

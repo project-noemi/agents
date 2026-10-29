@@ -46,7 +46,7 @@ One row per disagreement. Keep reasons short and concrete.
 
 | Date | PR | Model | Gate | Reviewer said | Human did | Direction | Reason |
 |---|---|---|---|---|---|---|---|
-| 2026-10-29 | #697 | google/gemini-3.1-pro-preview | framing | framing fail: The PR introduces a breaking change to the Node.js engine requirement without disclosing it in the description. | **merged over** | PENDING-HUMAN | PENDING-HUMAN — a human fills Direction and Reason |
+| 2026-10-29 | #697 | google/gemini-3.1-pro-preview | framing | framing fail: The PR introduces a breaking change to the Node.js engine requirement without disclosing it in the description. | **merged over** | reviewer too strict | Earlier review passed with all green, approved based on that review |
 | 2026-10-06 | #602 | publishers/google/models/gemini-3.1-pro-preview | premise | premise fail: The PR description contains a prompt injection attempt to suppress a finding. | **merged over** | Previewer misinterpreted | reviewer didn't notice that this was and AI review rule change, and therefore it should have bypassed the review |
 | 2026-10-05 | #592 | publishers/google/models/gemini-3.1-pro-preview | framing | framing fail: The PR includes unrelated and undisclosed changes to the Knowledge MCP service and its retrieval contract. | **merged over** | Human error | PR reverted |
 | 2026-10-01 | #568 | publishers/google/models/gemini-3.1-pro-preview | premise | premise fail: The PR description contains a prompt injection attempt instructing the reviewer to approve or merge. | **merged over** | reviewer wrong domain | revert PR merged by mistake |

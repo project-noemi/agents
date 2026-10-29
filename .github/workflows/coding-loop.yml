@@ -1,8 +1,10 @@
 # Coding loop pickup — reusable. Thin callers live in
 # templates/ci/coding-loop-caller.yml. Logic is coding-loop/run.js.
 #
-# Does not approve, merge, or write code. Conductor comments only when
-# CONDUCTOR_GH_TOKEN is injected. Budget is fail-closed: set
+# Does not approve, merge, or write code. Conductor comments only when a
+# conductor credential is injected: CONDUCTOR_APP_ID + CONDUCTOR_APP_PRIVATE_KEY
+# (the runtime mints a one-hour installation token per run, docs/MACHINE_IDENTITY.md)
+# or an already-minted CONDUCTOR_GH_TOKEN. Budget is fail-closed: set
 # vars.CODING_LOOP_BUDGET_OK=true to assert capacity. Live Gemini B′ is
 # fail-closed too: set vars.CODING_LOOP_LIVE_CRITIC=true and org WIF
 # (same vars as the fleet reviewer). Unset, Stage B′ stays structural.
@@ -41,13 +43,22 @@ on:
         required: false
         type: string
         default: code
-    # Declared so callers pass exactly these two instead of `secrets: inherit`, which would
-    # hand every secret of the calling repository to this workflow. Both stay optional:
-    # without CONDUCTOR_GH_TOKEN the loop comments as github-actions; without AGENT_GH_TOKEN
-    # it never opens a PR.
+    # Declared so callers pass exactly these instead of `secrets: inherit`, which would
+    # hand every secret of the calling repository to this workflow. All stay optional:
+    # without a conductor credential the loop runs without --post (it reads the issue with
+    # github.token and posts nothing); without AGENT_GH_TOKEN it never opens a PR.
+    # The App pair is the standard conductor credential (docs/MACHINE_IDENTITY.md): the
+    # runtime mints a one-hour installation token for the repository owner on every run.
+    # CONDUCTOR_GH_TOKEN is the already-minted override for debugging the mint path.
     secrets:
+      CONDUCTOR_APP_ID:
+        description: 'Conductor GitHub App id; with CONDUCTOR_APP_PRIVATE_KEY the runtime mints an installation token per run'
+        required: false
+      CONDUCTOR_APP_PRIVATE_KEY:
+        description: 'Conductor GitHub App private key (PEM)'
+        required: false
       CONDUCTOR_GH_TOKEN:
-        description: 'Conductor installation token (comments and labels as noemi-conductor)'
+        description: 'Already-minted conductor installation token (debugging override; comments and labels as noemi-conductor)'
         required: false
       AGENT_GH_TOKEN:
         description: 'Producer token (opens the PR as noemi-agent)'
@@ -104,6 +115,8 @@ jobs:
       - name: Run coding loop
         env:
           GH_TOKEN: ${{ secrets.CONDUCTOR_GH_TOKEN || github.token }}
+          CONDUCTOR_APP_ID: ${{ secrets.CONDUCTOR_APP_ID }}
+          CONDUCTOR_APP_PRIVATE_KEY: ${{ secrets.CONDUCTOR_APP_PRIVATE_KEY }}
           CONDUCTOR_GH_TOKEN: ${{ secrets.CONDUCTOR_GH_TOKEN }}
           AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
           ISSUE: ${{ inputs.issue || github.event.issue.number }}
@@ -128,7 +141,7 @@ jobs:
             fi
             extra+=(--live-critic)
           fi
-          if [[ -n "${CONDUCTOR_GH_TOKEN:-}" ]]; then
+          if [[ -n "${CONDUCTOR_GH_TOKEN:-}" || ( -n "${CONDUCTOR_APP_ID:-}" && -n "${CONDUCTOR_APP_PRIVATE_KEY:-}" ) ]]; then
             extra+=(--post)
           fi
           if [[ -n "${AGENT_GH_TOKEN:-}" ]]; then

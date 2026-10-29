@@ -6,10 +6,15 @@
 # repositories that run the loop (docs/MACHINE_IDENTITY.md); the runtime mints a one-hour
 # installation token per run. CONDUCTOR_GH_TOKEN is the already-minted debugging override.
 # AGENT_GH_TOKEN lets the loop open the PR as noemi-agent.
+# AI_GW_API_TOKEN (or AI_GW_API_KEY / XAI_API_KEY) lets Stage C draft with Grok
+# and pass --open-pr (Decision [2026-10-29-0001]).
 # Optional: vars.CODING_LOOP_LIVE_CRITIC=true plus org WIF for Gemini B′.
-# Does not approve, merge, or write code.
+# Does not approve or merge.
 # Passes exactly the secrets the loop declares — never `secrets: inherit`,
 # which would hand every secret of this repository to the reusable workflow.
+# The called workflow requests `id-token: write` (WIF for live Gemini B′). GitHub
+# intersects caller and callee permissions at parse time, so this job must grant
+# the same scope or the run is a startup_failure.
 name: Coding Loop
 
 on:
@@ -28,10 +33,14 @@ jobs:
     permissions:
       contents: read
       issues: write
+      id-token: write
     secrets:
       CONDUCTOR_APP_ID: ${{ secrets.CONDUCTOR_APP_ID }}
       CONDUCTOR_APP_PRIVATE_KEY: ${{ secrets.CONDUCTOR_APP_PRIVATE_KEY }}
       CONDUCTOR_GH_TOKEN: ${{ secrets.CONDUCTOR_GH_TOKEN }}
       AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+      AI_GW_API_TOKEN: ${{ secrets.AI_GW_API_TOKEN }}
+      AI_GW_API_KEY: ${{ secrets.AI_GW_API_KEY }}
+      XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
     with:
       issue: ${{ inputs.issue || github.event.issue.number }}

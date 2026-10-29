@@ -220,8 +220,10 @@ as `noemi-agent`. Label `noemi:in-progress`. Open a PR against `develop` (then
 calls Grok for one JSON object (`coding-loop/writer.js`), and opens the
 PR with `AGENT_GH_TOKEN` (`coding-loop/dispatch.js`). The body starts with
 `Closes #N`, or with `Part of #N` when the accepted plan says the agent does
-not finish the work. Pickup does not open PRs just because the producer
-token is present. When a conductor token is present, the loop applies one
+not finish the work. Pickup passes `--open-pr` when the producer token and a
+writer key (`AI_GW_API_TOKEN`, else `AI_GW_API_KEY`, else `XAI_API_KEY`) are
+both present (Decision [2026-10-29-0001]); the producer token alone still
+only prepares the envelope. When a conductor token is present, the loop applies one
 `noemi:*` label and removes the other `noemi:*` labels. An opened PR is
 `noemi:review`.
 

@@ -11,3 +11,16 @@ updates:
     target-branch: "develop"
     schedule:
       interval: "weekly"
+    # Consolidate non-major bumps into one PR per ecosystem/directory to reduce
+    # review and CI load. Major updates are not grouped and stay individual.
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+      npm-security-minor-patch:
+        applies-to: security-updates
+        update-types:
+          - "minor"
+          - "patch"

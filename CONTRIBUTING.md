@@ -18,6 +18,7 @@ If you are changing a specific area, read the closest guide too:
 - Docker path: [docs/examples/docker-agent-home.md](docs/examples/docker-agent-home.md)
 - Secret handling: [docs/tool-usages/secure-secret-management.md](docs/tool-usages/secure-secret-management.md)
 - Client security framing: [docs/PHASE_ZERO_SECURITY_BASELINE.md](docs/PHASE_ZERO_SECURITY_BASELINE.md)
+- UI on a tool: [docs/contributing/ui-style-guide.md](docs/contributing/ui-style-guide.md)
 
 ## Security Rules
 

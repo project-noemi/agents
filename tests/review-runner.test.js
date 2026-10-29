@@ -59,6 +59,10 @@ test('carve-out: merge gate, governance docs, and review behavior are covered', 
         'agents/coding/sentinel/core.md',
         'agents/coding/sentinel/compliance.md',
         'agents/engineering/pr-reviewer.md',
+        'scripts/review-override.js',
+        'scripts/override-calibration.js',
+        '.github/workflows/override-calibration.yml',
+        'docs/AI_REVIEW_OVERRIDE.md',
     ]) {
         assert.deepEqual(detectCarveOut([f]), [f], `${f} must be carved out`);
     }

@@ -1087,6 +1087,16 @@ test('coding-loop workflow is reusable and does not default budget to ok', () =>
   assert.doesNotMatch(yml, /--profile spec/);
   assert.match(caller, /project-noemi\/agents\/\.github\/workflows\/coding-loop\.yml@main/);
   assert.match(caller, /issues:/);
+  // Fleet callers pass the declared secrets by name; `secrets: inherit` would hand every
+  // secret of the calling repository to this workflow. The App pair is the standard
+  // conductor credential (minted per run); CONDUCTOR_GH_TOKEN is the debugging override.
+  for (const name of ['CONDUCTOR_APP_ID', 'CONDUCTOR_APP_PRIVATE_KEY', 'CONDUCTOR_GH_TOKEN', 'AGENT_GH_TOKEN']) {
+    assert.match(yml, new RegExp(`^      ${name}:\\n        description:`, 'm'), `${name} declared under workflow_call.secrets`);
+    assert.match(caller, new RegExp(`^      ${name}: \\$\\{\\{ secrets\\.${name} \\}\\}$`, 'm'), `caller passes ${name}`);
+  }
+  assert.doesNotMatch(caller, /^\s+secrets:\s*inherit\s*$/m, 'caller must not use secrets: inherit');
+  // --post follows whichever conductor credential is present, not only the override token.
+  assert.match(yml, /-n "\$\{CONDUCTOR_APP_ID:-\}" && -n "\$\{CONDUCTOR_APP_PRIVATE_KEY:-\}"/);
 });
 
 test('run.js: nothing asserted means nothing granted — both gates fail closed by default', () => {

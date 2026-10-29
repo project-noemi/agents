@@ -21,9 +21,14 @@ Layers 2 and 3 are selected by a committed manifest, `AGENTS.layers`. A reposito
 2. Each path in `AGENTS.layers`, top to bottom. If the environment variable `NOEMI_ORG_LAYERS` is set and non-empty, its comma-separated paths **replace** the manifest for that session.
 3. `AGENTS.local.md`, if it exists. It always loads last.
 
-On any conflict, **the later source wins**. A listed file that does not exist is a no-op, not an error, so a manifest can list a layer before it is vendored in.
+On any conflict, **the later source wins**, with one exception. A listed file that does not exist is a no-op, not an error, so a manifest can list a layer before it is vendored in.
 
-Any layer may override **any** baseline rule, including the 🔐 Secrets & Configuration rules and the Refusal Principle. Nothing in the loader blocks that. The [compliance report](#compliance) makes every loosened rule visible on every run instead, at a severity that depends on what was loosened.
+**Core rules are non-relaxable.** The Mandatory Security Rules (`secrets.*`) and the Refusal Principle (`refusal.*`) stay in force under every layer. A layer may clarify or tighten them, never loosen them, and there is no waiver or exception mechanism. Two things back this up:
+
+- **At runtime**, `AGENTS.md` tells every agent that layer text which would loosen a core rule does not apply: the baseline rule wins, under the Refusal Principle.
+- **In CI**, `npm run audit` fails any active layer that tries to relax a core rule (see [Compliance](#compliance)).
+
+Preference rules, and rules without a stable ID, follow plain later-wins.
 
 Layers should say what they replace. The template [`org/example/AGENTS.md`](../org/example/AGENTS.md) has an **Overrides of earlier layers** section for that, so agents never have to infer which of two contradictory rules applies.
 
@@ -182,27 +187,15 @@ Any tool that loads `AGENTS.md` as text gets the same instruction. Ask it to "li
 
 ## Compliance
 
-`npm run audit` (`scripts/audit-repo.js`, which CI runs in `validate.yml`) is the repository's compliance check. Every check reports at one of three levels, and layer relaxations are scored by `scripts/layer_compliance.js`.
+`npm run audit` (`scripts/audit-repo.js`, which CI runs in `validate.yml`) scores every active layer, including `AGENTS.local.md` when present, through `scripts/layer_compliance.js`. Each finding is one of three levels:
 
-### Levels and exit codes
+| Level | Meaning | Effect on `npm run audit` |
+|-------|---------|---------------------------|
+| **FAIL** | Any attempt to relax a core rule; a missing or downgraded core rule ID in `AGENTS.md`; a malformed manifest | Printed as `AUDIT FAIL: …`; the audit exits 1 |
+| **WARN** | A relaxed preference rule; an override of an unknown rule ID; a malformed marker that names no core rule | Printed as `AUDIT WARN: …`; the audit still passes |
+| **PASS** | A `clarify` or `tighten` marker, which loosens no prohibition | Printed as `PASS: …` |
 
-| Level | Meaning | Exit code |
-|-------|---------|-----------|
-| **PASS** | No deviation, or a clarification/tightening that loosens no prohibition | 0 |
-| **WARN** | Non-critical deviation that stays visible: a waived core relaxation, a relaxed preference rule, an unknown rule ID, a heuristic hit | 0 by default; **2** with `--fail-on-warn` or `COMPLIANCE_FAIL_ON_WARN=1` |
-| **FAIL** | Unwaived relaxation of a core rule, a malformed waiver or manifest, a missing core rule ID, or any other audit failure | **1** |
-
-The first line of every report is the summary, for example `Compliance: 1 FAIL, 2 WARN, 11 PASS (status: FAIL)`. Then come the FAIL list, the WARN list, the **Waivers** section (always printed, even when empty), clarifications, and a per-check table. In GitHub Actions each FAIL and WARN is also emitted as an `::error` / `::warning` annotation.
-
-Machine-readable output:
-
-```bash
-node scripts/audit-repo.js --json               # JSON report only on stdout (or: npm run --silent audit:json)
-npm run audit -- --json-file=test-artifacts/compliance.json   # text report + JSON file
-npm run audit -- --fail-on-warn                 # WARN exits 2 (or COMPLIANCE_FAIL_ON_WARN=1)
-```
-
-The JSON has `status`, `summary`, `counts`, `exitCode`, `failOnWarn`, `checks[]`, `findings[]` (each with `level`, `check`, `message`, and, where relevant, `rule`, `layer`, `waived`, `heuristic`) and `waivers[]`.
+No flag, file or environment variable turns a FAIL into a WARN.
 
 ### Stable rule IDs
 
@@ -219,56 +212,31 @@ The baseline tags the rules compliance tracks with HTML-comment markers:
 | `coding.model-baseline` | Reference model pin | preference |
 | `coding.naming-conventions` | Slug-based artifact names | preference |
 
-Markers look like `<!-- rule: secrets.no-hardcode -->` (core is the default) or `<!-- rule: coding.branch-naming (preference) -->`. Removing or downgrading a core marker from `AGENTS.md` is a FAIL. Keep the core set small; everything not core should stay WARN or PASS.
+Markers look like `<!-- rule: secrets.no-hardcode -->` (core is the default) or `<!-- rule: coding.branch-naming (preference) -->`. Removing a core marker from `AGENTS.md`, or tagging any `secrets.*` / `refusal.*` rule as a preference, is a FAIL.
 
 ### Declaring an override in a layer
 
 Reference the rule ID on the line with the replacement text:
 
 ```markdown
-- Test fixtures may embed dummy API keys generated per run. <!-- override: secrets.no-hardcode relax -->
+- Use the organization's gateway models for interactive sessions. <!-- override: coding.model-baseline relax -->
 - The vault project is named in the README. <!-- override: secrets.fetch-on-demand clarify -->
 - Never log secret *names* either. <!-- override: secrets.no-hardcode tighten -->
 ```
 
-| Override | Rule tier | Waiver | Result |
-|----------|-----------|--------|--------|
-| `relax` | core | none, or only an expired one | **FAIL** |
-| `relax` | core | active | **WARN**, listed under Waivers |
-| `relax` | preference | not needed | **WARN** |
-| `clarify` / `tighten` | any | not needed | **PASS** |
-| unknown rule ID or action, or a malformed `override:` marker | n/a | n/a | **WARN** |
+| Marker | Rule tier | Result |
+|--------|-----------|--------|
+| `relax`, or any action other than `clarify` / `tighten` | core (`secrets.*`, `refusal.*`), including unknown IDs with those prefixes | **FAIL** |
+| malformed `override:` marker that names a core rule | core | **FAIL** |
+| `relax` | preference | **WARN** |
+| unknown rule ID or action, or a malformed marker | not core | **WARN** |
+| `clarify` / `tighten` | any | **PASS** |
 
-`AGENTS.local.md` is evaluated like any other layer when present.
-
-**Heuristic (WARN only).** Lines without a marker are also scanned for phrases that read like a relaxation of a core rule, such as "may hardcode …", "paste the API key", "may write secrets to …", or "skip infisical run". A hit is a WARN that asks you to mark or reword the line, and it never escalates to FAIL. Free-text matching misses some rewordings and flags some harmless ones; the ID markers are the reliable signal.
-
-### Waivers
-
-Waivers live in a committed `AGENTS.waivers.json` downstream. Upstream ships only [`AGENTS.waivers.example.json`](../AGENTS.waivers.example.json), which is validated but never applied.
-
-```json
-{
-  "waivers": [
-    {
-      "rule": "secrets.fetch-on-demand",
-      "layer": "org/acme/AGENTS.md",
-      "reason": "Air-gapped lab; credentials come from a sealed store mounted read-only at runtime.",
-      "owner": "security-lead@example.com",
-      "expires": "2027-03-31"
-    }
-  ]
-}
-```
-
-- `rule`, `reason` and `owner` are required. A waiver missing any of them is a FAIL. Use a **role or team handle** for `owner` (e.g. `security-lead@…`, `@org/security`), not a personal name: every report, including CI logs, prints it.
-- `expires` is optional (`YYYY-MM-DD`, a real calendar date, valid through the end of that day, UTC). An **expired waiver no longer counts**: the relaxation is FAIL again, and the waiver is listed as `expired`.
-- `layer` is optional and limits the waiver to one layer file. It must be a well-formed repo-relative path, and it is normalized, so `./org/acme/AGENTS.md` matches `org/acme/AGENTS.md`.
-- Every run lists every waiver (active or expired, in use or unused) under **Waivers**. Review them on a fixed cadence, for example quarterly, and prefer short expiries.
+**Wording check (FAIL).** Every line of every active layer, including lines that carry a `clarify` or `tighten` marker, is also scanned for phrasing that reads like loosening a core rule. Examples are "may hardcode …", "paste the API key", "may write secrets to …", "skip infisical run" and "ignore the refusal criteria". A hit is a FAIL: reword the line. A marker cannot exempt a line from this check. Free-text matching misses some rewordings, so review of the layer change is still the primary check, and the runtime rule in `AGENTS.md` still applies.
 
 ### What compliance does not do
 
-**A compliance report does not stop an agent from mishandling secrets at runtime.** Agents follow the effective, layered instructions. A layer that relaxes `secrets.no-hardcode` will lead agents to hardcode secrets, whether the report says FAIL, WARN or nothing. Every repository, with or without layers, still needs controls outside the prompt:
+**An audit does not control what an agent does at runtime.** It checks the committed layer files. Every repository, with or without layers, still needs controls outside the prompt:
 
 - **secret scanning** on push and in CI (e.g. GitHub secret scanning with push protection, gitleaks, trufflehog);
 - **pre-commit hooks** that block credentials and `.env` files before they are committed;
@@ -279,11 +247,11 @@ Waivers live in a committed `AGENTS.waivers.json` downstream. Upstream ships onl
 `npm run audit` also enforces the layer contract through `scripts/context_layers.js` (FAIL on violation):
 
 - `AGENTS.md` ends with a top-level `# Configuration layers` section that names `AGENTS.layers`, `NOEMI_ORG_LAYERS` and `AGENTS.local.md`.
-- `org/example/AGENTS.md` exists, and its override markers use valid IDs.
+- `org/example/AGENTS.md` exists, its override markers use valid IDs, and it relaxes no core rule.
 - Every path in `AGENTS.layers` and `AGENTS.layers.example` (whichever exist) is well-formed: relative, inside the repository, `.md`, not reserved, no duplicates.
 - `.gitignore` ignores `AGENTS.local.md`.
 - `CLAUDE.md`/`GEMINI.md` equal the generator's output for this checkout.
-- Every core rule ID is present in `AGENTS.md`, and the waiver files are well-formed.
+- Every core rule ID is present in `AGENTS.md` and still tagged core, and no active layer or the template relaxes a core rule.
 
 Listed layer files that are **missing do not fail the build**. Tests live in `tests/config-layers.test.js` and `tests/layer-compliance.test.js`.
 
@@ -293,6 +261,5 @@ Listed layer files that are **missing do not fail the build**. Tests live in `te
 - **Stale generated imports:** re-run `npm run generate` after any manifest or layer change. CI catches committed staleness.
 - **Context growth:** every layer loads every session; the Codex cap is 32 KiB by default.
 - **Ownership drift:** editing a vendored MSP layer in a customer repo breaks subtree pulls. Use the customer layer instead.
-- **WARN fatigue:** keep the preference set small and read the summary line. Regulated environments can set `COMPLIANCE_FAIL_ON_WARN=1`.
-- **Rubber-stamp waivers:** require a real reason and owner, set expiries, and review the Waivers section regularly.
+- **Wording-check false positives:** a harmless line can read like a relaxation. Reword it; there is deliberately no way to suppress the check.
 - **Report is not enforcement:** see [What compliance does not do](#what-compliance-does-not-do).

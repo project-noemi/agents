@@ -13,7 +13,7 @@ const {
     buildSkillsDist
 } = require('./context_helpers');
 const { auditConfigLayers, buildContextFile } = require('./context_layers');
-const { buildComplianceReport, evaluateLayerCompliance, todayIso } = require('./layer_compliance');
+const { evaluateLayerCompliance } = require('./layer_compliance');
 
 const repoRoot = path.join(__dirname, '..');
 const agentsDir = path.join(repoRoot, 'agents');
@@ -30,32 +30,19 @@ const REQUIRED_ENGAGEMENT_SECTIONS = [
     'Audit Notes'
 ];
 
-// Compliance levels (docs/configuration-layers.md § Compliance): every check
-// records PASS / WARN / FAIL findings. FAIL exits 1. WARN exits 0 unless
-// --fail-on-warn or COMPLIANCE_FAIL_ON_WARN=1, then exits 2. The report opens
-// with a one-line summary; --json prints a machine-readable report instead and
-// --json-file=<path> writes one alongside the text report.
-const findings = [];
-const logLines = [];
-const pendingStderr = [];
-let currentCheck = 'setup';
+let failed = false;
 
-function log(message) {
-    logLines.push(message);
+function fail(message) {
+    failed = true;
+    console.error(`AUDIT FAIL: ${message}`);
 }
 
-function record(level, message, extra = {}) {
-    findings.push({ level, check: currentCheck, message, ...extra });
-}
-
-function fail(message, extra) {
-    record('FAIL', message, extra);
-    pendingStderr.push(`AUDIT FAIL: ${message}`);
-}
-
-function warn(message, extra) {
-    record('WARN', message, extra);
-    pendingStderr.push(`AUDIT WARN: ${message}`);
+// A WARN is reported but does not fail the audit. It is used only for
+// non-security layer findings (docs/configuration-layers.md § Compliance).
+let warnings = 0;
+function warn(message) {
+    warnings += 1;
+    console.error(`AUDIT WARN: ${message}`);
 }
 
 // Mandatory Audit Log JSON schema keys per Requirement §3 (Decision [2026-05-20]).
@@ -162,7 +149,7 @@ function auditFile(filePath, requiredSections) {
 }
 
 function checkPersonas() {
-    log('Auditing agent specifications...');
+    console.log('Auditing agent specifications...');
     const agents = discoverAgents(agentsDir);
     for (const agent of agents) {
         const fullPath = path.join(repoRoot, agent.path);
@@ -174,13 +161,13 @@ function checkPersonas() {
 
         auditFile(fullPath, REQUIRED_AGENT_SECTIONS);
     }
-    log(`Audited ${agents.length} agents.`);
+    console.log(`Audited ${agents.length} agents.`);
 }
 
 function checkSkills() {
-    log('Auditing reusable skills...');
+    console.log('Auditing reusable skills...');
     if (!fs.existsSync(skillsDir)) {
-        log('Skills directory not found, skipping skills audit.');
+        console.warn('Skills directory not found, skipping skills audit.');
         return;
     }
 
@@ -215,7 +202,7 @@ function checkSkills() {
     for (const fullPath of skillFiles) {
         auditFile(fullPath, REQUIRED_SKILL_SECTIONS);
     }
-    log(`Audited ${skillFiles.length} skills.`);
+    console.log(`Audited ${skillFiles.length} skills.`);
 }
 
 function checkGeneratedOutputs() {
@@ -247,31 +234,27 @@ function checkGeneratedOutputs() {
 // is gitignored, and every path in AGENTS.layers / AGENTS.layers.example is
 // well-formed. Missing optional layer files are deliberately NOT a failure.
 function checkConfigLayers() {
-    log('Auditing configuration layers hook (AGENTS.layers)...');
+    console.log('Auditing configuration layers hook (AGENTS.layers)...');
     for (const message of auditConfigLayers(repoRoot)) {
         fail(message);
     }
 }
 
-// Layer compliance: layers may override any baseline rule (later wins), so
-// this check REPORTS loosened rules instead of blocking them. Severity depends
-// on what was loosened: an unwaived core (secrets.* / refusal.*) relaxation is
-// FAIL, a waived one or a preference relaxation is WARN, a clarification is
-// PASS. See scripts/layer_compliance.js.
-let waiverReport = [];
+// Layer compliance (scripts/layer_compliance.js): core rules (secrets.*,
+// refusal.*) cannot be relaxed by any layer, so any attempt is a FAIL with no
+// waiver or downgrade path. Only preference-rule relaxations and unparseable
+// markers that name no core rule are WARN; clarifications and tightenings PASS.
 function checkLayerCompliance() {
-    log('Auditing layer compliance (rule IDs, overrides, waivers)...');
-    const result = evaluateLayerCompliance({ repoRoot, env: process.env, today: todayIso() });
-    waiverReport = result.waivers;
-    log(`Active layers: ${result.layers.length ? result.layers.join(' -> ') : 'none (baseline only)'}.`);
+    console.log('Auditing layer compliance (core rule IDs and layer overrides)...');
+    const result = evaluateLayerCompliance({ repoRoot, env: process.env });
+    console.log(`Active layers: ${result.layers.length ? result.layers.join(' -> ') : 'none (baseline only)'}.`);
     for (const finding of result.findings) {
-        const { level, message, check, ...extra } = finding;
-        if (level === 'FAIL') {
-            fail(message, extra);
-        } else if (level === 'WARN') {
-            warn(message, extra);
+        if (finding.level === 'FAIL') {
+            fail(finding.message);
+        } else if (finding.level === 'WARN') {
+            warn(finding.message);
         } else {
-            record('PASS', message, extra);
+            console.log(`PASS: ${finding.message}`);
         }
     }
 }
@@ -308,7 +291,7 @@ function checkInlineSafetyContract() {
 // in memory and demanding byte equality makes manual edits, stale files, and
 // missing artifacts all loud (Decision: skills.sh Phase 1 distribution).
 function checkSkillsDistDeterminism() {
-    log('Auditing skills-dist build artifacts (determinism)...');
+    console.log('Auditing skills-dist build artifacts (determinism)...');
 
     let expected;
     try {
@@ -391,7 +374,7 @@ function checkLicensingPosture() {
 // (Decision [2026-07-05-0011]). Requirement §1 enumerates the kit's contents; a missing
 // file breaks the buyer's first-contact experience and fails the audit as a fatal error.
 function checkPhaseZeroKit() {
-    log('Auditing Phase 0 Assessment Kit inventory...');
+    console.log('Auditing Phase 0 Assessment Kit inventory...');
     const kitDir = path.join(repoRoot, 'docs/phase-zero-assessment');
     if (!fs.existsSync(kitDir)) {
         fail('docs/phase-zero-assessment/ directory is missing; Requirement §1 mandates the Phase 0 Assessment Kit.');
@@ -415,7 +398,7 @@ const MERGE_GATE_PATH = '.github/workflows/require-develop-source.yml';
 const CANONICAL_GATE_CONDITION = 'if [[ "${{ github.head_ref }}" != "develop" ]]; then';
 
 function checkBibleEdition() {
-    log('Auditing Bible edition stamp (CalVer, not SemVer)...');
+    console.log('Auditing Bible edition stamp (CalVer, not SemVer)...');
     const { checkBibleEditionFile } = require('./bible-edition');
     for (const error of checkBibleEditionFile(repoRoot)) {
         fail(error);
@@ -423,7 +406,7 @@ function checkBibleEdition() {
 }
 
 function checkMergeGateInvariant() {
-    log('Auditing merge-gate invariant (develop is the only PR source into main)...');
+    console.log('Auditing merge-gate invariant (develop is the only PR source into main)...');
     const gatePath = path.join(repoRoot, MERGE_GATE_PATH);
     if (!fs.existsSync(gatePath)) {
         fail(`${MERGE_GATE_PATH} is missing; Requirement §7 mandates the develop-only merge gate.`);
@@ -449,7 +432,7 @@ function checkMergeGateInvariant() {
 }
 
 function checkBranchModel() {
-    log('Auditing branch model (PR targets and registered integration branches)...');
+    console.log('Auditing branch model (PR targets and registered integration branches)...');
     const { loadBranchModel, validateModel, activeIntegrationBranches } = require('./branch-model');
 
     let model;
@@ -501,123 +484,26 @@ function checkBranchModel() {
     }
 }
 
-const CHECKS = [
-    checkTemplates,
-    checkInlineSafetyContract,
-    checkPersonas,
-    checkSkills,
-    checkGeneratedOutputs,
-    checkConfigLayers,
-    checkLayerCompliance,
-    checkSkillsDistDeterminism,
-    checkLicensingPosture,
-    checkPhaseZeroKit,
-    checkMergeGateInvariant,
-    checkBranchModel,
-    checkBibleEdition
-];
-
-function parseArgs(argv) {
-    const options = { json: false, jsonFile: null, failOnWarn: process.env.COMPLIANCE_FAIL_ON_WARN === '1' };
-    for (const arg of argv) {
-        if (arg === '--json') {
-            options.json = true;
-        } else if (arg.startsWith('--json-file=')) {
-            options.jsonFile = arg.slice('--json-file='.length);
-        } else if (arg === '--fail-on-warn') {
-            options.failOnWarn = true;
-        } else {
-            console.error(`Unknown argument: ${arg} (supported: --json, --json-file=<path>, --fail-on-warn)`);
-            process.exit(64);
-        }
-    }
-    return options;
-}
-
-function annotate(level, message) {
-    if (process.env.GITHUB_ACTIONS !== 'true') {
-        return;
-    }
-    const escaped = String(message).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
-    console.log(`::${level === 'FAIL' ? 'error' : 'warning'} title=Compliance ${level}::${escaped}`);
-}
-
 function main() {
-    const options = parseArgs(process.argv.slice(2));
+    checkTemplates();
+    checkInlineSafetyContract();
+    checkPersonas();
+    checkSkills();
+    checkGeneratedOutputs();
+    checkConfigLayers();
+    checkLayerCompliance();
+    checkSkillsDistDeterminism();
+    checkLicensingPosture();
+    checkPhaseZeroKit();
+    checkMergeGateInvariant();
+    checkBranchModel();
+    checkBibleEdition();
 
-    for (const check of CHECKS) {
-        currentCheck = check.name;
-        try {
-            check();
-        } catch (error) {
-            fail(`${check.name} crashed: ${error.message}`);
-        }
-    }
-    currentCheck = 'report';
-
-    const report = buildComplianceReport({
-        checkNames: CHECKS.map((check) => check.name),
-        findings,
-        waivers: waiverReport,
-        failOnWarn: options.failOnWarn
-    });
-    const { checks, status, exitCode, summary: summaryLine } = report;
-
-    if (options.jsonFile) {
-        fs.mkdirSync(path.dirname(path.resolve(options.jsonFile)), { recursive: true });
-        fs.writeFileSync(options.jsonFile, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+    if (failed) {
+        process.exit(1);
     }
 
-    if (options.json) {
-        process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-        process.exit(exitCode);
-    }
-
-    // Summary first, then the per-finding stderr lines (kept for log scrapers
-    // and annotations), then the full report.
-    console.log(summaryLine);
-    for (const line of pendingStderr) {
-        console.error(line);
-    }
-
-    const out = [''];
-    for (const level of ['FAIL', 'WARN']) {
-        const items = findings.filter((finding) => finding.level === level);
-        out.push(`${level} (${items.length})`);
-        for (const item of items) {
-            out.push(`  - [${item.check}] ${item.message}`);
-            annotate(level, item.message);
-        }
-        out.push('');
-    }
-    out.push(`Waivers (${waiverReport.length})`);
-    for (const waiver of waiverReport) {
-        out.push(`  - ${waiver.rule}${waiver.layer ? ` @ ${waiver.layer}` : ''}: ${waiver.status}${waiver.used ? ', in use' : ', unused'}`
-            + ` | owner: ${waiver.owner} | expires: ${waiver.expires || 'never'} | reason: ${waiver.reason}`);
-    }
-    out.push('');
-    const passes = findings.filter((finding) => finding.level === 'PASS');
-    if (passes.length) {
-        out.push(`Clarifications / tightenings (${passes.length})`);
-        for (const item of passes) {
-            out.push(`  - ${item.message}`);
-        }
-        out.push('');
-    }
-    out.push('Checks');
-    for (const check of checks) {
-        out.push(`  ${check.level.padEnd(4)} ${check.name}`);
-    }
-    out.push('', 'Details', ...logLines.map((line) => `  ${line}`), '');
-    if (exitCode === 0) {
-        out.push(status === 'PASS' ? 'Repository audit passed.' : 'Repository audit passed with warnings (use --fail-on-warn or COMPLIANCE_FAIL_ON_WARN=1 to block).');
-    } else if (exitCode === 2) {
-        out.push('Repository audit: WARN treated as failure (--fail-on-warn / COMPLIANCE_FAIL_ON_WARN=1).');
-    }
-    console.log(out.join('\n'));
-    process.exit(exitCode);
+    console.log(warnings ? `Repository audit passed with ${warnings} warning(s).` : 'Repository audit passed.');
 }
 
-if (require.main === module) {
-    main();
-}
+main();

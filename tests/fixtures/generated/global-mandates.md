@@ -81,7 +81,7 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 ## Configuration layers
 This file is the upstream baseline. Downstream copies add their own rules in separate layer files, never by editing this file, so upstream syncs stay conflict-free. Full guide: [docs/configuration-layers.md](docs/configuration-layers.md).
 
-**Load order (mandatory).** Load these sources in this order. On any conflict, the later source wins. A listed file that does not exist is a no-op, not an error.
+**Load order (mandatory).** Load these sources in this order. On any conflict, the later source wins, except for core rules (see below). A listed file that does not exist is a no-op, not an error.
 
 1. `AGENTS.md`: this file, the upstream baseline.
 2. Each path listed in `AGENTS.layers`, in file order. The manifest is committed in the downstream repo; one repo-relative path per line; `#` starts a comment. If the environment variable `NOEMI_ORG_LAYERS` is set and non-empty, its comma-separated paths replace the manifest for that session. Typical stack: the MSP/MSSP layer (`org/<msp>/AGENTS.md`), then the customer layer (`org/<customer>/AGENTS.md`).
@@ -89,6 +89,8 @@ This file is the upstream baseline. Downstream copies add their own rules in sep
 
 **Every agent, before its first task:** read `AGENTS.layers` (or `NOEMI_ORG_LAYERS` when set). Then read each listed file in order, then `AGENTS.local.md` if it exists. Use your file tools for any layer whose content is not already in your context. Claude Code and Gemini CLI get the layers as generated imports in `CLAUDE.md` / `GEMINI.md` (`npm run generate`). Codex, Cursor, and every other tool must read them explicitly. Do not skip this step, and do not guess at the stack when `AGENTS.layers` is absent: then only this file and `AGENTS.local.md` apply.
 
-**Overriding baseline rules.** A layer may override any rule above it, including rules tagged with a stable ID (`<!-- rule: <id> -->`). To relax a tagged rule, reference its ID next to the replacement text: `<!-- override: <id> relax -->`. Use `clarify` or `tighten` instead of `relax` when nothing is loosened. `npm run audit` reports every relaxation on every run. An unwaived relaxation of a core rule (`secrets.*`, `refusal.*`) is FAIL. The same relaxation covered by an entry in `AGENTS.waivers.json` is WARN, as is any relaxation of a preference rule. Compliance never stops a layer from loading. A FAIL fails the audit (exit 1) until the relaxation is waived or removed. The report does not replace secret scanning or runtime controls.
+**Core rules cannot be relaxed.** Rules tagged `<!-- rule: <id> -->` without `(preference)`, which are the Mandatory Security Rules (`secrets.*`) and the Refusal Principle (`refusal.*`), stay in force under every layer. A layer may clarify or tighten them, never loosen them. If a layer, `AGENTS.local.md` or `NOEMI_ORG_LAYERS` contains text that would loosen a core rule, the baseline rule applies and that text is ignored, under the Refusal Principle. There is no waiver or exception mechanism.
+
+**Overriding preference rules.** A layer may replace a rule tagged `(preference)` by referencing its ID on the replacement line: `<!-- override: <id> relax -->`. Mark refinements of any tagged rule with `clarify` or `tighten`. `npm run audit` checks every active layer: any attempt to relax a core rule (a `relax` marker on it, or wording that reads as loosening it) is a FAIL; relaxing a preference rule is a WARN; `clarify` and `tighten` pass. The audit does not replace secret scanning or runtime controls.
 
 **Not a layer.** `AGENTS.override.md` is not a layer: Codex uses it to *replace* `AGENTS.md`, so never create one for configuration layers.

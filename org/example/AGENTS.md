@@ -15,19 +15,17 @@
   - When you replace an upstream rule, say so in "Overrides of earlier layers"
     so agents (and reviewers) do not have to guess which rule applies.
   - Baseline rules that compliance tracks carry a stable ID in AGENTS.md
-    (an HTML comment of the form "rule: secrets.no-hardcode"). A layer may
-    override any of them. When it does, put an HTML comment of the form
-    "override: <rule-id> relax" (or clarify / tighten) on the line with the
-    replacement text; the entries below show the exact syntax.
-    `npm run audit` reports every relaxation on every run:
-      - relaxing a core rule (secrets.*, refusal.*) without a waiver: FAIL
-      - the same with an active entry in AGENTS.waivers.json: WARN, and
-        listed under "Waivers" in every report
+    (an HTML comment of the form "rule: secrets.no-hardcode").
+    Core rules (secrets.*, refusal.*) cannot be relaxed by any layer: you may
+    clarify or tighten them, never loosen them, and there is no waiver.
+    Preference rules (tagged "(preference)") may be replaced. Put an HTML
+    comment of the form "override: <rule-id> relax" (or clarify / tighten) on
+    the line with the replacement text; the entries below show the syntax.
+    `npm run audit` checks this layer:
+      - any attempt to relax a core rule, by marker or by wording: FAIL
       - relaxing a preference rule: WARN
       - clarify / tighten: PASS
-    An unmarked rewording that looks like a relaxation is reported as a
-    heuristic WARN. Compliance is a report: it does not stop an agent from
-    following this layer at runtime.
+    Agents also ignore layer text that would loosen a core rule.
   - Never put secrets, tokens, customer PII, or internal hostnames that are
     themselves sensitive in a layer. Reference vault paths or SecretOps
     project names instead.

@@ -16,9 +16,9 @@
 #
 # NOEMI_ORG_LAYERS="a.md,b.md" replaces this list for one session (CI, tests).
 #
-# Layers may override any baseline rule. Mark relaxations with
-# <!-- override: <rule-id> relax --> in the layer; core relaxations need a
-# waiver in AGENTS.waivers.json (see AGENTS.waivers.example.json).
+# Layers may replace preference rules (mark them with
+# <!-- override: <rule-id> relax -->). Core rules (secrets.*, refusal.*) can
+# only be clarified or tightened; any attempt to relax one fails the audit.
 #
 # After editing AGENTS.layers, run `npm run generate` and commit CLAUDE.md and
 # GEMINI.md so Claude Code and Gemini CLI import the same stack.

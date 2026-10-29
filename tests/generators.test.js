@@ -52,7 +52,10 @@ test('config override rewrites context outputs and can be restored', () => {
     try {
         runNode(['scripts/generate_all.js', `--config=${tempConfigPath}`]);
 
-        const expected = buildContextFile({ repoRoot, env: process.env, pointer: CONTEXT_POINTER }).content;
+        const { content: expected, resolved } = buildContextFile({ repoRoot, env: process.env, pointer: CONTEXT_POINTER });
+        if (resolved.source === 'none' && !resolved.local) {
+            assert.equal(expected, CONTEXT_POINTER, 'with no layers the expected output is exactly the pointer');
+        }
         assert.equal(read(geminiPath), expected, 'config override must not fatten GEMINI.md');
         assert.equal(read(claudePath), expected, 'config override must not fatten CLAUDE.md');
     } finally {

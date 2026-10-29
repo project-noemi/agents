@@ -3,29 +3,29 @@
 /**
  * Layer compliance (docs/configuration-layers.md § Compliance).
  *
- * Layers may override any baseline rule; later layers win. Compliance does not
- * block that. It reports every loosened rule on every run, at a severity that
- * depends on WHAT was loosened:
+ * Later layers win on conflict, with one exception: core rules (secrets.*,
+ * refusal.*) are non-relaxable. A layer may clarify or tighten a core rule but
+ * never loosen it, and there is no waiver or downgrade path. The audit scores
+ * each layer:
  *
- *   FAIL  unwaived relaxation of a core rule (secrets.*, refusal.*)
- *   WARN  waived core relaxation (also listed under Waivers), relaxation of a
- *         preference rule, an unknown rule ID, or a keyword-heuristic hit
- *   PASS  clarifications and tightenings, which change no prohibition
+ *   FAIL  any attempt to relax a core rule: a `relax` marker, an unknown or
+ *         malformed marker that names a core rule, or a line that reads like a
+ *         relaxation of a core rule (keyword heuristic, marked or not)
+ *   WARN  relaxing a preference rule; an unknown rule ID; a malformed marker
+ *         that names no core rule
+ *   PASS  clarifications and tightenings, which loosen no prohibition
  *
  * Baseline rules carry stable IDs in AGENTS.md:
  *   <!-- rule: secrets.no-hardcode -->                 core (default)
  *   <!-- rule: coding.branch-naming (preference) -->   preference
  * A layer declares an override by ID:
- *   <!-- override: secrets.no-hardcode relax -->       (or clarify / tighten)
- * Waivers live in AGENTS.waivers.json (committed downstream).
+ *   <!-- override: coding.model-baseline relax -->     (or clarify / tighten)
  */
 
 const fs = require('fs');
 const path = require('path');
-const { EXAMPLE_LAYER, LOCAL_LAYER, resolveLayers, validateLayerPath } = require('./context_layers');
+const { EXAMPLE_LAYER, LOCAL_LAYER, resolveLayers } = require('./context_layers');
 
-const WAIVERS_FILE = 'AGENTS.waivers.json';
-const WAIVERS_EXAMPLE_FILE = 'AGENTS.waivers.example.json';
 const RULE_ID = '[a-z0-9]+(?:[.-][a-z0-9]+)+';
 const RULE_MARKER = new RegExp(`<!--\\s*rule:\\s*(${RULE_ID})\\s*(?:\\((core|preference)\\))?\\s*-->`, 'g');
 // Any comment that starts with "override:" is parsed, so a malformed marker
@@ -33,6 +33,7 @@ const RULE_MARKER = new RegExp(`<!--\\s*rule:\\s*(${RULE_ID})\\s*(?:\\((core|pre
 const OVERRIDE_COMMENT = /<!--\s*override:([\s\S]*?)-->/g;
 const OVERRIDE_BODY = new RegExp(`^\\s*(${RULE_ID})\\s+([a-z]+)\\s*$`, 'i');
 const OVERRIDE_ACTIONS = new Set(['relax', 'clarify', 'tighten']);
+const CORE_PREFIXES = ['secrets.', 'refusal.'];
 
 /** Core rules the baseline must always tag. Losing one is a FAIL. */
 const REQUIRED_CORE_RULES = [
@@ -44,8 +45,10 @@ const REQUIRED_CORE_RULES = [
 ];
 
 /**
- * Keyword heuristic for UNMARKED relaxations. A hit is only ever a WARN:
- * free-text detection has false positives and false negatives.
+ * Keyword heuristic for wording that loosens a core rule. It runs on every
+ * line of a layer, including lines that carry a `clarify` or `tighten`
+ * marker, so a marker cannot launder a relaxation. Free-text matching misses
+ * some rewordings; reviewers of the layer change remain the primary check.
  */
 const PERMISSION = '\\b(?:may|can|could|allowed to|ok to|okay to|permitted to|is fine to|feel free to)\\b';
 const HEURISTICS = [
@@ -57,6 +60,10 @@ const HEURISTICS = [
     { rule: 'refusal.principle', pattern: /\b(?:ignore|disable|skip|bypass|remove|drop)\b[^.\n]{0,40}\brefusal\b/i }
 ];
 const NEGATION = /\b(?:not|never|no|must not|cannot|can't|don't|do not)\b/i;
+
+function isCoreRuleId(id) {
+    return CORE_PREFIXES.some((prefix) => String(id).startsWith(prefix));
+}
 
 /** Parse rule markers from baseline text. Returns { rules: Map, errors }. */
 function parseBaselineRules(text) {
@@ -95,17 +102,15 @@ function parseOverrides(text) {
     return overrides;
 }
 
-/** Keyword heuristic over lines that carry no override marker. */
+/** Keyword heuristic over every line of a layer (markers do not exempt a line). */
 function scanHeuristics(text) {
     const hits = [];
     String(text).split(/\r?\n/).forEach((line, index) => {
-        if (/<!--\s*override:/.test(line)) {
-            return;
-        }
+        const prose = line.replace(OVERRIDE_COMMENT, ' ');
         for (const heuristic of HEURISTICS) {
-            const match = line.match(heuristic.pattern);
+            const match = prose.match(heuristic.pattern);
             if (match && !NEGATION.test(match[0])) {
-                hits.push({ rule: heuristic.rule, line: index + 1, excerpt: line.trim().slice(0, 160) });
+                hits.push({ rule: heuristic.rule, line: index + 1, excerpt: prose.trim().slice(0, 160) });
                 break;
             }
         }
@@ -113,83 +118,15 @@ function scanHeuristics(text) {
     return hits;
 }
 
-/** Strict calendar date: rejects 2026-02-30, which Date.parse would roll over. */
-function isIsoDate(value) {
-    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-        return false;
-    }
-    const parsed = new Date(`${value}T00:00:00Z`);
-    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
-
-/**
- * Parse a waivers file. Shape:
- *   { "waivers": [ { "rule", "reason", "owner", "expires"?, "layer"? } ] }
- * Returns { waivers, errors }. A waiver expires at the END of its expiry day (UTC).
- */
-function parseWaivers(text, fileName) {
-    const errors = [];
-    let data;
-    try {
-        data = JSON.parse(text);
-    } catch (error) {
-        return { waivers: [], errors: [`${fileName}: invalid JSON (${error.message}).`] };
-    }
-    if (!data || !Array.isArray(data.waivers)) {
-        return { waivers: [], errors: [`${fileName}: expected an object with a "waivers" array.`] };
-    }
-    const waivers = [];
-    data.waivers.forEach((waiver, index) => {
-        const where = `${fileName} waivers[${index}]`;
-        const problems = [];
-        for (const field of ['rule', 'reason', 'owner']) {
-            if (typeof waiver?.[field] !== 'string' || waiver[field].trim() === '') {
-                problems.push(`"${field}" is required`);
-            }
-        }
-        if (waiver?.expires !== undefined && !isIsoDate(waiver.expires)) {
-            problems.push('"expires" must be a YYYY-MM-DD date');
-        }
-        if (waiver?.layer !== undefined) {
-            const layerError = typeof waiver.layer === 'string' && waiver.layer.trim() !== ''
-                ? (waiver.layer.trim() === LOCAL_LAYER ? null : validateLayerPath(waiver.layer.trim()))
-                : 'must be a non-empty path';
-            if (layerError) {
-                problems.push(`"layer" ${layerError}`);
-            }
-        }
-        if (problems.length) {
-            errors.push(`${where}: ${problems.join('; ')}.`);
-            return;
-        }
-        waivers.push({
-            rule: waiver.rule.trim(),
-            reason: waiver.reason.trim(),
-            owner: waiver.owner.trim(),
-            expires: waiver.expires || null,
-            layer: waiver.layer ? path.posix.normalize(waiver.layer.trim()) : null
-        });
-    });
-    return { waivers, errors };
-}
-
-function waiverExpired(waiver, today) {
-    return Boolean(waiver.expires) && waiver.expires < today;
-}
-
-function todayIso(now = new Date()) {
-    return now.toISOString().slice(0, 10);
-}
-
 /**
  * Evaluate compliance for a checkout. Pure apart from file reads.
- * Returns { findings: [{ level, check, message, rule?, layer? }], waivers: [...] }.
+ * Returns { findings: [{ level, message, rule?, layer?, heuristic? }], layers }.
  */
-function evaluateLayerCompliance({ repoRoot, env = process.env, today = todayIso() }) {
+function evaluateLayerCompliance({ repoRoot, env = process.env }) {
     const findings = [];
-    const add = (level, message, extra = {}) => findings.push({ level, check: 'layer-compliance', message, ...extra });
+    const add = (level, message, extra = {}) => findings.push({ level, message, ...extra });
 
-    // 1. Baseline rule IDs.
+    // 1. Baseline rule IDs: every core rule stays tagged, and stays core.
     const { rules, errors: ruleErrors } = parseBaselineRules(fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8'));
     for (const message of ruleErrors) {
         add('FAIL', message);
@@ -202,33 +139,14 @@ function evaluateLayerCompliance({ repoRoot, env = process.env, today = todayIso
             add('FAIL', `AGENTS.md marks "${id}" as ${rule.tier}; it must stay a core rule.`, { rule: id });
         }
     }
-
-    // 2. Waivers (live file applies; the example is only validated).
-    let waivers = [];
-    for (const fileName of [WAIVERS_FILE, WAIVERS_EXAMPLE_FILE]) {
-        const filePath = path.join(repoRoot, fileName);
-        if (!fs.existsSync(filePath)) {
-            continue;
-        }
-        const parsed = parseWaivers(fs.readFileSync(filePath, 'utf8'), fileName);
-        for (const message of parsed.errors) {
-            add('FAIL', message);
-        }
-        for (const waiver of parsed.waivers) {
-            if (!rules.has(waiver.rule)) {
-                add('WARN', `${fileName}: waiver for unknown rule ID "${waiver.rule}".`, { rule: waiver.rule });
-            }
-        }
-        if (fileName === WAIVERS_FILE) {
-            waivers = parsed.waivers.map((waiver) => ({
-                ...waiver,
-                status: waiverExpired(waiver, today) ? 'expired' : 'active',
-                used: false
-            }));
+    for (const rule of rules.values()) {
+        if (isCoreRuleId(rule.id) && rule.tier !== 'core' && !REQUIRED_CORE_RULES.includes(rule.id)) {
+            add('FAIL', `AGENTS.md marks "${rule.id}" as ${rule.tier}; secrets.* and refusal.* rules are always core.`, { rule: rule.id });
         }
     }
+    const isCore = (id) => isCoreRuleId(id) || rules.get(id)?.tier === 'core';
 
-    // 3. Active layers: declared overrides + heuristic.
+    // 2. Active layers: declared overrides + heuristic.
     let resolved;
     try {
         resolved = resolveLayers({ repoRoot, env });
@@ -243,107 +161,68 @@ function evaluateLayerCompliance({ repoRoot, env = process.env, today = todayIso
 
     for (const layer of layers) {
         const text = fs.readFileSync(path.join(repoRoot, layer), 'utf8');
-        const overrides = parseOverrides(text);
-        const relaxed = new Set();
-        for (const override of overrides) {
+        for (const override of parseOverrides(text)) {
             const where = `${layer}:${override.line}`;
             if (override.malformed) {
-                add('WARN', `${where}: malformed override marker "override:${override.raw}" (expected "<!-- override: <rule-id> relax|clarify|tighten -->").`, { layer });
+                const namesCore = new RegExp(`\\b(?:${CORE_PREFIXES.map((p) => p.replace('.', '\\.')).join('|')})`, 'i').test(override.raw);
+                add(namesCore ? 'FAIL' : 'WARN',
+                    `${where}: malformed override marker "override:${override.raw}" (expected "<!-- override: <rule-id> relax|clarify|tighten -->")`
+                    + (namesCore ? '; markers that name a core rule must be a valid clarify or tighten.' : '.'), { layer });
                 continue;
             }
             const rule = rules.get(override.rule);
+            const core = isCore(override.rule);
+            if (core && override.action !== 'clarify' && override.action !== 'tighten') {
+                add('FAIL', `${where}: "${override.action}" on core rule ${override.rule}. Core rules (secrets.*, refusal.*) cannot be relaxed by a layer; only clarify or tighten is allowed.`, { rule: override.rule, layer });
+                continue;
+            }
             if (!OVERRIDE_ACTIONS.has(override.action)) {
                 add('WARN', `${where}: override of "${override.rule}" uses unknown action "${override.action}" (use relax, clarify or tighten).`, { rule: override.rule, layer });
                 continue;
             }
             if (!rule) {
-                add('WARN', `${where}: override references unknown rule ID "${override.rule}".`, { rule: override.rule, layer });
+                add(core ? 'FAIL' : 'WARN', `${where}: override references unknown rule ID "${override.rule}".`, { rule: override.rule, layer });
                 continue;
             }
             if (override.action !== 'relax') {
                 add('PASS', `${where}: ${override.action}s ${rule.id} (no prohibition loosened).`, { rule: rule.id, layer });
                 continue;
             }
-            relaxed.add(rule.id);
-            if (rule.tier === 'preference') {
-                add('WARN', `${where}: relaxes preference rule ${rule.id}.`, { rule: rule.id, layer });
-                continue;
-            }
-            const matching = waivers.filter((waiver) => waiver.rule === rule.id && (!waiver.layer || waiver.layer === layer));
-            const active = matching.find((waiver) => waiver.status === 'active');
-            if (active) {
-                active.used = true;
-                add('WARN', `${where}: relaxes core rule ${rule.id} under waiver (owner: ${active.owner}${active.expires ? `, expires ${active.expires}` : ''}).`, { rule: rule.id, layer, waived: true });
-            } else {
-                const expired = matching.find((waiver) => waiver.status === 'expired');
-                add('FAIL', `${where}: relaxes core rule ${rule.id} without an active waiver`
-                    + (expired ? ` (waiver expired ${expired.expires}).` : ` (add one to ${WAIVERS_FILE}).`), { rule: rule.id, layer });
-            }
+            add('WARN', `${where}: relaxes preference rule ${rule.id}.`, { rule: rule.id, layer });
         }
         for (const hit of scanHeuristics(text)) {
-            if (relaxed.has(hit.rule)) {
-                continue;
-            }
-            add('WARN', `${layer}:${hit.line}: possible unmarked relaxation of ${hit.rule} (heuristic): "${hit.excerpt}". Mark it with an override marker or reword.`, { rule: hit.rule, layer, heuristic: true });
+            add('FAIL', `${layer}:${hit.line}: wording reads as a relaxation of core rule ${hit.rule}: "${hit.excerpt}". Core rules cannot be relaxed by a layer; reword the line.`, { rule: hit.rule, layer, heuristic: true });
         }
     }
 
-    // 4. Template: marker syntax only, never severity.
+    // 3. Template: markers must be valid and may not relax a core rule.
     const templatePath = path.join(repoRoot, EXAMPLE_LAYER);
     if (fs.existsSync(templatePath)) {
-        for (const override of parseOverrides(fs.readFileSync(templatePath, 'utf8'))) {
-            if (override.malformed || !OVERRIDE_ACTIONS.has(override.action) || !rules.has(override.rule)) {
+        const template = fs.readFileSync(templatePath, 'utf8');
+        for (const override of parseOverrides(template)) {
+            const invalid = override.malformed || !OVERRIDE_ACTIONS.has(override.action) || !rules.has(override.rule);
+            const relaxesCore = !override.malformed && isCore(override.rule) && override.action === 'relax';
+            if (invalid || relaxesCore) {
                 const shown = override.malformed ? override.raw : `${override.rule} ${override.action}`;
                 add('FAIL', `${EXAMPLE_LAYER}:${override.line}: template override marker "${shown}" is invalid.`);
             }
         }
+        for (const hit of scanHeuristics(template)) {
+            add('FAIL', `${EXAMPLE_LAYER}:${hit.line}: template wording reads as a relaxation of core rule ${hit.rule}.`);
+        }
     }
 
-    return { findings, waivers, layers };
-}
-
-/**
- * Shared PASS / WARN / FAIL report for scripts/audit-repo.js.
- * Exit codes: FAIL 1; WARN 0, or 2 with failOnWarn; PASS 0.
- */
-function buildComplianceReport({ checkNames, findings, waivers = [], failOnWarn = false }) {
-    const checks = checkNames.map((name) => {
-        const own = findings.filter((finding) => finding.check === name);
-        const level = own.some((finding) => finding.level === 'FAIL') ? 'FAIL'
-            : own.some((finding) => finding.level === 'WARN') ? 'WARN' : 'PASS';
-        return { name, level };
-    });
-    const counts = {
-        fail: findings.filter((finding) => finding.level === 'FAIL').length,
-        warn: findings.filter((finding) => finding.level === 'WARN').length,
-        pass: checks.filter((check) => check.level === 'PASS').length
-            + findings.filter((finding) => finding.level === 'PASS').length
-    };
-    const status = counts.fail ? 'FAIL' : counts.warn ? 'WARN' : 'PASS';
-    const exitCode = status === 'FAIL' ? 1 : (status === 'WARN' && failOnWarn ? 2 : 0);
-    return {
-        status,
-        summary: `Compliance: ${counts.fail} FAIL, ${counts.warn} WARN, ${counts.pass} PASS (status: ${status})`,
-        counts,
-        failOnWarn,
-        exitCode,
-        checks,
-        findings,
-        waivers
-    };
+    return { findings, layers };
 }
 
 module.exports = {
-    buildComplianceReport,
+    CORE_PREFIXES,
     HEURISTICS,
     OVERRIDE_ACTIONS,
     REQUIRED_CORE_RULES,
-    WAIVERS_EXAMPLE_FILE,
-    WAIVERS_FILE,
     evaluateLayerCompliance,
+    isCoreRuleId,
     parseBaselineRules,
     parseOverrides,
-    parseWaivers,
-    scanHeuristics,
-    todayIso
+    scanHeuristics
 };

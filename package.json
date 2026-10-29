@@ -10,7 +10,6 @@
   },
   "scripts": {
     "audit": "node scripts/audit-repo.js",
-    "audit:json": "node scripts/audit-repo.js --json",
     "check:headless": "node scripts/check-headless-hooks.js",
     "generate": "node scripts/generate_all.js",
     "test": "node --test --test-concurrency=1 tests/*.test.js",

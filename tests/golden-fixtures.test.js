@@ -28,8 +28,11 @@ function readFixture(fileName) {
 test('CLAUDE.md and GEMINI.md are AGENTS.md pointers (plus generated layer imports, if any)', () => {
     // Upstream ships no live AGENTS.layers, so this is exactly CONTEXT_POINTER
     // here; a downstream checkout with layers gets the marked import block.
-    const { content } = buildContextFile({ repoRoot, env: process.env, pointer: CONTEXT_POINTER });
+    const { content, resolved } = buildContextFile({ repoRoot, env: process.env, pointer: CONTEXT_POINTER });
     assert.ok(content.startsWith(CONTEXT_POINTER));
+    if (resolved.source === 'none' && !resolved.local) {
+        assert.equal(content, CONTEXT_POINTER, 'with no layers the files must be exactly the pointer');
+    }
     assert.equal(read('CLAUDE.md'), content);
     assert.equal(read('GEMINI.md'), content);
 });

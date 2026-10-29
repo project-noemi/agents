@@ -9,13 +9,13 @@ This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Secu
 
 ### Mandatory Security Rules
 
-- NEVER ask the user for secrets in the chat interface.
+- NEVER ask the user for secrets in the chat interface. <!-- rule: secrets.no-ask-user -->
 
 
-- NEVER hardcode actual secret values in any files, `.env` files, or logs.
+- NEVER hardcode actual secret values in any files, `.env` files, or logs. <!-- rule: secrets.no-hardcode -->
 
 
-- ALWAYS use an Environment Injection CLI (`infisical run` or `op run`) to resolve credentials at runtime.
+- ALWAYS use an Environment Injection CLI (`infisical run` or `op run`) to resolve credentials at runtime. <!-- rule: secrets.fetch-on-demand -->
 
 ## 🛡 Error Handling and Resilience
 

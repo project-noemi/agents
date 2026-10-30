@@ -103,6 +103,44 @@ function badWriterPath(files) {
   return null;
 }
 
+function identitySplitError(message) {
+  const err = new Error(`identity-split: ${message}`);
+  err.status = 403;
+  err.code = 'identity-split';
+  err.reason = 'identity-split';
+  return err;
+}
+
+/**
+ * Runtime identity split, before the first producer write: the conductor
+ * credential (when the run has one) must resolve to a DIFFERENT identity
+ * than the producer. The static checks in resolveCredential compare secrets
+ * and configured ids; this compares what the forge says each one IS, so the
+ * same principal reached through two credential forms (a client secret and
+ * a pre-minted token, two PATs of one user) is still refused. A conductor
+ * the forge reports as an App installation (GitHub) is never a user, so it
+ * cannot be the producer. A conductor lookup failure refuses (fail closed).
+ */
+async function assertIdentitySplit({
+  forge, target, actor, conductor,
+}) {
+  if (!conductor) return;
+  let other;
+  try {
+    other = await forge.whoAmI(target, conductor);
+  } catch (err) {
+    throw identitySplitError(`the conductor identity could not be read (${(err && err.status) || 'error'}); refusing producer writes.`);
+  }
+  if (other && other.appInstallation === true) return;
+  const key = (who, field) => (who && who[field] !== undefined && who[field] !== null && who[field] !== ''
+    ? String(who[field]).toLowerCase() : null);
+  const otherId = key(other, 'id');
+  const otherLogin = key(other, 'login');
+  if (!otherId && !otherLogin) throw identitySplitError('the conductor identity is unknown; refusing producer writes.');
+  const same = (otherId && otherId === key(actor, 'id')) || (otherLogin && otherLogin === key(actor, 'login'));
+  if (same) throw identitySplitError('the conductor and producer credentials are the same identity; refusing producer writes.');
+}
+
 /**
  * Open the implementation change request as ONE commit, created atomically
  * (provider.commitFiles: nothing is visible until the whole change is; the
@@ -124,6 +162,7 @@ async function openImplementationPr({
   branches,
   token,
   cred,
+  conductorCred,
   files,
   ghImpl,
   env = process.env,
@@ -177,6 +216,9 @@ async function openImplementationPr({
     err.status = 403;
     throw err;
   }
+  await assertIdentitySplit({
+    forge, target, actor, conductor: conductorCred,
+  });
 
   const committed = await forge.commitFiles(target, {
     base: prepared.base,
@@ -191,6 +233,16 @@ async function openImplementationPr({
   }
   if (committed.status === 'head-exists') {
     return { ...prepared, status: 'refused', reason: 'head-exists', opened: false };
+  }
+  if (committed.status === 'refused') {
+    // The forge cannot make this change safely (e.g. Azure DevOps cannot
+    // keep an executable bit). Nothing was written.
+    return { ...prepared, status: 'refused', reason: committed.reason || 'commit-refused', opened: false };
+  }
+  if (committed.status !== 'created' && committed.status !== 'resumed') {
+    const err = new Error(`Stage C: unknown commit status from ${forge.id}.`);
+    err.status = 502;
+    throw err;
   }
 
   const cr = await forge.openChangeRequest(target, {
@@ -212,10 +264,13 @@ async function openImplementationPr({
     number: cr.number,
     model: model || null,
     label: 'noemi:in-progress',
+    ...(cr.autoCompleteCleared ? { autoCompleteCleared: true } : {}),
+    ...(cr.descriptionTruncated ? { descriptionTruncated: true } : {}),
   };
 }
 
 module.exports = {
+  assertIdentitySplit,
   assertProducerToken,
   badWriterPath,
   expectedProducerLogin,

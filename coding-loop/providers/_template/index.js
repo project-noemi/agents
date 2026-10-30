@@ -91,7 +91,9 @@ function createTemplateProvider() {
 
     // → { login, permission: admin|maintain|write|read|none } or
     // { login, error }. Unknown user is 'none'; a failed lookup is error.
-    async requesterPermission(ref, login, cred) { throw notImplemented('requesterPermission'); },
+    // run.js passes { env, entitlement } as a 4th argument (a client row
+    // may carry forge-specific requester settings).
+    async requesterPermission(ref, login, cred, opts) { throw notImplemented('requesterPermission'); },
 
     // → existing integration branches, preference order (develop, dev).
     // Exact-name lookups, not prefix matches.
@@ -101,7 +103,10 @@ function createTemplateProvider() {
     // the URL with paths.encodeRepoPath (it refuses unsafe paths).
     async readFile(ref, path, gitRef, cred) { throw notImplemented('readFile'); },
 
-    // → { status: created|resumed|head-exists|missing-base, sha }.
+    // → { status: created|resumed|head-exists|missing-base|refused, sha }.
+    // `refused` + `reason` when the forge cannot make the change safely
+    // (e.g. it cannot keep an executable bit: declare
+    // `capabilities: { preservesMode: false }` and refuse `mode-unsupported`).
     // Atomic: nothing visible on the forge until the whole change is (create
     // the branch last, or push one commit). Re-check isSafeRepoPath and
     // isCarvedOut. Same content already on `head` → resumed; different →
@@ -117,6 +122,14 @@ function createTemplateProvider() {
 
     // → true for service accounts / apps; intake skips their items.
     isBotIdentity(author) { throw notImplemented('isBotIdentity'); },
+
+    // Optional (contract.OPTIONAL_PROVIDER_METHODS):
+    //   itemScopeKey(ref)     when items belong to something other than the
+    //                         repository (an Azure DevOps project); getItem
+    //                         then sets `scopeKey` from the forge's reply.
+    //   requesterOfItem(item) the requester id --requested-by-author uses
+    //                         (default item.author.login).
+    //   capabilities          { preservesMode } (default true).
   };
 }
 

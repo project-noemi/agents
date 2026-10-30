@@ -49,6 +49,18 @@ const CARVE_OUT_PREFIXES = [
   '.pipelines/',
 ];
 
+// Pipeline definitions at any depth. Azure Pipelines runs a YAML file from
+// any path the build definition names (`ci/azure-pipelines.yml`,
+// `sub/azure-pipelines.yaml`), and `.vsts-ci.yml` is the legacy default name.
+// Matched on the folded path, so case and Windows folding cannot dodge them:
+//   **/*azure-pipelines*.y?ml, .vsts-ci.yml, **/.vsts-ci.yml
+// A definition at an arbitrary name (`build/pipeline.yml`) is looked up per
+// repository by the provider (Azure DevOps commitFiles), not listed here.
+const CARVE_OUT_PATTERNS = [
+  /(?:^|\/)[^/]*azure-pipelines[^/]*\.ya?ml$/,
+  /(?:^|\/)\.vsts-ci\.ya?ml$/,
+];
+
 const CARVE_OUT_LOWER = new Set(CARVE_OUT.map((item) => item.toLowerCase()));
 
 function normalizeRepoPath(filePath) {
@@ -92,6 +104,7 @@ function foldForCarveOut(filePath) {
 function isCarvedOut(filePath) {
   const folded = foldForCarveOut(filePath);
   if (CARVE_OUT_LOWER.has(folded)) return true;
+  if (CARVE_OUT_PATTERNS.some((re) => re.test(folded))) return true;
   return CARVE_OUT_PREFIXES.some((prefix) => (
     folded === prefix.replace(/\/$/, '') || folded.startsWith(prefix)
   ));
@@ -113,9 +126,11 @@ function encodeRepoPath(filePath) {
 
 module.exports = {
   CARVE_OUT,
+  CARVE_OUT_PATTERNS,
   CARVE_OUT_PREFIXES,
   MAX_PATH_CHARS,
   encodeRepoPath,
+  foldForCarveOut,
   isCarvedOut,
   isSafeRepoPath,
   normalizeRepoPath,

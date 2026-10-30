@@ -49,6 +49,11 @@
  * @property {string} repoKey     RepoRef.key of the repository the FORGE says the
  *   item lives in (not the one we asked for). A mismatch means a rename or
  *   transfer redirect; the loop refuses.
+ * @property {string} [scopeKey]  Key of the container the FORGE says the item
+ *   belongs to, when that is not a repository. Azure DevOps work items belong
+ *   to a project (`azure-devops:org/project`), not a repo. When the provider
+ *   implements itemScopeKey(ref), run.js compares scopeKey with it instead of
+ *   repoKey with ref.key.
  */
 
 /**
@@ -65,8 +70,13 @@
  */
 const PERMISSIONS = Object.freeze(['admin', 'maintain', 'write', 'read', 'none']);
 
-/** commitFiles outcomes. `missing-base` = the base branch has no commit. */
-const COMMIT_STATUSES = Object.freeze(['created', 'resumed', 'head-exists', 'missing-base']);
+/**
+ * commitFiles outcomes. `missing-base` = the base branch has no commit.
+ * `refused` (with a `reason`) = the forge cannot make this change safely,
+ * e.g. Azure DevOps cannot keep an executable bit (`mode-unsupported`) or
+ * the path is a symlink (`symlink-unsupported`). Nothing was written.
+ */
+const COMMIT_STATUSES = Object.freeze(['created', 'resumed', 'head-exists', 'missing-base', 'refused']);
 
 /** Required properties and their typeof. */
 const PROVIDER_PROPS = Object.freeze({
@@ -96,6 +106,36 @@ const PROVIDER_METHODS = Object.freeze([
   'openChangeRequest',
   'isBotIdentity',
 ]);
+
+/**
+ * Optional methods. A provider that has them is checked for their type; one
+ * without them gets the default named here.
+ *   itemScopeKey(ref)     → the scopeKey an item read through `ref` must
+ *                           carry (default: compare repoKey with ref.key).
+ *   requesterOfItem(item) → the requester id `--requested-by-author` uses
+ *                           (default: item.author.login).
+ *   bodyEditors(ref, item, cred) → identity ids (requesterPermission form)
+ *                           of everyone who set or changed the item's title
+ *                           or body text, the author included. A forge where
+ *                           someone BELOW the requester bar can edit another
+ *                           person's item text implements it: with
+ *                           `--requested-by-author`, run.js requires every
+ *                           editor to be the author or to pass
+ *                           requesterPermission, else REFUSED
+ *                           `body-edited-by-non-requester`. Throws when the
+ *                           history cannot be read (run.js: trigger-unverified).
+ *                           Omitted = only the author or someone at or above
+ *                           the bar can edit (GitHub: editing another user's
+ *                           issue body needs write access or higher).
+ */
+const OPTIONAL_PROVIDER_METHODS = Object.freeze(['itemScopeKey', 'requesterOfItem', 'bodyEditors']);
+
+/**
+ * Optional `capabilities` object. `preservesMode: false` means commitFiles
+ * cannot keep an executable bit and refuses (`mode-unsupported`) to edit an
+ * executable file instead of silently clearing it. Missing means true.
+ */
+const DEFAULT_CAPABILITIES = Object.freeze({ preservesMode: true });
 
 const PROVIDER_ID_RE = /^[a-z][a-z0-9-]*$/;
 
@@ -145,10 +185,21 @@ function assertProvider(p) {
   for (const method of PROVIDER_METHODS) {
     if (typeof p[method] !== 'function') problems.push(`${method} must be a function`);
   }
+  for (const method of OPTIONAL_PROVIDER_METHODS) {
+    if (p[method] !== undefined && typeof p[method] !== 'function') problems.push(`${method} must be a function when present`);
+  }
+  if (p.capabilities !== undefined && (!p.capabilities || typeof p.capabilities !== 'object' || Array.isArray(p.capabilities))) {
+    problems.push('capabilities must be an object when present');
+  }
   if (problems.length > 0) {
     throw providerError(`provider contract (${p.id || 'unnamed'}): ${problems.join('; ')}`, 500, 'provider-contract');
   }
   return p;
+}
+
+/** The provider's capabilities with defaults filled in. */
+function providerCapabilities(p) {
+  return { ...DEFAULT_CAPABILITIES, ...((p && p.capabilities) || {}) };
 }
 
 /** Build a RepoRef; the only place slug and key are derived. */
@@ -223,6 +274,8 @@ function repoEntryMatches(entry, target) {
 
 module.exports = {
   COMMIT_STATUSES,
+  DEFAULT_CAPABILITIES,
+  OPTIONAL_PROVIDER_METHODS,
   PERMISSIONS,
   PROVIDER_ALIASES,
   PROVIDER_ID_RE,
@@ -233,6 +286,7 @@ module.exports = {
   makeRepoRef,
   matchTarget,
   ownerEntryMatches,
+  providerCapabilities,
   providerError,
   repoEntryMatches,
   splitProviderPrefix,

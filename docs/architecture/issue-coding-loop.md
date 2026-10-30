@@ -357,6 +357,21 @@ Each failure refuses with its own reason: `app-not-installed`,
 a lookup fails (fail closed). `--plan-in` re-checks all three, so an
 uninstall or suspension between planning and implementing stops the run.
 
+**Azure DevOps** (Decision [2026-10-27-0006]) has no App installation. A
+client org is entitled when its Entra tenant (read from the org) is named by
+an `azure-devops` registry row, the conductor service principal can read the
+org (it was added with Basic access), and the org's `instanceId` matches the
+row's `account_id`. A 401 or 403 means the principal is not in the org
+(`app-not-installed`). The requester must be a member of the project's
+requester group (`ADO_REQUESTER_GROUP`, or the row's `requester_group`),
+because no least-privileged API answers whether another identity can write
+to a repository. When the author is the requester (`--requested-by-author`), every
+editor of the title or body must also pass the requester check, because a
+Stakeholder can edit a member's work item. Pipeline YAML can live at any
+path, so besides the carve-out union (which adds `**/*azure-pipelines*.y?ml`
+and `.vsts-ci.yml` at any depth) the provider refuses the YAML files the
+repository's build definitions name and the templates they include.
+
 The registry is never committed: this repository is public and the list says
 who NewPush's clients are. Industry comparison and the remaining work
 (App-identity PRs on client orgs, uninstall webhooks, per-client caps, CI

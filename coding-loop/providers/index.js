@@ -102,6 +102,7 @@ function parseRepoRef(input, { env = process.env } = {}) {
 }
 
 registerProvider(require('./github/index.js').provider);
+registerProvider(require('./azure-devops/index.js').provider);
 
 module.exports = {
   REPO_USAGE,

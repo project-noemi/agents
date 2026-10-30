@@ -40,8 +40,24 @@
  *
  * Forges: every forge call goes through a provider (coding-loop/providers/).
  * `--repo owner/name` is GitHub, as it always was; `github:owner/name` and
- * repository URLs also work, and other forges use `<provider>:<path>` once
- * their provider is registered. `--item` is an alias for `--issue`.
+ * repository URLs also work, and other forges use `<provider>:<path>`
+ * (`ado:org/project/repo`). `--item` is an alias for `--issue`.
+ *
+ * --requested-by-author names the item's author as the requester (the
+ * provider's requesterOfItem: the GitHub login, the Azure DevOps identity
+ * id). Hosts whose trigger carries no requester identity (an Azure DevOps
+ * service hook) use it. It is mutually exclusive with --requested-by, and
+ * the author still needs write access (or, on Azure DevOps, membership of
+ * the requester group). On a forge where someone below that bar can edit
+ * another person's item (provider.bodyEditors: Azure DevOps), every person
+ * who set or changed the title or body must also be the author or pass the
+ * same check; otherwise the item is REFUSED `body-edited-by-non-requester`
+ * (an unreadable history is `trigger-unverified`).
+ *
+ * Hidden text (provider hiddenText: HTML comments, hidden or white-on-white
+ * elements) is secret-scanned with the body, and an item whose hidden text
+ * carries instruction-like content is REFUSED `hidden-instructions` before
+ * any model call.
  */
 
 const crypto = require('crypto');
@@ -49,8 +65,9 @@ const fs = require('fs');
 const path = require('path');
 const { gh, githubApiBase } = require('../scripts/github-client.js');
 const {
-  REQUESTER_REFUSALS, classifyIssue, entitlementGate,
+  REQUESTER_REFUSALS, WRITE_PERMISSIONS, classifyIssue, entitlementGate,
 } = require('./intake.js');
+const { INJECTION_PATTERNS } = require('./doc-critic.js');
 const { parseRepoRef, getProvider } = require('./providers/index.js');
 const {
   createGithubProvider, githubCredential, issueRepoOf,
@@ -66,9 +83,10 @@ const { resolveProfile } = require('./profile.js');
 
 const repoRoot = path.join(__dirname, '..');
 
-const USAGE = 'Usage: coding-loop/run.js --repo owner/name --issue N (alias --item N) --requested-by login [--post] [--implement] [--open-pr] [--live-critic] [--profile code|spec] [--tenant path] [--plan-out file | --plan-in file] (--scan | --scan-status APPROVED|BLOCKED|REDACTED) (--budget-ok | --budget-exhausted)\n'
+const USAGE = 'Usage: coding-loop/run.js --repo owner/name --issue N (alias --item N) (--requested-by login | --requested-by-author) [--post] [--implement] [--open-pr] [--live-critic] [--profile code|spec] [--tenant path] [--plan-out file | --plan-in file] (--scan | --scan-status APPROVED|BLOCKED|REDACTED) (--budget-ok | --budget-exhausted)\n'
   + 'Omitting both --scan and --scan-status, omitting the budget assertion, or omitting --requested-by classifies the issue as REFUSED (fail closed).\n'
   + '--requested-by names the person who triggered the run; they need write, maintain or admin on the repo. Never the bot.\n'
+  + '--requested-by-author uses the item\'s author as the requester (for triggers that carry no requester identity).\n'
   + '--scan runs coding-loop/scan.js on the fetched issue; it is not implied by omitting --scan-status.\n'
   + '--profile spec constrains Stage B/C to markdown under agents/, skills/, docs/agents/ (writing personas and skills).\n'
   + '--implement prepares a noemi-agent PR envelope.\n'
@@ -141,12 +159,16 @@ function parseArgs(argv) {
       case '--live-critic': args.liveCritic = true; break;
       case '--heuristic-critic': args.liveCritic = false; break;
       case '--scan': args.scan = true; break;
+      case '--requested-by-author': args.requestedByAuthor = true; break;
       case '--budget-ok': args.budgetState = 'ok'; break;
       case '--budget-exhausted': args.budgetState = 'exhausted'; break;
       case '--help': args.help = true; break;
       default:
         if (flag.startsWith('--')) throw usageError(`Unknown flag: ${flag}`);
     }
+  }
+  if (args.requestedByAuthor && args.requestedBy !== undefined) {
+    throw usageError('--requested-by and --requested-by-author are mutually exclusive.');
   }
   if (args.requestedBy !== undefined) {
     args.requestedBy = args.requestedBy.replace(/^@/, '');
@@ -202,13 +224,39 @@ function resolveScanInput(args, issue) {
 
 /**
  * What the scanner sees: title, body and the provider's hiddenText (text a
- * human reader may not see but a model would be fed). Unchanged for GitHub,
- * whose hiddenText is always empty.
+ * human reader may not see but a model would be fed: HTML comments, hidden
+ * elements and attributes in a GitHub body, hidden HTML in Azure DevOps
+ * fields). Title + body only when there is no hidden text.
  */
 function scanText(issue) {
   const base = `${(issue && issue.title) || ''}\n${(issue && issue.body) || ''}`;
   const hidden = String((issue && issue.hiddenText) || '');
   return hidden ? `${base}\n${hidden}` : base;
+}
+
+/**
+ * Instruction-like text in hiddenText refuses the item (`hidden-instructions`):
+ * nobody reviewing the item can see it, so nothing there is a legitimate
+ * request to the agent. The PromptShield patterns doc-critic.js applies to
+ * Product Owner answers (minus `encoded_payload`: a hidden data: URL or
+ * image alt is not an instruction), plus a few aimed at the reviewer gate.
+ * Other hidden text is only scanned.
+ */
+const HIDDEN_INSTRUCTION_PATTERNS = [
+  ...INJECTION_PATTERNS.filter(({ type }) => type !== 'encoded_payload').map(({ re }) => re),
+  /\bignore\s+(?:all\s+|any\s+)?(?:the\s+)?(?:previous|prior|above|earlier|other)\b/i,
+  /\bdisregard\s+(?:all\s+|any\s+)?(?:the\s+|your\s+)?(?:previous|prior|above|earlier|instructions|rules|plan)\b/i,
+  /\bsystem\s+prompt\b/i,
+  /\byou\s+are\s+now\b/i,
+  /\bact\s+as\s+(?:a|an|the|if)\b/i,
+  /\b(?:approve|merge)\s+(?:this|the|it|now|immediately|without)\b/i,
+  /["']verdict["']\s*:/i,
+];
+
+function hasHiddenInstructions(issue) {
+  const hidden = String((issue && issue.hiddenText) || '');
+  if (!hidden.trim()) return false;
+  return HIDDEN_INSTRUCTION_PATTERNS.some((re) => re.test(hidden));
 }
 
 function loadTenant(relPath) {
@@ -248,7 +296,8 @@ function issueReadToken(conductor, env = process.env) {
 const PLAN_FILE_VERSION = 3;
 
 /**
- * What a plan was made from: sha256 over the issue title and body.
+ * What a plan was made from: sha256 over the issue title, body and (when
+ * present) hiddenText.
  * Version 1 compared `updated_at`, which the conductor's own comment and
  * label bump — so `--plan-out` together with `--post` produced a plan that
  * could never be used. Labels and comments do not change the fingerprint;
@@ -259,10 +308,18 @@ function issueFingerprint(issue) {
   const title = String((issue && issue.title) || '');
   const body = String((issue && issue.body) || '');
   // hiddenText is part of what was planned from; it joins the hash only
-  // when present, so a GitHub fingerprint (and every v2 file) is unchanged.
+  // when present. A body with no hidden part (no HTML comment, hidden
+  // element or title/alt attribute) hashes as it always did; one WITH a
+  // hidden part does not, which is why v2 files also accept
+  // legacyIssueFingerprint (readPlanFile).
   const hidden = String((issue && issue.hiddenText) || '');
   const parts = hidden ? [title, body, hidden] : [title, body];
   return crypto.createHash('sha256').update(JSON.stringify(parts)).digest('hex');
+}
+
+/** The pre-hiddenText fingerprint (title and body only) that v2 plan files carry. */
+function legacyIssueFingerprint(issue) {
+  return issueFingerprint({ title: issue && issue.title, body: issue && issue.body });
 }
 
 /**
@@ -334,7 +391,7 @@ function writePlanFile(file, {
  * approved; implementing anything else is refused (status 409).
  */
 function readPlanFile(file, {
-  repo, ref, issue, updatedAt, fingerprint, profile,
+  repo, ref, issue, updatedAt, fingerprint, legacyFingerprint, profile,
 }) {
   const target = planRefOf(ref, repo);
   const refuse = (message) => {
@@ -374,10 +431,17 @@ function readPlanFile(file, {
     throw refuse(`the plan used profile ${record.profile}, not ${profile}`);
   }
   if (!record.plan || record.plan.status !== 'accepted') throw refuse('the plan was not accepted');
+  const sameFingerprint = Boolean(record.issueFingerprint) && (
+    record.issueFingerprint === fingerprint
+    // v2 files were hashed over [title, body] before hiddenText joined the
+    // hash; a GitHub body with an HTML comment would otherwise never match.
+    // The hidden text itself is still scanned and checked on this run.
+    || (record.version === 2 && Boolean(legacyFingerprint) && record.issueFingerprint === legacyFingerprint)
+  );
   const unchanged = record.version === 1
     // Version 1 files carry only updated_at; keep their original check.
     ? Boolean(record.issueUpdatedAt) && record.issueUpdatedAt === updatedAt
-    : Boolean(record.issueFingerprint) && record.issueFingerprint === fingerprint;
+    : sameFingerprint;
   if (!unchanged) throw refuse('the issue changed after it was planned; plan it again');
   return { intake: record.intake, plan: record.plan };
 }
@@ -403,10 +467,10 @@ function assertStillEntitled({ issue, tenant, entitlement, trigger }) {
  * all-gates-passed tier may proceed (status 403 otherwise).
  */
 function assertPlanInGates({
-  issue, tenant, entitlement, trigger, scan, budget,
+  issue, tenant, entitlement, trigger, scan, budget, hiddenInstructions = false,
 }) {
   const gates = classifyIssue({
-    issue, tenant, entitlement, trigger, scan, budget,
+    issue, tenant, entitlement, trigger, scan, budget, hiddenInstructions,
   });
   if (gates.tier !== 'PENDING_SUFFICIENCY') {
     const err = new Error(`--plan-in refused: ${(gates.reasons || []).join(', ') || gates.tier}`);
@@ -457,12 +521,90 @@ function assertIssueInRepo(payload, repo) {
   if (!actual || actual.toLowerCase() !== String(repo).toLowerCase()) throw repoMoved(actual, repo);
 }
 
-/** WorkItem form: the forge-reported repoKey must be the ref we asked for. */
-function assertItemInRepo(item, ref) {
+/**
+ * WorkItem form: the forge-reported location must be the one we asked for.
+ * A provider whose items belong to something other than a repository (an
+ * Azure DevOps project) implements itemScopeKey(ref); the item's scopeKey
+ * is compared with it. Otherwise repoKey is compared with ref.key. The
+ * refusal reason is `repo-moved` either way (for Azure DevOps: the work
+ * item is in another project, or the id answered for another item).
+ */
+function assertItemInRepo(item, ref, provider) {
+  if (provider && typeof provider.itemScopeKey === 'function') {
+    const wanted = provider.itemScopeKey(ref);
+    if (!item || !item.scopeKey || !wanted || item.scopeKey !== wanted) {
+      const actual = item && item.scopeKey ? item.scopeKey.replace(/^[^:]+:/, '') : '';
+      throw repoMoved(actual, wanted ? wanted.replace(/^[^:]+:/, '') : ref.slug);
+    }
+    return;
+  }
   if (!item || !item.repoKey || item.repoKey !== ref.key) {
     const actual = item && item.repoKey ? item.repoKey.replace(/^[^:]+:/, '') : '';
     throw repoMoved(actual, ref.slug);
   }
+}
+
+/**
+ * --requested-by-author on a forge with provider.bodyEditors: everyone who
+ * set or changed the item's title or body must be the author or pass the
+ * requester check (each identity checked once). Returns the trigger
+ * unchanged, the trigger with `refusal: 'body-edited-by-non-requester'`, or
+ * `{ login, error }` (intake: trigger-unverified) when the history or a
+ * check cannot be read.
+ */
+async function verifyBodyEditors({
+  provider, ref, issue, requester, trigger, reader, check,
+}) {
+  const unverified = (error) => ({ login: trigger.login, error });
+  let editors;
+  try {
+    editors = await provider.bodyEditors(ref, issue, reader);
+  } catch {
+    return unverified('body-editors-unverified');
+  }
+  if (!Array.isArray(editors)) return unverified('body-editors-unverified');
+  const author = String(requester || '').toLowerCase();
+  const verdicts = new Map();
+  for (const raw of editors) {
+    const editor = String(raw || '').toLowerCase();
+    if (!editor) return unverified('body-editors-unverified');
+    if (editor === author) continue;
+    if (!verdicts.has(editor)) {
+      let verdict;
+      try {
+        verdict = await check(editor);
+      } catch {
+        verdict = null;
+      }
+      verdicts.set(editor, verdict);
+    }
+    const verdict = verdicts.get(editor);
+    if (!verdict || verdict.error) return unverified('body-editor-unverified');
+    if (!WRITE_PERMISSIONS.has(verdict.permission)) return { ...trigger, refusal: 'body-edited-by-non-requester' };
+  }
+  return trigger;
+}
+
+/** The requester for --requested-by-author: the provider's id for the item's author. */
+function requesterOfItem(provider, item) {
+  if (provider && typeof provider.requesterOfItem === 'function') return provider.requesterOfItem(item) || null;
+  return (item && item.author && item.author.login) || null;
+}
+
+/**
+ * Credential-missing messages. GitHub keeps its historical wording; other
+ * forges name their own variables (provider.credentialHelp).
+ */
+function missingCredentialMessage(provider, role) {
+  if (!provider || provider.id === 'github') {
+    return role === 'conductor'
+      ? '--post requires CONDUCTOR_GH_TOKEN or CONDUCTOR_APP_ID+CONDUCTOR_APP_PRIVATE_KEY. Refusing AGENT_GH_TOKEN / reviewer tokens (identity split).'
+      : 'Need a conductor token to read the issue (CONDUCTOR_APP_ID + CONDUCTOR_APP_PRIVATE_KEY, or CONDUCTOR_GH_TOKEN). GH_TOKEN and GITHUB_TOKEN also work for a local read.';
+  }
+  const help = (provider.credentialHelp && provider.credentialHelp[role]) || 'see coding-loop/README.md';
+  return role === 'conductor'
+    ? `--post requires a ${provider.label} conductor credential: ${help}. The producer credential is refused (identity split).`
+    : `Need a ${provider.label} credential to read the item: ${help}.`;
 }
 
 /**
@@ -489,6 +631,7 @@ async function implementFromPlan({
   cred,
   provider,
   ref,
+  conductorCred = null,
   draft = draftChanges,
   open = openImplementationPr,
 }) {
@@ -541,6 +684,7 @@ async function implementFromPlan({
     plan,
     branches,
     cred: producer,
+    conductorCred,
     token: producer.token,
     files: drafted.files,
     model: drafted.model,
@@ -602,7 +746,7 @@ async function runLoop({
     throw usageError(err.message);
   }
   if (args.post && !conductor) {
-    throw usageError('--post requires CONDUCTOR_GH_TOKEN or CONDUCTOR_APP_ID+CONDUCTOR_APP_PRIVATE_KEY. Refusing AGENT_GH_TOKEN / reviewer tokens (identity split).');
+    throw usageError(missingCredentialMessage(provider, 'conductor'));
   }
   let producer = null;
   if (args.implement) {
@@ -634,13 +778,13 @@ async function runLoop({
     }
   }
   if (!reader) {
-    throw usageError('Need a conductor token to read the issue (CONDUCTOR_APP_ID + CONDUCTOR_APP_PRIVATE_KEY, or CONDUCTOR_GH_TOKEN). GH_TOKEN and GITHUB_TOKEN also work for a local read.');
+    throw usageError(missingCredentialMessage(provider, 'reader'));
   }
 
   const display = provider.itemDisplay(ref, itemId);
   const tenant = (deps.loadTenant || loadTenant)(args.tenantPath);
   const issue = await provider.getItem(ref, itemId, reader);
-  assertItemInRepo(issue, ref);
+  assertItemInRepo(issue, ref, provider);
   const gateInputs = buildGateInputs(args);
   const scan = resolveScanInput(args, issue);
   const entitlement = deps.resolveEntitlement
@@ -650,21 +794,38 @@ async function runLoop({
     : await provider.resolveEntitlement({
       ref, tenant, env, deps: { apiBase },
     });
-  const trigger = deps.resolveTrigger
-    ? await deps.resolveTrigger({
-      repo: ref.slug, ref, provider, login: args.requestedBy, token: reader.token, cred: reader, ghImpl: call,
+  // The requester is named on the command line, or (--requested-by-author)
+  // is the item's author as the forge reports it. Either way the provider
+  // checks them; the login never reaches the audit log.
+  const requester = args.requestedByAuthor ? requesterOfItem(provider, issue) : args.requestedBy;
+  const checkRequester = async (login) => (deps.resolveTrigger
+    ? deps.resolveTrigger({
+      repo: ref.slug, ref, provider, login, token: reader.token, cred: reader, ghImpl: call, env, entitlement,
     })
-    : (args.requestedBy ? await provider.requesterPermission(ref, args.requestedBy, reader) : null);
+    : (login ? provider.requesterPermission(ref, login, reader, { env, entitlement }) : null));
+  let trigger = await checkRequester(requester);
+  if (args.requestedByAuthor && typeof provider.bodyEditors === 'function'
+    && trigger && !trigger.error && WRITE_PERMISSIONS.has(trigger.permission)) {
+    trigger = await verifyBodyEditors({
+      provider, ref, issue, requester, trigger, reader, check: checkRequester,
+    });
+  }
+  const hiddenInstructions = hasHiddenInstructions(issue);
   const fingerprint = issueFingerprint(issue);
 
   let intake;
   let plan;
   if (args.planIn) {
     assertPlanInGates({
-      issue, tenant, entitlement, trigger, scan, budget: gateInputs.budget,
+      issue, tenant, entitlement, trigger, scan, budget: gateInputs.budget, hiddenInstructions,
     });
     ({ intake, plan } = readPlanFile(args.planIn, {
-      ref, issue: itemId, updatedAt: issue.updatedAt, fingerprint, profile: args.profile,
+      ref,
+      issue: itemId,
+      updatedAt: issue.updatedAt,
+      fingerprint,
+      legacyFingerprint: legacyIssueFingerprint(issue),
+      profile: args.profile,
     }));
     assertPlanInContent(plan, args.profile);
   } else {
@@ -675,6 +836,7 @@ async function runLoop({
       trigger,
       scan,
       budget: gateInputs.budget,
+      hiddenInstructions,
       routing: loadRouting(repoRoot),
       critic: args.liveCritic ? critiquePlanLive : undefined,
       revise: args.liveCritic
@@ -729,6 +891,7 @@ async function runLoop({
       provider,
       ref,
       cred: producer,
+      conductorCred: conductor,
       token: producer && producer.token,
       draft: deps.draft,
       open: deps.open,
@@ -763,6 +926,7 @@ async function runLoop({
       `budget=${args.budgetState || 'unverified'}`,
       // The requester's permission, never their login: audit logs carry no PII (AGENTS.md).
       `requester=${trigger ? (trigger.error ? 'unverified' : trigger.permission) : 'none'}`,
+      `requesterSource=${args.requestedByAuthor ? 'item-author' : 'flag'}`,
     ],
     actions: [intake.tier, plan.status, implementation && implementation.status, ...(intake.reasons || [])].filter(Boolean),
     risks: [
@@ -776,6 +940,12 @@ async function runLoop({
         : null,
       implementation && implementation.status === 'ready' && implementation.opened !== true
         ? 'Stage C envelope ready; pass --open-pr to draft with Grok and open as noemi-agent'
+        : null,
+      implementation && implementation.autoCompleteCleared
+        ? 'the change request had auto-complete set by a repository default; the loop cleared it'
+        : null,
+      implementation && implementation.descriptionTruncated
+        ? 'the change request description was truncated to the forge limit'
         : null,
     ].filter(Boolean),
     result: label || plan.label || intake.label,
@@ -853,6 +1023,8 @@ module.exports = {
   buildGateInputs,
   exitCodeForError,
   implementFromPlan,
+  legacyIssueFingerprint,
+  hasHiddenInstructions,
   issueFingerprint,
   issueReadToken,
   issueRepoOf,
@@ -866,5 +1038,6 @@ module.exports = {
   scanText,
   runLoop,
   syncNoemiLabel,
+  verifyBodyEditors,
   writePlanFile,
 };

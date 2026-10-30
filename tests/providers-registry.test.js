@@ -54,17 +54,24 @@ test('parseRepoRef: GHES URLs only when GITHUB_API_URL names that host', () => {
   assert.throws(() => parseRepoRef('https://ghe.example.com/acme/app', { env: {} }), (err) => err.status === 400);
 });
 
-test('parseRepoRef: Azure DevOps shapes with no ADO provider → clear 400 "not available"', () => {
-  for (const input of [
-    'azure-devops:contoso/web/api', 'ado:contoso/web/api', 'azdo:contoso/web/api',
-    'https://dev.azure.com/contoso/web/_git/api', 'https://contoso.visualstudio.com/web/_git/api',
-  ]) {
-    assert.throws(
-      () => parseRepoRef(input, { env: {} }),
-      (err) => err.status === 400 && err.code === 'provider-not-available' && /not available/.test(err.message),
-      input,
-    );
+test('parseRepoRef: Azure DevOps shapes in a build without the ADO provider → clear 400 "not available"', () => {
+  const adoProvider = getProvider('azure-devops');
+  unregisterProvider('azure-devops');
+  try {
+    for (const input of [
+      'azure-devops:contoso/web/api', 'ado:contoso/web/api', 'azdo:contoso/web/api',
+      'https://dev.azure.com/contoso/web/_git/api', 'https://contoso.visualstudio.com/web/_git/api',
+    ]) {
+      assert.throws(
+        () => parseRepoRef(input, { env: {} }),
+        (err) => err.status === 400 && err.code === 'provider-not-available' && /not available/.test(err.message),
+        input,
+      );
+    }
+  } finally {
+    registerProvider(adoProvider);
   }
+  assert.equal(parseRepoRef('ado:contoso/web/api', { env: {} }).key, 'azure-devops:contoso/web/api');
 });
 
 test('parseRepoRef: unknown prefix and malformed slugs are 400', () => {
@@ -77,9 +84,10 @@ test('parseRepoRef: unknown prefix and malformed slugs are 400', () => {
 // ---------------------------------------------------------------- registry + contract
 
 test('registry: github registered; aliases resolve; unknown forge is 400', () => {
-  assert.deepEqual(listProviders().map((p) => p.id), ['github']);
+  assert.deepEqual(listProviders().map((p) => p.id), ['github', 'azure-devops']);
   assert.equal(getProvider('gh').id, 'github');
-  assert.throws(() => getProvider('ado'), (err) => err.status === 400 && /azure-devops/.test(err.message));
+  assert.equal(getProvider('ado').id, 'azure-devops');
+  assert.throws(() => getProvider('gitlab'), (err) => err.status === 400 && /not available/.test(err.message));
   assert.throws(() => registerProvider(github.provider), (err) => err.status === 409);
 });
 
@@ -154,16 +162,17 @@ test('client registry: provider rows; GitHub ids stay integers; no cross-forge m
   const registry = parseClientRegistry(JSON.stringify({
     clients: [
       { account_id: 42, status: 'active' },
-      { provider: 'ado', account_id: 'A1B2C3D4-0000-0000-0000-000000000000', status: 'active' },
-      { provider: 'azure-devops', account_id: 42, status: 'suspended' },
+      { provider: 'ado', account_id: 'A1B2C3D4-0000-0000-0000-000000000000', tenant_id: 'b1b2c3d4-0000-0000-0000-000000000000', status: 'active' },
+      { provider: 'example-forge', account_id: 42, status: 'suspended' },
     ],
   }));
   assert.equal(findClient(registry, { provider: 'github', accountId: 42 }).status, 'active');
-  assert.equal(findClient(registry, { provider: 'azure-devops', accountId: 42 }).status, 'suspended');
+  assert.equal(findClient(registry, { provider: 'example-forge', accountId: 42 }).status, 'suspended');
   assert.ok(findClient(registry, { provider: 'azure-devops', accountId: 'a1b2c3d4-0000-0000-0000-000000000000' }));
   assert.equal(findClient(registry, { provider: 'github', accountId: 'A1B2C3D4-0000-0000-0000-000000000000' }), null);
   assert.throws(() => parseClientRegistry('{"clients":[{"provider":"github","account_id":"42","status":"active"}]}'), /integer account_id/);
   assert.throws(() => parseClientRegistry('{"clients":[{"provider":"ado","account_id":"","status":"active"}]}'), /account_id/);
+  assert.throws(() => parseClientRegistry('{"clients":[{"provider":"example-forge","account_id":"","status":"active"}]}'), /account_id/);
   assert.throws(() => parseClientRegistry('{"clients":[{"provider":"Not A Forge","account_id":1,"status":"active"}]}'), /provider/);
   const schema = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'docs', 'client-registry.schema.json'), 'utf8'));
   const row = schema.properties.clients.items.properties;
@@ -308,5 +317,5 @@ test('runLoop: a registered forge drives Stage A end to end; hiddenText is scann
   } finally {
     unregisterProvider('memforge');
   }
-  assert.deepEqual(listProviders().map((p) => p.id), ['github']);
+  assert.deepEqual(listProviders().map((p) => p.id), ['github', 'azure-devops']);
 });

@@ -7,13 +7,17 @@
  * A row belongs to one forge (`provider`, default `github` so every
  * registry written before providers existed keeps its meaning). The grant
  * key is the forge's stable account ID: a positive integer on GitHub, a
- * non-empty string elsewhere (an Azure DevOps organization GUID). It is
- * never a login or display name, which can be renamed and re-registered.
+ * non-empty string elsewhere. Azure DevOps rows are stricter: account_id is
+ * the organization GUID and tenant_id the client's Entra tenant GUID, and
+ * requester_group optionally names the group whose members may trigger a
+ * run. The key is never a login or display name, which can be renamed and
+ * re-registered.
  */
 
 const { PROVIDER_ID_RE, canonicalProviderId } = require('./providers/contract.js');
 
 const CLIENT_STATUSES = new Set(['active', 'suspended']);
+const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Parse NOEMI_CLIENT_REGISTRY. Malformed input throws; it never means "no clients". */
 function parseClientRegistry(text) {
@@ -39,7 +43,22 @@ function parseClientRegistry(text) {
       throw new Error('NOEMI_CLIENT_REGISTRY: client provider must be a provider id such as github or azure-devops.');
     }
     const provider = canonicalProviderId(client.provider || 'github');
-    if (provider === 'github') {
+    if (provider === 'azure-devops') {
+      // The org GUID (connectionData instanceId) is the grant key, and the
+      // client's Entra tenant is what the conductor mints a token for. A row
+      // without the tenant could never be checked, so it is refused here
+      // rather than at run time.
+      if (typeof client.account_id !== 'string' || !GUID_RE.test(client.account_id)) {
+        throw new Error('NOEMI_CLIENT_REGISTRY: an azure-devops client needs account_id = the organization GUID.');
+      }
+      if (typeof client.tenant_id !== 'string' || !GUID_RE.test(client.tenant_id)) {
+        throw new Error('NOEMI_CLIENT_REGISTRY: an azure-devops client needs tenant_id = the client\'s Entra tenant GUID.');
+      }
+      if (client.requester_group !== undefined
+        && (typeof client.requester_group !== 'string' || client.requester_group.trim() === '')) {
+        throw new Error('NOEMI_CLIENT_REGISTRY: requester_group must be a non-empty group name when present.');
+      }
+    } else if (provider === 'github') {
       if (!Number.isInteger(client.account_id) || client.account_id <= 0) {
         throw new Error('NOEMI_CLIENT_REGISTRY: every client needs an integer account_id.');
       }

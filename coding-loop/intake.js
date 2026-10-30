@@ -132,14 +132,25 @@ function entitlementGate({ issue, tenant, entitlement, trigger } = {}) {
   const allowed = tenantAllows(issue, tenant, entitlement);
   if (!allowed.ok) return allowed;
   if (!trigger || !trigger.login || trigger.error) return { ok: false, reason: 'trigger-unverified' };
+  // Set by run.js when someone below the requester bar edited the item's
+  // text (--requested-by-author on a forge with provider.bodyEditors).
+  if (typeof trigger.refusal === 'string' && trigger.refusal) return { ok: false, reason: trigger.refusal };
   if (!WRITE_PERMISSIONS.has(trigger.permission)) return { ok: false, reason: 'trigger-not-writer' };
   return allowed;
 }
 
 /** Refusals caused by WHO asked. The run leaves no trace on the issue for these. */
-const REQUESTER_REFUSALS = new Set(['trigger-unverified', 'trigger-not-writer']);
+const REQUESTER_REFUSALS = new Set(['trigger-unverified', 'trigger-not-writer', 'body-edited-by-non-requester']);
 
-function classifyIssue({ issue, tenant, entitlement, trigger, scan, budget } = {}) {
+/**
+ * `hiddenInstructions`: run.js found instruction-like text in the item's
+ * hiddenText (an HTML comment, a display:none span, white-on-white text).
+ * A person reviewing the item cannot see it, so the item is REFUSED
+ * (`hidden-instructions`) before any model reads it.
+ */
+function classifyIssue({
+  issue, tenant, entitlement, trigger, scan, budget, hiddenInstructions = false,
+} = {}) {
   if (!issue || typeof issue !== 'object') {
     return {
       tier: 'REFUSED',
@@ -178,6 +189,16 @@ function classifyIssue({ issue, tenant, entitlement, trigger, scan, budget } = {
     return {
       tier: 'REFUSED',
       reasons: [allowed.reason],
+      questions: [],
+      label: 'noemi:wont-act',
+      confidence: 'high',
+    };
+  }
+
+  if (hiddenInstructions) {
+    return {
+      tier: 'REFUSED',
+      reasons: ['hidden-instructions'],
       questions: [],
       label: 'noemi:wont-act',
       confidence: 'high',

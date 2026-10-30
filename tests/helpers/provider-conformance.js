@@ -27,14 +27,30 @@
  *   itemLabels(id)               → string[] as stored by the fake
  *   grantPermission(login, permission)
  *   tenantOwnerEntry             a tenant `orgs` entry that lists ref.owner
- *   capabilities                 { executableBit: boolean }
+ *   capabilities                 { executableBit: boolean } — false for a forge
+ *                                whose provider declares capabilities.preservesMode
+ *                                false; the suite then expects an executable file
+ *                                edit to be REFUSED (`mode-unsupported`), not made
+ *   requesters                   optional { member, stranger }: requester ids the
+ *                                forge accepts (default 'maintainer' / 'stranger')
+ *   repoArg                      the --repo value run.js parses to `ref`
+ *   foreignScopeItem             item id the forge places OUTSIDE ref (another
+ *                                repository / project): runLoop refuses repo-moved
+ *   hiddenItem                   item id whose text carries hidden HTML containing
+ *                                the marker HIDDEN_MARKER (and visible text)
  */
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { PERMISSIONS, assertProvider } = require('../../coding-loop/providers/contract.js');
-const { isSafeRepoPath } = require('../../coding-loop/paths.js');
+const {
+  COMMIT_STATUSES, PERMISSIONS, assertProvider, providerCapabilities,
+} = require('../../coding-loop/providers/contract.js');
+const { isCarvedOut, isSafeRepoPath } = require('../../coding-loop/paths.js');
+const run = require('../../coding-loop/run.js');
+
+/** Seeded by every harness inside hidden HTML of `hiddenItem`. */
+const HIDDEN_MARKER = 'NOEMI_HIDDEN_MARKER_7Q';
 
 const WORK_ITEM_KEYS = [
   'provider', 'id', 'number', 'org', 'repo', 'title', 'body', 'bodyFormat', 'hiddenText',
@@ -48,6 +64,43 @@ function runConformance({ name, makeHarness }) {
     assert.doesNotThrow(() => assertProvider(h.provider));
     assert.equal(typeof h.provider.label, 'string');
     assert.ok(Array.isArray(h.provider.carveOutHints));
+  });
+
+  t('carveOutHints: every hint is carved out by the enforced union (paths.isCarvedOut)', (h) => {
+    assert.ok(h.provider.carveOutHints.length > 0);
+    for (const hint of h.provider.carveOutHints) {
+      assert.equal(isCarvedOut(hint), true, hint);
+      if (hint.endsWith('/')) assert.equal(isCarvedOut(`${hint}x.yml`), true, `${hint}x.yml`);
+    }
+  });
+
+  t('getItem: hidden HTML goes to hiddenText, never into the body', async (h) => {
+    const cred = await h.provider.resolveCredential({ role: 'reader', ref: h.ref, env: h.env.reader });
+    const item = await h.provider.getItem(h.ref, h.hiddenItem, cred);
+    assert.match(item.hiddenText, new RegExp(HIDDEN_MARKER));
+    if (h.provider.id !== 'github') {
+      // GitHub keeps the markdown body exactly as written (the comment is
+      // in it, unrendered); a converting forge must drop it from the body.
+      assert.doesNotMatch(item.body, new RegExp(HIDDEN_MARKER));
+    }
+    assert.ok(item.body.trim().length > 0, 'the visible text is kept');
+  });
+
+  t('runLoop: an item the forge places outside the requested scope is refused (repo-moved)', async (h) => {
+    const out = { text: '', write(chunk) { this.text += chunk; return true; } };
+    await assert.rejects(() => run.runLoop({
+      args: {
+        repo: h.repoArg, issue: h.foreignScopeItem, scan: true, budgetState: 'ok', profile: 'code', post: false, implement: false, openPr: false,
+      },
+      env: h.env.reader,
+      stderr: out,
+      deps: {
+        provider: h.provider,
+        loadTenant: () => ({ orgs: [h.tenantOwnerEntry] }),
+        resolveEntitlement: async () => null,
+        completeThroughStageB: async () => { throw new Error('must not plan a foreign item'); },
+      },
+    }), (err) => err.reason === 'repo-moved' && err.status === 409);
   });
 
   t('parseRepo: valid inputs give a RepoRef with the expected key; others are null', (h) => {
@@ -93,6 +146,13 @@ function runConformance({ name, makeHarness }) {
     assert.equal(typeof human.author.login, 'string');
     assert.ok(human.labels.every((l) => typeof l === 'string'));
     assert.equal(human.repoKey, h.ref.key);
+    if (typeof h.provider.itemScopeKey === 'function') {
+      assert.equal(human.scopeKey, h.provider.itemScopeKey(h.ref), 'scopeKey from the forge matches itemScopeKey(ref)');
+    }
+    if (typeof h.provider.requesterOfItem === 'function') {
+      assert.equal(typeof h.provider.requesterOfItem(human), 'string');
+      assert.notEqual(h.provider.requesterOfItem(human), '');
+    }
     assert.equal(h.provider.isBotIdentity(human.author), false);
 
     const bot = await h.provider.getItem(h.ref, h.botItem, cred);
@@ -121,15 +181,16 @@ function runConformance({ name, makeHarness }) {
 
   t('requesterPermission: granted → permission; unknown → none; failure → { error }', async (h) => {
     const cred = await h.provider.resolveCredential({ role: 'reader', ref: h.ref, env: h.env.reader });
-    h.grantPermission('maintainer', 'write');
-    const ok = await h.provider.requesterPermission(h.ref, 'maintainer', cred);
-    assert.equal(ok.login, 'maintainer');
+    const { member, stranger } = h.requesters || { member: 'maintainer', stranger: 'stranger' };
+    h.grantPermission(member, 'write');
+    const ok = await h.provider.requesterPermission(h.ref, member, cred);
+    assert.equal(ok.login, member);
     assert.ok(PERMISSIONS.includes(ok.permission));
     assert.equal(ok.permission, 'write');
-    assert.equal((await h.provider.requesterPermission(h.ref, 'stranger', cred)).permission, 'none');
+    assert.equal((await h.provider.requesterPermission(h.ref, stranger, cred)).permission, 'none');
     h.fail('permission', 502);
-    const down = await h.provider.requesterPermission(h.ref, 'maintainer', cred);
-    assert.equal(down.login, 'maintainer');
+    const down = await h.provider.requesterPermission(h.ref, member, cred);
+    assert.equal(down.login, member);
     assert.ok(down.error);
     assert.equal(down.permission, undefined);
   });
@@ -155,9 +216,16 @@ function runConformance({ name, makeHarness }) {
     assert.equal(h.branchExists('noemi/issue-12'), false);
   });
 
+  t('capabilities: the harness and the provider agree on the executable bit', (h) => {
+    assert.equal(providerCapabilities(h.provider).preservesMode, h.capabilities.executableBit !== false);
+    assert.ok(COMMIT_STATUSES.includes('refused'));
+  });
+
   t('commitFiles: created → resumed on the same tree → head-exists on another; mode preserved', async (h) => {
     const cred = await h.provider.resolveCredential({ role: 'producer', ref: h.ref, env: h.env.producer });
-    h.seedFile('bin/run.sh', '#!/bin/sh\necho old\n', { executable: true });
+    // A forge that cannot keep the executable bit edits a regular file here;
+    // the next case proves it refuses the executable one.
+    h.seedFile('bin/run.sh', '#!/bin/sh\necho old\n', { executable: h.capabilities.executableBit !== false });
     const change = {
       base: 'develop',
       head: 'noemi/issue-12',
@@ -178,6 +246,21 @@ function runConformance({ name, makeHarness }) {
     const foreign = await h.provider.commitFiles(h.ref, { ...change, head: 'noemi/issue-13' }, cred);
     assert.equal(foreign.status, 'head-exists');
     assert.equal(h.fileAt('noemi/issue-13', 'src/new.js'), null, 'never overwritten');
+  });
+
+  t('commitFiles: an executable file is kept executable, or the edit is refused', async (h) => {
+    const cred = await h.provider.resolveCredential({ role: 'producer', ref: h.ref, env: h.env.producer });
+    h.seedFile('bin/tool.sh', '#!/bin/sh\necho old\n', { executable: true });
+    const result = await h.provider.commitFiles(h.ref, {
+      base: 'develop', head: 'noemi/issue-15', files: [{ path: 'bin/tool.sh', content: '#!/bin/sh\necho new\n' }], message: 'm',
+    }, cred);
+    if (h.capabilities.executableBit !== false) {
+      assert.equal(result.status, 'created');
+      assert.equal(h.fileAt('noemi/issue-15', 'bin/tool.sh').executable, true);
+    } else {
+      assert.deepEqual({ status: result.status, reason: result.reason }, { status: 'refused', reason: 'mode-unsupported' });
+      assert.equal(h.branchExists('noemi/issue-15'), false, 'nothing written');
+    }
   });
 
   t('commitFiles: refuses unsafe and carved-out paths before any write', async (h) => {
@@ -240,4 +323,4 @@ function runConformance({ name, makeHarness }) {
   });
 }
 
-module.exports = { WORK_ITEM_KEYS, runConformance };
+module.exports = { HIDDEN_MARKER, WORK_ITEM_KEYS, runConformance };

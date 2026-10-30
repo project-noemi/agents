@@ -237,8 +237,10 @@ function createFakeGitHub({ owner = 'acme', name = 'widgets' } = {}) {
     pulls,
     attempts,
     seedIssue(id, {
-      title = 'Title', body = 'Body', login = 'alice', type = 'User', labels = [],
+      title = 'Title', body = 'Body', login = 'alice', type = 'User', labels = [], repositorySlug = slug,
     } = {}) {
+      // repositorySlug: where GitHub says the issue lives (a rename or
+      // transfer redirect answers with the new repository).
       issues.set(String(id), {
         number: Number(id),
         title,
@@ -246,8 +248,8 @@ function createFakeGitHub({ owner = 'acme', name = 'widgets' } = {}) {
         user: { login, id: 7, type },
         labels: labels.map((n) => ({ name: n })),
         updated_at: '2026-10-27T10:00:00Z',
-        repository_url: `${API}/repos/${slug}`,
-        html_url: `https://github.com/${slug}/issues/${id}`,
+        repository_url: `${API}/repos/${repositorySlug}`,
+        html_url: `https://github.com/${repositorySlug}/issues/${id}`,
       });
     },
     issueLabels(id) {

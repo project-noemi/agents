@@ -25,7 +25,17 @@
               { "type": "integer", "minimum": 1 },
               { "type": "string", "minLength": 1 }
             ],
-            "description": "Stable forge account ID. GitHub: the integer account ID of the org or user the App is installed on (required to be an integer when provider is github). Azure DevOps: the organization GUID. Stable across renames; the login is not used for matching."
+            "description": "Stable forge account ID. GitHub: the integer account ID of the org or user the App is installed on (required to be an integer when provider is github). Azure DevOps: the organization GUID (connectionData instanceId). Stable across renames; the login is not used for matching."
+          },
+          "tenant_id": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            "description": "Azure DevOps only, and required there: the client's Microsoft Entra tenant GUID that backs the organization. The conductor mints its token only for tenants listed here."
+          },
+          "requester_group": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Azure DevOps only: display name of the project group whose members may trigger a run. Overrides ADO_REQUESTER_GROUP for this client."
           },
           "login": {
             "type": "string",
@@ -40,7 +50,21 @@
             "items": { "type": "string", "minLength": 1 },
             "description": "Optional allowlist inside the grant: a bare GitHub owner/name, or a full provider key such as azure-devops:org/project/repo. Missing or empty means every repo the grant covers."
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": { "required": ["provider"], "properties": { "provider": { "enum": ["azure-devops", "ado", "azdo"] } } },
+            "then": {
+              "required": ["tenant_id"],
+              "properties": {
+                "account_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                }
+              }
+            }
+          }
+        ]
       }
     }
   }

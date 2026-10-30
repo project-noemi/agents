@@ -23,6 +23,7 @@ const { GITHUB_DOTCOM_API, gh, githubApiBase } = require('../../../scripts/githu
 const { mintGithubAppInstallationToken } = require('../../../scripts/github-app-token.js');
 const { resolveProducerToken } = require('../../../scripts/agent-token.js');
 const { encodeRepoPath, isCarvedOut, isSafeRepoPath } = require('../../paths.js');
+const { hiddenInMarkdown } = require('../../markup/html-to-markdown.js');
 const { BOT_LOGINS } = require('../../intake.js');
 const { makeRepoRef, providerError, splitProviderPrefix } = require('../contract.js');
 const { findRepoInstallation, resolveGithubEntitlement } = require('./entitlement.js');
@@ -111,6 +112,8 @@ function normalizeItem(ref, payload, id) {
   const user = (payload && payload.user) || {};
   const actual = issueRepoOf(payload);
   const number = Number(id !== undefined ? id : payload && payload.number);
+  const body = String((payload && payload.body) || '');
+  const repoKey = actual ? `${ID}:${actual}`.toLowerCase() : '';
   return {
     provider: ID,
     id: String(number),
@@ -119,11 +122,14 @@ function normalizeItem(ref, payload, id) {
     project: null,
     repo: ref.name,
     title: String((payload && payload.title) || ''),
-    body: String((payload && payload.body) || ''),
+    body,
     bodyFormat: 'markdown',
-    // GitHub bodies are markdown; an HTML comment in one is already part of
-    // `body` and is scanned with it. Nothing else is hidden.
-    hiddenText: '',
+    // GitHub renders inline HTML in issue bodies, so an HTML comment, a
+    // `hidden` element or a title attribute is invisible to the person who
+    // reads the issue but is fed to the model with the body. The body is
+    // left exactly as written; the invisible part is copied to hiddenText so
+    // it is scanned and fingerprinted on its own.
+    hiddenText: hiddenInMarkdown(body),
     author: {
       id: user.id === undefined ? null : user.id,
       login: String(user.login || ''),
@@ -133,7 +139,9 @@ function normalizeItem(ref, payload, id) {
     updatedAt: (payload && payload.updated_at) || null,
     version: (payload && payload.updated_at) || null,
     url: (payload && payload.html_url) || null,
-    repoKey: actual ? `${ID}:${actual}`.toLowerCase() : '',
+    repoKey,
+    // A GitHub issue belongs to the repository itself.
+    scopeKey: repoKey,
   };
 }
 
@@ -322,7 +330,18 @@ function createGithubProvider({ gh: ghImpl, fetchImpl, mint } = {}) {
     throw providerError(`unknown credential role: ${role}`, 400, 'bad-role');
   }
 
+  /**
+   * The credential's user. A conductor App installation token (minted from
+   * CONDUCTOR_APP_*, or a `ghs_` token in CONDUCTOR_GH_TOKEN) has no user
+   * (`GET /user` answers 403); it is reported as an installation, which can
+   * never be the producer's user (dispatch's runtime identity split).
+   */
   async function whoAmI(ref, cred) {
+    const installation = cred && typeof cred === 'object' && cred.role === 'conductor'
+      && (cred.source === 'CONDUCTOR_APP' || /^ghs_/.test(String(cred.token || '')));
+    if (installation) {
+      return { id: null, login: '', appInstallation: true };
+    }
     const actor = await call('/user', { token: tokenOf(cred) });
     return { id: actor && actor.id !== undefined ? actor.id : null, login: (actor && actor.login) || '' };
   }
@@ -566,6 +585,8 @@ function createGithubProvider({ gh: ghImpl, fetchImpl, mint } = {}) {
     commitFiles,
     openChangeRequest,
     isBotIdentity,
+    itemScopeKey: (ref) => ref.key,
+    requesterOfItem: (item) => String((item && item.author && item.author.login) || ''),
   };
 }
 

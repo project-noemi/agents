@@ -17,7 +17,7 @@
 const { githubApiBase } = require('../scripts/github-client.js');
 const { parseClientRegistry } = require('./client-registry.js');
 const { createGithubProvider, findRepoInstallation } = require('./providers/github/index.js');
-const { parseRepoRef } = require('./providers/index.js');
+const { getProvider, parseRepoRef } = require('./providers/index.js');
 
 function refOf(repo, ref, env) {
   if (ref) return ref;
@@ -40,7 +40,8 @@ async function resolveEntitlement({
 } = {}) {
   const target = refOf(repo, ref, env);
   if (!target) return { error: 'entitlement needs a valid repository reference' };
-  const forge = provider || createGithubProvider({ fetchImpl });
+  // A non-GitHub ref must never be checked by the GitHub provider.
+  const forge = provider || (target.provider === 'github' ? createGithubProvider({ fetchImpl }) : getProvider(target.provider));
   const result = await forge.resolveEntitlement({
     ref: target, tenant, env, deps: { fetchImpl, apiBase },
   });
@@ -63,13 +64,15 @@ async function resolveEntitlement({
  * `trigger-unverified`. Lookup failures resolve to { error }.
  */
 async function resolveTrigger({
-  repo, ref, provider, login, token, cred, ghImpl,
+  repo, ref, provider, login, token, cred, ghImpl, env, entitlement,
 } = {}) {
   if (!login) return null;
-  const target = refOf(repo, ref);
+  const target = refOf(repo, ref, env);
   if (!target) return { login, error: 'requester check needs a valid repository reference' };
-  const forge = provider || createGithubProvider({ gh: ghImpl });
-  return forge.requesterPermission(target, login, cred || token);
+  const forge = provider || (target.provider === 'github' ? createGithubProvider({ gh: ghImpl }) : getProvider(target.provider));
+  // env + entitlement let a provider read the run's settings, e.g. an Azure
+  // DevOps client row's `requester_group` (requester.js).
+  return forge.requesterPermission(target, login, cred || token, { env, entitlement });
 }
 
 module.exports = {

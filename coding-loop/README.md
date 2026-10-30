@@ -68,8 +68,9 @@ tenant file.
 `orgs` is for the operator's **own** orgs. Client orgs do not go in a tenant
 file. A client repo is entitled when your conductor App is installed there
 (not suspended) **and** `NOEMI_CLIENT_REGISTRY` has an `active` row for that
-installation's GitHub account ID, and the run names a requester with write
-access (`--requested-by`). The registry is JSON injected from the vault
+installation's GitHub account ID. Every run, on a tenant org or a client
+org, names a requester with write access (`--requested-by`); without one the
+issue is `REFUSED` and gets no comment and no label (Decision [2026-10-27-0001]). The registry is JSON injected from the vault
 (`infisical run`), shaped by `docs/client-registry.schema.json`; never
 commit it, because it lists who your clients are. See
 [Client entitlement](../docs/architecture/issue-coding-loop.md#client-entitlement).
@@ -91,11 +92,12 @@ Contents write.
 From the repo root, with a read token in the environment:
 
 ```bash
-node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok
+node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok --requested-by your-login
 ```
 
-Omitting both `--scan` and `--scan-status`, or omitting the budget
-assertion, is `REFUSED` (fail closed). You should see `SKIPPED`,
+Omitting both `--scan` and `--scan-status`, omitting the budget
+assertion, or omitting a requester with write access is `REFUSED` (fail
+closed). You should see `SKIPPED`,
 `NEEDS_INFO`, `REFUSED`, or — when the three sufficiency signals are
 present — `ACTIONABLE` from the **heuristic** (`mode: heuristic`). Fable is
 not wired yet; the heuristic must not default to `ACTIONABLE`.
@@ -103,7 +105,7 @@ not wired yet; the heuristic must not default to `ACTIONABLE`.
 To apply the label (and post questions when the body is empty):
 
 ```bash
-CONDUCTOR_GH_TOKEN=… node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok --post
+CONDUCTOR_GH_TOKEN=… node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok --requested-by your-login --post
 ```
 
 ### 5. Turn on pickup only after the brake exists
@@ -172,18 +174,26 @@ run plans only and saves the result; the second implements exactly that plan
 and does not plan again:
 
 ```bash
-node coding-loop/run.js --repo your-org/your-repo --issue N \
+node coding-loop/run.js --repo your-org/your-repo --issue N --requested-by your-login \
   --scan --budget-ok --live-critic --plan-out plan.json
 # read plan.json, then:
-node coding-loop/run.js --repo your-org/your-repo --issue N \
+node coding-loop/run.js --repo your-org/your-repo --issue N --requested-by your-login \
   --scan --budget-ok --plan-in plan.json --post --implement --open-pr
 ```
 
 `--plan-in` is refused when the plan was not accepted, names another issue or
-profile, or the issue changed on GitHub after it was planned. NoéMi Code's
+profile, or the issue's title or body changed after it was planned (comments
+and labels do not count). It re-runs every Stage A gate (skip, bot, budget,
+scan, entitlement, requester), the structural critic and the outbound secret
+scan on the loaded plan, so a plan file edited after approval cannot name a
+carve-out path. The file is written with mode 0600; a symlinked target is
+refused. NoéMi Code's
 `/issue` command uses these two steps.
 
-A successful run opens a pull request as the producer, with base `develop`.
+A successful run opens a pull request as the producer, with base `develop`
+(else `dev`; the branch is chosen before any model call). The change is one
+commit, and the branch is created last, so a failure leaves nothing behind; a
+rerun resumes a branch that already holds the same files.
 The body starts with `Closes #N`, or with `Part of #N` when the accepted plan
 says the agent does not finish the work. With a conductor token, the issue
 keeps one `noemi:*` label. An opened pull request is `noemi:review`.
@@ -222,7 +232,11 @@ node coding-loop/run.js --repo owner/name --issue N --scan-status APPROVED --bud
 ```
 
 Omitting both `--scan` and `--scan-status` is REFUSED (fail closed). `--scan`
-is not implied by leaving `--scan-status` off.
+is not implied by leaving `--scan-status` off. `--scan-status` accepts only
+`APPROVED`, `REDACTED` or `BLOCKED`; anything else is refused. Every path an
+issue, model or plan file names must pass `coding-loop/paths.js`
+`isSafeRepoPath`, and the governance carve-out is one case-insensitive list
+for every forge (Decision [2026-10-27-0002]).
 
 An `ACTIONABLE` issue gets a Stage B plan and Stage B′
 (`coding-loop/plan.js`). Plan **Files** are PATH_RE hits that look like
@@ -276,7 +290,8 @@ It opens the PR as `noemi-agent`. It refuses paths outside the plan,
 governance carve-outs, and secret-shaped content. It does not approve or
 merge. Tests inject the model and GitHub clients; they do not open live PRs.
 
-Pickup: install `templates/ci/coding-loop-caller.yml` and set
+Pickup: install `templates/ci/coding-loop-caller.yml` (it passes secrets by
+name, never `secrets: inherit`, and the requester is the event sender) and set
 `CODING_LOOP_BUDGET_OK=true` only when the daily cap is real. Optional
 `CODING_LOOP_LIVE_CRITIC=true` plus org WIF (same vars as the fleet
 reviewer) passes `--live-critic`; unset, Stage B′ stays structural. The

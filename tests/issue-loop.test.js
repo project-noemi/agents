@@ -35,6 +35,9 @@ const tenant = {
   orgs: ['newpush', 'project-noemi', 'newpush-labs'],
   limits: { repos: [], concurrent_jobs: 3 },
 };
+// Every run needs a verified requester with write access (tenant and client
+// alike), so gate tests that expect to get past entitlement pass one.
+const writer = { login: 'maintainer', permission: 'write' };
 
 function issue(overrides = {}) {
   return {
@@ -54,6 +57,7 @@ test('intake: noemi:skip is an escape hatch and does not inspect the body', () =
   const result = classifyIssue({
     issue: issue({ labels: ['noemi:skip'], body: '' }),
     tenant,
+    trigger: writer,
     scan: { status: 'BLOCKED' },
   });
   assert.equal(result.tier, 'SKIPPED');
@@ -65,6 +69,7 @@ test('intake: bot authors are skipped', () => {
     const result = classifyIssue({
       issue: issue({ author, author_type: author.includes('[bot]') ? 'bot' : 'user' }),
       tenant,
+      trigger: writer,
       scan: { status: 'APPROVED' },
     });
     assert.equal(result.tier, 'SKIPPED', author);
@@ -83,6 +88,7 @@ test('intake: empty and template-only bodies need info', () => {
   const result = classifyIssue({
     issue: issue({ body: '' }),
     tenant,
+    trigger: writer,
     scan: { status: 'APPROVED' },
   });
   assert.equal(result.tier, 'NEEDS_INFO');
@@ -94,6 +100,7 @@ test('intake: outside tenant and exhausted budget are refused', () => {
   const foreign = classifyIssue({
     issue: issue({ org: 'someone-else' }),
     tenant,
+    trigger: writer,
     scan: { status: 'APPROVED' },
   });
   assert.equal(foreign.tier, 'REFUSED');
@@ -116,6 +123,7 @@ test('intake: outside tenant and exhausted budget are refused', () => {
   const budget = classifyIssue({
     issue: issue(),
     tenant,
+    trigger: writer,
     scan: { status: 'APPROVED' },
     budget: { exhausted: true },
   });
@@ -124,13 +132,14 @@ test('intake: outside tenant and exhausted budget are refused', () => {
 });
 
 test('intake: unscanned or blocked bodies are refused, never actionable', () => {
-  const missing = classifyIssue({ issue: issue(), tenant, budget: { exhausted: false } });
+  const missing = classifyIssue({ issue: issue(), tenant, trigger: writer, budget: { exhausted: false } });
   assert.equal(missing.tier, 'REFUSED');
   assert.deepEqual(missing.reasons, ['unscanned-body']);
 
   const blocked = classifyIssue({
     issue: issue(),
     tenant,
+    trigger: writer,
     scan: { status: 'BLOCKED' },
     budget: { exhausted: false },
   });
@@ -143,7 +152,7 @@ test('intake: an UNKNOWN budget state is refused, not waved through (fail closed
   // that someone checked capacity. Review finding: the CLI hardcoded
   // exhausted:false, silently bypassing this gate.
   for (const budget of [undefined, null, {}, { exhausted: 'no' }]) {
-    const r = classifyIssue({ issue: issue(), tenant, scan: { status: 'APPROVED' }, budget });
+    const r = classifyIssue({ issue: issue(), tenant, trigger: writer, scan: { status: 'APPROVED' }, budget });
     assert.equal(r.tier, 'REFUSED', `budget=${JSON.stringify(budget)} must refuse`);
     assert.deepEqual(r.reasons, ['budget-unverified']);
   }
@@ -153,6 +162,7 @@ test('intake: passing hard gates is PENDING_SUFFICIENCY, never ACTIONABLE', () =
   const result = classifyIssue({
     issue: issue(),
     tenant,
+    trigger: writer,
     scan: { status: 'APPROVED' },
     budget: { exhausted: false },
   });
@@ -264,6 +274,7 @@ test('completeStageA: hard-gate skip still wins; pending runs sufficiency', () =
   const skipped = completeStageA({
     issue: issue({ labels: ['noemi:skip'], body: sufficientBody }),
     tenant,
+    trigger: writer,
     scan: { status: 'APPROVED' },
     budget: { exhausted: false },
   });
@@ -272,6 +283,7 @@ test('completeStageA: hard-gate skip still wins; pending runs sufficiency', () =
   const ready = completeStageA({
     issue: issue({ body: sufficientBody }),
     tenant,
+    trigger: writer,
     scan: { status: 'APPROVED' },
     budget: { exhausted: false },
   });
@@ -575,6 +587,7 @@ test('Stage B′: leftover registry paths fail; dropping them can accept', async
   const ready = await completeThroughStageB({
     issue: issue({ title, body: issue187Body }),
     tenant,
+    trigger: writer,
     scan: { status: 'APPROVED' },
     budget: { exhausted: false },
     repoRoot,
@@ -844,6 +857,7 @@ test('completeThroughStageB: skip stays skip; a complete issue is accepted', asy
   const skipped = await completeThroughStageB({
     issue: issue({ labels: ['noemi:skip'], body: sufficientBody }),
     tenant,
+    trigger: writer,
     scan: { status: 'APPROVED' },
     budget: { exhausted: false },
   });
@@ -853,6 +867,7 @@ test('completeThroughStageB: skip stays skip; a complete issue is accepted', asy
   const ready = await completeThroughStageB({
     issue: issue({ body: sufficientBody }),
     tenant,
+    trigger: writer,
     scan: { status: 'APPROVED' },
     budget: { exhausted: false },
   });
@@ -886,18 +901,21 @@ test('loop label: an open PR replaces older noemi labels with noemi:review', asy
       return null;
     },
   });
+  // The new label goes on FIRST, so a failure part-way never leaves the
+  // issue without a loop label (coding-loop control hardening, R1).
   assert.deepEqual(calls.map((call) => `${call.method} ${call.path}`), [
+    'POST /repos/newpush/newpush-agents/issues/187/labels',
     'DELETE /repos/newpush/newpush-agents/issues/187/labels/noemi%3Aneeds-info',
     'DELETE /repos/newpush/newpush-agents/issues/187/labels/noemi%3Aplanned',
-    'POST /repos/newpush/newpush-agents/issues/187/labels',
   ]);
-  assert.deepEqual(calls[2].body, { labels: ['noemi:review'] });
+  assert.deepEqual(calls[0].body, { labels: ['noemi:review'] });
 });
 
 test('Stage C: only an accepted plan on develop/dev is ready, and it does not open a PR', async () => {
   const ready = await completeThroughStageB({
     issue: issue({ body: sufficientBody, number: 12 }),
     tenant,
+    trigger: writer,
     scan: { status: 'APPROVED' },
     budget: { exhausted: false },
   });
@@ -1044,15 +1062,17 @@ test('scanIssueBody: blocks keys, approves ordinary issue text', () => {
   assert.ok(pem.findings.some((f) => f.type === 'private_key'));
   const aws = scanIssueBody('AKIAIOSFODNN7EXAMPLE extra text');
   assert.equal(aws.status, 'BLOCKED');
+  // Host-only and username-only URLs carry no secret and pass; a password
+  // in userinfo or a secret query parameter blocks.
   const localMongo = scanIssueBody('MONGO_URI=mongodb://mongo:27017/noemi_ea');
-  assert.equal(localMongo.status, 'BLOCKED');
-  assert.ok(localMongo.findings.some((f) => f.type === 'connection_string'));
+  assert.equal(localMongo.status, 'APPROVED');
   const secretMongo = scanIssueBody('MONGO_URI=mongodb://user:secret@db.example/noemi');
   assert.equal(secretMongo.status, 'BLOCKED');
+  assert.ok(secretMongo.findings.some((f) => f.type === 'connection_string'));
   const querySecret = scanIssueBody('MONGO_URI=mongodb://db.example/noemi?password=secret');
   assert.equal(querySecret.status, 'BLOCKED');
   const userOnly = scanIssueBody('MONGO_URI=mongodb://reader@db.example/noemi');
-  assert.equal(userOnly.status, 'BLOCKED');
+  assert.equal(userOnly.status, 'APPROVED');
 });
 
 test('Stage D: waits until a PR is opened, then delegates to the fleet reviewer', () => {
@@ -1092,7 +1112,7 @@ test('coding-loop workflow is reusable and does not default budget to ok', () =>
   // conductor credential (minted per run); CONDUCTOR_GH_TOKEN is the debugging override.
   for (const name of [
     'CONDUCTOR_APP_ID', 'CONDUCTOR_APP_PRIVATE_KEY', 'CONDUCTOR_GH_TOKEN', 'AGENT_GH_TOKEN',
-    'AI_GW_API_TOKEN', 'AI_GW_API_KEY', 'XAI_API_KEY',
+    'AI_GW_API_TOKEN', 'AI_GW_API_KEY', 'XAI_API_KEY', 'NOEMI_CLIENT_REGISTRY',
   ]) {
     assert.match(yml, new RegExp(`^      ${name}:\\n        description:`, 'm'), `${name} declared under workflow_call.secrets`);
     assert.match(caller, new RegExp(`^      ${name}: \\$\\{\\{ secrets\\.${name} \\}\\}$`, 'm'), `caller passes ${name}`);
@@ -1115,7 +1135,7 @@ test('run.js: nothing asserted means nothing granted — both gates fail closed 
   assert.equal(bare.scan, null, 'no --scan-status must mean UNSCANNED, never APPROVED');
   assert.equal(bare.budget, null, 'no budget assertion must mean UNVERIFIED, never ok');
   // And the classifier turns those nulls into refusals:
-  const r = classifyIssue({ issue: issue(), tenant, ...bare });
+  const r = classifyIssue({ issue: issue(), tenant, trigger: writer, ...bare });
   assert.equal(r.tier, 'REFUSED');
 
   const asserted = buildGateInputs(parseArgs(['--scan-status', 'APPROVED', '--budget-ok']));
@@ -1598,6 +1618,7 @@ test('openImplementationPr: injected gh opens a PR; wrong identity and empty fil
   const ready = await completeThroughStageB({
     issue: issue({ body: sufficientBody, number: 12 }),
     tenant,
+    trigger: writer,
     scan: { status: 'APPROVED' },
     budget: { exhausted: false },
   });
@@ -1606,14 +1627,12 @@ test('openImplementationPr: injected gh opens a PR; wrong identity and empty fil
   const ghImpl = async (url, opts = {}) => {
     calls.push({ url, method: opts.method || 'GET' });
     if (url === '/user') return { login: 'noemi-agent' };
+    // One atomic commit via the Git Data API (no per-file contents PUTs).
     if (url.includes('/git/ref/heads/')) return { object: { sha: 'abc123' } };
+    if (url.includes('/git/commits/abc123')) return { tree: { sha: 'basetree' } };
+    if (url.endsWith('/git/trees') && opts.method === 'POST') return { sha: 'newtree' };
+    if (url.endsWith('/git/commits') && opts.method === 'POST') return { sha: 'newcommit' };
     if (url.endsWith('/git/refs') && opts.method === 'POST') return { ref: opts.body.ref };
-    if (url.includes('/contents/') && opts.method === 'PUT') return { content: { path: 'coding-loop/run.js' } };
-    if (url.includes('/contents/')) {
-      const err = new Error('missing');
-      err.status = 404;
-      throw err;
-    }
     if (url.endsWith('/pulls') && opts.method === 'POST') {
       return { html_url: 'https://github.com/project-noemi/agents/pull/99', number: 99 };
     }
@@ -2136,15 +2155,20 @@ test('plan file: --plan-in implements only the accepted plan for the same, uncha
   const intake = { tier: 'ACTIONABLE' };
   const at = '2026-10-22T10:00:00Z';
   try {
-    writePlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, profile: 'code', intake, plan: accepted });
+    // Version 2 compares a title+body fingerprint, not updated_at (which the
+    // conductor's own comment and label bump). Intended change, R9a.
+    const fp = 'f'.repeat(64);
+    writePlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, fingerprint: fp, profile: 'code', intake, plan: accepted });
     assert.equal(fs.statSync(file).mode & 0o777, 0o600);
-    assert.deepEqual(readPlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, profile: 'code' }), { intake, plan: accepted });
-    const refused = (opts) => assert.throws(() => readPlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, profile: 'code', ...opts }), (err) => err.status === 409);
+    const read = { repo: 'o/r', issue: '7', updatedAt: at, fingerprint: fp, profile: 'code' };
+    assert.deepEqual(readPlanFile(file, read), { intake, plan: accepted });
+    assert.deepEqual(readPlanFile(file, { ...read, updatedAt: '2026-10-22T11:00:00Z' }), { intake, plan: accepted });
+    const refused = (opts) => assert.throws(() => readPlanFile(file, { ...read, ...opts }), (err) => err.status === 409);
     refused({ issue: '8' });
     refused({ repo: 'o/other' });
-    refused({ updatedAt: '2026-10-22T11:00:00Z' });
+    refused({ fingerprint: 'e'.repeat(64) });
     refused({ profile: 'spec' });
-    writePlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, intake, plan: { ...accepted, status: 'needs-info' } });
+    writePlanFile(file, { repo: 'o/r', issue: '7', updatedAt: at, fingerprint: fp, intake, plan: { ...accepted, status: 'needs-info' } });
     refused({});
     assert.throws(() => readPlanFile(path.join(dir, 'missing.json'), { repo: 'o/r', issue: '7', updatedAt: at }), /cannot read the plan file \(ENOENT\)/);
     // A non-plan file is refused without quoting its contents.

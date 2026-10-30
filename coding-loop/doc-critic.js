@@ -27,6 +27,7 @@ const { modelRetryOptions } = require('./http.js');
 const { callCriticModel, BLOCKING, SEVERITIES } = require('./critic.js');
 const { scanIssueBody } = require('./scan.js');
 const { SKIP_B_PRIME_RE } = require('./plan.js');
+const { fenceData } = require('./prompt-data.js');
 
 const GATES = ['evidence', 'scope', 'framing', 'injection'];
 // Citations are matched whole: a valid id followed by free text is not a citation.
@@ -46,6 +47,13 @@ const ALLOWED_TARGETS = [
   'docs/REQUIREMENTS.md', 'docs/DECISION_LOG.md',
 ];
 const KINDS = ['add', 'clarify', 'remove', 'rewrite'];
+// Answer ids are labels, not text. Anything else could carry an instruction
+// into the critic prompt without passing screenText.
+const ANSWER_ID_RE = /^[A-Za-z0-9_.-]{1,64}$/;
+
+function isAnswerId(value) {
+  return typeof value === 'string' && ANSWER_ID_RE.test(value);
+}
 const DESTRUCTIVE_KINDS = ['remove', 'rewrite'];
 
 // PromptShield criteria (agents/guardian/prompt-shield.md): direct overrides,
@@ -156,6 +164,13 @@ function critiqueChangeSet(changeSet) {
       .filter(Boolean),
   );
 
+  answers.forEach((a, index) => {
+    const id = a && a.id;
+    if (id != null && !isAnswerId(id)) {
+      findings.push(finding('critical', 'injection', `Answer #${index} has an id that is not a plain label (${ANSWER_ID_RE}).`));
+    }
+  });
+
   changes.forEach((change, index) => {
     const label = change && change.target ? `${change.target}#${index}` : `#${index}`;
     const rawTarget = String((change && change.target) || '').trim();
@@ -196,6 +211,9 @@ function critiqueChangeSet(changeSet) {
     const hasDecision = evidence.some(isDecisionId);
     const hasCodePath = evidence.some(isCodePath);
     const answerId = change && change.answer;
+    if (answerId != null && answerId !== '' && !isAnswerId(answerId)) {
+      findings.push(finding('critical', 'injection', `Change cites an answer id that is not a plain label (${ANSWER_ID_RE}).`, label));
+    }
     if (!answerId && !hasCodePath) {
       findings.push(finding('high', 'injection', 'Change has no screened answer and no code path; it is neither Product Owner feedback nor codebase drift.', label));
     }
@@ -250,7 +268,7 @@ function validateDocFindings(raw) {
 function answersForPrompt(changeSet) {
   const answers = changeSet && Array.isArray(changeSet.answers) ? changeSet.answers : [];
   return answers.map((a) => {
-    const id = (a && a.id) || null;
+    const id = a && isAnswerId(a.id) ? a.id : null;
     // Questions are usually drafted by this persona, but CLARIFICATIONS.md is
     // human-editable, so question text is screened too. Questions may discuss
     // AGENTS.md edits, so only the agent-directive check is skipped.
@@ -267,6 +285,15 @@ function answersForPrompt(changeSet) {
   });
 }
 
+// A cited answer id reaches the model only as a plain label that also
+// screens clean. Anything else is withheld (critiqueChangeSet fails it).
+function changeAnswerRef(c) {
+  if (!c || typeof c.answer !== 'string') return null;
+  if (!isAnswerId(c.answer)) return '[withheld: invalid-id]';
+  const screen = screenText(c.answer).status;
+  return screen === 'APPROVED' ? c.answer : `[withheld: ${screen}]`;
+}
+
 // Only the fields critiqueChangeSet validates reach the model. Anything else
 // on a change object is dropped, so it cannot carry unscreened text.
 function changesForPrompt(changeSet) {
@@ -277,7 +304,7 @@ function changesForPrompt(changeSet) {
     kind: c && typeof c.kind === 'string' ? c.kind.trim().toLowerCase() : '',
     summary: c && typeof c.summary === 'string' ? c.summary : '',
     evidence: c && Array.isArray(c.evidence) ? c.evidence.filter((e) => typeof e === 'string') : [],
-    answer: c && typeof c.answer === 'string' ? c.answer : null,
+    answer: changeAnswerRef(c),
   }));
 }
 
@@ -298,9 +325,7 @@ function buildDocCriticPrompt(changeSet) {
     'Return JSON only: {"verdict":"pass"|"fail","findings":[{"severity":"critical|high|medium|low","gate":"evidence|scope|framing","change":"<target#index>","claim":"..."}]}',
     'fail requires at least one high or critical finding. pass requires none.',
     '',
-    '<change_set>',
-    body,
-    '</change_set>',
+    fenceData('change_set', body),
   ].join('\n');
 }
 
@@ -390,6 +415,7 @@ async function runDocRedTeam(changeSet, { maxCycles, critic, revise, critiqueOpt
 
 module.exports = {
   ALLOWED_TARGETS,
+  ANSWER_ID_RE,
   GATES,
   KINDS,
   INJECTION_PATTERNS,

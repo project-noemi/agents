@@ -22,7 +22,7 @@ lms load google/gemma-4-e4b
 PII_MODEL=google/gemma-4-e4b node run-eval.mts
 ```
 
-Settings come from the environment: `LMSTUDIO_URL` (default `http://localhost:1234/v1`), `PII_MODEL`, and `PII_TIMEOUT_MS` (default `15000`).
+Settings come from the environment: `LMSTUDIO_URL` (default `http://localhost:1234/v1`), `PII_MODEL`, `PII_TIMEOUT_MS` (default `15000`), and `LMSTUDIO_API_KEY` (the API key created in LM Studio; fetch it with `op run` or `infisical run`).
 
 ## Rules
 

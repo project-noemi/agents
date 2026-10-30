@@ -3,6 +3,7 @@
 const LMSTUDIO_URL = process.env.LMSTUDIO_URL ?? "http://localhost:1234/v1";
 const PII_MODEL = process.env.PII_MODEL ?? "";          // e.g. google/gemma-4-e4b
 const TIMEOUT_MS = Number(process.env.PII_TIMEOUT_MS ?? 15000);
+const LMSTUDIO_API_KEY = process.env.LMSTUDIO_API_KEY ?? "";  // the API key created in LM Studio
 
 // wholeWord: match only where the value is not part of a longer word.
 type Finding = { type: string; value: string; source: "pattern" | "model"; wholeWord?: boolean };
@@ -65,7 +66,10 @@ const SCHEMA = {
 async function modelPass(text: string): Promise<Finding[]> {
   const res = await fetch(`${LMSTUDIO_URL}/chat/completions`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(LMSTUDIO_API_KEY && { Authorization: `Bearer ${LMSTUDIO_API_KEY}` }),
+    },
     signal: AbortSignal.timeout(TIMEOUT_MS),
     body: JSON.stringify({
       model: PII_MODEL,

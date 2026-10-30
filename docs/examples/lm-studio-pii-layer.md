@@ -1,6 +1,6 @@
 # Build a Local PII Security Layer with LM Studio
 
-> **Status:** First version. Items marked `TODO` still need data from a real run.
+> **Status:** First version.
 > **Track:** Sovereign / Local (see [`../SOVEREIGN_LLM_GUIDELINES.md`](../SOVEREIGN_LLM_GUIDELINES.md)). Gemma 4 E4B is an approved model on this track (Decision [2026-10-30-0001] in [`../DECISION_LOG.md`](../DECISION_LOG.md)).
 > **Audience:** Builders who want a PII filter that never sends data off the machine.
 
@@ -151,6 +151,7 @@ Configuration comes from the environment (Fetch-on-Demand):
 | `LMSTUDIO_URL` | `http://localhost:1234/v1` | LM Studio's OpenAI-compatible endpoint |
 | `PII_MODEL` | none | LM Studio model key, for example Gemma 4 E4B |
 | `PII_TIMEOUT_MS` | `15000` | Per-request timeout. On timeout, a `public_api` payload is blocked. |
+| `LMSTUDIO_API_KEY` | none | The API key created in LM Studio, sent as a bearer token. Fetch it on demand; never store it in a file. |
 
 What `scan()` does, in order:
 
@@ -207,7 +208,7 @@ What this shows:
 
 ## Step 4: Wire it in
 
-* **n8n:** call the gateway as the first node, and route on `status`. Only `APPROVED` and `REDACTED` payloads continue to the cloud model node. `TODO`: screenshot or template.
+* **n8n:** call the gateway as the first node, and route on `status`. Only `APPROVED` and `REDACTED` payloads continue to the cloud model node.
 * **Coding agents / scripts:** call `scan()` before any outbound model call, and send `payload` from the result, never the original.
 * **Audit:** log the result's `status` and `findings` summary. Do not log the original payload.
 
@@ -216,8 +217,9 @@ What this shows:
 ## Hardening
 
 * **Bind to localhost** by default. Turn on LM Studio's local-network serving only for a dedicated gateway Mac, and restrict access with the macOS firewall or your network.
-* **Require a key** if the server is reachable from the network. Fetch it on demand (`op run` / `infisical run`), never store it in a file. `TODO`: confirm the current LM Studio auth option and document it.
-* **Check LM Studio's logs.** Verbose server logging can include request content, which here is raw PII. `TODO`: verify which LM Studio logs persist prompts, and how to turn that off.
+* **Create an API key in LM Studio** and require it on the server. Without one, anyone who can reach the port can send text to the model and read its answers. Pass the key to the gateway as `LMSTUDIO_API_KEY`, fetched on demand (`op run` / `infisical run`), never stored in a file.
+* **Treat LM Studio's logs as PII.** The gateway never logs values, but LM Studio does. Its developer logs record every model answer in full, and here the answer is the list of PII it found: names, addresses, IBANs, card numbers. They also record the start and end of every request. Keep debug logging off on the gateway Mac, clear the logs after testing, and limit who can open them.
+* **Encrypt the disk.** LM Studio keeps a prompt cache on disk, so processed documents can sit there after the request ends. Turn on FileVault on the gateway Mac.
 * **Pin the model.** Record the exact model and quantization in your operating profile, so a silent swap cannot lower recall.
 * **Use a separate machine identity** for any agent that calls the gateway. See [`../MACHINE_IDENTITY.md`](../MACHINE_IDENTITY.md).
 

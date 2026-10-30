@@ -18,8 +18,8 @@ Requires Node 24 (no dependencies, no build step) and LM Studio with its server 
 
 ```bash
 lms server start
-lms load <model-key>
-PII_MODEL=<model-key> node run-eval.mts
+lms load google/gemma-4-e4b
+PII_MODEL=google/gemma-4-e4b node run-eval.mts
 ```
 
 Settings come from the environment: `LMSTUDIO_URL` (default `http://localhost:1234/v1`), `PII_MODEL`, and `PII_TIMEOUT_MS` (default `15000`).

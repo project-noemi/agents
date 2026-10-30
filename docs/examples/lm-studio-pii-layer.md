@@ -86,6 +86,8 @@ We ran Gemma 4 in LM Studio on two Macs, and both handled the job. The figures b
 
 \* Our estimate, not a measurement: a 600-token input (system prompt plus a short email or ticket) and a 100-token JSON answer, at the speeds above.
 
+**Measured:** through LM Studio on the Mac mini, Gemma 4 E4B (MLX **8-bit**) took **2.2–2.4 s per document** (p50) on our test set, and 3.7 s at p95 once warm. That is faster than the ~6 s estimate, even at 8-bit, because the model's answers were short.
+
 Sources: oMLX community benchmarks for [E4B on M4 24 GB](https://omlx.ai/benchmarks/vmwl71wm), [E4B on M1 Max 64 GB](https://omlx.ai/benchmarks/x1aonmwr), [26B-A4B on M4 24 GB](https://omlx.ai/benchmarks/prbwpsfp), and [26B-A4B on M1 Max 64 GB](https://omlx.ai/benchmarks/performance/9kxh72hk). A Mac mini M4 24 GB user on [Hacker News](https://news.ycombinator.com/item?id=47624731) reported 19.45 tok/s for E4B in LM Studio, in line with the oMLX figure.
 
 **What the numbers say**
@@ -95,7 +97,7 @@ Sources: oMLX community benchmarks for [E4B on M4 24 GB](https://omlx.ai/benchma
 * **The bigger model is not slower on the Mac mini.** 26B-A4B only activates about 4B parameters per token, so on the M4 it writes faster than E4B. The cost is memory: about 15 GB of the Mac mini's 24 GB.
 * **Memory headroom matters on the Mac mini.** macOS lets the GPU use only part of unified memory by default. With 26B-A4B the Mac mini has little room for long documents or other apps. Check what LM Studio reports before you choose.
 
-**Recommendation** (Gemma 4 E4B on the Mac mini caught 50 of 50 planted items in our first test; see [Step 3](#step-3-test-it-with-synthetic-data-only))
+**Recommendation** (Gemma 4 E4B on the Mac mini caught 50 of 50 and 48 of 50 planted items on two test sets; see [Step 3](#step-3-test-it-with-synthetic-data-only))
 
 * **Mac mini M4 24 GB:** Gemma 4 **E4B**. It uses about 7 GB, so the Mac mini can run all day as the team's PII gateway with room to spare.
 * **MacBook Pro M1 Max 64 GB:** Gemma 4 **26B-A4B**. It is fast here and leaves plenty of memory. Use it to test whether the larger model catches PII that E4B misses.
@@ -106,12 +108,12 @@ Sources: oMLX community benchmarks for [E4B on M4 24 GB](https://omlx.ai/benchma
 ## Step 1: Install LM Studio and load a model
 
 1. Install LM Studio from [lmstudio.ai](https://lmstudio.ai).
-2. Download **Gemma 4 E4B** (or 26B-A4B on a 32 GB+ Mac). On Apple Silicon, pick the **MLX** 4-bit build. `TODO`: exact LM Studio model key.
+2. Download **Gemma 4 E4B** (`google/gemma-4-e4b`), or 26B-A4B on a 32 GB+ Mac. On Apple Silicon, pick an **MLX** build. Our measured results use the 8-bit build; 4-bit uses less memory and writes faster.
 3. Install the command-line tool and start the server:
 
 ```bash
 lms server start            # OpenAI-compatible API on http://localhost:1234/v1
-lms load <model-key>        # TODO: exact key of the recommended model
+lms load google/gemma-4-e4b
 lms ps                      # confirm the model is loaded
 curl -s http://localhost:1234/v1/models
 ```
@@ -163,7 +165,7 @@ Run it with LM Studio open and the model loaded:
 
 ```bash
 cd examples/lm-studio-pii-gateway
-PII_MODEL=<model-key> node run-eval.mts
+PII_MODEL=google/gemma-4-e4b node run-eval.mts
 ```
 
 It reports:
@@ -180,12 +182,16 @@ The script exits with an error on any miss or block. Run it again whenever you c
 | --- | --- | --- | --- | --- | --- |
 | Gemma 4 E4B on Mac mini M4 24 GB, our first test set | 10 | 50 | 50 | 100% | not measured |
 | Pattern pass only (no model), included test set | 10 | 50 | 19 | 38% | 0 |
-| Gemma 4 E4B on Mac mini M4 24 GB, included test set | 10 | 50 | `TODO` | `TODO` | `TODO` |
+| Gemma 4 E4B (MLX 8-bit) on Mac mini M4 24 GB, included test set | 10 | 50 | 48 | 96% | 2 |
 
 What this shows:
 
 * **The model does most of the work.** Fixed patterns catch SSNs, cards, emails and phone numbers: 19 of the 50 items. Names, addresses, health details and most ID numbers depend on the model.
-* **Gemma 4 E4B on the Mac mini caught everything** in our first test: emails, bills and messages with 5 PII items each, run through this gateway. Read it as a good first sign, not a guarantee. With 50 items and no misses, the true miss rate is most likely below about 6% (the statistical "rule of three": 3 ÷ 50). Before you rely on it for regulated data, grow the test set with harder cases: names in signatures, addresses split over lines, IDs in tables.
+* **Gemma 4 E4B on the Mac mini caught 98 of 100 items** across the two test sets. Three runs on the included set gave the same result, so the model's behavior is stable at temperature 0.
+* **What it missed:** a date of birth written as `07/22/1979`, and the medication "antibiotics" (it removed the diagnosis, "pneumonia", in the same sentence). Both are cases worth adding to your own test set.
+* **What it over-redacted:** two bill totals (`€142.60`, `$380.00`). That errs on the safe side, but it can remove meaning a downstream model needs.
+* **More prompt wording did not help.** A longer prompt that listed dates of birth, medications and "not prices" dropped recall to 88% (44/50). A shorter addition kept 96% but missed a full name instead. Small models react unpredictably to wording, so keep the prompt short and rerun the test set after every change.
+* **Read this as a good first sign, not a guarantee.** With about 100 items, a miss rate of a few percent is plausible. Before you rely on it for regulated data, grow the test set with harder cases: names in signatures, addresses split over lines, IDs in tables, dates in every format.
 
 ---
 

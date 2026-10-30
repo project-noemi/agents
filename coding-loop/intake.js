@@ -12,6 +12,10 @@
 
 const BOT_LOGINS = new Set(['dependabot', 'renovate', 'github-actions']);
 const WRITE_PERMISSIONS = new Set(['admin', 'maintain', 'write']);
+// The only scanner verdicts that let a body through. Exact strings: a
+// lower-case 'approved', 'ERROR', 'TIMEOUT' or a typo is an unknown state,
+// and an unknown state is refused (fail closed), never treated as clean.
+const SCAN_PROCEED_STATUSES = new Set(['APPROVED', 'REDACTED']);
 
 const EMPTY_SECTION_MARKERS = [
   /^_no response_$/i,
@@ -97,17 +101,23 @@ function tenantAllows(issue, tenant, entitlement) {
 }
 
 /**
- * Tenant or client entitlement, plus the requester check for client runs:
- * a client run needs a named requester with write access to the repo, so an
- * outsider on a public client repo cannot spend the shared pool.
+ * Tenant or client entitlement, plus the requester check on EVERY run: a
+ * named requester with write access to the repo. Client-only was not enough
+ * — on a public tenant repo anyone who opened an issue spent the shared
+ * pool and drew a conductor comment. A missing or unverifiable requester is
+ * `trigger-unverified`; never default it to the token's own login (that is
+ * the bot, which would always pass).
  */
 function entitlementGate({ issue, tenant, entitlement, trigger } = {}) {
   const allowed = tenantAllows(issue, tenant, entitlement);
-  if (!allowed.ok || allowed.via !== 'client') return allowed;
+  if (!allowed.ok) return allowed;
   if (!trigger || !trigger.login || trigger.error) return { ok: false, reason: 'trigger-unverified' };
   if (!WRITE_PERMISSIONS.has(trigger.permission)) return { ok: false, reason: 'trigger-not-writer' };
   return allowed;
 }
+
+/** Refusals caused by WHO asked. The run leaves no trace on the issue for these. */
+const REQUESTER_REFUSALS = new Set(['trigger-unverified', 'trigger-not-writer']);
 
 function classifyIssue({ issue, tenant, entitlement, trigger, scan, budget } = {}) {
   if (!issue || typeof issue !== 'object') {
@@ -141,16 +151,8 @@ function classifyIssue({ issue, tenant, entitlement, trigger, scan, budget } = {
     };
   }
 
-  if (isEmptyOrTemplate(issue)) {
-    return {
-      tier: 'NEEDS_INFO',
-      reasons: ['empty-or-template-body'],
-      questions: ['What repository path should change, and how will we know it worked?'],
-      label: 'noemi:needs-info',
-      confidence: 'high',
-    };
-  }
-
+  // Entitlement and requester BEFORE the empty-body gate: NEEDS_INFO posts a
+  // conductor question, and an outsider must not be able to draw one.
   const allowed = entitlementGate({ issue, tenant, entitlement, trigger });
   if (!allowed.ok) {
     return {
@@ -158,6 +160,16 @@ function classifyIssue({ issue, tenant, entitlement, trigger, scan, budget } = {
       reasons: [allowed.reason],
       questions: [],
       label: 'noemi:wont-act',
+      confidence: 'high',
+    };
+  }
+
+  if (isEmptyOrTemplate(issue)) {
+    return {
+      tier: 'NEEDS_INFO',
+      reasons: ['empty-or-template-body'],
+      questions: ['What repository path should change, and how will we know it worked?'],
+      label: 'noemi:needs-info',
       confidence: 'high',
     };
   }
@@ -205,6 +217,16 @@ function classifyIssue({ issue, tenant, entitlement, trigger, scan, budget } = {
     };
   }
 
+  if (!SCAN_PROCEED_STATUSES.has(scan.status)) {
+    return {
+      tier: 'REFUSED',
+      reasons: ['scan-status-unknown'],
+      questions: [],
+      label: 'noemi:wont-act',
+      confidence: 'high',
+    };
+  }
+
   return {
     tier: 'PENDING_SUFFICIENCY',
     reasons: ['deterministic-gates-passed'],
@@ -231,6 +253,9 @@ function issueFromGitHub(repoFullName, payload) {
 
 module.exports = {
   BOT_LOGINS,
+  REQUESTER_REFUSALS,
+  SCAN_PROCEED_STATUSES,
+  WRITE_PERMISSIONS,
   classifyIssue,
   entitlementGate,
   issueFromGitHub,

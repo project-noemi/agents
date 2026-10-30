@@ -22,6 +22,7 @@
  */
 
 const { githubAppJwt } = require('../scripts/github-app-token.js');
+const { githubApiBase } = require('../scripts/github-client.js');
 
 const CLIENT_STATUSES = new Set(['active', 'suspended']);
 
@@ -67,8 +68,10 @@ function appHeaders(appId, privateKey) {
  * The App installation that covers this repo, or null when the App is not
  * installed there (404). Other failures throw.
  */
-async function findRepoInstallation({ repo, appId, privateKey, fetchImpl = fetch } = {}) {
-  const res = await fetchImpl(`https://api.github.com/repos/${repo}/installation`, {
+async function findRepoInstallation({
+  repo, appId, privateKey, fetchImpl = fetch, apiBase = githubApiBase(process.env),
+} = {}) {
+  const res = await fetchImpl(`${apiBase}/repos/${repo}/installation`, {
     headers: appHeaders(appId, privateKey),
   });
   if (res.status === 404) return null;
@@ -89,7 +92,9 @@ async function findRepoInstallation({ repo, appId, privateKey, fetchImpl = fetch
  * Resolve the entitlement input for intake. Returns null for orgs on the
  * tenant's static list (they never need the registry).
  */
-async function resolveEntitlement({ repo, tenant, env = process.env, fetchImpl = fetch } = {}) {
+async function resolveEntitlement({
+  repo, tenant, env = process.env, fetchImpl = fetch, apiBase = githubApiBase(env),
+} = {}) {
   const org = String(repo || '').split('/')[0];
   const orgs = (tenant && Array.isArray(tenant.orgs)) ? tenant.orgs : [];
   if (orgs.includes(org)) return null;
@@ -110,6 +115,7 @@ async function resolveEntitlement({ repo, tenant, env = process.env, fetchImpl =
       appId: env.CONDUCTOR_APP_ID,
       privateKey: env.CONDUCTOR_APP_PRIVATE_KEY,
       fetchImpl,
+      apiBase,
     });
   } catch (err) {
     return { error: err.message };
@@ -121,9 +127,12 @@ async function resolveEntitlement({ repo, tenant, env = process.env, fetchImpl =
 }
 
 /**
- * Who asked for this run and their permission on the repo. Intake refuses a
- * client run unless it is write or higher (the bar Copilot, Claude Code
- * Action and Devin use). Lookup failures resolve to { error }.
+ * Who asked for this run and their permission on the repo. Intake refuses
+ * EVERY run (tenant and client) unless it is write or higher (the bar
+ * Copilot, Claude Code Action and Devin use): on a public tenant repo an
+ * outsider opening an issue must not spend the pool or draw a conductor
+ * comment. No login resolves to null, which intake refuses as
+ * `trigger-unverified`. Lookup failures resolve to { error }.
  */
 async function resolveTrigger({ repo, login, token, ghImpl } = {}) {
   if (!login) return null;

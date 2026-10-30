@@ -259,7 +259,10 @@ Every GitHub call in this loop — conductor comments and labels, producer
 PR open, Stage D review post — uses the same contract as
 `scripts/review-pr.js`:
 
-- Retry **only** transient statuses: 429 and 5xx.
+- Retry **only** transient statuses: 429 and 5xx, and a rate-limit 403.
+- Retry a write (POST, PUT, PATCH, DELETE) on 5xx only when the call is
+  idempotent; a 5xx after a write that succeeded must not post twice
+  (Decision [2026-10-27-0003]). Honour `Retry-After` up to 60 seconds.
 - Do **not** retry deterministic 4xx (401, 403, 404, 422).
 - Use `scripts/resilience_helpers.js` (`withRetry`) or the host’s equivalent.
 - An exhausted retry budget is a **connection failure**, not a product
@@ -341,7 +344,8 @@ on the tenant's `orgs` list is entitled only when all of these hold:
    NewPush's side of the grant. Rows key on the numeric account ID because
    logins can be renamed and re-registered. Optional `repos` narrows the row.
 3. **Requested by a writer.** `--requested-by` names a user whose permission
-   on the repo is write, maintain or admin. This is the bar Copilot, Claude
+   on the repo is write, maintain or admin. Since Decision [2026-10-27-0001]
+   this applies to tenant orgs too. This is the bar Copilot, Claude
    Code GitHub Actions and Devin use, and it stops outsiders on public client
    repos from spending the pool.
 

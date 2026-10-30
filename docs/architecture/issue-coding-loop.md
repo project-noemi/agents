@@ -67,6 +67,7 @@ vs `.github/workflows/ai-review.yml`).
 | Layer | Owns | Must not |
 |---|---|---|
 | Product (`coding-loop/*.js`, skills, `docs/model-routing.json`) | skip / refuse / needs-info / accepted / carve-out; identity checks; model family contract | grow a job queue, webhook server, or conversation memory |
+| Forge provider (`coding-loop/providers/*`, Decision [2026-10-27-0005]) | repository naming, item reads, comments, labels, entitlement lookups, commits, change requests | hold verdicts, carve-outs or scan logic; weaken the identity split |
 | Host (CLI `run.js` `main()`, Actions `coding-loop.yml`, later Mastra/n8n/Temporal) | when the loop starts, where labels are stored, how a run is re-queued | re-encode `classifyIssue`, default a missing scan to `APPROVED`, post as the wrong identity |
 
 **Fleet host (unattended):** Node CLI plus the reusable workflow
@@ -95,7 +96,8 @@ on all repositories in `newpush`, `project-noemi`, and `newpush-labs` (Decision
 
 1. Import the functions as tools/steps (`classifyIssue`, `scanIssueBody`,
    `completeThroughStageB`, `draftChanges` with injected `callModel`,
-   `openImplementationPr` with injected `ghImpl`).
+   `openImplementationPr` with injected `ghImpl`, or a `provider`, `ref` and
+   `cred` from `coding-loop/providers/` for a forge other than GitHub).
 2. Exec `node coding-loop/run.js` with explicit `--scan` / `--budget-ok`
    (what Actions does).
 3. Do **not** copy the gates into the framework. That is lock-in.

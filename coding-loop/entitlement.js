@@ -1,129 +1,57 @@
 'use strict';
 
 /**
- * Client entitlement for orgs outside the tenant's static `orgs` list
- * (Decision [2026-10-22-0005]).
+ * Client entitlement and requester checks (Decision [2026-10-22-0005]).
  *
- * A client repo is entitled only when BOTH hold:
- *   1. the conductor GitHub App is installed on the repo and not suspended
- *      (GET /repos/{owner}/{repo}/installation), and
- *   2. the installation's account ID has an `active` row in the client
- *      registry.
- * The App is public, so anyone can install it; the registry is the NewPush
- * side of the grant. Rows are keyed by the stable GitHub account ID, never
- * by login (logins can be renamed and re-registered).
- *
- * The registry is NOT committed (this repository is public and the client
- * list is confidential). It is injected at runtime as JSON in
- * NOEMI_CLIENT_REGISTRY, e.g. `infisical run --env=dev -- node coding-loop/run.js …`.
+ * The forge-specific halves moved behind the provider seam:
+ *   - GitHub App installation lookup → providers/github/entitlement.js
+ *   - registry parsing (all forges)   → coding-loop/client-registry.js
+ * This module keeps the exported names hosts and the labs import. Each
+ * wrapper takes `repo` as `owner/name` (GitHub, as before) or a RepoRef
+ * plus a provider.
  *
  * Every lookup failure resolves to `{ error }` so intake refuses with
  * `entitlement-unverified` — never allow on an unknown state.
  */
 
-const { githubAppJwt } = require('../scripts/github-app-token.js');
 const { githubApiBase } = require('../scripts/github-client.js');
+const { parseClientRegistry } = require('./client-registry.js');
+const { createGithubProvider, findRepoInstallation } = require('./providers/github/index.js');
+const { parseRepoRef } = require('./providers/index.js');
 
-const CLIENT_STATUSES = new Set(['active', 'suspended']);
-
-/** Parse NOEMI_CLIENT_REGISTRY. Malformed input throws; it never means "no clients". */
-function parseClientRegistry(text) {
-  if (text === undefined || text === null || String(text).trim() === '') {
-    return { clients: [] };
-  }
-  let parsed;
+function refOf(repo, ref, env) {
+  if (ref) return ref;
   try {
-    parsed = JSON.parse(String(text));
+    return parseRepoRef(repo, { env });
   } catch {
-    // Never echo the parser message: it quotes the registry contents.
-    throw new Error('NOEMI_CLIENT_REGISTRY is not valid JSON.');
+    return null;
   }
-  if (!parsed || !Array.isArray(parsed.clients)) {
-    throw new Error('NOEMI_CLIENT_REGISTRY must be an object with a clients array.');
-  }
-  for (const client of parsed.clients) {
-    if (!client || !Number.isInteger(client.account_id) || client.account_id <= 0) {
-      throw new Error('NOEMI_CLIENT_REGISTRY: every client needs an integer account_id.');
-    }
-    if (!CLIENT_STATUSES.has(client.status)) {
-      throw new Error('NOEMI_CLIENT_REGISTRY: client status must be active or suspended.');
-    }
-    if (client.repos !== undefined && !Array.isArray(client.repos)) {
-      throw new Error('NOEMI_CLIENT_REGISTRY: client repos must be an array when present.');
-    }
-  }
-  return parsed;
-}
-
-function appHeaders(appId, privateKey) {
-  return {
-    Authorization: `Bearer ${githubAppJwt(appId, privateKey)}`,
-    Accept: 'application/vnd.github+json',
-    'User-Agent': 'noemi-entitlement',
-    'X-GitHub-Api-Version': '2022-11-28',
-  };
 }
 
 /**
- * The App installation that covers this repo, or null when the App is not
- * installed there (404). Other failures throw.
- */
-async function findRepoInstallation({
-  repo, appId, privateKey, fetchImpl = fetch, apiBase = githubApiBase(process.env),
-} = {}) {
-  const res = await fetchImpl(`${apiBase}/repos/${repo}/installation`, {
-    headers: appHeaders(appId, privateKey),
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    const err = new Error(`GitHub App repo installation → ${res.status}`);
-    err.status = res.status;
-    throw err;
-  }
-  const body = await res.json();
-  return {
-    id: body && body.id,
-    account_id: body && body.account ? body.account.id : undefined,
-    suspended: Boolean(body && body.suspended_at),
-  };
-}
-
-/**
- * Resolve the entitlement input for intake. Returns null for orgs on the
- * tenant's static list (they never need the registry).
+ * Resolve the entitlement input for intake. Returns null for owners on the
+ * tenant's static list (they never need the registry); otherwise
+ * `{ grant, client }` or `{ error }`. GitHub results also carry the old
+ * `installation` field (`{ id, account_id, suspended }`) for hosts that
+ * read it.
  */
 async function resolveEntitlement({
-  repo, tenant, env = process.env, fetchImpl = fetch, apiBase = githubApiBase(env),
+  repo, ref, provider, tenant, env = process.env, fetchImpl = globalThis.fetch, apiBase = githubApiBase(env),
 } = {}) {
-  const org = String(repo || '').split('/')[0];
-  const orgs = (tenant && Array.isArray(tenant.orgs)) ? tenant.orgs : [];
-  if (orgs.includes(org)) return null;
-
-  let registry;
-  try {
-    registry = parseClientRegistry(env && env.NOEMI_CLIENT_REGISTRY);
-  } catch (err) {
-    return { error: err.message };
+  const target = refOf(repo, ref, env);
+  if (!target) return { error: 'entitlement needs a valid repository reference' };
+  const forge = provider || createGithubProvider({ fetchImpl });
+  const result = await forge.resolveEntitlement({
+    ref: target, tenant, env, deps: { fetchImpl, apiBase },
+  });
+  if (result && target.provider === 'github' && !result.error && result.installation === undefined) {
+    const { grant } = result;
+    return {
+      ...result,
+      installation: grant ? { id: grant.id, account_id: grant.accountId, suspended: grant.suspended } : null,
+    };
   }
-  if (!env || !env.CONDUCTOR_APP_ID || !env.CONDUCTOR_APP_PRIVATE_KEY) {
-    return { error: 'client entitlement needs CONDUCTOR_APP_ID and CONDUCTOR_APP_PRIVATE_KEY' };
-  }
-  let installation;
-  try {
-    installation = await findRepoInstallation({
-      repo,
-      appId: env.CONDUCTOR_APP_ID,
-      privateKey: env.CONDUCTOR_APP_PRIVATE_KEY,
-      fetchImpl,
-      apiBase,
-    });
-  } catch (err) {
-    return { error: err.message };
-  }
-  const client = installation
-    ? registry.clients.find((row) => row.account_id === installation.account_id) || null
-    : null;
-  return { installation, client };
+  return result;
 }
 
 /**
@@ -134,18 +62,14 @@ async function resolveEntitlement({
  * comment. No login resolves to null, which intake refuses as
  * `trigger-unverified`. Lookup failures resolve to { error }.
  */
-async function resolveTrigger({ repo, login, token, ghImpl } = {}) {
+async function resolveTrigger({
+  repo, ref, provider, login, token, cred, ghImpl,
+} = {}) {
   if (!login) return null;
-  try {
-    const res = await ghImpl(
-      `/repos/${repo}/collaborators/${encodeURIComponent(login)}/permission`,
-      { token },
-    );
-    return { login, permission: (res && res.permission) || 'none' };
-  } catch (err) {
-    if (err && err.status === 404) return { login, permission: 'none' };
-    return { login, error: err && err.message };
-  }
+  const target = refOf(repo, ref);
+  if (!target) return { login, error: 'requester check needs a valid repository reference' };
+  const forge = provider || createGithubProvider({ gh: ghImpl });
+  return forge.requesterPermission(target, login, cred || token);
 }
 
 module.exports = {

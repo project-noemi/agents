@@ -233,6 +233,8 @@ function gitHost({ refExists = null, prExists = null, failRef = null } = {}) {
     if (url === '/user') return { login: 'noemi-agent' };
     if (url.endsWith('/git/ref/heads/develop')) return { ref: 'refs/heads/develop', object: { sha: 'base' } };
     if (url.endsWith('/git/commits/base')) return { tree: { sha: 'basetree' } };
+    // Base-tree read for file modes (an existing 100755 file stays executable).
+    if (url.endsWith('/git/trees/basetree') && method === 'GET') return { tree: [] };
     if (url.endsWith('/git/trees')) return { sha: 'newtree' };
     if (url.endsWith('/git/commits') && method === 'POST') return { sha: 'newcommit' };
     if (url.endsWith('/git/refs') && method === 'POST') {
@@ -288,15 +290,16 @@ test('openImplementationPr: one atomic commit; the branch ref is created last', 
     'GET /user',
     `GET /repos/${REPO}/git/ref/heads/develop`,
     `GET /repos/${REPO}/git/commits/base`,
+    `GET /repos/${REPO}/git/trees/basetree`,
     `POST /repos/${REPO}/git/trees`,
     `POST /repos/${REPO}/git/commits`,
     `POST /repos/${REPO}/git/refs`,
     `POST /repos/${REPO}/pulls`,
   ]);
-  assert.equal(calls[3].body.base_tree, 'basetree');
-  assert.deepEqual(calls[4].body.parents, ['base']);
-  assert.doesNotMatch(calls[4].body.message, /\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\b/i);
-  assert.deepEqual(calls[5].body, { ref: 'refs/heads/noemi/issue-12', sha: 'newcommit' });
+  assert.equal(calls[4].body.base_tree, 'basetree');
+  assert.deepEqual(calls[5].body.parents, ['base']);
+  assert.doesNotMatch(calls[5].body.message, /\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\b/i);
+  assert.deepEqual(calls[6].body, { ref: 'refs/heads/noemi/issue-12', sha: 'newcommit' });
   assert.equal(calls.filter((c) => c.method === 'PUT').length, 0, 'no per-file contents PUTs');
 });
 
@@ -425,7 +428,7 @@ test('writePlanFile: 0600 even over an existing file; refuses a symlink target',
     fs.writeFileSync(file, 'old', { mode: 0o644 });
     run.writePlanFile(file, { repo: 'o/r', issue: '1', fingerprint: 'f', intake: {}, plan: accepted });
     assert.equal(fs.statSync(file).mode & 0o777, 0o600);
-    assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).version, 2);
+    assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).version, run.PLAN_FILE_VERSION);
 
     const victim = path.join(dir, 'victim');
     fs.writeFileSync(victim, 'keep', { mode: 0o644 });

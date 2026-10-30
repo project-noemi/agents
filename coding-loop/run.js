@@ -37,6 +37,11 @@
  *
  * GitHub Enterprise Server: GITHUB_API_URL (https only) is honoured for the
  * loop's own GitHub calls.
+ *
+ * Forges: every forge call goes through a provider (coding-loop/providers/).
+ * `--repo owner/name` is GitHub, as it always was; `github:owner/name` and
+ * repository URLs also work, and other forges use `<provider>:<path>` once
+ * their provider is registered. `--item` is an alias for `--issue`.
  */
 
 const crypto = require('crypto');
@@ -44,15 +49,16 @@ const fs = require('fs');
 const path = require('path');
 const { gh, githubApiBase } = require('../scripts/github-client.js');
 const {
-  REQUESTER_REFUSALS, classifyIssue, entitlementGate, issueFromGitHub, labelsOf,
+  REQUESTER_REFUSALS, classifyIssue, entitlementGate,
 } = require('./intake.js');
-const { resolveEntitlement, resolveTrigger } = require('./entitlement.js');
+const { parseRepoRef, getProvider } = require('./providers/index.js');
+const {
+  createGithubProvider, githubCredential, issueRepoOf,
+} = require('./providers/github/index.js');
 const { completeThroughStageB, critiquePlan, loadRouting } = require('./plan.js');
-const { assertProducerToken, openImplementationPr, prepareImplementation } = require('./dispatch.js');
-const { resolveProducerToken } = require('../scripts/agent-token.js');
+const { openImplementationPr, prepareImplementation } = require('./dispatch.js');
 const { critiquePlanLive, revisePlanLive } = require('./critic.js');
 const { assertWriterKey, draftChanges } = require('./writer.js');
-const { mintGithubAppInstallationToken } = require('../scripts/github-app-token.js');
 const { scanIssueBody, scanOutboundText } = require('./scan.js');
 const { loadModelConfig } = require('../scripts/model-config.js');
 const { prepareReview } = require('./stage-d.js');
@@ -60,7 +66,7 @@ const { resolveProfile } = require('./profile.js');
 
 const repoRoot = path.join(__dirname, '..');
 
-const USAGE = 'Usage: coding-loop/run.js --repo owner/name --issue N --requested-by login [--post] [--implement] [--open-pr] [--live-critic] [--profile code|spec] [--tenant path] [--plan-out file | --plan-in file] (--scan | --scan-status APPROVED|BLOCKED|REDACTED) (--budget-ok | --budget-exhausted)\n'
+const USAGE = 'Usage: coding-loop/run.js --repo owner/name --issue N (alias --item N) --requested-by login [--post] [--implement] [--open-pr] [--live-critic] [--profile code|spec] [--tenant path] [--plan-out file | --plan-in file] (--scan | --scan-status APPROVED|BLOCKED|REDACTED) (--budget-ok | --budget-exhausted)\n'
   + 'Omitting both --scan and --scan-status, omitting the budget assertion, or omitting --requested-by classifies the issue as REFUSED (fail closed).\n'
   + '--requested-by names the person who triggered the run; they need write, maintain or admin on the repo. Never the bot.\n'
   + '--scan runs coding-loop/scan.js on the fetched issue; it is not implied by omitting --scan-status.\n'
@@ -75,6 +81,7 @@ const USAGE = 'Usage: coding-loop/run.js --repo owner/name --issue N --requested
 const VALUE_FLAGS = {
   '--repo': 'repo',
   '--issue': 'issue',
+  '--item': 'issue',
   '--tenant': 'tenantPath',
   '--requested-by': 'requestedBy',
   '--scan-status': 'scanStatus',
@@ -152,19 +159,17 @@ function parseArgs(argv) {
   }
   return args;
 }
-/** owner/name and a positive issue number — refuse anything that would
- *  change the GitHub path (extra slashes, `..`, non-digits). */
-function assertRepoIssue(repo, issue) {
-  if (typeof repo !== 'string' || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo) || repo.includes('..')) {
-    const err = new Error('Need --repo owner/name (letters, digits, . _ - only).');
-    err.status = 400;
-    throw err;
-  }
-  if (!/^[1-9][0-9]*$/.test(String(issue))) {
-    const err = new Error('Need --issue N (positive integer).');
-    err.status = 400;
-    throw err;
-  }
+/**
+ * A repository reference and a positive item id — refuse anything that
+ * would change the forge API path (extra slashes, `..`, non-digits). The
+ * provider that owns the reference does the validation (status 400);
+ * returns `{ ref, id, provider }`.
+ */
+function assertRepoIssue(repo, issue, { env = process.env } = {}) {
+  const ref = parseRepoRef(typeof repo === 'string' ? repo : '', { env });
+  const provider = getProvider(ref.provider);
+  const id = provider.parseItemId(issue);
+  return { ref, id, provider };
 }
 
 /**
@@ -190,9 +195,20 @@ function resolveScanInput(args, issue) {
     return { status: args.scanStatus };
   }
   if (args && args.scan) {
-    return scanIssueBody(`${(issue && issue.title) || ''}\n${(issue && issue.body) || ''}`);
+    return scanIssueBody(scanText(issue));
   }
   return null;
+}
+
+/**
+ * What the scanner sees: title, body and the provider's hiddenText (text a
+ * human reader may not see but a model would be fed). Unchanged for GitHub,
+ * whose hiddenText is always empty.
+ */
+function scanText(issue) {
+  const base = `${(issue && issue.title) || ''}\n${(issue && issue.body) || ''}`;
+  const hidden = String((issue && issue.hiddenText) || '');
+  return hidden ? `${base}\n${hidden}` : base;
 }
 
 function loadTenant(relPath) {
@@ -204,17 +220,12 @@ function conductorToken(env = process.env) {
   return (env && env.CONDUCTOR_GH_TOKEN) || '';
 }
 
-async function resolveConductorToken(env = process.env, { owner, mint = mintGithubAppInstallationToken } = {}) {
-  if (env && env.CONDUCTOR_GH_TOKEN) return env.CONDUCTOR_GH_TOKEN;
-  if (env && env.CONDUCTOR_APP_ID && env.CONDUCTOR_APP_PRIVATE_KEY) {
-    return mint({
-      appId: env.CONDUCTOR_APP_ID,
-      privateKey: env.CONDUCTOR_APP_PRIVATE_KEY,
-      owner,
-      apiBase: githubApiBase(env),
-    });
-  }
-  return '';
+/** GitHub conductor token as a string (pre-provider export; run.js uses resolveCredential). */
+async function resolveConductorToken(env = process.env, { owner, mint } = {}) {
+  const cred = await createGithubProvider({ mint }).resolveCredential({
+    role: 'conductor', ref: { owner }, env,
+  });
+  return cred ? cred.token : '';
 }
 
 function readToken(env = process.env) {
@@ -232,7 +243,9 @@ function issueReadToken(conductor, env = process.env) {
   return conductor || readToken(env);
 }
 
-const PLAN_FILE_VERSION = 2;
+// Version 3 adds `provider` and `repoKey`. Versions 1 and 2 are GitHub-only
+// files and are still read (their `repo` slug is compared).
+const PLAN_FILE_VERSION = 3;
 
 /**
  * What a plan was made from: sha256 over the issue title and body.
@@ -245,7 +258,11 @@ const PLAN_FILE_VERSION = 2;
 function issueFingerprint(issue) {
   const title = String((issue && issue.title) || '');
   const body = String((issue && issue.body) || '');
-  return crypto.createHash('sha256').update(JSON.stringify([title, body])).digest('hex');
+  // hiddenText is part of what was planned from; it joins the hash only
+  // when present, so a GitHub fingerprint (and every v2 file) is unchanged.
+  const hidden = String((issue && issue.hiddenText) || '');
+  const parts = hidden ? [title, body, hidden] : [title, body];
+  return crypto.createHash('sha256').update(JSON.stringify(parts)).digest('hex');
 }
 
 /**
@@ -282,12 +299,25 @@ function writeFileAtomic0600(file) {
 }
 
 /** The Stage A/B result a later --plan-in run implements unchanged. */
+/** RepoRef for a plan-file call: the ref itself, or a GitHub-era `owner/name`. */
+function planRefOf(ref, repo) {
+  if (ref) return ref;
+  try {
+    return parseRepoRef(repo, { env: {} });
+  } catch {
+    return null;
+  }
+}
+
 function writePlanFile(file, {
-  repo, issue, updatedAt, fingerprint, profile, intake, plan,
+  repo, ref, issue, updatedAt, fingerprint, profile, intake, plan,
 }) {
+  const target = planRefOf(ref, repo);
   const record = {
     version: PLAN_FILE_VERSION,
-    repo,
+    provider: target ? target.provider : 'github',
+    repoKey: target ? target.key : null,
+    repo: target ? target.slug : repo,
     issue: Number(issue),
     issueFingerprint: fingerprint || null,
     issueUpdatedAt: updatedAt || null,
@@ -304,8 +334,9 @@ function writePlanFile(file, {
  * approved; implementing anything else is refused (status 409).
  */
 function readPlanFile(file, {
-  repo, issue, updatedAt, fingerprint, profile,
+  repo, ref, issue, updatedAt, fingerprint, profile,
 }) {
+  const target = planRefOf(ref, repo);
   const refuse = (message) => {
     const err = new Error(`--plan-in refused: ${message}`);
     err.status = 409;
@@ -325,11 +356,19 @@ function readPlanFile(file, {
   } catch {
     throw refuse('the plan file is not valid JSON');
   }
-  if (!record || (record.version !== 1 && record.version !== PLAN_FILE_VERSION)) {
+  if (!record || ![1, 2, PLAN_FILE_VERSION].includes(record.version)) {
     throw refuse('unknown plan file version');
   }
-  if (record.repo !== repo || record.issue !== Number(issue)) {
-    throw refuse(`the plan is for ${record.repo}#${record.issue}, not ${repo}#${issue}`);
+  const wanted = target ? target.slug : repo;
+  // v1/v2 predate providers: they are GitHub files and compare the slug as
+  // they always did. v3 compares the provider and the normalized key.
+  const sameRepo = record.version === PLAN_FILE_VERSION
+    ? Boolean(target) && record.provider === target.provider && record.repoKey === target.key
+    : Boolean(target) && target.provider === 'github' && record.repo === wanted;
+  if (!sameRepo || record.issue !== Number(issue)) {
+    const where = record.version === PLAN_FILE_VERSION && record.provider && record.provider !== 'github'
+      ? `${record.provider}:${record.repo}` : record.repo;
+    throw refuse(`the plan is for ${where}#${record.issue}, not ${wanted}#${issue}`);
   }
   if ((record.profile || 'code') !== (profile || 'code')) {
     throw refuse(`the plan used profile ${record.profile}, not ${profile}`);
@@ -405,21 +444,24 @@ function assertPlanInContent(plan, profile) {
  * A run asked to work on old-org/name must not act on wherever that now
  * points, so the fetched issue must name the repository we asked for.
  */
-function issueRepoOf(payload) {
-  const fromApi = /\/repos\/([^/]+)\/([^/]+)\/?$/.exec(String((payload && payload.repository_url) || ''));
-  if (fromApi) return `${fromApi[1]}/${fromApi[2]}`;
-  const fromHtml = /^https?:\/\/[^/]+\/([^/]+)\/([^/]+)\/(?:issues|pull)\/\d+/.exec(String((payload && payload.html_url) || ''));
-  if (fromHtml) return `${fromHtml[1]}/${fromHtml[2]}`;
-  return '';
+function repoMoved(actual, wanted) {
+  const err = new Error(`repo-moved: the issue resolved to ${actual || 'an unknown repository'}, not ${wanted}. Refusing.`);
+  err.status = 409;
+  err.reason = 'repo-moved';
+  return err;
 }
 
+/** GitHub REST payload form (pre-provider export). */
 function assertIssueInRepo(payload, repo) {
   const actual = issueRepoOf(payload);
-  if (!actual || actual.toLowerCase() !== String(repo).toLowerCase()) {
-    const err = new Error(`repo-moved: the issue resolved to ${actual || 'an unknown repository'}, not ${repo}. Refusing.`);
-    err.status = 409;
-    err.reason = 'repo-moved';
-    throw err;
+  if (!actual || actual.toLowerCase() !== String(repo).toLowerCase()) throw repoMoved(actual, repo);
+}
+
+/** WorkItem form: the forge-reported repoKey must be the ref we asked for. */
+function assertItemInRepo(item, ref) {
+  if (!item || !item.repoKey || item.repoKey !== ref.key) {
+    const actual = item && item.repoKey ? item.repoKey.replace(/^[^:]+:/, '') : '';
+    throw repoMoved(actual, ref.slug);
   }
 }
 
@@ -430,16 +472,11 @@ function assertIssueInRepo(payload, repo) {
  * every repo look like it had `develop`, so a `dev`-only repo paid for a Grok
  * draft and then failed on the missing base.
  */
-async function listIntegrationBranches({ repo, token, ghImpl }) {
-  for (const name of ['develop', 'dev']) {
-    try {
-      const ref = await ghImpl(`/repos/${repo}/git/ref/heads/${name}`, { token });
-      if (ref && !Array.isArray(ref) && ref.ref === `refs/heads/${name}`) return [name];
-    } catch (err) {
-      if (!err || err.status !== 404) throw err;
-    }
-  }
-  return [];
+async function listIntegrationBranches({
+  repo, token, ghImpl, provider, ref, cred,
+}) {
+  const forge = provider || createGithubProvider({ gh: ghImpl });
+  return forge.listIntegrationBranches(ref || parseRepoRef(repo), cred || token);
 }
 
 async function implementFromPlan({
@@ -449,13 +486,26 @@ async function implementFromPlan({
   env = process.env,
   ghImpl = gh,
   token,
+  cred,
+  provider,
+  ref,
   draft = draftChanges,
   open = openImplementationPr,
 }) {
-  if (!plan || plan.status !== 'accepted') return prepareImplementation({ issue, plan, branches: [] });
-  const producer = token || resolveProducerToken(env).token;
-  const branches = await listIntegrationBranches({ repo: args.repo, token: producer, ghImpl });
-  const prepared = prepareImplementation({ issue, plan, branches });
+  const forge = provider || createGithubProvider({ gh: ghImpl });
+  if (!plan || plan.status !== 'accepted') {
+    return prepareImplementation({
+      issue, plan, branches: [], provider: forge,
+    });
+  }
+  const target = ref || parseRepoRef(args.repo, { env });
+  const producer = cred
+    || (token ? githubCredential(token, { role: 'producer', source: 'token' }) : null)
+    || await forge.resolveCredential({ role: 'producer', ref: target, env });
+  const branches = await forge.listIntegrationBranches(target, producer);
+  const prepared = prepareImplementation({
+    issue, plan, branches, provider: forge,
+  });
   if (!args.openPr || prepared.status !== 'ready') return prepared;
 
   const drafted = await draft({
@@ -463,9 +513,12 @@ async function implementFromPlan({
     plan,
     env,
     profile: args.profile,
-    repo: args.repo,
+    repo: target.slug,
+    repoRef: target,
+    provider: forge,
     base: prepared.base,
-    token: producer,
+    cred: producer,
+    token: producer.token,
     // The same apiBase-bound client, so loadBaseFiles reads the base files
     // from the GHES host instead of falling back to api.github.com.
     ghImpl,
@@ -481,11 +534,14 @@ async function implementFromPlan({
     };
   }
   return open({
-    repo: args.repo,
+    repo: target.slug,
+    ref: target,
+    provider: forge,
     issue,
     plan,
     branches,
-    token: producer,
+    cred: producer,
+    token: producer.token,
     files: drafted.files,
     model: drafted.model,
     ghImpl,
@@ -516,8 +572,11 @@ async function runLoop({
   deps = {},
 } = {}) {
   if (!args || !args.repo || !args.issue) throw usageError('Need --repo owner/name and --issue N.');
+  let ref;
+  let itemId;
+  let provider;
   try {
-    assertRepoIssue(args.repo, args.issue);
+    ({ ref, id: itemId, provider } = assertRepoIssue(args.repo, args.issue, { env }));
     resolveProfile(args.profile);
   } catch (err) {
     throw usageError(err.message);
@@ -525,21 +584,32 @@ async function runLoop({
   if (args.openPr && !args.implement) throw usageError('--open-pr requires --implement.');
 
   const apiBase = githubApiBase(env);
+  // GitHub keeps its historical seams (deps.gh, deps.mintToken) and the
+  // apiBase-bound client; any provider can be injected whole as deps.provider.
   const call = deps.gh || ((p, opts = {}) => gh(p, { apiBase, ...opts }));
-  const repoOwner = String(args.repo).split('/')[0];
-  let conductor = '';
+  if (deps.provider) {
+    provider = deps.provider;
+  } else if (ref.provider === 'github') {
+    provider = createGithubProvider({ gh: call, mint: deps.mintToken });
+  }
+  const credDeps = { mintToken: deps.mintToken };
+  let conductor = null;
   try {
-    conductor = await resolveConductorToken(env, { owner: repoOwner, mint: deps.mintToken });
+    conductor = await provider.resolveCredential({
+      role: 'conductor', ref, env, deps: credDeps,
+    });
   } catch (err) {
     throw usageError(err.message);
   }
   if (args.post && !conductor) {
     throw usageError('--post requires CONDUCTOR_GH_TOKEN or CONDUCTOR_APP_ID+CONDUCTOR_APP_PRIVATE_KEY. Refusing AGENT_GH_TOKEN / reviewer tokens (identity split).');
   }
-  let producer = '';
+  let producer = null;
   if (args.implement) {
     try {
-      producer = assertProducerToken(env);
+      producer = await provider.resolveCredential({
+        role: 'producer', ref, env, deps: credDeps,
+      });
     } catch (err) {
       throw usageError(err.message);
     }
@@ -551,24 +621,41 @@ async function runLoop({
       throw usageError(err.message);
     }
   }
-  const token = issueReadToken(conductor, env);
-  if (!token) {
+  // Reads use the conductor credential already resolved above, including an
+  // installation token minted from the App (Decision [2026-10-03-0002]).
+  let reader = conductor;
+  if (!reader) {
+    try {
+      reader = await provider.resolveCredential({
+        role: 'reader', ref, env, deps: credDeps,
+      });
+    } catch (err) {
+      throw usageError(err.message);
+    }
+  }
+  if (!reader) {
     throw usageError('Need a conductor token to read the issue (CONDUCTOR_APP_ID + CONDUCTOR_APP_PRIVATE_KEY, or CONDUCTOR_GH_TOKEN). GH_TOKEN and GITHUB_TOKEN also work for a local read.');
   }
 
+  const display = provider.itemDisplay(ref, itemId);
   const tenant = (deps.loadTenant || loadTenant)(args.tenantPath);
-  const payload = await call(`/repos/${args.repo}/issues/${args.issue}`, { token });
-  assertIssueInRepo(payload, args.repo);
-  const issue = issueFromGitHub(args.repo, payload);
+  const issue = await provider.getItem(ref, itemId, reader);
+  assertItemInRepo(issue, ref);
   const gateInputs = buildGateInputs(args);
   const scan = resolveScanInput(args, issue);
-  const entitlement = await (deps.resolveEntitlement || resolveEntitlement)({
-    repo: args.repo, tenant, env, apiBase,
-  });
-  const trigger = await (deps.resolveTrigger || resolveTrigger)({
-    repo: args.repo, login: args.requestedBy, token, ghImpl: call,
-  });
-  const fingerprint = issueFingerprint(payload);
+  const entitlement = deps.resolveEntitlement
+    ? await deps.resolveEntitlement({
+      repo: ref.slug, ref, provider, tenant, env, apiBase,
+    })
+    : await provider.resolveEntitlement({
+      ref, tenant, env, deps: { apiBase },
+    });
+  const trigger = deps.resolveTrigger
+    ? await deps.resolveTrigger({
+      repo: ref.slug, ref, provider, login: args.requestedBy, token: reader.token, cred: reader, ghImpl: call,
+    })
+    : (args.requestedBy ? await provider.requesterPermission(ref, args.requestedBy, reader) : null);
+  const fingerprint = issueFingerprint(issue);
 
   let intake;
   let plan;
@@ -577,7 +664,7 @@ async function runLoop({
       issue, tenant, entitlement, trigger, scan, budget: gateInputs.budget,
     });
     ({ intake, plan } = readPlanFile(args.planIn, {
-      repo: args.repo, issue: args.issue, updatedAt: payload.updated_at, fingerprint, profile: args.profile,
+      ref, issue: itemId, updatedAt: issue.updatedAt, fingerprint, profile: args.profile,
     }));
     assertPlanInContent(plan, args.profile);
   } else {
@@ -599,9 +686,9 @@ async function runLoop({
   }
   if (args.planOut && !args.planIn) {
     writePlanFile(args.planOut, {
-      repo: args.repo,
-      issue: args.issue,
-      updatedAt: payload.updated_at,
+      ref,
+      issue: itemId,
+      updatedAt: issue.updatedAt,
       fingerprint,
       profile: args.profile,
       intake,
@@ -616,17 +703,13 @@ async function runLoop({
     if (comment) {
       const scanned = (deps.scanOutbound || scanOutboundText)(comment);
       if (scanned && scanned.status === 'APPROVED') {
-        await call(`/repos/${args.repo}/issues/${args.issue}/comments`, {
-          token: conductor,
-          method: 'POST',
-          body: { body: comment },
-        });
+        await provider.postComment(ref, itemId, comment, conductor);
       } else {
         // Types only, never the matched text: the audit log carries no secrets.
         const types = ((scanned && scanned.findings) || []).map((f) => f && f.type).filter(Boolean);
         stderr.write(`${JSON.stringify({
           task: 'Conductor comment outbound scan',
-          inputs: [`issue=${args.repo}#${args.issue}`],
+          inputs: [`issue=${display}`, `provider=${provider.id}`],
           actions: ['skip-comment'],
           risks: [`outbound scan ${(scanned && scanned.status) || 'failed'}${types.length ? `: ${types.join(',')}` : ''}`],
           result: 'comment-not-posted',
@@ -638,7 +721,17 @@ async function runLoop({
 
   const implementation = args.implement
     ? await (deps.implementFromPlan || implementFromPlan)({
-      args, issue, plan, env, ghImpl: call, token: producer, draft: deps.draft, open: deps.open,
+      args,
+      issue,
+      plan,
+      env,
+      ghImpl: call,
+      provider,
+      ref,
+      cred: producer,
+      token: producer && producer.token,
+      draft: deps.draft,
+      open: deps.open,
     })
     : null;
   const review = prepareReview({ implementation });
@@ -650,14 +743,7 @@ async function runLoop({
     review,
   });
   if (label && conductor) {
-    await syncNoemiLabel({
-      repo: args.repo,
-      number: args.issue,
-      label,
-      current: issue.labels,
-      token: conductor,
-      ghImpl: call,
-    });
+    await provider.syncLoopLabel(ref, issue, label, conductor);
   } else if (label) {
     stderr.write('✖ conductor token missing; left the issue label unchanged.\n');
   }
@@ -665,7 +751,8 @@ async function runLoop({
   stderr.write(`${JSON.stringify({
     task: 'Issue-loop Stage A through Stage C',
     inputs: [
-      `issue=${args.repo}#${args.issue}`,
+      `issue=${display}`,
+      `provider=${provider.id}`,
       `post=${args.post}`,
       `implement=${args.implement}`,
       `openPr=${args.openPr}`,
@@ -728,34 +815,15 @@ function activeLoopLabel({
 }
 
 /**
- * Add the new loop label FIRST, then remove the stale ones. If a call fails
- * part-way the issue still carries the current state (plus a stale label the
- * next sync removes), never no loop label at all. Both calls are safe to
- * repeat (adding a present label is a no-op; a repeated DELETE is a 404,
- * ignored), so they opt in to retry on 5xx.
+ * Pre-provider export. The semantics (add the new label first, then remove
+ * the other noemi:* labels; DELETE 404 ignored; both retried on 5xx) live in
+ * provider.syncLoopLabel.
  */
 async function syncNoemiLabel({
-  repo, number, label, current, token, ghImpl,
+  repo, ref, provider, number, label, current, token, cred, ghImpl,
 } = {}) {
-  const call = ghImpl || gh;
-  const names = labelsOf({ labels: current });
-  if (label && !names.includes(label)) {
-    await call(`/repos/${repo}/issues/${number}/labels`, {
-      token,
-      method: 'POST',
-      idempotent: true,
-      body: { labels: [label] },
-    });
-  }
-  for (const name of names) {
-    if (!name.startsWith('noemi:') || name === label) continue;
-    const encoded = encodeURIComponent(name);
-    try {
-      await call(`/repos/${repo}/issues/${number}/labels/${encoded}`, { token, method: 'DELETE', idempotent: true });
-    } catch (err) {
-      if (!err || err.status !== 404) throw err;
-    }
-  }
+  const forge = provider || createGithubProvider({ gh: ghImpl });
+  return forge.syncLoopLabel(ref || parseRepoRef(repo), { id: String(number), labels: current }, label, cred || token);
 }
 
 function exitCodeForError(err) {
@@ -777,6 +845,7 @@ module.exports = {
   USAGE,
   activeLoopLabel,
   assertIssueInRepo,
+  assertItemInRepo,
   assertPlanInContent,
   assertPlanInGates,
   assertRepoIssue,
@@ -794,6 +863,7 @@ module.exports = {
   readPlanFile,
   resolveConductorToken,
   resolveScanInput,
+  scanText,
   runLoop,
   syncNoemiLabel,
   writePlanFile,

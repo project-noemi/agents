@@ -1630,6 +1630,7 @@ test('openImplementationPr: injected gh opens a PR; wrong identity and empty fil
     // One atomic commit via the Git Data API (no per-file contents PUTs).
     if (url.includes('/git/ref/heads/')) return { object: { sha: 'abc123' } };
     if (url.includes('/git/commits/abc123')) return { tree: { sha: 'basetree' } };
+    if (url.endsWith('/git/trees/basetree')) return { tree: [] };
     if (url.endsWith('/git/trees') && opts.method === 'POST') return { sha: 'newtree' };
     if (url.endsWith('/git/commits') && opts.method === 'POST') return { sha: 'newcommit' };
     if (url.endsWith('/git/refs') && opts.method === 'POST') return { ref: opts.body.ref };

@@ -10,6 +10,7 @@
   },
   "scripts": {
     "audit": "node scripts/audit-repo.js",
+    "layers:diff": "node scripts/layer_diff.js",
     "check:headless": "node scripts/check-headless-hooks.js",
     "generate": "node scripts/generate_all.js",
     "test": "node --test --test-concurrency=1 tests/*.test.js",

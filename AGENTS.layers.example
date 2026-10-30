@@ -16,9 +16,9 @@
 #
 # NOEMI_ORG_LAYERS="a.md,b.md" replaces this list for one session (CI, tests).
 #
-# Layers may replace preference rules (mark them with
-# <!-- override: <rule-id> relax -->). Core rules (secrets.*, refusal.*) can
-# only be clarified or tightened; any attempt to relax one fails the audit.
+# Mark a tagged-rule change with <!-- override: <rule-id> relax|clarify|tighten -->
+# so `npm run layers:diff` can name it. The deploying organization's appetite
+# file is where "is this acceptable" lives (AGENTS.appetite.example.json).
 #
 # After editing AGENTS.layers, run `npm run generate` and commit CLAUDE.md and
 # GEMINI.md so Claude Code and Gemini CLI import the same stack.

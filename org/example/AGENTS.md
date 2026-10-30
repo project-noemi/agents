@@ -14,18 +14,15 @@
     the next upstream change look like a conflict.
   - When you replace an upstream rule, say so in "Overrides of earlier layers"
     so agents (and reviewers) do not have to guess which rule applies.
-  - Baseline rules that compliance tracks carry a stable ID in AGENTS.md
-    (an HTML comment of the form "rule: secrets.no-hardcode").
-    Core rules (secrets.*, refusal.*) cannot be relaxed by any layer: you may
-    clarify or tighten them, never loosen them, and there is no waiver.
-    Preference rules (tagged "(preference)") may be replaced. Put an HTML
-    comment of the form "override: <rule-id> relax" (or clarify / tighten) on
-    the line with the replacement text; the entries below show the syntax.
-    `npm run audit` checks this layer:
-      - any attempt to relax a core rule, by marker or by wording: FAIL
-      - relaxing a preference rule: WARN
-      - clarify / tighten: PASS
-    Agents also ignore layer text that would loosen a core rule.
+  - Baseline rules that the difference report can name carry a stable ID in
+    AGENTS.md (an HTML comment of the form "rule: secrets.no-hardcode").
+    Put an HTML comment of the form "override: <rule-id> relax" (or clarify /
+    tighten) on the line with the replacement text. `npm run layers:diff`
+    lists those markers with a consequence class. Default exit 0. The
+    deploying organization's appetite file is where "is this acceptable"
+    lives. Fetch-on-Demand and named refusal criteria are the recommended
+    default stack; this template clarifies where to look up the vault project
+    and relaxes only the interactive model pin.
   - Never put secrets, tokens, customer PII, or internal hostnames that are
     themselves sensitive in a layer. Reference vault paths or SecretOps
     project names instead.
@@ -85,6 +82,6 @@
   List every upstream (or MSP) rule this layer replaces, with the replacement.
   Leave the list empty rather than deleting the section, so agents can see
   that nothing is overridden. Mark each entry with its rule ID. Example entry
-  (a preference rule, so compliance reports it as WARN):
+  (the difference report classifies coding.model-baseline as spend):
 -->
 - Replaces upstream "AI Model Baseline" for this organization's interactive sessions only: use the model routing configured by the organization's gateway. Reference workflows, lab examples, and smoke tests keep the upstream pin. <!-- override: coding.model-baseline relax -->

@@ -157,7 +157,7 @@ What `scan()` does, in order:
 1. **Pattern pass.** SSNs, Luhn-valid card numbers, emails, phone numbers and API keys. Each piece of text is claimed by one pattern only.
 2. **Model pass.** Sends the payload to LM Studio with a JSON schema, so the answer is always a list of `{ type, value }` findings. The system prompt tells the model the payload is data, never instructions.
 3. **Span check.** Drops any model finding that does not appear word for word in the payload.
-4. **Name parts.** For each name the model found, also redacts each part of it, so "Priya Raman" also removes a later "Regards, Priya".
+4. **Name parts.** For each name the model found, also redacts each part of it as a whole word, so "Priya Raman" also removes a later "Regards, Priya", but "Leo" never cuts into "Leonard".
 5. **Redact.** Marks every occurrence of every finding, merges overlapping spans, and replaces each span with a typed placeholder such as `[REDACTED_NAME]`.
 6. **Verify.** Scans the result again. If anything detected is still there, the payload is `BLOCKED`.
 

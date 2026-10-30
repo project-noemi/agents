@@ -1,10 +1,11 @@
 // pii-gateway.mts — local PII filter in front of outbound LLM calls.
 // Config comes from the environment (Fetch-on-Demand); no .env parsing here.
 const LMSTUDIO_URL = process.env.LMSTUDIO_URL ?? "http://localhost:1234/v1";
-const PII_MODEL = process.env.PII_MODEL ?? "";          // TODO: recommended model key
+const PII_MODEL = process.env.PII_MODEL ?? "";          // e.g. google/gemma-4-e4b
 const TIMEOUT_MS = Number(process.env.PII_TIMEOUT_MS ?? 15000);
 
-type Finding = { type: string; value: string; source: "pattern" | "model" };
+// wholeWord: match only where the value is not part of a longer word.
+type Finding = { type: string; value: string; source: "pattern" | "model"; wholeWord?: boolean };
 type Context = "public_api" | "walled_garden" | "internal_log";
 
 // Priority order: a later pattern never claims text an earlier one matched.
@@ -86,13 +87,14 @@ async function modelPass(text: string): Promise<Finding[]> {
 }
 
 // A detected name often comes back in part ("Regards, Priya"), so redact each part too.
-// Letters only, so titles such as "Dr." are left alone.
+// Letters only, so titles such as "Dr." are left alone. Whole words only, so the
+// part "Leo" never cuts into "Leonard".
 function nameParts(findings: Finding[]): Finding[] {
   return findings
     .filter((f) => f.type === "NAME")
     .flatMap((f) => f.value.split(/\s+/))
     .filter((part) => part.length >= 3 && /^\p{Lu}\p{L}+$/u.test(part))
-    .map((value) => ({ type: "NAME", value, source: "model" as const }));
+    .map((value) => ({ type: "NAME", value, source: "model" as const, wholeWord: true }));
 }
 
 export async function scan(payload: string, context: Context) {
@@ -114,7 +116,7 @@ export async function scan(payload: string, context: Context) {
   const sanitized = redact(payload, findings);
   // Verify: nothing detected may survive, and the pattern pass must come back clean.
   const residue = sanitized.replace(/\[REDACTED_[A-Z_]+\]/g, " ");
-  if (findings.some((f) => residue.includes(f.value)) || patternPass(residue).length > 0) {
+  if (findings.some((f) => occurrences(residue, f).length > 0) || patternPass(residue).length > 0) {
     return { status: "BLOCKED", reason: "Redaction incomplete; failing closed.", findings: summarize(findings) };
   }
   return { status: "REDACTED", payload: sanitized, findings: summarize(findings) };
@@ -125,9 +127,7 @@ export async function scan(payload: string, context: Context) {
 function redact(text: string, findings: Finding[]): string {
   const spans: [number, number, string][] = [];
   for (const f of findings) {
-    for (let i = text.indexOf(f.value); i !== -1; i = text.indexOf(f.value, i + 1)) {
-      spans.push([i, i + f.value.length, f.type]);
-    }
+    for (const i of occurrences(text, f)) spans.push([i, i + f.value.length, f.type]);
   }
   spans.sort((a, b) => a[0] - b[0]);
   const merged: [number, number, string][] = [];
@@ -147,6 +147,18 @@ function redact(text: string, findings: Finding[]): string {
     pos = end;
   }
   return out + text.slice(pos);
+}
+
+// Start index of every occurrence of a finding's value in text.
+function occurrences(text: string, f: Finding): number[] {
+  if (f.wholeWord) {
+    const escaped = f.value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "gu");
+    return [...text.matchAll(re)].map((m) => m.index ?? 0);
+  }
+  const out: number[] = [];
+  for (let i = text.indexOf(f.value); i !== -1; i = text.indexOf(f.value, i + 1)) out.push(i);
+  return out;
 }
 
 // Audit-safe view: types and counts only, never the values.

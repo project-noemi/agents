@@ -1,7 +1,7 @@
 # Build a Local PII Security Layer with LM Studio
 
 > **Status:** First version. Items marked `TODO` still need data from a real run.
-> **Track:** Sovereign / Local (see [`../SOVEREIGN_LLM_GUIDELINES.md`](../SOVEREIGN_LLM_GUIDELINES.md)).
+> **Track:** Sovereign / Local (see [`../SOVEREIGN_LLM_GUIDELINES.md`](../SOVEREIGN_LLM_GUIDELINES.md)). Gemma 4 E4B is an approved model on this track (Decision [2026-10-30-0001] in [`../DECISION_LOG.md`](../DECISION_LOG.md)).
 > **Audience:** Builders who want a PII filter that never sends data off the machine.
 
 You want to use cloud models for the hard work, but some of your data must not leave the building. This guide puts a PII filter in front of every outbound call. The filter runs on a Mac you own, using a small open model served by [LM Studio](https://lmstudio.ai). Nothing it inspects leaves that Mac.

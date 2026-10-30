@@ -85,11 +85,22 @@ async function modelPass(text: string): Promise<Finding[]> {
     .map((f) => ({ ...f, source: "model" as const }));
 }
 
+// A detected name often comes back in part ("Regards, Priya"), so redact each part too.
+// Letters only, so titles such as "Dr." are left alone.
+function nameParts(findings: Finding[]): Finding[] {
+  return findings
+    .filter((f) => f.type === "NAME")
+    .flatMap((f) => f.value.split(/\s+/))
+    .filter((part) => part.length >= 3 && /^\p{Lu}\p{L}+$/u.test(part))
+    .map((value) => ({ type: "NAME", value, source: "model" as const }));
+}
+
 export async function scan(payload: string, context: Context) {
   const findings = patternPass(payload);
   let modelOk = true;
   try {
-    findings.push(...(await modelPass(payload)));
+    const modelFindings = await modelPass(payload);
+    findings.push(...modelFindings, ...nameParts(modelFindings));
   } catch {
     modelOk = false;
   }

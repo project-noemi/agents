@@ -54,6 +54,8 @@ const MAX_CHANGES = 1000;
 const UPDATES_PAGE = 200;
 const MAX_UPDATE_PAGES = 50;
 const MAX_DEFINITION_PAGES = 20;
+/** Same-repo pipeline YAML files (definitions + nested templates) we will walk. */
+const MAX_PIPELINE_YAML = 200;
 const YAML_RE = /\.ya?ml$/i;
 
 // Organization: letters, digits, hyphens; starts and ends alphanumeric.
@@ -722,11 +724,13 @@ function createAzureDevOpsProvider({
 
   /**
    * Folded paths of every pipeline YAML a build definition in this
-   * repository runs, plus the same-repo `template:` files those YAMLs
-   * include (read from `base`, one level deep). The union in paths.js
-   * catches `*azure-pipelines*.yml` at any depth; a definition can name any
-   * path (`build/pipeline.yml`), so the repository is asked. Needs Build
-   * (read) on the producer (vso.build). Throws on any lookup failure.
+   * repository runs, plus every same-repo `template:` file those YAMLs
+   * include, nested (read from `base`). Cycles are skipped. More than
+   * MAX_PIPELINE_YAML files is a lookup failure (fail closed). The union
+   * in paths.js catches `*azure-pipelines*.yml` at any depth; a definition
+   * can name any path (`build/pipeline.yml`), so the repository is asked.
+   * Needs Build (read) on the producer (vso.build). Throws on any lookup
+   * failure.
    */
   async function pipelineYamlPaths(ref, base, cred) {
     const repo = await request(`${repoApi(ref)}?api-version=${API}`, { cred });
@@ -749,10 +753,22 @@ function createAzureDevOpsProvider({
       continuation = next;
     }
     const folded = new Set();
-    for (const pipeline of pipelines) {
-      folded.add(foldForCarveOut(pipeline));
-      const text = await baseText(ref, pipeline, base, cred);
-      for (const template of templateRefs(text, pipeline)) folded.add(foldForCarveOut(template));
+    const queue = [];
+    const enqueue = (filePath) => {
+      const key = foldForCarveOut(filePath);
+      if (folded.has(key)) return;
+      if (folded.size >= MAX_PIPELINE_YAML) {
+        throw providerError('too many pipeline YAML files to resolve templates', 502, 'ado-pipeline-templates');
+      }
+      folded.add(key);
+      queue.push(filePath);
+    };
+    for (const pipeline of pipelines) enqueue(pipeline);
+    while (queue.length) {
+      const current = queue.shift();
+      const text = await baseText(ref, current, base, cred);
+      if (!text) continue;
+      for (const template of templateRefs(text, current)) enqueue(template);
     }
     return folded;
   }

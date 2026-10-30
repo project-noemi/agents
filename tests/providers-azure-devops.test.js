@@ -964,7 +964,8 @@ test('commitFiles: a YAML file a build definition runs (or a template it include
   const cred = await w.cred('producer');
   w.fake.seedBase({
     'build/pipeline.yml': { content: 'steps:\n- template: steps/common.yml\n- template: /shared/deploy.yaml # root\n- template: x.yml@other\n' },
-    'build/steps/common.yml': { content: 'steps: []\n' },
+    'build/steps/common.yml': { content: 'steps:\n- template: nested.yml\n' },
+    'build/steps/nested.yml': { content: 'steps: []\n' },
     'shared/deploy.yaml': { content: 'steps: []\n' },
     'config/app.yml': { content: 'a: 1\n' },
   });
@@ -976,6 +977,7 @@ test('commitFiles: a YAML file a build definition runs (or a template it include
   assert.equal((await commit('BUILD/Pipeline.yml', 'noemi/workitem-90')).reason, 'pipeline-yaml', 'case-insensitive');
   assert.equal((await commit('build/steps/common.yml', 'noemi/workitem-90')).reason, 'pipeline-yaml', 'relative template');
   assert.equal((await commit('shared/deploy.yaml', 'noemi/workitem-90')).reason, 'pipeline-yaml', 'root template');
+  assert.equal((await commit('build/steps/nested.yml', 'noemi/workitem-90')).reason, 'pipeline-yaml', 'nested template');
   assert.equal(w.fake.branchExists('noemi/workitem-90'), false);
   const defs = w.fake.requests.find((r) => r.url.includes('/build/definitions?'));
   assert.match(defs.url, new RegExp(`repositoryId=${w.fake.repoId}`));

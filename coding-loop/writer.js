@@ -261,34 +261,35 @@ function formatSource(source) {
   return `Path: ${neutralizeFenceTags(source.path)}\n${fenceData('file', source.content)}`;
 }
 
-function githubContentsPath(repo, filePath, ref) {
-  const encoded = encodeRepoPath(String(filePath || ''));
-  return `/repos/${repo}/contents/${encoded}?ref=${encodeURIComponent(ref)}`;
-}
-
 const MAX_SOURCE_CHARS = 100000;
 
-async function loadBaseFiles({ repo, ref, files, token, ghImpl } = {}) {
-  const call = ghImpl || require('../scripts/github-client.js').gh;
+/**
+ * Read each plan file from the target repository at the base branch through
+ * the forge provider (provider.readFile). Callers from before the provider
+ * seam pass `repo` (owner/name), `token` and `ghImpl`; that builds the GitHub
+ * provider exactly as before. `ref` is the git ref (branch) to read.
+ */
+async function loadBaseFiles({
+  repo, ref, files, token, ghImpl, provider, repoRef, cred,
+} = {}) {
+  const { createGithubProvider } = require('./providers/github/index.js');
+  const forge = provider || createGithubProvider({ gh: ghImpl });
+  const target = repoRef || forge.parseRepo(repo);
+  if (!target) return { ok: false, reason: 'writer-source-unavailable' };
   const sources = [];
   for (const filePath of files || []) {
     if (!isSafeRepoPath(filePath)) {
       return { ok: false, reason: 'writer-bad-path', path: filePath };
     }
-    let payload;
-    try {
-      payload = await call(githubContentsPath(repo, filePath, ref), { token });
-    } catch (err) {
-      if (err && err.status === 404) {
-        sources.push({ path: filePath, missing: true });
-        continue;
-      }
-      throw err;
+    const read = await forge.readFile(target, filePath, ref, cred || token);
+    if (read && read.missing) {
+      sources.push({ path: filePath, missing: true });
+      continue;
     }
-    if (!payload || payload.type !== 'file' || payload.encoding !== 'base64' || typeof payload.content !== 'string') {
+    if (!read || read.notFile || typeof read.content !== 'string') {
       return { ok: false, reason: 'writer-source-not-file', path: filePath };
     }
-    const content = Buffer.from(payload.content.replace(/\n/g, ''), 'base64').toString('utf8');
+    const { content } = read;
     if (content.length > MAX_SOURCE_CHARS) {
       return { ok: false, reason: 'writer-source-too-large', path: filePath };
     }
@@ -344,21 +345,27 @@ async function draftChanges({
   base,
   token,
   ghImpl,
+  provider,
+  repoRef,
+  cred,
   sources: seededSources,
 } = {}) {
   if (!plan || plan.status !== 'accepted') {
     return { status: 'refused', reason: 'plan-not-accepted', files: [] };
   }
   let sources = Array.isArray(seededSources) ? seededSources : [];
-  if (typeof callModel !== 'function' && (repo || base || token)) {
-    if (!repo || !base || !token) {
+  if (typeof callModel !== 'function' && (repo || repoRef || base || token || cred)) {
+    if (!(repo || repoRef) || !base || !(token || cred)) {
       return { status: 'refused', reason: 'writer-source-unavailable', files: [] };
     }
     const loaded = await loadBaseFiles({
       repo,
+      repoRef,
+      provider,
       ref: base,
       files: plan.files,
       token,
+      cred,
       ghImpl,
     });
     if (!loaded.ok) return { status: 'refused', reason: loaded.reason, files: [] };
@@ -414,6 +421,7 @@ module.exports = {
   classifyGrok,
   draftChanges,
   encodeRepoPath,
+  loadBaseFiles,
   isCarvedOut,
   isSafeRepoPath,
   normalizeApiBase,

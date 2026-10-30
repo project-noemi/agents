@@ -10,6 +10,8 @@
  * is forbidden by the skill.
  */
 
+const { matchTarget, ownerEntryMatches, repoEntryMatches } = require('./providers/contract.js');
+
 const BOT_LOGINS = new Set(['dependabot', 'renovate', 'github-actions']);
 const WRITE_PERMISSIONS = new Set(['admin', 'maintain', 'write']);
 // The only scanner verdicts that let a body through. Exact strings: a
@@ -35,8 +37,15 @@ function labelsOf(issue) {
   }).filter(Boolean);
 }
 
+/**
+ * Accepts the intake shape (`author` login + `author_type`) and a provider
+ * WorkItem (`author: { login, isBot }`, the provider's own bot verdict).
+ */
 function isBotAuthor(issue) {
-  const login = String((issue && issue.author) || '').replace(/^@/, '').toLowerCase();
+  const author = issue && issue.author;
+  if (author && typeof author === 'object' && author.isBot === true) return true;
+  const rawLogin = author && typeof author === 'object' ? author.login : author;
+  const login = String(rawLogin || '').replace(/^@/, '').toLowerCase();
   const type = String((issue && issue.author_type) || '').toLowerCase();
   if (type === 'bot') return true;
   if (login.endsWith('[bot]')) return true;
@@ -58,7 +67,12 @@ function isEmptyOrTemplate(issue) {
   return withoutHeadings.every((line) => EMPTY_SECTION_MARKERS.some((re) => re.test(line)));
 }
 
-function repoAllowed(org, repo, repos) {
+/**
+ * `repos` entries are a bare GitHub slug (`owner/name`, exact match as
+ * always) or a full provider key (`azure-devops:org/project/repo`,
+ * case-insensitive). See providers/contract.js repoEntryMatches.
+ */
+function repoAllowed(target, repos) {
   // Missing or [] means every repo in orgs (documented internal default).
   // A present non-array is a broken allowlist — fail closed, do not treat
   // it as "allow all" (review finding on #423, merged over that fail).
@@ -66,7 +80,7 @@ function repoAllowed(org, repo, repos) {
     return { ok: false, reason: 'tenant-misconfigured' };
   }
   const allow = Array.isArray(repos) ? repos : [];
-  if (allow.length > 0 && !allow.includes(`${org}/${repo}`)) {
+  if (allow.length > 0 && !allow.some((entry) => repoEntryMatches(entry, target))) {
     return { ok: false, reason: 'outside-tenant' };
   }
   return { ok: true };
@@ -84,20 +98,26 @@ function withVia(result, via) {
  */
 function tenantAllows(issue, tenant, entitlement) {
   const org = issue && issue.org;
-  const repo = issue && issue.repo;
+  // `issue.provider` (default github) and `issue.project` place the repo on
+  // its forge; `orgs` entries are a bare GitHub owner or `<provider>:<owner>`.
+  const target = matchTarget(issue);
   const orgs = (tenant && Array.isArray(tenant.orgs)) ? tenant.orgs : [];
-  if (org && orgs.includes(org)) {
-    return withVia(repoAllowed(org, repo, tenant && tenant.limits ? tenant.limits.repos : undefined), 'tenant');
+  if (org && target && orgs.some((entry) => ownerEntryMatches(entry, target))) {
+    return withVia(repoAllowed(target, tenant && tenant.limits ? tenant.limits.repos : undefined), 'tenant');
   }
   if (!org || !entitlement) {
     return { ok: false, reason: 'outside-tenant' };
   }
   if (entitlement.error) return { ok: false, reason: 'entitlement-unverified' };
-  if (!entitlement.installation) return { ok: false, reason: 'app-not-installed' };
-  if (entitlement.installation.suspended) return { ok: false, reason: 'installation-suspended' };
+  // `grant` is the provider-neutral name; `installation` is the GitHub-era
+  // name hosts and tests still pass.
+  const grant = entitlement.grant !== undefined ? entitlement.grant : entitlement.installation;
+  if (!grant) return { ok: false, reason: 'app-not-installed' };
+  if (grant.suspended) return { ok: false, reason: 'installation-suspended' };
   if (!entitlement.client) return { ok: false, reason: 'unregistered-client' };
   if (entitlement.client.status !== 'active') return { ok: false, reason: 'client-suspended' };
-  return withVia(repoAllowed(org, repo, entitlement.client.repos), 'client');
+  if (!target) return { ok: false, reason: 'outside-tenant' };
+  return withVia(repoAllowed(target, entitlement.client.repos), 'client');
 }
 
 /**
@@ -236,19 +256,13 @@ function classifyIssue({ issue, tenant, entitlement, trigger, scan, budget } = {
   };
 }
 
+/**
+ * REST payload → the intake shape. Kept for hosts that import it; the
+ * GitHub provider owns the mapping (required lazily: the provider imports
+ * BOT_LOGINS from this module).
+ */
 function issueFromGitHub(repoFullName, payload) {
-  const [org, repo] = String(repoFullName || '').split('/');
-  const user = payload && payload.user ? payload.user : {};
-  return {
-    org,
-    repo,
-    number: payload && payload.number,
-    author: user.login,
-    author_type: user.type === 'Bot' ? 'bot' : 'user',
-    title: payload && payload.title,
-    body: payload && payload.body,
-    labels: payload && payload.labels,
-  };
+  return require('./providers/github/index.js').issueFromPayload(repoFullName, payload);
 }
 
 module.exports = {

@@ -315,6 +315,38 @@ label, and an opened pull request is `noemi:review` even without `--post`.
 See
 [`docs/MACHINE_IDENTITY.md`](../docs/MACHINE_IDENTITY.md) for the App.
 
+## Providers (forges)
+
+Every forge call goes through a provider in `coding-loop/providers/`
+(Decision [2026-10-27-0005]). The core keeps every verdict, the identity
+split, the secret scan and the carve-out list; a provider only does forge
+I/O. `--repo owner/name` means GitHub. `github:owner/name` and GitHub URLs
+also work, and a GitHub Enterprise Server URL is accepted when it matches
+`GITHUB_API_URL`. Repositories compare by key (`provider:slug`, lowercase).
+Tenant `orgs` and `limits.repos` entries without a prefix are GitHub; prefix
+another forge's entries with its id (`azure-devops:contoso`).
+
+To add a forge:
+
+1. Copy `coding-loop/providers/_template/` to `providers/<id>/`.
+2. Export `create<Forge>Provider({...seams})` and a default `provider`. Every
+   network call goes through an injectable seam.
+3. Implement each method and keep the security property its comment names.
+4. `parseRepo` accepts `<id>:…` and the forge's URLs, allow-lists every
+   segment, and returns `makeRepoRef(...)`.
+5. `getItem` returns markdown, puts text a person cannot see in `hiddenText`
+   (it is scanned with the body), and takes `repoKey` from the forge's reply.
+6. `commitFiles` is atomic, resumes on the same content, refuses
+   `head-exists` on different content, and keeps the executable bit.
+7. `resolveCredential` refuses the conductor credential as the producer and
+   keeps the secret non-enumerable.
+8. Write a fake of the forge and run it through `runConformance`
+   (`tests/helpers/provider-conformance.js`) in a `tests/*.test.js` file.
+9. Register it in `providers/index.js`. Providers are registered explicitly;
+   a file dropped in the folder is not a live forge.
+10. New CI or governance files go into the union in `coding-loop/paths.js`,
+    never into the provider.
+
 ## Gemini B′: gateway key, laptop ADC, or Actions WIF
 
 With `AI_GW_API_TOKEN` in the environment, `--live-critic` goes through the

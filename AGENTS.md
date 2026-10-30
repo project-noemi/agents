@@ -1,3 +1,15 @@
+# 🪪 Machine identity (mandatory)
+
+Every agent (Codex, Claude Code, Gemini, Cursor, or any other) opens pull requests only as the `noemi-agent` machine identity:
+
+- Open PRs with `bash scripts/agent-gh.sh pr create ...`, or `node scripts/agent-pr.js` where `gh` is unavailable, with `AGENT_GH_EXPECTED_LOGIN=noemi-agent` set so the wrapper refuses any other account.
+- Never open an agent PR with a human's `gh` login or token (for example `WSwarm`). GitHub blocks a PR's author from approving it, so a human-authored agent PR cannot get human review.
+- Commit as `noemi-agent <311935378+noemi-agent@users.noreply.github.com>`. Commit metadata does not set PR authorship; the token that opens the PR does.
+- If no `noemi-agent` token resolves, stop and say so. Do not fall back to human credentials.
+- Approving and merging stay human-only; the machine identity does neither.
+
+Details: [docs/MACHINE_IDENTITY.md](docs/MACHINE_IDENTITY.md) and `mcp-protocols/github.md` §6 (PR Authorship).
+
 # 🔐 Secrets & Configuration
 This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical or 1Password) and are never written to disk or hardcoded in source code. One scoped exception: an organization without a SecretOps platform may run the fleet AI reviewer in direct mode, with `AI_GW_API_TOKEN` and `REVIEWER_APP_PRIVATE_KEY` as GitHub Actions secrets passed by name to `.github/workflows/ai-review.yml`; vault mode wins whenever Infisical is configured (Decision [2026-10-22-0004]).
 

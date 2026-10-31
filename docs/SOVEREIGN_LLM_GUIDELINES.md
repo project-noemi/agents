@@ -61,6 +61,8 @@ The protocol exposes two tools:
 3. **Wire the MCP.** Register `local-inference-mcp` with the orchestrator so the `query_local_llm` and `check_local_models` tools become available to agents. Resolve the gateway credential at runtime via the vault reference; never write it to disk.
 4. **Verify offline behavior.** Because both weights and gateway are internal, agents retain full reasoning capability with **no outbound internet dependency**. This is what makes air-gapped and offline operation reliable rather than aspirational.
 
+> **Workstation option: LM Studio.** On a Mac, [LM Studio](https://lmstudio.ai) serves the same kind of OpenAI-compatible endpoint (`http://localhost:1234/v1` by default) for small models. For a worked example, a local PII filter using Gemma 4, see [`examples/lm-studio-pii-layer.md`](examples/lm-studio-pii-layer.md).
+
 ### Resilience expectations
 
 Per the repository's error-handling mandates, the MCP integration must degrade gracefully: if the primary model is unavailable, fall back to the declared `fallback_model`; on transient gateway errors, apply exponential backoff (`scripts/resilience_helpers.js` is the canonical reference); and emit a structured audit record to `stderr` for every routing decision so the orchestrator can observe failures.

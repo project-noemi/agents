@@ -68,8 +68,9 @@ tenant file.
 `orgs` is for the operator's **own** orgs. Client orgs do not go in a tenant
 file. A client repo is entitled when your conductor App is installed there
 (not suspended) **and** `NOEMI_CLIENT_REGISTRY` has an `active` row for that
-installation's GitHub account ID, and the run names a requester with write
-access (`--requested-by`). The registry is JSON injected from the vault
+installation's GitHub account ID. Every run, on a tenant org or a client
+org, names a requester with write access (`--requested-by`); without one the
+issue is `REFUSED` and gets no comment and no label (Decision [2026-10-27-0001]). The registry is JSON injected from the vault
 (`infisical run`), shaped by `docs/client-registry.schema.json`; never
 commit it, because it lists who your clients are. See
 [Client entitlement](../docs/architecture/issue-coding-loop.md#client-entitlement).
@@ -91,11 +92,12 @@ Contents write.
 From the repo root, with a read token in the environment:
 
 ```bash
-node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok
+node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok --requested-by your-login
 ```
 
-Omitting both `--scan` and `--scan-status`, or omitting the budget
-assertion, is `REFUSED` (fail closed). You should see `SKIPPED`,
+Omitting both `--scan` and `--scan-status`, omitting the budget
+assertion, or omitting a requester with write access is `REFUSED` (fail
+closed). You should see `SKIPPED`,
 `NEEDS_INFO`, `REFUSED`, or — when the three sufficiency signals are
 present — `ACTIONABLE` from the **heuristic** (`mode: heuristic`). Fable is
 not wired yet; the heuristic must not default to `ACTIONABLE`.
@@ -103,7 +105,7 @@ not wired yet; the heuristic must not default to `ACTIONABLE`.
 To apply the label (and post questions when the body is empty):
 
 ```bash
-CONDUCTOR_GH_TOKEN=… node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok --post
+CONDUCTOR_GH_TOKEN=… node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok --requested-by your-login --post
 ```
 
 ### 5. Turn on pickup only after the brake exists
@@ -172,18 +174,26 @@ run plans only and saves the result; the second implements exactly that plan
 and does not plan again:
 
 ```bash
-node coding-loop/run.js --repo your-org/your-repo --issue N \
+node coding-loop/run.js --repo your-org/your-repo --issue N --requested-by your-login \
   --scan --budget-ok --live-critic --plan-out plan.json
 # read plan.json, then:
-node coding-loop/run.js --repo your-org/your-repo --issue N \
+node coding-loop/run.js --repo your-org/your-repo --issue N --requested-by your-login \
   --scan --budget-ok --plan-in plan.json --post --implement --open-pr
 ```
 
 `--plan-in` is refused when the plan was not accepted, names another issue or
-profile, or the issue changed on GitHub after it was planned. NoéMi Code's
+profile, or the issue's title or body changed after it was planned (comments
+and labels do not count). It re-runs every Stage A gate (skip, bot, budget,
+scan, entitlement, requester), the structural critic and the outbound secret
+scan on the loaded plan, so a plan file edited after approval cannot name a
+carve-out path. The file is written with mode 0600; a symlinked target is
+refused. NoéMi Code's
 `/issue` command uses these two steps.
 
-A successful run opens a pull request as the producer, with base `develop`.
+A successful run opens a pull request as the producer, with base `develop`
+(else `dev`; the branch is chosen before any model call). The change is one
+commit, and the branch is created last, so a failure leaves nothing behind; a
+rerun resumes a branch that already holds the same files.
 The body starts with `Closes #N`, or with `Part of #N` when the accepted plan
 says the agent does not finish the work. With a conductor token, the issue
 keeps one `noemi:*` label. An opened pull request is `noemi:review`.
@@ -222,7 +232,11 @@ node coding-loop/run.js --repo owner/name --issue N --scan-status APPROVED --bud
 ```
 
 Omitting both `--scan` and `--scan-status` is REFUSED (fail closed). `--scan`
-is not implied by leaving `--scan-status` off.
+is not implied by leaving `--scan-status` off. `--scan-status` accepts only
+`APPROVED`, `REDACTED` or `BLOCKED`; anything else is refused. Every path an
+issue, model or plan file names must pass `coding-loop/paths.js`
+`isSafeRepoPath`, and the governance carve-out is one case-insensitive list
+for every forge (Decision [2026-10-27-0002]).
 
 An `ACTIONABLE` issue gets a Stage B plan and Stage B′
 (`coding-loop/plan.js`). Plan **Files** are PATH_RE hits that look like
@@ -276,7 +290,8 @@ It opens the PR as `noemi-agent`. It refuses paths outside the plan,
 governance carve-outs, and secret-shaped content. It does not approve or
 merge. Tests inject the model and GitHub clients; they do not open live PRs.
 
-Pickup: install `templates/ci/coding-loop-caller.yml` and set
+Pickup: install `templates/ci/coding-loop-caller.yml` (it passes secrets by
+name, never `secrets: inherit`, and the requester is the event sender) and set
 `CODING_LOOP_BUDGET_OK=true` only when the daily cap is real. Optional
 `CODING_LOOP_LIVE_CRITIC=true` plus org WIF (same vars as the fleet
 reviewer) passes `--live-critic`; unset, Stage B′ stays structural. The
@@ -299,6 +314,108 @@ separate: when a conductor token is present the loop keeps one `noemi:*`
 label, and an opened pull request is `noemi:review` even without `--post`.
 See
 [`docs/MACHINE_IDENTITY.md`](../docs/MACHINE_IDENTITY.md) for the App.
+
+## Providers (forges)
+
+Every forge call goes through a provider in `coding-loop/providers/`
+(Decision [2026-10-27-0005]). The core keeps every verdict, the identity
+split, the secret scan and the carve-out list; a provider only does forge
+I/O. `--repo owner/name` means GitHub. `github:owner/name` and GitHub URLs
+also work, and a GitHub Enterprise Server URL is accepted when it matches
+`GITHUB_API_URL`. Repositories compare by key (`provider:slug`, lowercase).
+Tenant `orgs` and `limits.repos` entries without a prefix are GitHub; prefix
+another forge's entries with its id (`azure-devops:contoso`).
+
+To add a forge:
+
+1. Copy `coding-loop/providers/_template/` to `providers/<id>/`.
+2. Export `create<Forge>Provider({...seams})` and a default `provider`. Every
+   network call goes through an injectable seam.
+3. Implement each method and keep the security property its comment names.
+4. `parseRepo` accepts `<id>:…` and the forge's URLs, allow-lists every
+   segment, and returns `makeRepoRef(...)`.
+5. `getItem` returns markdown, puts text a person cannot see in `hiddenText`
+   (it is scanned with the body), and takes `repoKey` from the forge's reply.
+   When items belong to a wider scope than a repository (an Azure DevOps
+   project), implement `itemScopeKey` so a run refuses an item from another
+   scope.
+6. `commitFiles` is atomic, resumes on the same content, refuses
+   `head-exists` on different content, and keeps the executable bit, or
+   declares `capabilities.preservesMode: false` and refuses to touch an
+   executable or a symlink.
+7. `resolveCredential` refuses the conductor credential as the producer and
+   keeps the secret non-enumerable.
+8. Write a fake of the forge and run it through `runConformance`
+   (`tests/helpers/provider-conformance.js`) in a `tests/*.test.js` file.
+9. Register it in `providers/index.js`. Providers are registered explicitly;
+   a file dropped in the folder is not a live forge.
+10. New CI or governance files go into the union in `coding-loop/paths.js`,
+    never into the provider.
+
+## Azure DevOps
+
+Pass `--repo ado:org/project/repo` (or a `dev.azure.com/org/project/_git/repo`
+or `org.visualstudio.com` URL) and `--item N` for the work item
+(Decision [2026-10-27-0006]). A work item belongs to a project, so a run
+refuses an item from another project. Tenant orgs are listed with a prefix:
+`"orgs": ["azure-devops:your-org"]`.
+
+The conductor and the producer are two Entra service principals. Credentials,
+first match wins per role (`P` is `ADO_CONDUCTOR` or `ADO_AGENT`):
+
+| Variable | Use |
+|---|---|
+| `P_TOKEN` | Entra access token minted by the host (pipeline workload identity) |
+| `P_CLIENT_ID`, `P_TENANT_ID`, and `P_CLIENT_SECRET` or `P_FEDERATED_TOKEN_FILE` | The service principal; the loop mints a token per tenant |
+| `P_PAT` | Org-scoped PAT for local development only (global PATs stop working 2026-12-01) |
+| `ADO_READ_TOKEN` / `ADO_READ_PAT` | Read-only fallback |
+| `ADO_AGENT_EXPECTED_ID` | The producer's identity GUID; producer writes are refused without it |
+| `ADO_REQUESTER_GROUP` | Project group whose members may request runs (a client row's `requester_group` overrides it) |
+| `ADO_BASE_URL`, `ADO_VSSPS_BASE_URL` | Azure DevOps Server or legacy hosts (https only) |
+
+Azure DevOps has no per-repository permission lookup that a least-privileged
+identity can call, so the requester must be a member of the requester group;
+no group configured is `REFUSED`. `--requested-by-author` (any forge) makes
+the item's author the requester, which is what the pipeline host uses because
+a service hook carries no identity.
+
+With `--requested-by-author`, a forge that implements `bodyEditors` (Azure
+DevOps) also requires every editor of the title or body to be the author or a
+requester; otherwise the item is `REFUSED` (`body-edited-by-non-requester`).
+GitHub omits it: editing another user's issue body needs write access, which
+is the requester bar itself. Instruction-like text a person cannot see
+(`hiddenText`) refuses the item before any model call (`hidden-instructions`);
+other hidden text is only scanned. If the conductor and the producer resolve
+to the same identity at run time, Stage C is refused (`identity-split`, 403).
+
+The producer also needs Build (read) (`vso.build`): a plan that touches a YAML
+file is checked against the repository's build definitions and the templates
+they include, and is refused (`pipeline-yaml`, or `pipeline-lookup-failed`
+when the lookup fails).
+
+The pull request description starts with `Fixes #N` (the repository setting
+"Commit mention work item resolution" decides whether completing it resolves
+the work item) or `Part of #N`, and links the item through `workItemRefs`.
+Other `#N` mentions are defused. The branch is `noemi/workitem-N`. The push
+API has no file mode, so a plan that edits an executable or a symlink is
+refused (`mode-unsupported`, `symlink-unsupported`). If a repository default
+turns auto-complete on, the loop clears it, and the run stops if it cannot.
+The loop label is one `noemi:*` tag, rewritten in one patch guarded by the
+work item revision.
+
+**Client orgs.** The client admin consents to the multi-tenant app in their
+Entra tenant and adds its service principal to their Azure DevOps org with
+Basic access. The operator adds a registry row
+`{ "provider": "azure-devops", "account_id": "<org GUID>", "tenant_id": "<tenant GUID>", "status": "active" }`.
+The loop reads the org's tenant, mints a token only when a row names that
+tenant, and requires the org's `instanceId` to match `account_id`. A
+pre-minted token is not tenant-targeted, so client orgs need the service
+principal credentials.
+
+**Host.** `templates/ci/azure-pipelines/coding-loop.yml` runs the CLI from a
+`workitem.created` service hook through an incoming-webhook connection that
+must have a secret (HMAC). Setup, client onboarding and troubleshooting:
+[`docs/examples/azure-devops-coding-loop.md`](../docs/examples/azure-devops-coding-loop.md).
 
 ## Gemini B′: gateway key, laptop ADC, or Actions WIF
 

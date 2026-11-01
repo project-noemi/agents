@@ -1,6 +1,6 @@
 # Project NoéMI — Public Reference Guide
 
-**Edition 2026.09.23**
+**Edition 2026.10.31**
 
 > **"We help you future-proof your organization against AI, by using AI."**
 
@@ -78,11 +78,15 @@ That is what Project NoéMI was built to do.
 
 ## Chapter 2: What Is Project NoéMI?
 
-Project NoéMI is a hands-on workshop series, delivered by **NewPush®**, in which your teams build governed AI agents on their own work. The first agents take administrative overhead off people's desks; the next ones support innovation, sales and profitability. Everything runs inside a security perimeter your organization controls. Participants can earn George Mason University digital badges as proof of a validated live deployment.
+Project NoéMI is an open agent framework that your organization owns and deploys, delivered by **NewPush®**. The framework evolves at the pace of AI: as models, tools and practices change, the framework is updated, and the agents your teams have built can take up those updates.
+
+The way onto the framework is the **NoéMI 40-hour accelerator**: a hands-on workshop series, run as hackathons (see [Chapter 8](#chapter-8-the-high-tech-surfboard-how-teams-build-together)), in which your teams build governed AI agents on their own work. The first agents take administrative overhead off people's desks; the next ones support innovation, sales and profitability. These agents start doing real work during the accelerator, so they deliver a return right away; their time savings are measured against the organization's own figures, and they are built to pay for the workshops (see ["Show me ROI metrics"](#show-me-roi-metrics)). Everything runs inside a security perimeter your organization controls. Participants who meet the eligibility requirements can earn a George Mason University non-credit digital badge.
+
+The accelerator is the ramp; the framework is what your organization keeps. When the 40 hours end, your teams are already using the framework, and its updates keep them moving forward without having to start over each time the technology changes.
 
 Here is a better way to think about it: NoéMI works with *organizations* — not individuals — to build, govern, and deploy what we call a **Virtual Workforce**. That Virtual Workforce is made up of AI agents — structured, governed, auditable AI systems that perform repeatable work alongside your human team.
 
-It is **not** a prompt engineering course. It is not a "learn ChatGPT in a day" session. It begins with cybersecurity, continues as weekly build sessions on your own workflows, and ends with production-ready AI workflows governed by the people who lead them.
+It is **not** a prompt engineering course. It is not a "learn ChatGPT in a day" session. It begins with cybersecurity (Phase 0), continues as hackathon build sessions on your own workflows, and ends with production-ready AI workflows governed by the people who lead them.
 
 The strategic aim is concrete: help enterprises convert AI from a labor-displacement fear into a productivity system. In practice, that means:
 
@@ -95,15 +99,16 @@ The strategic aim is concrete: help enterprises convert AI from a labor-displace
 
 - **Lead Organization:** NewPush® (cybersecurity/infrastructure company, founded in 1999)
 - **Academic Partner:** George Mason University — Center for Infrastructure Security in the Era of AI (ISEAI)
-- **Frameworks:** the Dakan & Feller "4 Ds" of AI Fluency (open, CC BY-NC-ND 4.0) and AI TRiSM, a framework defined by Gartner®, Inc.
-- **Credential:** George Mason University-issued Badges of Completion (micro-credentials) at three levels
+- **Frameworks:** the Dakan & Feller "4 Ds" of AI Fluency (open, CC BY-NC-ND 4.0) and AI TRiSM, a framework defined by Gartner®, Inc. (standards references in [Chapter 13](#frameworks-we-build-on))
+- **Program length:** 40 hours: 5 weeks (preferred), 5 days or 10 weeks, after the remote Phase 0 assessment
+- **Credential:** George Mason University non-credit digital badge (Explorer: AI Fluent Professional / Practitioner: AI Implementation Specialist / Accelerator: AI Governance Architect)
 - **Languages:** English, Spanish, French, German, Hungarian, ...
 - **Active Markets:** United States, Latin America, Europe (France, Germany, Hungary, Lithuania, ...)
 - **Target Audience:** SMB leaders, mid-market executives, government contractors, municipal/public sector, non-profit managers
 
 One thing NoéMI is explicitly **not** for: individual solopreneurs or self-improvement seekers. This is for organizations — teams, departments, companies — that need to transform how work gets done across groups of people. If you are looking for individual upskilling, there are excellent resources for that. NoéMI is the architecture that makes AI work at the organizational level.
 
-This library is about **making AI products work** in that environment. The agents, skills, and [`docs/tool-usages/`](tool-usages/) guides describe how to use those products — Grok Bot, Grok Build, gateways, n8n, and the rest — so a business can deploy the most effective use of AI. Documenting an external product and how to run it inside the enterprise is the work of this repository, not a detour from it.
+This library is about **making AI products work** in that environment. The agents, skills, and [`docs/tool-usages/`](tool-usages/) guides describe how to use those products — Grok Bot, Grok Build, gateways, n8n, and the rest — so a business can deploy the most effective use of AI. The framework stays tool-agnostic: the products are interchangeable surfaces, and the organization's AI work lives in files it owns. Documenting an external product and how to run it inside the enterprise is the work of this repository, not a detour from it.
 
 ---
 
@@ -121,7 +126,7 @@ The philosophy embedded in the name is this: AI disruption is inevitable. The qu
 
 NoéMI is the Ark you build before the flood, not the life raft you scramble for during it.
 
-The project was first piloted in Hungary with support from the International Rotary Clubs, then expanded to the United States through the partnership with George Mason University. It has served **numerous participants** across multiple cohorts with a train the trainer model that enables exponential growth, and ongoing expansion to major cities across the Americas and Europe.
+The project was first piloted in Hungary with support from the International Rotary Clubs, then expanded to the United States through the partnership with George Mason University. Three cohorts had run by September 2026. As of October 2026, George Mason University ISEAI reports **13 badge recipients**: seven Accelerators and six Practitioners. These are completion figures, not measured business returns. The program uses a train-the-trainer model that enables exponential growth, with ongoing expansion to major cities across the Americas and Europe.
 
 ---
 
@@ -141,9 +146,13 @@ Phase 0 is covered in depth in [Chapter 11](#chapter-11-phase-0-security-the-fou
 
 Tools change monthly. The AI model that is state-of-the-art today will be surpassed next quarter. The workflow automation platform you pick will release breaking changes. The API you integrated will deprecate an endpoint.
 
-NoéMI does not teach tools. It teaches **durable mental models** — the 4 Ds framework, governance principles, delegation patterns, discernment skills — that remain valid regardless of which AI model or platform is current.
+NoéMI does not depend on any one tool. We teach with whatever AI tools your organization approves; the framework keeps your work portable across them. What lasts are **durable mental models** — the 4 Ds framework, governance principles, delegation patterns, discernment skills — that remain valid regardless of which AI model or platform is current.
 
-NoéMI teaches how to keep learning and using new tools with ease, and how to design and build agent workflows that can be easily adapted to new tools and models. This reference architecture keeps being updated to reflect the latest changes in the AI landscape, so you don't have to wonder how to adapt to the constant onslaught of changes. This is your guide to stay on the swelling wave.
+NoéMI teaches how to keep learning and using new tools with ease, and how to design and build agent workflows that can be easily adapted to new tools and models.
+
+**The framework evolves at the pace of AI.** This reference architecture is updated as the AI landscape changes, so you do not have to work out on your own how to adapt to each new model or tool. After the accelerator, those updates flow into your organization's private `{company}-agents` copy, which syncs *from* this blueprint (see [Coding Loop](#coding-loop)). Capability keeps compounding without a matching increase in effort. This is the surfboard image in NoéMI: the accelerator gets your teams up on the wave, and the framework keeps them riding it, so they do not have to swim out again for every new wave.
+
+**Your AI intellectual property stays yours.** Much of an organization's most valuable AI work — instructions, personas, skills and accumulated context — tends to end up inside one AI product's memory, custom instructions and skill store. Work kept only there is tied to that product's roadmap and pricing. NoéMI keeps AI work tool-agnostic: agent specifications, skills and governance rules live as plain files in a repository your organization owns, portable across models and tools. Vendor features are copies loaded from that source of truth, not the place where the knowledge lives.
 
 The curriculum achieves this through a **Two-Layer System**: Layer A contains First Principles that never change, and Layer B contains Dynamic Labs that get updated per cohort, per tool release, or per quarter. You learn how to think about AI governance once. You learn the specific buttons to click in the current tool version this week. This is how you stay ahead of the curve.
 
@@ -197,7 +206,22 @@ An organization's proprietary data, trade secrets, financial projections, source
 
 ### The High-Tech Surfboard
 
-The pedagogical metaphor. NoéMI does not build a "Big Boat" — a slow, centralized education program that takes years to turn. It equips "Surfboards" — agile teams where a Pilot steers Passengers through the wave of AI disruption. Small, fast, maneuverable.
+The NoéMI metaphor, with two meanings that work together:
+
+- **The team.** NoéMI does not build a "Big Boat" — a slow, centralized education program that takes years to turn. It equips "Surfboards" — agile teams where a Pilot steers Passengers through the wave of AI disruption. Small, fast, maneuverable.
+- **The framework after the accelerator.** The 40-hour accelerator gets your teams up on the wave. The framework, which evolves at the pace of AI, keeps them riding it after the accelerator ends, without swimming out again for every new wave.
+
+### The 40-Hour Accelerator
+
+The NoéMI program that brings an organization onto the framework: 40 hours of hackathon sessions, delivered over 5 weeks (preferred), 5 days or 10 weeks, after the remote Phase 0 assessment. It is the ramp, not the destination; the framework is what the organization keeps. Not to be confused with **Accelerators (the Pilots)**, the participant track described in [Chapter 8](#chapter-8-the-high-tech-surfboard-how-teams-build-together).
+
+### Hackathon
+
+A time-boxed, hands-on build session in which a mixed team works on a real problem and finishes with something that runs, rather than a lecture or a slide deck. The word joins "hack" — in its original sense of building something clever and practical — with "marathon". In NoéMI, every accelerator session is a hackathon on the organization's own work, held inside the Phase 0 perimeter with the tools the organization approves. Velocity is the advanced hackathon format ([Chapter 10](#chapter-10-ways-to-engage-product-offerings)).
+
+### Tool-Agnostic IP
+
+The principle that an organization's AI work — agent specifications, skills, instructions and governance rules — is intellectual property kept in files the organization owns, portable across models and tools, rather than locked in one AI product's memory, custom instructions or skill store.
 
 ### Layer A (First Principles)
 
@@ -329,9 +353,17 @@ The Virtual Workforce operates primarily in the Agency modality. That is why Pha
 
 ## Chapter 8: The High-Tech Surfboard — How Teams Build Together
 
-NoéMI is not a lecture series. It is a **team sport**.
+NoéMI is not a lecture series. It is a **team sport**, and the accelerator sessions are run as **hackathons**: time-boxed, hands-on build sessions in which a mixed team works on a real problem from its own organization and finishes with something that runs (see [Hackathon](#hackathon)).
 
-The pedagogical metaphor is the "High-Tech Surfboard." While some programs try to build a Big Boat — a slow, comprehensive, one-size-fits-all education platform — NoéMI equips small, agile surfboard teams that can ride the wave of AI disruption rather than trying to outrun it.
+### Why Hackathons: Cathedral Builders and Open Source
+
+The great cathedrals were not the work of one person. They were raised over generations by masons, carpenters and glaziers who worked from shared plans, passed on their methods, and built on what the previous generation had left. Many of the largest advances in software came about in a similar way: open-source projects such as Linux grew because many contributors worked in the open on a shared base, reviewed each other's work, and built on what was already there.
+
+NoéMI hackathons apply the same pattern inside an organization. Explorers, Practitioners and Accelerators work on one shared, open framework and on problems from their own work. Each team's results become part of the base the next team builds on, and improvements to the public framework flow back to every organization that uses it.
+
+### The Surfboard
+
+The team metaphor is the "High-Tech Surfboard." While some programs try to build a Big Boat — a slow, comprehensive, one-size-fits-all education platform — NoéMI equips small, agile surfboard teams that can ride the wave of AI disruption rather than trying to outrun it. The accelerator gets those teams up on the wave; after it ends, the framework, which evolves at the pace of AI, keeps them riding.
 
 Every cohort contains three complementary tracks. They work together in what we call a **Montessori-style interaction** — all three tracks meet in the same environment, working on the same problems from different angles.
 
@@ -382,14 +414,16 @@ This is not a classroom exercise. It is a rehearsal for how the Virtual Workforc
 
 ## Chapter 9: The Workshop Progression — What Teams Build
 
-The workshop progression is **v3.0**. Each week names what the team leaves with, then the durable idea, then the lab.
+The workshop progression is curriculum **v3.0**: the 40 hours of the accelerator, described here in the preferred 5-week format (the 5-day and 10-week formats cover the same content). Each session is a hackathon. Each week names what the team leaves with, then the durable idea, then the lab.
 
 Every week separates content into two layers:
 
 - **Layer A (First Principles):** Durable concepts that remain valid regardless of which AI model or platform is current. These are the "why."
 - **Layer B (Dynamic Labs):** Technical exercises tied to specific tools in the current NewPush Labs stack. These are the "how," and they get updated with every cohort.
 
-### Week 0 (Prerequisite): Foundation & Triage
+### Phase 0 (Before the Workshops, Remote): Foundation & Triage
+
+Phase 0 is a prerequisite, not a workshop week. A remote readiness assessment, readout and remediation decision establish your security perimeter before the workshops begin.
 
 - **What your team leaves with:** a signed Security Perimeter Document.
 - **Layer A:** The Refusal Principle; The 1:50 Equilibrium
@@ -397,9 +431,11 @@ Every week separates content into two layers:
 - **Activity:** "The Triage" — Explorers identify their biggest pain points; Accelerators audit data safety
 - **Output:** A signed "Security Perimeter Document" — the organization's commitment to data boundaries
 
-This is where the journey begins. Before anyone touches an AI agent, the organization establishes what data is off-limits, what tools are authorized, and who is responsible for what. If this sounds unsexy, good. It is the most important week.
+This is where the journey begins. Before anyone touches an AI agent, the organization establishes what data is off-limits, what tools are authorized, and who is responsible for what. This step can look unglamorous. It is the most important step.
 
-### Week 1: Description & Interaction
+### Week 1: Description — Define the Task
+
+*Theme: Description & Interaction.*
 
 - **What your team leaves with:** the Prompt Relay — an Explorer's request turned into a structured prompt and critiqued by an Accelerator.
 - **Layer A:** Communication Hierarchy (Vague → Specific → Structured → Contextual); Product vs. Process Description
@@ -408,7 +444,9 @@ This is where the journey begins. Before anyone touches an AI agent, the organiz
 
 Participants learn that the quality of AI output is directly proportional to the quality of human input. This is not about learning magic prompting tricks. It is about learning to think clearly enough that a machine can execute your intent.
 
-### Week 2: Delegation & The Agentic Shift
+### Week 2: Delegation — Build the Workflow
+
+*Theme: Delegation & The Agentic Shift.*
 
 - **What your team leaves with:** Done criteria for an autonomous agent, from the Delegation Audit.
 - **Layer A:** The Agentic Shift (from Stateless Query to Stateful Loop); The Loop of Doom
@@ -417,7 +455,9 @@ Participants learn that the quality of AI output is directly proportional to the
 
 This is where chatbots become agents. Participants learn the difference between asking AI a question (stateless) and configuring AI to pursue a goal over time (stateful). They also learn why the second one is both more powerful and more dangerous.
 
-### Week 3: Discernment & The Guardian Layer
+### Week 3: Discernment — Test the Safeguards
+
+*Theme: Discernment & The Guardian Layer.*
 
 - **What your team leaves with:** a red-team pass over the cohort's agents, from the Red Team Gauntlet.
 - **Layer A:** The Guardian Layer (AI monitoring AI); Hallucination Taxonomy (Factual, Reasoning, Citation, Consistency, Confidence)
@@ -426,7 +466,9 @@ This is where chatbots become agents. Participants learn the difference between 
 
 This is the week that separates real AI programs from toy demos. Participants learn that AI systems will confidently produce wrong answers, leak data, follow injected instructions, and fail in ways nobody anticipated. Then they learn how to catch it.
 
-### Week 4: Diligence & Enterprise Integration
+### Week 4: Diligence — Review the Evidence
+
+*Theme: Diligence & Enterprise Integration.*
 
 - **What your team leaves with:** an ROI case presented in the Board Meeting.
 - **Layer A:** The Integration Imperative (Deep Integration vs. Walled Gardens); Ethics: Bias, Transparency, Reversibility; ROI modeling
@@ -435,7 +477,9 @@ This is the week that separates real AI programs from toy demos. Participants le
 
 Theory meets business reality. Participants must prove that their AI workflows produce measurable value — not just "cool demos," but workflows with calculated time savings, cost reductions, and quality improvements.
 
-### Week 5: Optimization & Capstone (Fleet Launch)
+### Week 5: Capstone — Launch and Hand Over
+
+*Theme: Optimization & Capstone (Fleet Launch).*
 
 - **What your team leaves with:** a live deployment, a badge submission, a security audit, and a governance documentation handoff.
 - **Layer A:** The Knowledge Triad (Context vs. RAG vs. Fine-tuning); The Cost Curve (Latency vs. Intelligence); The Feynman Requirement; Governance as Product
@@ -443,38 +487,49 @@ Theory meets business reality. Participants must prove that their AI workflows p
 - **Activity:** "The Architecture Debate" → "The Teach-Back" → "Fleet Launch" (live deployment)
 - **Outcome:** Badge submission, security audit, governance documentation handoff
 
-The capstone is not a presentation. It is a live deployment. Agents go into production on real infrastructure. Accelerators must teach a concept to Explorers (Feynman Requirement). The cohort leaves with working systems, not just knowledge.
+The capstone is not a presentation. It is a live deployment. Agents go into production on real infrastructure. Accelerators must teach a concept to Explorers (Feynman Requirement). The cohort leaves with working systems that are already doing measured work, not just knowledge.
 
 ---
 
 ## Chapter 10: Ways to Engage — Product Offerings
 
-NoéMI meets organizations where they are. Different maturity levels need different entry points.
+NoéMI meets organizations where they are. Different maturity levels need different entry points. Phase 0 is the remote entry to every format.
 
-### A. The NoéMI Workshops (5-Week Structured Program)
+| **Format** | **Length** | **For** |
+| --- | --- | --- |
+| NoéMI 40-hour accelerator — 5 weeks (preferred) | 40 hours, one day per week over 5 weeks | Teams building governed agents on their own workflows |
+| NoéMI 40-hour accelerator — 5 days (Intensive) | 40 hours over 5 consecutive days | Organizations wanting compressed delivery |
+| NoéMI 40-hour accelerator — 10 weeks | 40 hours over 10 weeks | Organizations that need a lighter weekly load |
+| 1-Day Executive Workshop | 1 day, 9:00–17:00 | Conference events, initial engagement, executive buy-in |
+| NoéMI Velocity (advanced hackathon) | "Ignition" 1 day; "Forge" 5 days | High-maturity organizations with the foundation in place |
+
+### A. The NoéMI 40-Hour Accelerator (5 Weeks, Preferred)
 
 - **For:** organizations that want their teams to build governed AI agents on their own workflows
-- **Format:** 1 day per week, 5-6 weeks
-- All five workshops (v3.0 content), including the Phase 0 security assessment
-- GMU badge upon completion of a validated live deployment
-- The most thorough path from zero to governed AI operations
+- **Format:** 40 hours: 5 weeks (preferred), 5 days or 10 weeks; the 5-week format runs one day per week
+- All five weeks of hackathon sessions (curriculum v3.0), after the remote Phase 0 security assessment
+- Agents start doing real work during the program, with measured time savings, so that they pay for the workshops
+- GMU non-credit digital badge for participants with at least 35 hours of instructional presence who meet the applicable completion requirements, including a validated live deployment
+- The ramp onto the framework, which keeps evolving after the 40 hours end
 
-### B. The NoéMI Intensive (5-Day Sprint)
+### B. The NoéMI Intensive (40 Hours over 5 Days)
 
 - **For:** Organizations wanting compressed delivery
-- **Format:** 5 consecutive days, dual-track (Basic/Advanced)
+- **Format:** the same 40 hours over 5 consecutive days, dual-track (Basic/Advanced)
 - Basic track: Strategy and exploration (Explorers)
-- Advanced track: Building with n8n, Gems, Grok Custom Agents, multi-agent systems (Practitioners/Accelerators)
+- Advanced track: Building with the AI tools the organization approves — for example n8n, Gemini Gems or Grok Custom Agents — and multi-agent systems (Practitioners/Accelerators)
 - Same depth, compressed timeline
 
-### C. The 1-Day Workshop (Condensed Introduction)
+### C. The 1-Day Executive Workshop (Condensed Introduction)
 
 - **For:** Conference events, initial engagement, executive buy-in
-- **Format:** Single day, 9:00-17:00
+- **Format:** Single day, 9:00–17:00
 - Three blocks: (1) Build a Virtual Coworker, (2) Marketing automation with AI agents, (3) Security
 - Hands-on with a coaching approach — participants leave with something working
 
-### D. The NoéMI Velocity (Hackathon)
+### D. The NoéMI Velocity (Advanced Hackathon)
+
+Every accelerator session is a hackathon. Velocity is the advanced, compressed hackathon format.
 
 - **For:** High-maturity organizations with solid security and experienced IT teams
 - Two gears:
@@ -597,6 +652,8 @@ For a step-by-step setup walkthrough, see [`docs/examples/cross-model-review-set
 
 v3.0 of the curriculum leverages the **NewPush Labs open-source stack**. This is a deliberate choice. NoéMI teaches "Production Reality" — real tools, real infrastructure, real deployment — not vendor-locked demos that fall apart outside a controlled environment.
 
+The table lists the tools used in the current labs. It is an example, not a requirement: we teach with whatever tools your organization approves, and the framework keeps your work portable across them.
+
 | **Component** | **Function** |
 | --- | --- |
 | **n8n** | Workflow automation and AI agent orchestration |
@@ -611,17 +668,17 @@ v3.0 of the curriculum leverages the **NewPush Labs open-source stack**. This is
 | **xAI Grok Custom Agents** | Hosted persona / Project / Skill equivalent to Gems and Custom GPTs |
 | **xAI Grok Build** | Local CLI / TUI agentic workspace (`grok`) — fourth stack alongside Gemini CLI, Claude Code, and Codex |
 
-Grok now covers both sides of the Gem / GPT job, and a local CLI stack:
+As one example of a vendor, Grok covers both sides of the Gem / GPT job, and a local CLI stack:
 
-- **Custom Agents, Projects, and hosted Skills** on grok.com are the persona + persistent-knowledge surface. Load a NoéMI spec into the agent instruction box; put the rest of the file in a Project.
+- **Custom Agents, Projects, and hosted Skills** on grok.com are hosted persona and persistent-knowledge surfaces. The NoéMI specification in your organization's repository remains the source of truth; anything placed in a vendor surface is a disposable copy that can be regenerated from the repository or replaced by another tool.
 - **Grok Build** (`grok`) is the local TUI / headless CLI: plan mode, subagents, worktrees, MCP, repo-local skills (`/skillify`), and `grok -p` for scripts. It reads this repository's `AGENTS.md`. `CLAUDE.md` and `GEMINI.md` are `@AGENTS.md` pointers, not generated catalogs. There is no generated `GROK.md`. Published Agent Skills live in `skills-dist/`.
 - **Grok Bot** (limited tiers) is an always-on teammate on a shared cloud computer. Treat it as a mutating orchestrator, not as a tenant boundary.
 
-They are vendor surfaces, not a new model baseline. See [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) and [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md).
+They are vendor surfaces, not a new model baseline, and not where your organization's AI work should live. See [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) and [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md).
 
 Three principles govern the stack:
 
-**No vendor lock-in.** Every component is open-source or has an open-source equivalent. What participants build during the program, they take home. No subscription required to keep running what you built.
+**No vendor lock-in — for the stack or for your IP.** Every component is open-source or has an open-source equivalent. Agent specifications, skills and governance rules live in files your organization owns, portable across models and tools, rather than in one AI product's memory or skill store. What participants build during the program, they take home. No subscription is required to keep running what you built. Optional maintenance and AI-acceleration support subscriptions are available for organizations that want help to keep riding the framework's updates.
 
 **Production-grade from day one.** This is not a sandbox. The same stack that participants learn on is the same stack that runs in production environments. The gap between "training exercise" and "deployed system" is zero.
 
@@ -639,7 +696,7 @@ NoéMI's credibility comes from the company it keeps.
 
 ### Academic Partners
 
-- **George Mason University** — Primary academic anchor. Reviews curriculum and issues Badges of Completion through the Center for Infrastructure Security in the Era of AI (ISEAI).
+- **George Mason University** — Primary academic anchor. Reviews curriculum and issues the non-credit digital badges through the Center for Infrastructure Security in the Era of AI (ISEAI).
 - **University of Pecs (PTE), Hungary** — Curriculum development and validation. Key people in Project NoéMI teach courses there.
 - **Obuda University, Hungary** — Micro-diploma program development.
 - **ESSCA School of Management** — Classroom facilities for European cohorts.
@@ -655,15 +712,22 @@ Part of NoéMI's value is curation. The volume of AI guidance grows every week, 
 
 - **The 4 Ds of AI Fluency** — Dakan, R. and Feller, J., "Framework for AI Fluency," v1.1, CC BY-NC-ND 4.0. NoéMI adopts the open framework and credits its authors.
 - **AI TRiSM** (AI trust, risk and security management) — a framework defined by Gartner, Inc. NoéMI's Phase 0 security methodology and Guardian Layer controls are mapped to it.
+- **Standards references:** client materials also reference the NIST AI Risk Management Framework and ISO/IEC 42001 as standards that organizations commonly align their AI governance to. NoéMI does not certify conformance to either standard, and the published control mapping in this repository is to AI TRiSM.
 
-### International Delivery Partners
+### Delivery Hubs and International Partners
 
+- **Baltimore, United States:** delivery hub.
+- **Budapest, Hungary:** delivery hub.
 - **Vilnius, Lithuania:** Cybersecurity and AI thought leadership, European Digital ID coordination.
 - **Bonn/Berlin, Germany:** IT security and energy sector partnerships.
+- **Santiago:** delivery hub for Latin America.
+- **Colorado, United States:** exploring a hub; not yet an active delivery location.
 
 ### The Badge System (3 Levels)
 
-These are not participation certificates. They are competency-based micro-credentials issued by George Mason University.
+These are not participation certificates. They are competency-based, non-credit digital badges issued by George Mason University at three levels (Explorer: AI Fluent Professional / Practitioner: AI Implementation Specialist / Accelerator: AI Governance Architect).
+
+**Eligibility:** at least 35 hours of instructional presence in the 40-hour accelerator and the applicable completion requirements, including a validated live deployment. Registration alone does not earn a badge.
 
 | **Level** | **Badge Title** | **Requirements** |
 | --- | --- | --- |
@@ -685,7 +749,7 @@ Your top performers — the 5-10% — absolutely self-learn AI. But NoéMI is no
 
 ### "AI changes so fast that any fixed week-by-week plan becomes outdated in months."
 
-This is exactly why NoéMI uses the Two-Layer System. Layer A (First Principles) never goes stale — critical thinking about delegation, governance, and ethics is timeless. These are not skills that expire when the next innovation arrives tomorrow. Layer B (Dynamic Labs) is updated every cohort to reflect the current tool landscape. You learn how to think once. You learn with the technology that is state of the art right now.
+This is exactly why NoéMI uses the Two-Layer System. Layer A (First Principles) never goes stale — critical thinking about delegation, governance, and ethics is timeless. These are not skills that expire when the next innovation arrives tomorrow. Layer B (Dynamic Labs) is updated every cohort to reflect the current tool landscape. You learn how to think once. You learn with the technology that is state of the art right now. And the plan is not the end point: the 40-hour accelerator is the ramp onto a framework that keeps evolving at the pace of AI after the workshops end.
 
 ### "My team already gets huge productivity gains from self-directed AI use."
 
@@ -693,7 +757,11 @@ Individual gains without governance equal organizational risk. Who audits what d
 
 ### "Show me ROI metrics."
 
-The 5-day format produces a measurable deliverable: a working Virtual Coworker with calculated time savings. The formula is straightforward: Time Saved x Labor Cost = ROI. The larger return is organizational: the ability to deploy AI safely across the enterprise, not just in one team's side project. A public case study will be linked here when one is approved for publication.
+Every accelerator format produces measurable deliverables: working Virtual Coworkers with calculated time savings. The agents built in the workshops start doing real work during the program, so the return begins right away and is meant to pay for the workshops. The formula is straightforward: Time Saved x Labor Cost = ROI. The figures are measured, not promised: they come from the organization's own before-and-after numbers, and results depend on the workflows chosen. The larger return is organizational: the ability to deploy AI safely across the enterprise, not just in one team's side project. A public case study will be linked here when one is approved for publication.
+
+### "Will our AI work end up locked into one vendor?"
+
+Not with NoéMI. The framework keeps AI work tool-agnostic: agent specifications, skills and governance rules live as files in a repository your organization owns, portable across models and tools. Vendor features such as hosted memory, custom instructions and skill stores are copies loaded from that repository, so your intellectual property is not locked in one AI product, and a change of tool or price does not mean starting again.
 
 ### "Previous training did not translate to real implementation."
 
@@ -754,7 +822,7 @@ Copy this blueprint to a private `{company}-agents` repo and run Stage A. Do not
 Start with the visual maps. They show the system architecture, the audience paths, the runtime flow, and the workshop structure in diagram form.
 → [`docs/visuals/`](visuals/)
 
-If you feel that this is too much to do in a self directed way, inquire about a [NoéMI Workshop](https://noemi.newpush.com) for your organization.
+If you feel that this is too much to do in a self directed way, inquire about the [NoéMI 40-hour accelerator](https://noemi.newpush.com) for your organization.
 
 The Ark is here. The blueprints are open. The flood is not waiting for anyone.
 
@@ -770,7 +838,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 
 | Document | Description |
 | --- | --- |
-| [`docs/METHODOLOGY.md`](METHODOLOGY.md) | The 4D Framework methodology in depth |
+| [`docs/METHODOLOGY.md`](METHODOLOGY.md) | The 4 Ds of AI Fluency methodology (Dakan & Feller) in depth |
 | [`docs/GOVERNANCE.md`](GOVERNANCE.md) | Governance, TRiSM alignment, and Red Teaming protocols |
 | [`docs/REQUIREMENTS.md`](REQUIREMENTS.md) | Technical and operational requirements |
 | [`docs/DECISION_LOG.md`](DECISION_LOG.md) | Architectural decision records |
@@ -800,7 +868,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 
 | Resource | Description |
 | --- | --- |
-| [`docs/lifecycle/`](lifecycle/) | The 4D lifecycle documents (Delegation, Description, Discernment, Diligence) |
+| [`docs/lifecycle/`](lifecycle/) | The 4 Ds lifecycle documents (Delegation, Description, Discernment, Diligence) |
 | [`docs/frameworks/gartner-trism.md`](frameworks/gartner-trism.md) | How NoéMI maps to the AI TRiSM framework (Gartner, Inc.) |
 | [`docs/frameworks/value-lenses.md`](frameworks/value-lenses.md) | Success-criteria overlays for comparing outcomes under different enterprise logics |
 | [`docs/mcp-setup/`](mcp-setup/) | MCP server setup guides (Google Workspace, n8n, Slack, Web Search) |

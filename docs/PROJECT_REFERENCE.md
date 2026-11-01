@@ -99,7 +99,7 @@ The strategic aim is concrete: help enterprises convert AI from a labor-displace
 
 - **Lead Organization:** NewPush® (cybersecurity/infrastructure company, founded in 1999)
 - **Academic Partner:** George Mason University — Center for Infrastructure Security in the Era of AI (ISEAI)
-- **Frameworks:** the Dakan & Feller "4 Ds" of AI Fluency (open, CC BY-NC-ND 4.0) and AI TRiSM, a framework defined by Gartner®, Inc. (standards references in [Chapter 13](#frameworks-we-build-on))
+- **Frameworks:** the NoéMI **4D Framework**, the architecture of the AI-review agent, built on the Dakan & Feller "4 Ds" of AI Fluency (open, CC BY-NC-ND 4.0); and AI TRiSM, a framework defined by Gartner®, Inc. (standards references in [Chapter 13](#frameworks-we-build-on))
 - **Program length:** 40 hours: 5 weeks (preferred), 5 days or 10 weeks, after the remote Phase 0 assessment
 - **Credential:** George Mason University non-credit digital badge (Explorer: AI Fluent Professional / Practitioner: AI Implementation Specialist / Accelerator: AI Governance Architect)
 - **Languages:** English, Spanish, French, German, Hungarian, ...
@@ -330,6 +330,23 @@ You used AI to produce something. Your name is on it. Diligence is the ethical, 
 - **Creation Diligence:** Ethical and legal best practices; awareness of biases, flaws, and stakeholder impacts
 - **Transparency Diligence:** Understanding expectations around disclosure; communicating AI involvement
 - **Deployment Diligence:** Verifying outputs; implementing safety checks; assuming responsibility for what ships
+
+### The 4D Framework: Architecture of the AI-Review Agent
+
+In NoéMI, the four dimensions are not only competencies that people learn. They are also the architecture of the **AI-review agent** at the heart of the framework: the agent that reviews AI-authored work and keeps AI use aligned with security, ethical and legal standards. NoéMI calls this application the **4D Framework**. The four dimensions are those of the Dakan & Feller framework; their use as the structure of an automated review is NoéMI's own.
+
+Each dimension is implemented as a review gate with one question:
+
+| **4D dimension** | **Review gate** | **Question the gate asks** | **Run order** |
+| --- | --- | --- | --- |
+| Delegation | Premise | Should this change exist at all? | 1 |
+| Description | Framing | Does the pull request honestly describe what it does? | 2 |
+| Discernment | Compliance | Does this change conflict with the compliance guidance? | 4 |
+| Diligence | Code | Is it correctly and safely implemented? | 3 |
+
+The gates run in the order shown in the last column. A failed premise, framing or code gate stops the review, and the later gates are skipped. The compliance gate applies guidance based on the EU AI Act and the GDPR; it identifies conflicts with that guidance and does not give a legal opinion. The reviewer recommends, and a human decides: approving and merging remain human actions.
+
+For the reviewer's operating rules, see [`docs/AI_REVIEW_GOVERNANCE.md`](AI_REVIEW_GOVERNANCE.md) and the reviewer persona in [`agents/engineering/pr-reviewer.md`](../agents/engineering/pr-reviewer.md).
 
 For deeper methodology details, see [`docs/METHODOLOGY.md`](METHODOLOGY.md) and the lifecycle documents in [`docs/lifecycle/`](lifecycle/).
 
@@ -632,11 +649,12 @@ NoéMI treats this as an identity problem rather than a policy problem. Four pri
 
 **Where the human belongs.** Reviewing every line does not scale and is not where human judgement is scarce. The leverage is *before* the work: deciding what should be attempted, and shaping the instruction when a review finds problems. NoéMI pauses at exactly that point — findings and a drafted fix-request go to a person, who edits the instruction before anything is dispatched. Oversight becomes specification rather than inspection.
 
-**Order of precedence.** Reviews ask three questions in sequence, and stop at the first failure:
+**Order of precedence.** The AI-review agent is built on the 4D Framework (see [Chapter 6](#the-4d-framework-architecture-of-the-ai-review-agent)). Reviews ask four questions in sequence, and stop at the first failure:
 
 1. **Should this change exist at all?** *(Delegation)*
 2. **Does the description honestly match the change?** *(Description)*
 3. **Is it correctly and safely built?** *(Diligence)*
+4. **Does it conflict with the compliance guidance?** *(Discernment)*
 
 Premise first, because the dominant failure of a capable coding agent is not broken code — it is **competent, well-formed, unnecessary work.** A reviewer that starts at the code approves that every time; at the code level it looks like good work, because it is good work aimed at nothing. This is where most AI-assisted engineering quietly loses money.
 
@@ -710,7 +728,7 @@ NoéMI's credibility comes from the company it keeps.
 
 Part of NoéMI's value is curation. The volume of AI guidance grows every week, and most of it is noise; we select the frameworks worth building on, adapt them to delivery reality, and credit their authors.
 
-- **The 4 Ds of AI Fluency** — Dakan, R. and Feller, J., "Framework for AI Fluency," v1.1, CC BY-NC-ND 4.0. NoéMI adopts the open framework and credits its authors.
+- **The 4 Ds of AI Fluency** — Dakan, R. and Feller, J., "Framework for AI Fluency," v1.1, CC BY-NC-ND 4.0. NoéMI adopts the open framework and credits its authors. The NoéMI **4D Framework** applies its four dimensions as the architecture of the AI-review agent (see [Chapter 6](#the-4d-framework-architecture-of-the-ai-review-agent)).
 - **AI TRiSM** (AI trust, risk and security management) — a framework defined by Gartner, Inc. NoéMI's Phase 0 security methodology and Guardian Layer controls are mapped to it.
 - **Standards references:** client materials also reference the NIST AI Risk Management Framework and ISO/IEC 42001 as standards that organizations commonly align their AI governance to. NoéMI does not certify conformance to either standard, and the published control mapping in this repository is to AI TRiSM.
 
@@ -838,7 +856,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 
 | Document | Description |
 | --- | --- |
-| [`docs/METHODOLOGY.md`](METHODOLOGY.md) | The 4 Ds of AI Fluency methodology (Dakan & Feller) in depth |
+| [`docs/METHODOLOGY.md`](METHODOLOGY.md) | The 4D Framework methodology in depth, built on the 4 Ds of AI Fluency (Dakan & Feller) |
 | [`docs/GOVERNANCE.md`](GOVERNANCE.md) | Governance, TRiSM alignment, and Red Teaming protocols |
 | [`docs/REQUIREMENTS.md`](REQUIREMENTS.md) | Technical and operational requirements |
 | [`docs/DECISION_LOG.md`](DECISION_LOG.md) | Architectural decision records |
@@ -868,7 +886,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 
 | Resource | Description |
 | --- | --- |
-| [`docs/lifecycle/`](lifecycle/) | The 4 Ds lifecycle documents (Delegation, Description, Discernment, Diligence) |
+| [`docs/lifecycle/`](lifecycle/) | The 4D lifecycle documents (Delegation, Description, Discernment, Diligence) |
 | [`docs/frameworks/gartner-trism.md`](frameworks/gartner-trism.md) | How NoéMI maps to the AI TRiSM framework (Gartner, Inc.) |
 | [`docs/frameworks/value-lenses.md`](frameworks/value-lenses.md) | Success-criteria overlays for comparing outcomes under different enterprise logics |
 | [`docs/mcp-setup/`](mcp-setup/) | MCP server setup guides (Google Workspace, n8n, Slack, Web Search) |

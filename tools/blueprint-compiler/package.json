@@ -2,7 +2,7 @@
   "name": "@noemi/blueprint-compiler",
   "version": "0.1.0",
   "private": true,
-  "description": "Sprint 1 starter: parse and validate NoéMI Markdown personas, run a mock provider.",
+  "description": "Compile NoéMI Markdown personas and run them on configured model providers, from the CLI or the Studio server.",
   "license": "FSL-1.1-Apache-2.0",
   "type": "module",
   "engines": {

@@ -60,6 +60,9 @@ op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.co
 | `NOEMI_STUDIO_PORT` | Studio server port (the Studio dev proxy expects `8787`) | `8787` |
 | `NOEMI_STUDIO_MAX_BODY_BYTES` | Request body cap for the Studio server | `524288` |
 | `NOEMI_STUDIO_ORIGIN` | Single CORS origin allowed to call the Studio server. Unset means same-origin only (the Vite proxy) | none |
+| `NOEMI_STUDIO_DATA_DIR` | The one folder for saved blueprints and run history. Created on first use, git-ignored | `data/` in this package |
+| `NOEMI_STUDIO_MAX_BLUEPRINTS` | Most blueprints that can be saved | `200` |
+| `NOEMI_STUDIO_MAX_RUNS` | Run-history rows kept, oldest dropped first | `500` |
 | `NOEMI_REPO_ROOT` | Root that `skills/` and `mcp-protocols/` resolve against. Use an absolute path; a relative one resolves against the current directory. Not a secret | this clone's root |
 
 A 401 from the gateway means the virtual key is missing or invalid; a 403 means
@@ -175,11 +178,22 @@ cd studio && VITE_STUDIO_BACKEND=http npm run dev
 | `GET /api/health` | | `{ ok: true }` |
 | `GET /api/providers` | | `{ providers, runtimes }`, names only |
 | `POST /api/validate` | `{ input }` | `{ ok, ir, resolved }` or `{ ok: false, stage, errors }`; no provider runs |
-| `POST /api/run` | `{ input, prompt?, provider?, runtime? }` | `text/event-stream`: `start`, `token`, `done`, or one `error` |
+| `POST /api/run` | `{ input, prompt?, provider?, runtime?, blueprintId? }` | `text/event-stream`: `start`, `token`, `done`, or one `error` |
+| `GET /api/runs[?limit=N]` | | Run history, newest first (1 to 500, default 100) |
+| `GET /api/blueprints` | | Saved blueprints: `[{ id, name, updatedAt }]` |
+| `POST /api/blueprints` | `{ name, markdown }` | 201 with the saved blueprint |
+| `GET /api/blueprints/:id` | | `{ id, name, markdown, createdAt, updatedAt }` |
+| `PUT /api/blueprints/:id` | `{ name, markdown }` | The updated blueprint |
+| `PATCH /api/blueprints/:id` | `{ name }` | Rename; the Markdown is kept |
+| `DELETE /api/blueprints/:id` | | 204 |
 
 `input` is `{ kind: "text", markdown }`, `{ kind: "url", url }` or
-`{ kind: "registry", ref }`. There is no file kind. Providers do not stream yet,
-so `token` carries the whole output in one event.
+`{ kind: "registry", ref }`. There is no file kind. `blueprintId` is optional: a
+saved blueprint's id, so the history row can show its current name.
+
+Output arrives as `token` events as the provider produces it. A provider can fail
+over to the next one only until its first token: after that the run ends with
+`error`, because a second provider's text would be appended to a partial answer.
 
 - **Allowlist first.** The server refuses to start unless `NOEMI_HTTP_ALLOWED_HOSTS`
   lists at least one host. The registry's host must be on it too.
@@ -191,7 +205,20 @@ so `token` carries the whole output in one event.
   error codes rather than messages.
 - Bodies must be `application/json` and fit under the size cap. The `Host` header
   must be loopback, the bound host or the CORS origin's host, which blocks DNS rebinding.
-- Saving blueprints (`/api/blueprints`) is not implemented yet and returns 404.
+- **Storage.** Saved blueprints and run history live in one folder
+  (`NOEMI_STUDIO_DATA_DIR`). Each blueprint is `<id>.json`, where the id is 24
+  server-made hex characters. The display name is stored inside the file and never
+  used as a file name, so a name like `../../x` is only text. Any other id is a 404
+  before a file is touched. Links in the folder are ignored, and writes are atomic.
+- **Run history.** `/api/run` adds one row to `runs.jsonl`: provider, runtime, model,
+  duration, tokens, outcome (`ok`, `fallback`, `error`) and error codes. It never
+  stores the prompt, persona text, output or error messages. History is best
+  effort: an unwritable folder does not fail a run. `data/` is plain local files, so
+  back it up or point `NOEMI_STUDIO_DATA_DIR` somewhere that is.
+- **No authentication yet.** Any process on the machine can call these routes,
+  including the ones that write and delete blueprints or spend gateway budget. Keep
+  the server on loopback, and do not deploy it beyond a developer machine until
+  it has authentication (AGENTS.md, Management API Security).
 
 ## Skill and MCP resolution
 
@@ -256,21 +283,3 @@ this clone's real `skills/`. The CLI tests clear the variable and cover the defa
 - [DEMO.md](DEMO.md) — offline demo script
 - [AGENTS.md](AGENTS.md) — secrets, loop, and package contract
 - [GIT-WORKFLOW.md](GIT-WORKFLOW.md) — branch map, staying up to date, and opening PRs
-
-
-
-1. Environment table rows (after NOEMI_STUDIO_ORIGIN)
-
-| NOEMI_STUDIO_DATA_DIR | The one folder for saved blueprints and run history. Created on first use, git-ignored | data/ in this package | | NOEMI_STUDIO_MAX_BLUEPRINTS | Most blueprints that can be saved | 200 | | NOEMI_STUDIO_MAX_RUNS | Run-history rows kept, oldest dropped first | 500 |
-
-2. Studio route table rows (after POST /api/run)
-
-| GET /api/runs[?limit=N] | | run history, newest first (1 to 500, default 100) | | GET /api/blueprints | | saved blueprints: [{ id, name, updatedAt }] | | POST /api/blueprints | { name, markdown } | 201 with the saved blueprint | | GET /api/blueprints/:id | | { id, name, markdown, createdAt, updatedAt } | | PUT /api/blueprints/:id | { name, markdown } | the updated blueprint | | PATCH /api/blueprints/:id | { name } | rename; the Markdown is kept | | DELETE /api/blueprints/:id | | 204 |
-
-/api/run also accepts an optional blueprintId (a saved blueprint's id) so the history row can show the blueprint's current name.
-
-3. Replace the bullet "Saving blueprints (/api/blueprints) is not implemented yet and returns 404."
-Saved blueprints and run history live in one folder (NOEMI_STUDIO_DATA_DIR). Each blueprint is <id>.json, where the id is 24 server-made hex characters. The display name is stored inside the file and never used as a file name, so a name like ../../x is only text. An id that is not 24 lowercase hex characters is a 404 before any file is touched. Links in the folder are ignored. Writes are atomic. /api/run adds one row to runs.jsonl: provider, runtime, model, duration, tokens, outcome (ok, fallback, error) and error codes. It never stores the prompt, the persona text, the output or error messages. History is best effort: an unwritable folder does not fail a run. data/ is plain local files: back it up, or point NOEMI_STUDIO_DATA_DIR somewhere that is.
-4. package .gitignore
-
-Add data/ (done in the .gitignore in this folder).

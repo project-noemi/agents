@@ -4,3 +4,5 @@ coverage/
 .env
 .env.*
 !.env.template
+# Studio saved blueprints and run history (NOEMI_STUDIO_DATA_DIR default).
+data/

@@ -194,7 +194,7 @@ test("server: a registry on a host outside the allowlist is refused", async () =
 
 test("server: run streams start, token, done with the mock provider", async () => {
   await withEnv(clean, () => withStudio({}, async ({ base, audit, rawAudit }) => {
-    const prompt = "summarize the private notes of Jane Example";
+    const prompt = "summarize the confidential prompt marker";
     const { events } = await runEvents(base, {
       input: { kind: "text", markdown: architect }, prompt, provider: "mock", runtime: "direct",
     });
@@ -207,7 +207,7 @@ test("server: run streams start, token, done with the mock provider", async () =
 
     const streamedOutput = tokenEvents.map((event) => event.text).join("");
     assert.match(streamedOutput, /^\[mock\] compiled coding\/architect/);
-    assert.match(streamedOutput, /Jane Example/);
+    assert.match(streamedOutput, /confidential prompt marker/);
 
     assert.equal(events.at(-1).type, "done");
     assert.equal(events.at(-1).provider, "mock");
@@ -217,7 +217,7 @@ test("server: run streams start, token, done with the mock provider", async () =
     assert.equal(record.task, "studio:run:coding/architect");
     assert.deepEqual(record.inputs, [`text:${Buffer.byteLength(architect)}B`, "mock", "direct"]);
     assert.deepEqual(record.actions, ["parse", "validate", "resolve", "run:mock"]);
-    assert.ok(!rawAudit().includes("Jane"), "the prompt never reaches the audit record");
+    assert.ok(!rawAudit().includes("confidential"), "the prompt never reaches the audit record");
     assert.ok(!rawAudit().includes("Senior Developer"), "the persona text never reaches the audit record");
   }));
 });
@@ -282,7 +282,7 @@ test("server: rejects malformed requests before compiling", async () => {
       [() => fetch(`${base}/api/validate`, { ...json, headers: { "content-type": "text/plain" }, body: "{}" }), 415],
       [() => fetch(`${base}/api/validate`, { ...json, body: "{" }), 400],
       [() => fetch(`${base}/api/blueprints/not-an-id`), 404],
-      [() => fetch(`${base}/api/secret-path-jane`), 404],
+      [() => fetch(`${base}/api/secret-path-marker`), 404],
     ];
     for (const [send, status] of cases) {
       const res = await send();
@@ -294,7 +294,7 @@ test("server: rejects malformed requests before compiling", async () => {
     const records = audit();
     assert.equal(records.length, cases.length, "every request is audited");
     assert.ok(records.every((r) => r.result.startsWith("rejected:")));
-    assert.ok(!JSON.stringify(records).includes("jane"), "unknown paths are not logged");
+    assert.ok(!JSON.stringify(records).includes("secret-path-marker"), "unknown paths are not logged");
   }));
 });
 

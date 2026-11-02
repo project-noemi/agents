@@ -310,6 +310,8 @@ If GitHub refuses installation on additional orgs, check that the App's **Where 
 
 Permissions stay Issues read/write and Metadata read. The runtime mints `{your-company}-conductor[bot]` installation tokens for the repository owner. Do not store a long-lived PAT as `CONDUCTOR_GH_TOKEN` unless you are debugging the mint path.
 
+**Fleet repositories (reusable workflow):** a repository that runs the loop through `templates/ci/coding-loop-caller.yml` has no vault access of its own, so the same two values are stored as GitHub Actions secrets named `CONDUCTOR_APP_ID` and `CONDUCTOR_APP_PRIVATE_KEY` — preferably organization secrets scoped to the repositories that run the loop. The caller passes them by name to `.github/workflows/coding-loop.yml`, which hands them to the runtime; the installation token is still minted per run for the calling repository's owner and never stored. `CONDUCTOR_GH_TOKEN` remains the already-minted override.
+
 #### Finding the installation ID
 
 **Adopters:** installation IDs are not stored in your register, vault, or workflow configuration.

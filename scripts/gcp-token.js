@@ -15,6 +15,11 @@
  *   Infisical stores nothing for Gemini, which is the correct reading of
  *   "use the vault wherever possible" rather than an exception to it.
  *
+ *   Scope: this covers Google credentials. The NewPush AI gateway virtual key
+ *   (AI_GW_API_TOKEN) is not a Gemini API key; Google credentials stay on the
+ *   gateway. When that key is set, scripts/model-config.js routes Gemini calls
+ *   to the gateway and this module is not called (Decision [2026-10-22-0001]).
+ *
  * RESOLUTION ORDER
  *   1. $GCP_ACCESS_TOKEN — pre-injected. In GitHub Actions this comes from
  *      google-github-actions/auth with `token_format: access_token`, which

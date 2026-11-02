@@ -5,17 +5,17 @@ the host agent's own context. Load this file before executing the skill.
 
 ## 🔐 Secrets & Configuration
 
-This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical or 1Password) and are never written to disk or hardcoded in source code.
+This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical or 1Password) and are never written to disk or hardcoded in source code. One scoped exception: an organization without a SecretOps platform may run the fleet AI reviewer in direct mode, with `AI_GW_API_TOKEN` and `REVIEWER_APP_PRIVATE_KEY` as GitHub Actions secrets passed by name to `.github/workflows/ai-review.yml`; vault mode wins whenever Infisical is configured (Decision [2026-10-22-0004]).
 
 ### Mandatory Security Rules
 
-- NEVER ask the user for secrets in the chat interface.
+- NEVER ask the user for secrets in the chat interface. <!-- rule: secrets.no-ask-user -->
 
 
-- NEVER hardcode actual secret values in any files, `.env` files, or logs.
+- NEVER hardcode actual secret values in any files, `.env` files, or logs. <!-- rule: secrets.no-hardcode -->
 
 
-- ALWAYS use an Environment Injection CLI (`infisical run` or `op run`) to resolve credentials at runtime.
+- ALWAYS use an Environment Injection CLI (`infisical run` or `op run`) to resolve credentials at runtime. <!-- rule: secrets.fetch-on-demand -->
 
 ## 🛡 Error Handling and Resilience
 

@@ -9,3 +9,6 @@ __pycache__/
 *.pyc
 test-artifacts/
 docs/superpowers/
+# Machine/user-local configuration layer (docs/configuration-layers.md).
+# Always loads last; never committed.
+AGENTS.local.md

@@ -67,6 +67,7 @@ vs `.github/workflows/ai-review.yml`).
 | Layer | Owns | Must not |
 |---|---|---|
 | Product (`coding-loop/*.js`, skills, `docs/model-routing.json`) | skip / refuse / needs-info / accepted / carve-out; identity checks; model family contract | grow a job queue, webhook server, or conversation memory |
+| Forge provider (`coding-loop/providers/*`, Decision [2026-10-27-0005]) | repository naming, item reads, comments, labels, entitlement lookups, commits, change requests | hold verdicts, carve-outs or scan logic; weaken the identity split |
 | Host (CLI `run.js` `main()`, Actions `coding-loop.yml`, later Mastra/n8n/Temporal) | when the loop starts, where labels are stored, how a run is re-queued | re-encode `classifyIssue`, default a missing scan to `APPROVED`, post as the wrong identity |
 
 **Fleet host (unattended):** Node CLI plus the reusable workflow
@@ -95,7 +96,8 @@ on all repositories in `newpush`, `project-noemi`, and `newpush-labs` (Decision
 
 1. Import the functions as tools/steps (`classifyIssue`, `scanIssueBody`,
    `completeThroughStageB`, `draftChanges` with injected `callModel`,
-   `openImplementationPr` with injected `ghImpl`).
+   `openImplementationPr` with injected `ghImpl`, or a `provider`, `ref` and
+   `cred` from `coding-loop/providers/` for a forge other than GitHub).
 2. Exec `node coding-loop/run.js` with explicit `--scan` / `--budget-ok`
    (what Actions does).
 3. Do **not** copy the gates into the framework. That is lock-in.
@@ -153,7 +155,7 @@ GitHub issue opened
         ├─ out of scope / unsafe → noemi:wont-act, STOP
         └─ actionable
                 ▼
-  Stage B   Fable 5 Max family     plan comment + noemi:planned
+  Stage B   Gemini Argon family    plan comment + noemi:planned
                 ▼
   Stage B′  Gemini Pro family      red-team the plan
         │
@@ -220,8 +222,10 @@ as `noemi-agent`. Label `noemi:in-progress`. Open a PR against `develop` (then
 calls Grok for one JSON object (`coding-loop/writer.js`), and opens the
 PR with `AGENT_GH_TOKEN` (`coding-loop/dispatch.js`). The body starts with
 `Closes #N`, or with `Part of #N` when the accepted plan says the agent does
-not finish the work. Pickup does not open PRs just because the producer
-token is present. When a conductor token is present, the loop applies one
+not finish the work. Pickup passes `--open-pr` when the producer token and a
+writer key (`AI_GW_API_TOKEN`, else `AI_GW_API_KEY`, else `XAI_API_KEY`) are
+both present (Decision [2026-10-29-0001]); the producer token alone still
+only prepares the envelope. When a conductor token is present, the loop applies one
 `noemi:*` label and removes the other `noemi:*` labels. An opened PR is
 `noemi:review`.
 
@@ -257,7 +261,10 @@ Every GitHub call in this loop — conductor comments and labels, producer
 PR open, Stage D review post — uses the same contract as
 `scripts/review-pr.js`:
 
-- Retry **only** transient statuses: 429 and 5xx.
+- Retry **only** transient statuses: 429 and 5xx, and a rate-limit 403.
+- Retry a write (POST, PUT, PATCH, DELETE) on 5xx only when the call is
+  idempotent; a 5xx after a write that succeeded must not post twice
+  (Decision [2026-10-27-0003]). Honour `Retry-After` up to 60 seconds.
 - Do **not** retry deterministic 4xx (401, 403, 404, 422).
 - Use `scripts/resilience_helpers.js` (`withRetry`) or the host’s equivalent.
 - An exhausted retry budget is a **connection failure**, not a product
@@ -285,7 +292,8 @@ PR to that file, not a host-framework deploy.
 
 | Stage | Family | Host today |
 |---|---|---|
-| triage / plan | Fable 5 Max | Heuristic in `coding-loop/`; live Fable in Claude Code via Orchestrator `model` |
+| triage | Fable 5 Max | Heuristic in `coding-loop/`; live Fable in Claude Code via Orchestrator `model` |
+| plan | Gemini Argon (`google/gemini-4-argon`) | Draft is heuristic in `coding-loop/`; revisions use the plan pin through `critic.revisePlanLive` |
 | code | Grok latest, effort xHigh | CLI `XAI_API_KEY` (`writer.js`); interactive `/grok-build:delegate` |
 | redteam | Gemini Pro | `critic.js` / fleet `review-pr.js` |
 | bulk | Gemini Flash (highest 3.x) or Sonnet 5 | Claude Code Orchestrator; **not** fleet PR review |
@@ -321,6 +329,53 @@ must wait for that promotion.
 committed tenant is `tenants/internal.json`: `source=newpush-pool`,
 `plan=internal`, no repo deny. BYO keys, monthly plans, and on-demand
 metering are schema fields, not implemented product.
+
+### Client entitlement
+
+Client orgs share the NewPush pool tenant; there is no tenant file per client
+and clients bring no API keys (Decision [2026-10-22-0005]). An org that is not
+on the tenant's `orgs` list is entitled only when all of these hold:
+
+1. **Installed.** The conductor App is installed on the repo and not suspended
+   (`GET /repos/{owner}/{repo}/installation` with the App JWT). The client's
+   org owner controls scope by choosing "Only select repositories".
+2. **Registered.** `NOEMI_CLIENT_REGISTRY` (JSON from the vault, shaped by
+   [`docs/client-registry.schema.json`](../client-registry.schema.json)) has an
+   `active` row for the installation's **account ID**. The App must be public
+   to be installed on client orgs, so anyone can install it; the registry is
+   NewPush's side of the grant. Rows key on the numeric account ID because
+   logins can be renamed and re-registered. Optional `repos` narrows the row.
+3. **Requested by a writer.** `--requested-by` names a user whose permission
+   on the repo is write, maintain or admin. Since Decision [2026-10-27-0001]
+   this applies to tenant orgs too. This is the bar Copilot, Claude
+   Code GitHub Actions and Devin use, and it stops outsiders on public client
+   repos from spending the pool.
+
+Each failure refuses with its own reason: `app-not-installed`,
+`installation-suspended`, `unregistered-client`, `client-suspended`,
+`trigger-unverified`, `trigger-not-writer`, and `entitlement-unverified` when
+a lookup fails (fail closed). `--plan-in` re-checks all three, so an
+uninstall or suspension between planning and implementing stops the run.
+
+**Azure DevOps** (Decision [2026-10-27-0006]) has no App installation. A
+client org is entitled when its Entra tenant (read from the org) is named by
+an `azure-devops` registry row, the conductor service principal can read the
+org (it was added with Basic access), and the org's `instanceId` matches the
+row's `account_id`. A 401 or 403 means the principal is not in the org
+(`app-not-installed`). The requester must be a member of the project's
+requester group (`ADO_REQUESTER_GROUP`, or the row's `requester_group`),
+because no least-privileged API answers whether another identity can write
+to a repository. When the author is the requester (`--requested-by-author`), every
+editor of the title or body must also pass the requester check, because a
+Stakeholder can edit a member's work item. Pipeline YAML can live at any
+path, so besides the carve-out union (which adds `**/*azure-pipelines*.y?ml`
+and `.vsts-ci.yml` at any depth) the provider refuses the YAML files the
+repository's build definitions name and the templates they include.
+
+The registry is never committed: this repository is public and the list says
+who NewPush's clients are. Industry comparison and the remaining work
+(App-identity PRs on client orgs, uninstall webhooks, per-client caps, CI
+approval gate): [`github-bot-entitlement-patterns.md`](github-bot-entitlement-patterns.md).
 
 ## Cost and safety (required before org-wide pickup)
 

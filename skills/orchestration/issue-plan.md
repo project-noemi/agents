@@ -18,8 +18,8 @@ from coding a rejected idea.
 ## Procedure
 1. **Reject non-actionable input** — If `intake.tier` is not `ACTIONABLE`,
    return `status: refused` and do not call a model.
-2. **Draft** — Using the Stage B family (Fable 5 Max, highest preview then
-   stable), write a plan comment with all of:
+2. **Draft** — Using the Stage B family (Gemini Argon, gateway pin
+   `google/gemini-4-argon`, a different model from the Stage B′ red-team), write a plan comment with all of:
    - **Goal** — one paragraph, the change a reviewer could verify
    - **Files** — expected paths or a bounded search plan if paths are unknown
    - **Tests** — how we will know the change is wrong if it is wrong

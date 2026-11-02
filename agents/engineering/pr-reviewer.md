@@ -59,6 +59,7 @@ well-formed, unnecessary work. Catching that is the primary value of this role.
    `.github/CODEOWNERS`, `.github/workflows/require-develop-source.yml`,
    `.github/workflows/ai-review.yml`, `.github/workflows/calibration-watch.yml`,
    the identity register, `docs/AI_REVIEW_GOVERNANCE.md`, `scripts/review-pr.js`,
+   `scripts/model-config.js`, `scripts/model-chat.js`,
    `scripts/calibration-watch.js`, `agents/coding/sentinel/core.md`,
    `agents/coding/sentinel/compliance.md`, or this persona, halt and escalate to
    human review. An agent evaluating changes to its own constraints is not

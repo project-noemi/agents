@@ -65,6 +65,16 @@ Edit **your** `tenants/internal.json` (or add `tenants/{company}.json`):
 Do not hardcode your org name into `coding-loop/`. The runner reads the
 tenant file.
 
+`orgs` is for the operator's **own** orgs. Client orgs do not go in a tenant
+file. A client repo is entitled when your conductor App is installed there
+(not suspended) **and** `NOEMI_CLIENT_REGISTRY` has an `active` row for that
+installation's GitHub account ID. Every run, on a tenant org or a client
+org, names a requester with write access (`--requested-by`); without one the
+issue is `REFUSED` and gets no comment and no label (Decision [2026-10-27-0001]). The registry is JSON injected from the vault
+(`infisical run`), shaped by `docs/client-registry.schema.json`; never
+commit it, because it lists who your clients are. See
+[Client entitlement](../docs/architecture/issue-coding-loop.md#client-entitlement).
+
 ### 3. Provision three identities (or reuse two)
 
 | Role | Identity | Token / App | May |
@@ -82,11 +92,12 @@ Contents write.
 From the repo root, with a read token in the environment:
 
 ```bash
-node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok
+node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok --requested-by your-login
 ```
 
-Omitting both `--scan` and `--scan-status`, or omitting the budget
-assertion, is `REFUSED` (fail closed). You should see `SKIPPED`,
+Omitting both `--scan` and `--scan-status`, omitting the budget
+assertion, or omitting a requester with write access is `REFUSED` (fail
+closed). You should see `SKIPPED`,
 `NEEDS_INFO`, `REFUSED`, or — when the three sufficiency signals are
 present — `ACTIONABLE` from the **heuristic** (`mode: heuristic`). Fable is
 not wired yet; the heuristic must not default to `ACTIONABLE`.
@@ -94,7 +105,7 @@ not wired yet; the heuristic must not default to `ACTIONABLE`.
 To apply the label (and post questions when the body is empty):
 
 ```bash
-CONDUCTOR_GH_TOKEN=… node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok --post
+CONDUCTOR_GH_TOKEN=… node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok --requested-by your-login --post
 ```
 
 ### 5. Turn on pickup only after the brake exists
@@ -142,15 +153,47 @@ The environment holds:
   plus `CONDUCTOR_APP_PRIVATE_KEY`, or `CONDUCTOR_GH_TOKEN`)
 - a producer token to open the pull request (`AGENT_GH_TOKEN`). The conductor
   token is refused for that step
-- a writer credential: `XAI_API_KEY`, or your organization's OpenAI-compatible
-  gateway (`AI_GW_API_TOKEN` and `AI_GW_BASE_URL`)
-- for `--live-critic`, application-default credentials on a laptop, or
-  Workload Identity Federation in Actions (`CODING_LOOP_LIVE_CRITIC=true` and
-  the same `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, and
-  `GOOGLE_CLOUD_PROJECT` variables as the fleet reviewer). There is no Gemini
-  API key
+- a model credential. One config (`scripts/model-config.js`) picks the route
+  for the writer and the critic:
+  - **NewPush AI gateway (main route):** `AI_GW_API_TOKEN` (alias
+    `AI_GW_API_KEY`). `AI_GW_BASE_URL` is optional and defaults to
+    `https://ai-gw.newpush.com`. With this key set, `--live-critic` uses the
+    gateway and does not need `gcloud`, and the writer uses the gateway even
+    when `XAI_API_KEY` is also set
+  - **Direct provider access (no gateway key):** `XAI_API_KEY` for the writer,
+    and for `--live-critic` application-default credentials on a laptop, or
+    Workload Identity Federation in Actions (`CODING_LOOP_LIVE_CRITIC=true` and
+    the same `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, and
+    `GOOGLE_CLOUD_PROJECT` variables as the fleet reviewer). There is no Gemini
+    API key
+  - a gateway 403, or a refusal whose body says the budget is spent, stops the
+    run. It is not an outage and is not re-queued
 
-A successful run opens a pull request as the producer, with base `develop`.
+To approve the plan before anything is written, run it in two steps. The first
+run plans only and saves the result; the second implements exactly that plan
+and does not plan again:
+
+```bash
+node coding-loop/run.js --repo your-org/your-repo --issue N --requested-by your-login \
+  --scan --budget-ok --live-critic --plan-out plan.json
+# read plan.json, then:
+node coding-loop/run.js --repo your-org/your-repo --issue N --requested-by your-login \
+  --scan --budget-ok --plan-in plan.json --post --implement --open-pr
+```
+
+`--plan-in` is refused when the plan was not accepted, names another issue or
+profile, or the issue's title or body changed after it was planned (comments
+and labels do not count). It re-runs every Stage A gate (skip, bot, budget,
+scan, entitlement, requester), the structural critic and the outbound secret
+scan on the loaded plan, so a plan file edited after approval cannot name a
+carve-out path. The file is written with mode 0600; a symlinked target is
+refused. NoéMi Code's
+`/issue` command uses these two steps.
+
+A successful run opens a pull request as the producer, with base `develop`
+(else `dev`; the branch is chosen before any model call). The change is one
+commit, and the branch is created last, so a failure leaves nothing behind; a
+rerun resumes a branch that already holds the same files.
 The body starts with `Closes #N`, or with `Part of #N` when the accepted plan
 says the agent does not finish the work. With a conductor token, the issue
 keeps one `noemi:*` label. An opened pull request is `noemi:review`.
@@ -175,8 +218,9 @@ wired.
 
 ## Stage A today
 
-Hard gates: `noemi:skip`, bot authors, empty/template body, tenant, scan,
-budget (`coding-loop/intake.js`). Then sufficiency (`coding-loop/sufficiency.js`):
+Hard gates: `noemi:skip`, bot authors, empty/template body, tenant or
+client entitlement plus a write-access requester (`coding-loop/entitlement.js`),
+scan, budget (`coding-loop/intake.js`). Then sufficiency (`coding-loop/sufficiency.js`):
 observable problem, in-scope path, checkable done condition. All three are
 required. The pass is a conservative heuristic until Fable is wired; it
 still never defaults to `ACTIONABLE`.
@@ -188,7 +232,11 @@ node coding-loop/run.js --repo owner/name --issue N --scan-status APPROVED --bud
 ```
 
 Omitting both `--scan` and `--scan-status` is REFUSED (fail closed). `--scan`
-is not implied by leaving `--scan-status` off.
+is not implied by leaving `--scan-status` off. `--scan-status` accepts only
+`APPROVED`, `REDACTED` or `BLOCKED`; anything else is refused. Every path an
+issue, model or plan file names must pass `coding-loop/paths.js`
+`isSafeRepoPath`, and the governance carve-out is one case-insensitive list
+for every forge (Decision [2026-10-27-0002]).
 
 An `ACTIONABLE` issue gets a Stage B plan and Stage B′
 (`coding-loop/plan.js`). Plan **Files** are PATH_RE hits that look like
@@ -198,8 +246,11 @@ file the issue names is kept even when this checkout does not contain it,
 because this repo is the loop blueprint and the issue may target another
 clone. Other paths are kept only when they exist as files inside the clone. Structural critique always runs (headings, files, no
 skip-red-team, no leftover registry or escaping paths). `--live-critic` then calls
-Gemini Pro (ADC, same selection rule as the fleet reviewer). On a fail with
-cycles remaining, B′ writes a revision prompt and that same Gemini caller
+Gemini Pro: the gateway critic pin (`google/gemini-3.1-pro-preview`, override
+`GEMINI_CRITIC_MODEL`) with a gateway key, else Vertex through ADC with the same
+selection rule as the fleet reviewer. On a fail with
+cycles remaining, B′ writes a revision prompt and the plan writer (gateway pin
+`google/gemini-4-argon`, override `PLAN_MODEL`, any gateway provider; not the red-team model)
 executes it on the plan before the next pass. A revision that does not
 change the plan, drops the skip-red-team record, or adds a path the issue
 did not name stops the cycle. Without `--live-critic`, B′ may still drop
@@ -211,13 +262,16 @@ re-queues — it is not an `accepted` plan.
 
 `--implement` prepares a Stage C envelope (`coding-loop/dispatch.js`) for
 `noemi-agent` on `develop` (then `dev`). `AGENT_GH_TOKEN` is required; the
-conductor token is refused.
+conductor token is refused. Pickup also passes `--open-pr` when a writer key
+is present (Decision [2026-10-29-0001]).
 
 `--implement --open-pr` drafts files with Grok. Auth is Fetch-on-Demand:
-`XAI_API_KEY` against `https://api.x.ai/v1`, **or** NewPush gateway
-`AI_GW_API_TOKEN` / `AI_GW_API_KEY` at `https://ai-gw.newpush.com/v1` (override
-`AI_GW_BASE_URL`). Gateway model ids are `provider/id`; the writer pins
-`xai/grok-4.6` unless `XAI_CODE_MODEL` is set. The request sets
+NewPush gateway `AI_GW_API_TOKEN` / `AI_GW_API_KEY` at
+`https://ai-gw.newpush.com/v1` (override `AI_GW_BASE_URL`), which wins when set,
+**else** `XAI_API_KEY` against `https://api.x.ai/v1`. Gateway model ids are
+`provider/id`; the writer pins `xai/grok-4.6` unless `XAI_CODE_MODEL` is set
+(a bare id gets the `xai/` prefix). On the gateway the pin is the model: no
+catalogue pick and no substitute. The request sets
 `max_completion_tokens` (default 65536, override `XAI_MAX_TOKENS`) so thinking
 tokens are not taken from the file JSON. The NewPush gateway is LiteLLM and
 rejects that field for `grok-4.6` unless the body also sends
@@ -236,13 +290,14 @@ It opens the PR as `noemi-agent`. It refuses paths outside the plan,
 governance carve-outs, and secret-shaped content. It does not approve or
 merge. Tests inject the model and GitHub clients; they do not open live PRs.
 
-Pickup: install `templates/ci/coding-loop-caller.yml` and set
+Pickup: install `templates/ci/coding-loop-caller.yml` (it passes secrets by
+name, never `secrets: inherit`, and the requester is the event sender) and set
 `CODING_LOOP_BUDGET_OK=true` only when the daily cap is real. Optional
 `CODING_LOOP_LIVE_CRITIC=true` plus org WIF (same vars as the fleet
 reviewer) passes `--live-critic`; unset, Stage B′ stays structural. The
 reusable workflow prepares the envelope; opening a PR is a separate
 producer invocation with `AGENT_GH_TOKEN` (or `AGENT_GH_TOKEN_CLASSIC` +
-`AGENT_GH_USE_CLASSIC=1`) and `XAI_API_KEY` or `AI_GW_API_TOKEN`+`AI_GW_BASE_URL`.
+`AGENT_GH_USE_CLASSIC=1`) and `AI_GW_API_TOKEN` or `XAI_API_KEY`.
 Stage D delegates to the fleet reviewer when a PR URL exists
 (`coding-loop/stage-d.js`). The reviewer reads
 `agents/coding/sentinel/compliance.md` from this blueprint, next to the
@@ -260,10 +315,117 @@ label, and an opened pull request is `noemi:review` even without `--post`.
 See
 [`docs/MACHINE_IDENTITY.md`](../docs/MACHINE_IDENTITY.md) for the App.
 
-## Gemini B′: laptop ADC vs Actions WIF
+## Providers (forges)
 
-`--live-critic` never uses a Gemini API key. Org policy on `project-noemi`
-disallows API keys and service-account key files.
+Every forge call goes through a provider in `coding-loop/providers/`
+(Decision [2026-10-27-0005]). The core keeps every verdict, the identity
+split, the secret scan and the carve-out list; a provider only does forge
+I/O. `--repo owner/name` means GitHub. `github:owner/name` and GitHub URLs
+also work, and a GitHub Enterprise Server URL is accepted when it matches
+`GITHUB_API_URL`. Repositories compare by key (`provider:slug`, lowercase).
+Tenant `orgs` and `limits.repos` entries without a prefix are GitHub; prefix
+another forge's entries with its id (`azure-devops:contoso`).
+
+To add a forge:
+
+1. Copy `coding-loop/providers/_template/` to `providers/<id>/`.
+2. Export `create<Forge>Provider({...seams})` and a default `provider`. Every
+   network call goes through an injectable seam.
+3. Implement each method and keep the security property its comment names.
+4. `parseRepo` accepts `<id>:…` and the forge's URLs, allow-lists every
+   segment, and returns `makeRepoRef(...)`.
+5. `getItem` returns markdown, puts text a person cannot see in `hiddenText`
+   (it is scanned with the body), and takes `repoKey` from the forge's reply.
+   When items belong to a wider scope than a repository (an Azure DevOps
+   project), implement `itemScopeKey` so a run refuses an item from another
+   scope.
+6. `commitFiles` is atomic, resumes on the same content, refuses
+   `head-exists` on different content, and keeps the executable bit, or
+   declares `capabilities.preservesMode: false` and refuses to touch an
+   executable or a symlink.
+7. `resolveCredential` refuses the conductor credential as the producer and
+   keeps the secret non-enumerable.
+8. Write a fake of the forge and run it through `runConformance`
+   (`tests/helpers/provider-conformance.js`) in a `tests/*.test.js` file.
+9. Register it in `providers/index.js`. Providers are registered explicitly;
+   a file dropped in the folder is not a live forge.
+10. New CI or governance files go into the union in `coding-loop/paths.js`,
+    never into the provider.
+
+## Azure DevOps
+
+Pass `--repo ado:org/project/repo` (or a `dev.azure.com/org/project/_git/repo`
+or `org.visualstudio.com` URL) and `--item N` for the work item
+(Decision [2026-10-27-0006]). A work item belongs to a project, so a run
+refuses an item from another project. Tenant orgs are listed with a prefix:
+`"orgs": ["azure-devops:your-org"]`.
+
+The conductor and the producer are two Entra service principals. Credentials,
+first match wins per role (`P` is `ADO_CONDUCTOR` or `ADO_AGENT`):
+
+| Variable | Use |
+|---|---|
+| `P_TOKEN` | Entra access token minted by the host (pipeline workload identity) |
+| `P_CLIENT_ID`, `P_TENANT_ID`, and `P_CLIENT_SECRET` or `P_FEDERATED_TOKEN_FILE` | The service principal; the loop mints a token per tenant |
+| `P_PAT` | Org-scoped PAT for local development only (global PATs stop working 2026-12-01) |
+| `ADO_READ_TOKEN` / `ADO_READ_PAT` | Read-only fallback |
+| `ADO_AGENT_EXPECTED_ID` | The producer's identity GUID; producer writes are refused without it |
+| `ADO_REQUESTER_GROUP` | Project group whose members may request runs (a client row's `requester_group` overrides it) |
+| `ADO_BASE_URL`, `ADO_VSSPS_BASE_URL` | Azure DevOps Server or legacy hosts (https only) |
+
+Azure DevOps has no per-repository permission lookup that a least-privileged
+identity can call, so the requester must be a member of the requester group;
+no group configured is `REFUSED`. `--requested-by-author` (any forge) makes
+the item's author the requester, which is what the pipeline host uses because
+a service hook carries no identity.
+
+With `--requested-by-author`, a forge that implements `bodyEditors` (Azure
+DevOps) also requires every editor of the title or body to be the author or a
+requester; otherwise the item is `REFUSED` (`body-edited-by-non-requester`).
+GitHub omits it: editing another user's issue body needs write access, which
+is the requester bar itself. Instruction-like text a person cannot see
+(`hiddenText`) refuses the item before any model call (`hidden-instructions`);
+other hidden text is only scanned. If the conductor and the producer resolve
+to the same identity at run time, Stage C is refused (`identity-split`, 403).
+
+The producer also needs Build (read) (`vso.build`): a plan that touches a YAML
+file is checked against the repository's build definitions and the templates
+they include, and is refused (`pipeline-yaml`, or `pipeline-lookup-failed`
+when the lookup fails).
+
+The pull request description starts with `Fixes #N` (the repository setting
+"Commit mention work item resolution" decides whether completing it resolves
+the work item) or `Part of #N`, and links the item through `workItemRefs`.
+Other `#N` mentions are defused. The branch is `noemi/workitem-N`. The push
+API has no file mode, so a plan that edits an executable or a symlink is
+refused (`mode-unsupported`, `symlink-unsupported`). If a repository default
+turns auto-complete on, the loop clears it, and the run stops if it cannot.
+The loop label is one `noemi:*` tag, rewritten in one patch guarded by the
+work item revision.
+
+**Client orgs.** The client admin consents to the multi-tenant app in their
+Entra tenant and adds its service principal to their Azure DevOps org with
+Basic access. The operator adds a registry row
+`{ "provider": "azure-devops", "account_id": "<org GUID>", "tenant_id": "<tenant GUID>", "status": "active" }`.
+The loop reads the org's tenant, mints a token only when a row names that
+tenant, and requires the org's `instanceId` to match `account_id`. A
+pre-minted token is not tenant-targeted, so client orgs need the service
+principal credentials.
+
+**Host.** `templates/ci/azure-pipelines/coding-loop.yml` runs the CLI from a
+`workitem.created` service hook through an incoming-webhook connection that
+must have a secret (HMAC). Setup, client onboarding and troubleshooting:
+[`docs/examples/azure-devops-coding-loop.md`](../docs/examples/azure-devops-coding-loop.md).
+
+## Gemini B′: gateway key, laptop ADC, or Actions WIF
+
+With `AI_GW_API_TOKEN` in the environment, `--live-critic` goes through the
+NewPush AI gateway and nothing below is needed. The virtual key is not a Gemini
+API key; Google credentials stay on the gateway (Decision [2026-10-22-0001]).
+
+Without a gateway key, `--live-critic` calls Vertex directly and never uses a
+Gemini API key. Org policy on `project-noemi` disallows API keys and
+service-account key files.
 
 **Laptop (this is what local live-fire needs):**
 
@@ -282,3 +444,15 @@ fleet-reviewer org **variables**: `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`,
 workflow mints `GCP_ACCESS_TOKEN` via `google-github-actions/auth`. One-time
 pool/provider setup: [`docs/examples/cross-model-review-setup.md`](../docs/examples/cross-model-review-setup.md)
 Part 1.
+
+## Graphite stacked PRs
+
+1. Detecting a stack: PR descriptions mention "Stack:" or "Base PR", or sequential PRs are based on each other's branches.
+2. Never merge a child PR into its parent branch. The merge target is always `develop`. Never change a PR's base by hand.
+3. Merge from the bottom up into `develop`, in one Graphite stack merge or through the Graphite merge queue.
+4. If an upper PR is ready first, leave it open until everything below it has landed.
+5. After anything lands on `develop`, run `gt sync`, `gt restack`, then `gt submit --stack`.
+6. To fix a lower PR, use `gt modify` on that branch, then `gt restack` and `gt submit --stack`. Force-pushing is expected on stacked branches. Do not use "merge develop in, no rebase, no force-push" on stacked branches; that rule applies only to non-stacked branches.
+7. Keep stacks to 3–5 PRs of about 500 changed lines each. Split larger plans into several short stacks.
+8. Ship-together notes must say "Ship together with #N. Merge from the bottom up into develop", never "Merge with #N".
+9. Run the AI reviewer once per revision (or on demand), not on every push.

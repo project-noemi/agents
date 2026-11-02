@@ -1,0 +1,135 @@
+{
+  "$comment": "Synthetic PII test set for pii-gateway.mts. Every value is fictional: example.com/.org/.net emails, 555-01xx and Ofcom drama-range phone numbers, SSNs from the 987-65-432x advertising range, published test card numbers and example IBANs. Never add real personal data to this file. Each document lists exactly five PII items (pii) and two non-PII phrases that must survive redaction (keep). variants are other spellings of the same item that must also be removed.",
+  "documents": [
+    {
+      "id": "email-01-onboarding",
+      "kind": "email",
+      "text": "Subject: Onboarding paperwork\n\nHi HR team,\n\nPlease set up payroll for our new hire Daniel Okafor. His SSN is 987-65-4321 and he can be reached at daniel.okafor@example.com or +1 (202) 555-0147. Mailing address: 1180 Birchwood Avenue, Apt 4B, Columbus, OH 43215.\n\nHe starts on the Data Platform team on 3 November.\n\nThanks,\nOperations",
+      "pii": [
+        { "type": "NAME", "value": "Daniel Okafor" },
+        { "type": "SSN", "value": "987-65-4321" },
+        { "type": "EMAIL", "value": "daniel.okafor@example.com" },
+        { "type": "PHONE", "value": "+1 (202) 555-0147" },
+        { "type": "ADDRESS", "value": "1180 Birchwood Avenue, Apt 4B, Columbus, OH 43215" }
+      ],
+      "keep": ["Data Platform team", "3 November"]
+    },
+    {
+      "id": "bill-02-electricity",
+      "kind": "bill",
+      "text": "NORTHWIND UTILITIES - Electricity bill\nInvoice INV-2026-0412 | Billing period: September 2026\n\nAccount holder: Eszter Varga\nService address: 27 Harbour Road, Bristol BS1 5TT\nCustomer account no.: 7730-2291-0048\nE-bill sent to: eszter.varga@example.net\n\nAmount due: €142.60 by 15 October 2026\nDirect debit from IBAN GB82 WEST 1234 5698 7654 32",
+      "pii": [
+        { "type": "NAME", "value": "Eszter Varga" },
+        { "type": "ADDRESS", "value": "27 Harbour Road, Bristol BS1 5TT" },
+        { "type": "ID_NUMBER", "value": "7730-2291-0048" },
+        { "type": "EMAIL", "value": "eszter.varga@example.net" },
+        { "type": "FINANCIAL", "value": "GB82 WEST 1234 5698 7654 32" }
+      ],
+      "keep": ["INV-2026-0412", "€142.60"]
+    },
+    {
+      "id": "message-03-sick-day",
+      "kind": "message",
+      "text": "[Team chat] Kenji Mori: Heads up, I won't make the sprint review tomorrow. Doctor confirmed it's pneumonia, so I'm on antibiotics and resting at home until Friday. If anything urgent comes up, text my personal number 415-555-0182. My partner Aiko Mori can also pick up the courier package at 58 Cedar Street, San Mateo, CA 94401.",
+      "pii": [
+        { "type": "NAME", "value": "Kenji Mori" },
+        { "type": "HEALTH", "value": "pneumonia", "variants": ["antibiotics"] },
+        { "type": "PHONE", "value": "415-555-0182" },
+        { "type": "NAME", "value": "Aiko Mori" },
+        { "type": "ADDRESS", "value": "58 Cedar Street, San Mateo, CA 94401" }
+      ],
+      "keep": ["sprint review", "Friday"]
+    },
+    {
+      "id": "email-04-refund",
+      "kind": "email",
+      "text": "Subject: Refund request #48213\n\nHello,\n\nI was charged twice for order 1029-A. The card used was 4111 1111 1111 1111. Please refund to the same card. My name on the account is Priya Raman, date of birth 14 March 1986, and my phone is +44 20 7946 0958.\n\nYou can also reply to priya.r@example.org.\n\nRegards,\nPriya",
+      "pii": [
+        { "type": "CC", "value": "4111 1111 1111 1111" },
+        { "type": "NAME", "value": "Priya Raman", "variants": ["Priya"] },
+        { "type": "OTHER", "value": "14 March 1986" },
+        { "type": "PHONE", "value": "+44 20 7946 0958" },
+        { "type": "EMAIL", "value": "priya.r@example.org" }
+      ],
+      "keep": ["Refund request #48213", "order 1029-A"]
+    },
+    {
+      "id": "bill-05-clinic",
+      "kind": "bill",
+      "text": "RIVERSIDE CLINIC - Statement of account\nStatement date: 2 October 2026\n\nPatient: Samuel Reed\nDate of birth: 07/22/1979\nPatient ID: RC-559201\nInsurance member ID: XHB 448 120 973\nService: MRI, left knee (follow-up for torn ACL)\nBalance due: $380.00\n\nReference: STMT-88812",
+      "pii": [
+        { "type": "NAME", "value": "Samuel Reed" },
+        { "type": "OTHER", "value": "07/22/1979" },
+        { "type": "ID_NUMBER", "value": "RC-559201" },
+        { "type": "ID_NUMBER", "value": "XHB 448 120 973" },
+        { "type": "HEALTH", "value": "MRI, left knee", "variants": ["torn ACL"] }
+      ],
+      "keep": ["RIVERSIDE CLINIC", "$380.00"]
+    },
+    {
+      "id": "message-06-sms",
+      "kind": "message",
+      "text": "SMS from +1 (617) 555-0123: Hi, it's Lucía Fernández. I just moved into 9 Linden Court, Apt 12C, Cambridge, MA 02139. The building manager needs my renter's insurance, policy number HOM-7731-55-0921. Can you also update my email to lucia.fdz@example.com? Thanks!",
+      "pii": [
+        { "type": "PHONE", "value": "+1 (617) 555-0123" },
+        { "type": "NAME", "value": "Lucía Fernández" },
+        { "type": "ADDRESS", "value": "9 Linden Court, Apt 12C, Cambridge, MA 02139" },
+        { "type": "ID_NUMBER", "value": "HOM-7731-55-0921" },
+        { "type": "EMAIL", "value": "lucia.fdz@example.com" }
+      ],
+      "keep": ["building manager", "renter's insurance"]
+    },
+    {
+      "id": "email-07-contractor",
+      "kind": "email",
+      "text": "Subject: VPN access for contractor\n\nHi IT,\n\nPlease create VPN access for our contractor Tom Becker from Northgate Consulting GmbH. His work email is tom.becker@example.com and his mobile is +49 30 5555 0172. For the background check, his passport number is C03005988 and his home address is Lindenstraße 14, 10969 Berlin.\n\nAccess should expire on 31 December.\n\nBest,\nProject Office",
+      "pii": [
+        { "type": "NAME", "value": "Tom Becker" },
+        { "type": "EMAIL", "value": "tom.becker@example.com" },
+        { "type": "PHONE", "value": "+49 30 5555 0172" },
+        { "type": "ID_NUMBER", "value": "C03005988" },
+        { "type": "ADDRESS", "value": "Lindenstraße 14, 10969 Berlin" }
+      ],
+      "keep": ["Northgate Consulting GmbH", "31 December"]
+    },
+    {
+      "id": "bill-08-mobile",
+      "kind": "bill",
+      "text": "BRIGHTWAVE MOBILE - Monthly invoice\nInvoice no. BW-2026-10-55821\nCustomer: Anna Kowalski\nMobile number: 212-555-0198\nBilling address: 301 Maple Grove Drive, Austin, TX 78704\nE-bill sent to: anna.kowalski@example.net\nPlan: Unlimited 5G, $45.00\nAutoPay card: 5555 5555 5555 4444",
+      "pii": [
+        { "type": "NAME", "value": "Anna Kowalski" },
+        { "type": "PHONE", "value": "212-555-0198" },
+        { "type": "ADDRESS", "value": "301 Maple Grove Drive, Austin, TX 78704" },
+        { "type": "EMAIL", "value": "anna.kowalski@example.net" },
+        { "type": "CC", "value": "5555 5555 5555 4444" }
+      ],
+      "keep": ["BW-2026-10-55821", "Unlimited 5G"]
+    },
+    {
+      "id": "message-09-hr-dm",
+      "kind": "message",
+      "text": "[Direct message] Quick confidential note before the 1:1. Marco Bianchi told me he is starting treatment for depression next week and may need reduced hours. Please keep this between us. His employee ID is E-40417 and his salary review ($96,500) is on hold until he is back. His emergency contact is sofia.bianchi@example.org if needed.",
+      "pii": [
+        { "type": "NAME", "value": "Marco Bianchi" },
+        { "type": "HEALTH", "value": "depression" },
+        { "type": "ID_NUMBER", "value": "E-40417" },
+        { "type": "FINANCIAL", "value": "$96,500" },
+        { "type": "EMAIL", "value": "sofia.bianchi@example.org" }
+      ],
+      "keep": ["1:1", "reduced hours"]
+    },
+    {
+      "id": "email-10-field-trip",
+      "kind": "email",
+      "text": "Subject: Field trip permission\n\nDear teacher,\n\nI give permission for my son Leo Nakamura to join the museum trip on 6 November. Please note he has a severe peanut allergy and carries an EpiPen. In an emergency call me at 303-555-0164. Our address for the bus list is 4471 Aspen Ridge Road, Boulder, CO 80301.\n\nThank you,\nHana Nakamura",
+      "pii": [
+        { "type": "NAME", "value": "Leo Nakamura" },
+        { "type": "HEALTH", "value": "severe peanut allergy", "variants": ["EpiPen"] },
+        { "type": "PHONE", "value": "303-555-0164" },
+        { "type": "ADDRESS", "value": "4471 Aspen Ridge Road, Boulder, CO 80301" },
+        { "type": "NAME", "value": "Hana Nakamura" }
+      ],
+      "keep": ["museum trip", "6 November"]
+    }
+  ]
+}

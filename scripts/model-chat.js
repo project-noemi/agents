@@ -58,6 +58,14 @@ function redactModelError(text, apiKey) {
     .slice(0, 400);
 }
 
+/** One header from a fetch Headers object or a node:http header map. */
+function headerValue(headers, name) {
+  if (!headers) return '';
+  if (typeof headers.get === 'function') return String(headers.get(name) || '');
+  const value = headers[name] != null ? headers[name] : headers[name.toLowerCase()];
+  return value == null ? '' : String(Array.isArray(value) ? value[0] : value);
+}
+
 function hostOf(apiBase) {
   try {
     return new URL(apiBase).host;
@@ -124,6 +132,7 @@ function postJson(url, { apiKey, body, timeoutMs, headers = {} }) {
         resolve({
           ok: res.statusCode >= 200 && res.statusCode < 300,
           status: res.statusCode,
+          headers: res.headers,
           text: async () => text,
           json: async () => JSON.parse(text),
         });
@@ -280,7 +289,14 @@ async function chatJson({
         { code: 'budget-or-forbidden', upstreamStatus: res.status },
       );
     }
-    throw httpError(`${label} ${model} → ${res.status}${suffix}`, res.status);
+    // Retry-After rides on the error so the caller's withRetry can honour it
+    // (coding-loop/http.js retryAfterMs). Absent header: no field, as before.
+    const retryAfter = headerValue(res.headers, 'retry-after');
+    throw httpError(
+      `${label} ${model} → ${res.status}${suffix}`,
+      res.status,
+      retryAfter ? { headers: { 'retry-after': retryAfter } } : {},
+    );
   }
   let payload;
   try {

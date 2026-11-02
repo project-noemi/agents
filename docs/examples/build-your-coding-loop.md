@@ -102,7 +102,8 @@ export CONDUCTOR_GH_TOKEN=…   # issues: write; no Contents write
 node coding-loop/run.js --repo your-org/your-repo --issue N --scan --budget-ok --post
 ```
 
-If `CONDUCTOR_GH_TOKEN` is missing, the command exits. Producer and
+If neither `CONDUCTOR_GH_TOKEN` nor the App pair (`CONDUCTOR_APP_ID` +
+`CONDUCTOR_APP_PRIVATE_KEY`) is present, the command exits. Producer and
 reviewer tokens are the wrong identity.
 
 ## Step 6: Turn On Pickup Later

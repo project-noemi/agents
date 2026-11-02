@@ -16,11 +16,27 @@
  *                        gates never execute. A compliance-only failure is the
  *                        deploying organization's choice: calibration does not
  *                        log a merge over that gate alone.
+ *                        Override mode (see OVERRIDES below) is the single
+ *                        exception: a premise, framing, or code failure that
+ *                        an allowlisted human overrode for the current head
+ *                        lets the later gates run. Compliance is the last gate
+ *                        and never continues. Without an override, behavior
+ *                        is unchanged.
  *   3. Severity        — validated against the rubric in the governance doc.
  *                        The model cannot invent tiers or reclassify its way to
  *                        a clean result. Unknown severities are coerced UP.
  *   4. No approval     — this file has no code path that approves a PR. It posts
  *                        an issue comment and nothing else.
+ *
+ *   OVERRIDES
+ *   A failed gate may be overridden by a PR comment of the form
+ *     /override layer=<1-4> rule=<rule-id> sha=<head-sha> reason="<why>" [one-off]
+ *   from an actor listed in the NOEMI_REVIEW_OVERRIDE_ACTORS Actions variable
+ *   (passed as --override-actors). The override is bound to the head SHA it
+ *   names, so a new push makes it stale. An overridden gate is reported as
+ *   OVERRIDDEN with its original findings — never as a pass. Override text is
+ *   never sent to the model. Parsing and authorization: scripts/review-override.js.
+ *   Calibration seeding: scripts/override-calibration.js. See docs/AI_REVIEW_OVERRIDE.md.
  *
  *   Reviewed content is DATA. The diff is delimited and the model is told to
  *   treat instructions inside it as findings to report, never as instructions to
@@ -34,6 +50,9 @@
  *               context is still fetched — so a GitHub token is still needed.
  *               Use it to exercise carve-out detection and rendering.
  *   --no-post   run the real review, print the comment instead of posting it.
+ *   --override-actors "a,b"  allowlist of GitHub logins whose override
+ *               comments are honored (CI passes vars.NOEMI_REVIEW_OVERRIDE_ACTORS).
+ *               Empty or absent: no override is honored.
  *
  * ENVIRONMENT
  *   Model route — scripts/model-config.js, the same config the coding loop uses:
@@ -100,6 +119,11 @@ const http = require('node:http');
 const https = require('node:https');
 const { withRetry } = require('./resilience_helpers.js');
 const { GH_API, gh, isTransientGitHubError } = require('./github-client.js');
+// Override parsing and authorization live in one module shared with the
+// calibration seeder, so the two can never disagree about what counts.
+const {
+  OVERRIDE_CONTINUE_GATES, OVERRIDE_ACTORS_VAR, parseOverrideActors, parseOverrideCommands, evaluateOverrides,
+} = require('./review-override.js');
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
 
 /** Canonical Sentinel spec. Always this repo — never the repository under review. */
@@ -136,6 +160,11 @@ const CARVE_OUT = [
   'scripts/model-config.js',
   'scripts/model-chat.js',
   'scripts/calibration-watch.js',
+  // Override mode: who may override a gate, and how overrides seed calibration.
+  'scripts/review-override.js',
+  'scripts/override-calibration.js',
+  '.github/workflows/override-calibration.yml',
+  'docs/AI_REVIEW_OVERRIDE.md',
   'agents/coding/sentinel/core.md',
   'agents/coding/sentinel/compliance.md',
   'agents/engineering/pr-reviewer.md',
@@ -204,6 +233,33 @@ function writeHaltMarker(reason) {
   return true;
 }
 
+/** Per-file cap for the text sent to the model. Above this, the gateway 413s. */
+const MAX_DIFF_FILE_CHARS = 100000;
+
+/**
+ * Drop oversized unified-diff file sections before the prompt is built.
+ * Smaller files in the same pull request stay intact.
+ * @param {string} diff
+ * @returns {string}
+ */
+function limitDiffForPrompt(diff) {
+  if (typeof diff !== 'string' || diff.length === 0) return diff || '';
+  const parts = diff.split(/(?=^diff --git )/m);
+  return parts.map((part) => {
+    if (!part.startsWith('diff --git ') || part.length <= MAX_DIFF_FILE_CHARS) return part;
+    const newline = part.indexOf('\n');
+    const header = newline === -1 ? part : part.slice(0, newline);
+    const named = header.match(/ b\/(\S+)$/);
+    const file = named ? named[1] : 'unknown';
+    return [
+      header,
+      `Omitted from the model prompt (${part.length} characters in ${file}).`,
+      'The file remains in the pull request. It was left out so the review request fits the model gateway.',
+      '',
+    ].join('\n');
+  }).join('');
+}
+
 /** Which changed files fall inside the governance carve-out. */
 function detectCarveOut(files) {
   return files.filter((f) => CARVE_OUT.includes(f));
@@ -257,11 +313,65 @@ function gateVerdict(findings) {
   return { verdict: blocking.length === 0 ? 'pass' : 'fail', blocking: blocking.length };
 }
 
-/** Overall recommendation. Premise failures always route to a human. */
+/** True when a finding was overridden on a gate whose override continues the
+ *  review. Compliance findings stay live even when overridden: a compliance
+ *  override is a record, not a pass. */
+function isContinuedOverride(f) {
+  return f.overridden === true && OVERRIDE_CONTINUE_GATES.includes(f.gate);
+}
+
+/** Overall recommendation. Premise failures always route to a human.
+ *  'overridden' means every remaining blocking finding sits on a gate a human
+ *  overrode — it is never reported as 'no-findings'. */
 function recommend(gateResults, findings) {
   if (gateResults.premise === 'fail') return 'escalate';
-  if (findings.some((f) => BLOCKING_SEVERITIES.includes(f.severity))) return 'request-changes';
+  const live = findings.filter((f) => !isContinuedOverride(f));
+  if (live.some((f) => BLOCKING_SEVERITIES.includes(f.severity))) return 'request-changes';
+  if (Object.values(gateResults).includes('overridden')) return 'overridden';
   return 'no-findings';
+}
+
+/**
+ * Run the gates in order. runGate(gate) returns the model's parsed reply.
+ * A failed gate stops the run — unless `overrides[gate]` holds at least one
+ * accepted override (an array, from evaluateOverrides) AND the gate is in OVERRIDE_CONTINUE_GATES. An overridden
+ * gate's verdict is 'overridden' (never 'pass') and its findings are kept,
+ * flagged `overridden: true`. A compliance override is recorded the same way
+ * but has no continuation. With no overrides this is exactly the historical
+ * stop-at-first-failure loop.
+ */
+async function runGates({ runGate, overrides = {}, dryRun = false }) {
+  const gates = {};
+  const findings = [];
+  let stopped = false;
+
+  for (const gate of GATES) {
+    if (stopped) { gates[gate.id] = { verdict: 'skipped', rationale: 'Earlier gate failed.' }; continue; }
+
+    if (dryRun) {
+      gates[gate.id] = { verdict: 'pass', rationale: 'dry run — no model invoked' };
+      continue;
+    }
+
+    const reply = await runGate(gate);
+    const gateFindings = validateFindings(reply.findings, gate.id);
+    const { verdict } = gateVerdict(gateFindings);
+    gates[gate.id] = { verdict, rationale: reply.rationale || '' };
+    const applied = overrides[gate.id] || [];
+    if (verdict === 'fail' && applied.length) {
+      for (const f of gateFindings) f.overridden = true;
+      gates[gate.id] = {
+        verdict: 'overridden', original_verdict: 'fail', rationale: reply.rationale || '', overrides: applied,
+      };
+      findings.push(...gateFindings);
+      // Compliance is the last gate: its override is a record, not a continuation.
+      if (!OVERRIDE_CONTINUE_GATES.includes(gate.id)) stopped = true;
+      continue;
+    }
+    findings.push(...gateFindings);
+    if (verdict === 'fail') stopped = true;
+  }
+  return { gates, findings };
 }
 
 /**
@@ -479,13 +589,48 @@ function renderComment(review) {
     out.push(`**Compliance guidance:** \`${review.compliance_source}\``, '');
   }
 
-  const icon = { pass: '✅', fail: '❌', skipped: '⏭️' };
+  const ov = review.overrides || null;
+  const overriddenGates = GATES.filter((g) => review.gates[g.id] && review.gates[g.id].verdict === 'overridden');
+  if (overriddenGates.length) {
+    const names = overriddenGates.map((g) => g.id).join(', ');
+    const tail = overriddenGates.some((g) => !OVERRIDE_CONTINUE_GATES.includes(g.id))
+      ? ' A compliance override is recorded only: it does not continue anything and does not make this a pass.'
+      : ' Later gates ran because of the override; their verdicts are their own.';
+    out.push(`> **⚠️ Overall: OVERRIDDEN — not a clean pass.** Failed gate(s) overridden by a human: ${names}. The original findings are listed below unchanged.${tail}`, '');
+  }
+
+  const icon = { pass: '✅', fail: '❌', skipped: '⏭️', overridden: '⚠️' };
   out.push('| Gate | 4D | Verdict |', '|---|---|---|');
   for (const g of GATES) {
     const r = review.gates[g.id];
-    out.push(`| ${g.id} | ${g.dimension} | ${icon[r.verdict] || ''} ${r.verdict} |`);
+    const label = r.verdict === 'overridden' ? `**OVERRIDDEN** (${r.original_verdict || 'fail'})` : r.verdict;
+    out.push(`| ${g.id} | ${g.dimension} | ${icon[r.verdict] || ''} ${label} |`);
   }
   out.push('');
+
+  if (ov && (ov.present || ov.lookup_error)) {
+    out.push('### Overrides', '');
+    if (ov.lookup_error) out.push(`- ⚠️ Override comments could not be read (${ov.lookup_error}); reviewed without overrides.`);
+    for (const g of GATES) {
+      const list = (ov.accepted && ov.accepted[g.id]) || [];
+      const r = review.gates[g.id];
+      for (const a of list) {
+        const who = `@${a.actor} at ${a.created_at} for head \`${String(a.sha).slice(0, 12)}\`, rule \`${a.rule}\`${a.one_off ? ', **one-off**' : ''} — reason: "${a.reason}" ([comment](${a.url}))`;
+        if (r && r.verdict === 'overridden') {
+          const effect = OVERRIDE_CONTINUE_GATES.includes(g.id) ? 'later gates continued' : 'recorded; last gate, no continuation, verdict not a pass';
+          out.push(`- **layer ${a.layer} ${g.id}** — **OVERRIDDEN** by ${who}. Effect: ${effect}.`);
+        } else {
+          const state = r ? r.verdict : 'not run';
+          out.push(`- **layer ${a.layer} ${g.id}** — override by ${who} not applied: the gate ${state === 'pass' ? 'passed' : `was ${state}`}.`);
+        }
+      }
+    }
+    for (const n of ov.notApplied || []) {
+      const what = n.gate ? ` for **layer ${n.layer} ${n.gate}**${n.rule ? ` rule \`${n.rule}\`` : ''}` : '';
+      out.push(`- Ignored override${what} from @${n.actor} at ${n.created_at} ([comment](${n.url})): ${n.why}.`);
+    }
+    out.push('');
+  }
 
   if (review.findings.length === 0) {
     out.push('**No findings.** All executed gates passed.', '');
@@ -493,7 +638,7 @@ function renderComment(review) {
     out.push(`### Findings (${review.findings.length})`, '');
     for (const f of review.findings) {
       const loc = f.file + (f.line ? `:${f.line}` : '');
-      out.push(`- **${f.severity}** · \`${loc}\` · _${f.gate}_ — ${f.claim}`);
+      out.push(`- **${f.severity}** · \`${loc}\` · _${f.gate}_ — ${f.claim}${f.overridden ? ' · **OVERRIDDEN**' : ''}`);
       if (f.evidence) out.push(`  - ${f.evidence}`);
       if (f.severity_coerced_from !== undefined) {
         out.push(`  - ⚠️ model returned severity \`${f.severity_coerced_from}\`, which is not in the rubric; coerced to \`high\``);
@@ -537,6 +682,10 @@ function parseArgs(argv) {
     allowPreview: /^(1|true|yes)$/i.test(process.env.GEMINI_ALLOW_PREVIEW || ''),
     preferPreviewPro: /^(1|true|yes)$/i.test(process.env.GEMINI_PREFER_PREVIEW_PRO || '1'),
     model: process.env.GEMINI_REVIEW_MODEL || '',
+    // Deliberately an argument, not an env lookup: `infisical run` injects the
+    // whole vault project into env, and the allowlist must come only from the
+    // Actions variable the workflow expands into this flag.
+    overrideActors: '',
   };
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--pr') args.pr = argv[++i];
@@ -547,7 +696,8 @@ function parseArgs(argv) {
     else if (argv[i] === '--prefer-preview-pro') args.preferPreviewPro = true;
     else if (argv[i] === '--allow-preview') args.allowPreview = true;
     else if (argv[i] === '--model') args.model = argv[++i];
-    else if (argv[i] === '--help') { process.stdout.write('Usage: review-pr.js --pr <number> [--dry-run] [--no-post] [--floor tier] [--prefer-pro] [--prefer-preview-pro] [--allow-preview] [--model id]\n'); process.exit(0); }
+    else if (argv[i] === '--override-actors') args.overrideActors = argv[++i] || '';
+    else if (argv[i] === '--help') { process.stdout.write('Usage: review-pr.js --pr <number> [--dry-run] [--no-post] [--floor tier] [--prefer-pro] [--prefer-preview-pro] [--allow-preview] [--model id] [--override-actors \"login,login\"]\n'); process.exit(0); }
   }
   return args;
 }
@@ -788,6 +938,84 @@ function reviewAuthLabel(route) {
   return route.mode === 'dry-run' ? 'none' : tokenSource();
 }
 
+/** All issue comments on the PR, oldest first (GitHub's default order). */
+async function listIssueComments(repo, pr, token) {
+  const all = [];
+  for (let page = 1; page <= 30; page += 1) {
+    const batch = await gh(`/repos/${repo}/issues/${pr}/comments?per_page=100&page=${page}`, { token });
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    all.push(...batch);
+    if (batch.length < 100) break;
+  }
+  return all;
+}
+
+/**
+ * Post a PR comment at most once, without losing it to a single 5xx.
+ *
+ * github-client retries only GET/HEAD on 5xx/network errors: a failed POST
+ * does not say whether GitHub stored the comment, and a blind retry posted
+ * duplicates. But not retrying at all means one 502 after the paid model
+ * calls loses the review for every organization. So each post carries a
+ * per-run hidden marker. After an ambiguous failure the PR's recent comments
+ * are listed: if the marker is there, the comment landed and that is
+ * success; if not, the POST is retried (up to `maxAttempts` in total). A
+ * definite rejection (4xx other than a rate limit) is never retried, and a
+ * failed lookup re-throws the POST error rather than risk a duplicate.
+ */
+const POST_ATTEMPTS = 4;
+
+function postMarker() {
+  return `<!-- noemi-review-post:${require('crypto').randomUUID()} -->`;
+}
+
+async function postOnce({
+  list,
+  post,
+  marker,
+  maxAttempts = POST_ATTEMPTS,
+  // A spent quota (reset beyond the wait cap) fails fast in gh(); retrying
+  // here would only repeat that.
+  retryIf = (err) => isTransientGitHubError(err) && !(err && err.rateLimitExhausted),
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  baseDelayMs = Number(process.env.GITHUB_RETRY_BASE_MS || process.env.REVIEW_RETRY_BASE_MS || 2000),
+}) {
+  if (!marker) throw new Error('postOnce: a marker is required');
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await post();
+    } catch (err) {
+      if (!retryIf(err)) throw err;
+      let comments;
+      try {
+        comments = await list();
+      } catch {
+        throw err;
+      }
+      const landed = (Array.isArray(comments) ? comments : [])
+        .find((c) => c && typeof c.body === 'string' && c.body.includes(marker));
+      if (landed) return landed;
+      if (attempt >= maxAttempts) throw err;
+      await sleep(Math.min(baseDelayMs * 2 ** (attempt - 1), 20000));
+    }
+  }
+}
+
+/** The issue-comments POST for this PR, through postOnce. */
+function postPrComment(repo, pr, ghToken, body) {
+  const marker = postMarker();
+  // `since` (minus clock-skew slack) keeps the lookup to recent comments,
+  // so a long PR thread does not push this run's comment past one page.
+  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  return postOnce({
+    marker,
+    post: () => gh(`/repos/${repo}/issues/${pr}/comments`, {
+      token: ghToken, method: 'POST', body: { body: `${body}\n\n${marker}` },
+    }),
+    list: () => gh(`/repos/${repo}/issues/${pr}/comments?since=${encodeURIComponent(since)}&per_page=100`, { token: ghToken }),
+  });
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const repo = process.env.GITHUB_REPOSITORY;
@@ -833,7 +1061,12 @@ async function main() {
   const pr = await gh(`/repos/${repo}/pulls/${args.pr}`, { token: ghToken });
   const fileList = await gh(`/repos/${repo}/pulls/${args.pr}/files?per_page=100`, { token: ghToken });
   const files = fileList.map((f) => f.filename);
-  const diff = await gh(`/repos/${repo}/pulls/${args.pr}`, { token: ghToken, accept: 'application/vnd.github.v3.diff' });
+  const rawDiff = await gh(`/repos/${repo}/pulls/${args.pr}`, { token: ghToken, accept: 'application/vnd.github.v3.diff' });
+  // A one-line generated snapshot (corpus.generated.json) replaces the whole
+  // line on every rebuild. GitHub's diff of that line exceeds the model
+  // gateway body limit and the advisory check dies with HTTP 413 before a
+  // review exists. Omit only those oversized file sections.
+  const diff = limitDiffForPrompt(rawDiff);
 
   // --- carve-out: before any model call ----------------------------------
   const carved = detectCarveOut(files);
@@ -847,7 +1080,7 @@ async function main() {
       '',
       'An agent evaluating changes to its own constraints is circular regardless of capability, so this escalates to human review by design. No model was invoked.',
     ].join('\n');
-    if (args.post) await gh(`/repos/${repo}/issues/${args.pr}/comments`, { token: ghToken, method: 'POST', body: { body } });
+    if (args.post) await postPrComment(repo, args.pr, ghToken, body);
     process.stderr.write(`${JSON.stringify({ task: 'AI review', result: 'halted: carve-out', carved })}\n`);
     process.stdout.write(`${body}\n`);
     writeHaltMarker(`carve-out: ${carved.join(', ')}`);
@@ -926,29 +1159,33 @@ async function main() {
     headSha: (pr.head?.sha || '').slice(0, 8) || '(unknown)',
   };
 
-  // --- gates, in order, stopping at the first failure ---------------------
-  const gates = {};
-  const findings = [];
-  let stopped = false;
-
-  for (const gate of GATES) {
-    if (stopped) { gates[gate.id] = { verdict: 'skipped', rationale: 'Earlier gate failed.' }; continue; }
-
-    if (args.dryRun) {
-      gates[gate.id] = { verdict: 'pass', rationale: 'dry run — no model invoked' };
-      continue;
-    }
-
-    const prompt = buildGatePrompt(gate, ctx);
-    const reply = route.mode === 'gateway'
-      ? await callGatewayGate(model, prompt, route.config.gateway)
-      : await callGemini(model, prompt, token, cfg);
-    const gateFindings = validateFindings(reply.findings, gate.id);
-    const { verdict } = gateVerdict(gateFindings);
-    gates[gate.id] = { verdict, rationale: reply.rationale || '' };
-    findings.push(...gateFindings);
-    if (verdict === 'fail') stopped = true;
+  // --- overrides: human decisions recorded as PR comments -----------------
+  // Read here, never shown to the model. Absent override commands, the review
+  // below is identical to a run without this block.
+  let overrides = { accepted: {}, notApplied: [], present: false };
+  try {
+    const comments = await listIssueComments(repo, args.pr, ghToken);
+    overrides = evaluateOverrides(comments, {
+      allowlist: args.overrideActors,
+      headSha: pr.head?.sha,
+      prAuthor: pr.user?.login,
+    });
+  } catch (err) {
+    process.stderr.write(`⚠ Could not read override comments: ${formatThrown(err)}\n`);
+    overrides.lookup_error = 'GitHub API error';
   }
+
+  // --- gates, in order, stopping at the first un-overridden failure -------
+  const { gates, findings } = await runGates({
+    runGate: (gate) => {
+      const prompt = buildGatePrompt(gate, ctx);
+      return route.mode === 'gateway'
+        ? callGatewayGate(model, prompt, route.config.gateway)
+        : callGemini(model, prompt, token, cfg);
+    },
+    overrides: overrides.accepted,
+    dryRun: args.dryRun,
+  });
 
   const review = {
     model,
@@ -962,14 +1199,15 @@ async function main() {
       Object.fromEntries(Object.entries(gates).map(([k, v]) => [k, v.verdict])),
       findings,
     ),
-    remediation_prompt: buildRemediationPrompt(findings, ctx),
+    remediation_prompt: buildRemediationPrompt(findings.filter((f) => !isContinuedOverride(f)), ctx),
+    ...(overrides.present || overrides.lookup_error ? { overrides } : {}),
   };
 
   const comment = renderComment(review);
   if (args.post) {
     // Deliberately the issue-comments endpoint. This runner has no code path
     // that submits a review event, so it cannot approve.
-    await gh(`/repos/${repo}/issues/${args.pr}/comments`, { token: ghToken, method: 'POST', body: { body: comment } });
+    await postPrComment(repo, args.pr, ghToken, comment);
   }
 
   process.stderr.write(`${JSON.stringify({
@@ -992,6 +1230,7 @@ async function main() {
         blocking_count: blockingFindings.length,
         severities: blockingFindings.map((f) => f.severity),
         recommendation: review.recommendation,
+        ...(findings.some((f) => f.overridden) ? { overridden_gates: GATES.filter((g) => gates[g.id].verdict === 'overridden').map((g) => g.id) } : {}),
       };
       fs.writeFileSync(markerPath, JSON.stringify(markerData, null, 2));
     }
@@ -999,8 +1238,10 @@ async function main() {
 }
 
 module.exports = {
-  detectCarveOut, validateFindings, normalizeGateReply, gateVerdict, recommend, writeHaltMarker,
-  gh, isTransientGitHubError,
+  detectCarveOut, limitDiffForPrompt, MAX_DIFF_FILE_CHARS, validateFindings, normalizeGateReply, gateVerdict, recommend, writeHaltMarker,
+  parseOverrideActors, parseOverrideCommands, evaluateOverrides, runGates, isContinuedOverride,
+  OVERRIDE_CONTINUE_GATES, OVERRIDE_ACTORS_VAR,
+  gh, isTransientGitHubError, postOnce, postPrComment,
   callGemini, callGatewayGate, confirmGatewayPin, gatewayReviewPin, resolveReviewRoute, reviewAuthLabel, reviewBackendLabel,
   geminiFetchTimeoutMs, geminiPost, isTransientGeminiError, wrapGeminiFetchError, formatThrown,
   buildGatePrompt, buildRemediationPrompt, renderComment,

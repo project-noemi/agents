@@ -80,8 +80,9 @@ test('entitlementGate: a client run needs a requester with write access', () => 
   for (const permission of ['write', 'maintain', 'admin']) {
     assert.equal(entitlementGate({ ...base, trigger: { login: 'x', permission } }).ok, true, permission);
   }
-  // Static tenant orgs keep their existing behaviour: no requester needed.
-  assert.equal(entitlementGate({ issue: clientIssue({ org: 'newpush' }), tenant }).ok, true);
+  // Tenant orgs need a verified writer too (coding-loop control hardening, S6).
+  assert.equal(entitlementGate({ issue: clientIssue({ org: 'newpush' }), tenant }).reason, 'trigger-unverified');
+  assert.equal(entitlementGate({ issue: clientIssue({ org: 'newpush' }), tenant, trigger: writer }).ok, true);
 });
 
 test('classifyIssue: a fully entitled client run reaches PENDING_SUFFICIENCY; a reader is refused', () => {

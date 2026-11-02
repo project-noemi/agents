@@ -3,53 +3,48 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawnSync } = require('child_process');
 const { evaluateLayerCompliance } = require('../scripts/layer_compliance');
 const {
     APPETITE_EXAMPLE,
-    RULE_CATALOG,
-    applyAppetite,
-    auditAppetiteExample,
-    auditRuleCatalog,
-    evaluateLayerDiff,
+    evaluatePreferenceOverrides,
     loadAppetite,
-    parseBaselineRules,
-    parseOverrides,
+    matchAppetite,
+    preferenceRules,
     runCli
 } = require('../scripts/layer_diff');
 
 const repoRoot = path.join(__dirname, '..');
 const BASELINE = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
+const EXAMPLE_APPETITE = path.join(repoRoot, APPETITE_EXAMPLE);
 
-function fixtureRepo(files) {
+function withRepo(files, fn) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'noemi-layer-diff-'));
     const all = { 'AGENTS.md': BASELINE, ...files };
-    for (const [rel, content] of Object.entries(all)) {
-        fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
-        fs.writeFileSync(path.join(dir, rel), content, 'utf8');
-    }
-    return dir;
-}
-
-function evaluate(files) {
-    const dir = fixtureRepo(files);
     try {
-        return evaluateLayerDiff({ repoRoot: dir, env: {} });
+        for (const [rel, content] of Object.entries(all)) {
+            fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+            fs.writeFileSync(path.join(dir, rel), content, 'utf8');
+        }
+        return fn(dir);
     } finally {
         fs.rmSync(dir, { recursive: true, force: true });
     }
 }
 
-function acmeLayer(lines) {
-    return { 'AGENTS.layers': 'org/acme/AGENTS.md\n', 'org/acme/AGENTS.md': `${lines.join('\n')}\n` };
+function twoLayers(msp, acme) {
+    return {
+        'AGENTS.layers': 'org/msp/AGENTS.md\norg/acme/AGENTS.md\n',
+        'org/msp/AGENTS.md': `${msp.join('\n')}\n`,
+        'org/acme/AGENTS.md': `${acme.join('\n')}\n`
+    };
 }
 
-function captureCli(dir, argv, extraEnv = {}) {
+function cli(dir, argv, env = {}) {
     let stdout = '';
     let stderr = '';
     const status = runCli({
         repoRoot: dir,
-        env: { ...extraEnv },
+        env,
         argv,
         stdout: { write: (chunk) => { stdout += chunk; return true; } },
         stderr: { write: (chunk) => { stderr += chunk; return true; } }
@@ -57,239 +52,114 @@ function captureCli(dir, argv, extraEnv = {}) {
     return { status, stdout, stderr };
 }
 
-test('baseline AGENTS.md tags every catalogued rule ID', () => {
-    const { rules, errors } = parseBaselineRules(BASELINE);
-    assert.deepEqual(errors, []);
-    for (const id of Object.keys(RULE_CATALOG)) {
-        assert.ok(rules.has(id), `missing rule marker ${id}`);
-    }
-    assert.deepEqual(auditRuleCatalog(repoRoot), []);
+test('preference rules come from the baseline tags and exclude core rules', () => {
+    const ids = [...preferenceRules(repoRoot)].sort();
+    assert.deepEqual(ids, ['coding.branch-naming', 'coding.model-baseline', 'coding.naming-conventions']);
 });
 
-test('AGENTS.md states later-wins, names the appetite file, and keeps core rules non-relaxable', () => {
-    assert.match(BASELINE, /the later source wins/);
-    assert.match(BASELINE, /except for core rules/);
-    assert.match(BASELINE, /AGENTS\.appetite\.example\.json/);
-    assert.match(BASELINE, /npm run layers:diff/);
-    assert.match(BASELINE, /\*\*Core rules cannot be relaxed\.\*\*/);
-    assert.match(BASELINE, /There is no waiver or exception mechanism\./);
-    assert.doesNotMatch(BASELINE, /AGENTS\.waivers/);
+test('upstream checkout has no preference overrides and the example appetite loads', () => {
+    const result = evaluatePreferenceOverrides({ repoRoot, env: {} });
+    assert.deepEqual(result.errors, []);
+    assert.deepEqual(result.overrides, []);
+    const appetite = loadAppetite(EXAMPLE_APPETITE, repoRoot);
+    assert.deepEqual(appetite.failOn, [{ rule: 'coding.branch-naming', action: 'relax' }]);
 });
 
-test('upstream repository reports no tagged overrides', () => {
-    const result = evaluateLayerDiff({ repoRoot, env: {} });
-    assert.deepEqual(result.differences, []);
-    assert.deepEqual(result.malformed, []);
-    assert.deepEqual(result.resolveErrors, []);
-    assert.deepEqual(auditAppetiteExample(repoRoot), []);
-});
-
-test('the layer template parses and uses catalogued IDs', () => {
-    const template = fs.readFileSync(path.join(repoRoot, 'org/example/AGENTS.md'), 'utf8');
-    const overrides = parseOverrides(template);
-    assert.ok(overrides.length >= 1);
-    for (const override of overrides) {
-        assert.equal(override.malformed, undefined, override.raw);
-        assert.ok(RULE_CATALOG[override.rule], override.rule);
-    }
-});
-
-test('the reporter names a secrets relaxation, and compliance still FAILs it', () => {
-    const files = acmeLayer(['- Dummy keys in fixtures. <!-- override: secrets.no-hardcode relax -->']);
-    const result = evaluate(files);
-    assert.equal(result.differences.length, 1);
-    assert.equal(result.differences[0].rule, 'secrets.no-hardcode');
-    assert.equal(result.differences[0].action, 'relax');
-    assert.equal(result.differences[0].class, 'credentials-in-repo');
-    assert.equal(result.differences[0].wins, true);
-    const dir = fixtureRepo(files);
-    try {
-        const compliance = evaluateLayerCompliance({ repoRoot: dir, env: {} });
-        assert.equal(compliance.findings[0].level, 'FAIL');
-        assert.match(compliance.findings[0].message, /cannot be relaxed/);
-    } finally {
-        fs.rmSync(dir, { recursive: true, force: true });
-    }
-});
-
-test('a committed AGENTS.waivers.json is ignored', () => {
-    const result = evaluate({
-        ...acmeLayer(['- Dummy keys in fixtures. <!-- override: secrets.no-hardcode relax -->']),
-        'AGENTS.waivers.json': JSON.stringify({ waivers: [{ rule: 'secrets.no-hardcode', reason: 'r', owner: 'o' }] })
+test('the later layer wins and the earlier override is marked superseded', () => {
+    withRepo(twoLayers(
+        ['- MSP gateway. <!-- override: coding.model-baseline relax -->'],
+        ['- Keep the pin. <!-- override: coding.model-baseline tighten -->']
+    ), (dir) => {
+        const { overrides } = evaluatePreferenceOverrides({ repoRoot: dir, env: {} });
+        assert.deepEqual(overrides.map((o) => [o.where, o.action, o.wins, o.supersededBy]), [
+            ['org/msp/AGENTS.md:1', 'relax', false, 'org/acme/AGENTS.md:1'],
+            ['org/acme/AGENTS.md:1', 'tighten', true, null]
+        ]);
     });
-    assert.equal(result.differences.length, 1);
-    assert.equal(result.differences[0].action, 'relax');
 });
 
-test('later layer wins when two layers override the same rule', () => {
-    const result = evaluate({
-        'AGENTS.layers': 'org/msp/AGENTS.md\norg/acme/AGENTS.md\n',
-        'org/msp/AGENTS.md': '- MSP pin. <!-- override: coding.model-baseline relax -->\n',
-        'org/acme/AGENTS.md': '- Customer pin. <!-- override: coding.model-baseline tighten -->\n'
+test('AGENTS.local.md is evaluated last and NOEMI_ORG_LAYERS replaces the manifest', () => {
+    withRepo({
+        ...twoLayers(['<!-- override: coding.branch-naming relax -->'], []),
+        'org/ci/AGENTS.md': '<!-- override: coding.naming-conventions relax -->\n',
+        'AGENTS.local.md': '<!-- override: coding.branch-naming tighten -->\n'
+    }, (dir) => {
+        const manifest = evaluatePreferenceOverrides({ repoRoot: dir, env: {} });
+        assert.equal(manifest.overrides.find((o) => o.wins).layer, 'AGENTS.local.md');
+        const session = evaluatePreferenceOverrides({ repoRoot: dir, env: { NOEMI_ORG_LAYERS: 'org/ci/AGENTS.md' } });
+        assert.deepEqual(session.overrides.map((o) => o.layer), ['org/ci/AGENTS.md', 'AGENTS.local.md']);
     });
-    assert.equal(result.differences.length, 2);
-    const msp = result.differences.find((diff) => diff.layer === 'org/msp/AGENTS.md');
-    const acme = result.differences.find((diff) => diff.layer === 'org/acme/AGENTS.md');
-    assert.equal(msp.wins, false);
-    assert.equal(acme.wins, true);
-    assert.equal(acme.action, 'tighten');
-    assert.equal(acme.class, 'spend');
 });
 
-test('clarify, tighten, and unknown actions are reported with classes', () => {
-    const result = evaluate(acmeLayer([
-        '- Vault project is named in the README. <!-- override: secrets.fetch-on-demand clarify -->',
-        '- Also never log secret names. <!-- override: secrets.no-hardcode tighten -->',
-        '- Use our gateway. <!-- override: coding.model-baseline loosen -->'
-    ]));
-    assert.deepEqual(result.differences.map((diff) => [diff.rule, diff.action, diff.class, diff.knownAction]), [
-        ['secrets.fetch-on-demand', 'clarify', 'credentials-in-repo', true],
-        ['secrets.no-hardcode', 'tighten', 'credentials-in-repo', true],
-        ['coding.model-baseline', 'loosen', 'spend', false]
-    ]);
-});
-
-test('malformed markers are listed separately from differences', () => {
-    const result = evaluate(acmeLayer([
-        '<!-- override: secrets.no-hardcode -->',
-        '<!--override:Bad_ID relax-->'
-    ]));
-    assert.equal(result.differences.length, 0);
-    assert.equal(result.malformed.length, 2);
-});
-
-test('AGENTS.local.md is evaluated last', () => {
-    const result = evaluate({ 'AGENTS.local.md': '<!-- override: secrets.no-ask-user relax -->\n' });
-    assert.equal(result.differences[0].layer, 'AGENTS.local.md');
-    assert.equal(result.differences[0].class, 'credentials-in-repo');
-});
-
-test('NOEMI_ORG_LAYERS layers are evaluated', () => {
-    const dir = fixtureRepo({ 'org/ci/AGENTS.md': '<!-- override: refusal.principle relax -->\n' });
-    try {
-        const result = evaluateLayerDiff({ repoRoot: dir, env: { NOEMI_ORG_LAYERS: 'org/ci/AGENTS.md' } });
-        assert.equal(result.differences[0].rule, 'refusal.principle');
-        assert.equal(result.differences[0].class, 'identity');
-    } finally {
-        fs.rmSync(dir, { recursive: true, force: true });
-    }
-});
-
-test('removing a catalogued rule ID from the baseline is an audit-catalog failure', () => {
-    const dir = fixtureRepo({ 'AGENTS.md': BASELINE.replace('<!-- rule: secrets.no-hardcode -->', '') });
-    try {
-        const failures = auditRuleCatalog(dir);
-        assert.equal(failures.length, 1);
-        assert.match(failures[0], /secrets\.no-hardcode/);
-    } finally {
-        fs.rmSync(dir, { recursive: true, force: true });
-    }
-});
-
-test('example appetite fails on credentials-in-repo relax and ignores attestations for exit', () => {
-    const appetite = loadAppetite(path.join(repoRoot, APPETITE_EXAMPLE));
-    const evaluation = evaluate({
-        ...acmeLayer([
-            '- Dummy keys in fixtures. <!-- override: secrets.no-hardcode relax -->',
-            '- Use our gateway. <!-- override: coding.model-baseline relax -->'
-        ])
+test('core-rule, unknown, and malformed markers are left to layer_compliance.js', () => {
+    withRepo(twoLayers([
+        '- x <!-- override: secrets.no-hardcode relax -->',
+        '- x <!-- override: refusal.principle clarify -->',
+        '- x <!-- override: coding.unknown-rule relax -->',
+        '<!-- override: coding.branch-naming -->',
+        '- x <!-- override: coding.branch-naming loosen -->'
+    ], []), (dir) => {
+        assert.deepEqual(evaluatePreferenceOverrides({ repoRoot: dir, env: {} }).overrides, []);
+        const levels = evaluateLayerCompliance({ repoRoot: dir, env: {} }).findings.map((f) => f.level);
+        assert.ok(levels.includes('FAIL'), 'the audit still FAILs the core relaxation');
     });
-    const applied = applyAppetite(evaluation, appetite, APPETITE_EXAMPLE);
-    assert.equal(applied.matches.length, 1);
-    assert.equal(applied.matches[0].rule, 'secrets.no-hardcode');
-    assert.equal(applied.attestations.length, 1);
-    assert.equal(applied.attestations[0].rule, 'coding.model-baseline');
 });
 
-test('CLI default exit is 0 when a secrets rule is relaxed', () => {
-    const dir = fixtureRepo(acmeLayer(['- x <!-- override: secrets.no-hardcode relax -->']));
-    try {
-        const result = captureCli(dir, []);
-        assert.equal(result.status, 0, result.stderr);
-        assert.match(result.stdout, /secrets\.no-hardcode/);
-        assert.match(result.stdout, /credentials-in-repo/);
-        assert.match(result.stdout, /audit-FAIL/);
-        assert.match(result.stdout, /does not waive them/);
-        assert.match(result.stdout, /Exit 0 \(default\)/);
-    } finally {
-        fs.rmSync(dir, { recursive: true, force: true });
-    }
+test('appetite file rejects core rules and untagged rule IDs', () => {
+    withRepo({
+        'core.json': JSON.stringify({ version: 1, failOn: [{ rule: 'secrets.no-hardcode', action: 'relax' }] }),
+        'unknown.json': JSON.stringify({ version: 1, failOn: [{ rule: 'coding.unknown-rule' }] }),
+        'action.json': JSON.stringify({ version: 1, failOn: [{ rule: 'coding.branch-naming', action: 'loosen' }] })
+    }, (dir) => {
+        assert.throws(() => loadAppetite(path.join(dir, 'core.json'), dir), /core rule.*npm run audit/);
+        assert.throws(() => loadAppetite(path.join(dir, 'unknown.json'), dir), /not a preference rule/);
+        assert.throws(() => loadAppetite(path.join(dir, 'action.json'), dir), /unknown action/);
+        assert.equal(cli(dir, ['--appetite=core.json']).status, 2);
+    });
 });
 
-test('CLI --fail-on-appetite exits 1 on a credentials-in-repo relax and 0 on a spend relax', () => {
-    const exampleAppetite = path.join(repoRoot, APPETITE_EXAMPLE);
-    const failDir = fixtureRepo(acmeLayer(['- x <!-- override: secrets.no-hardcode relax -->']));
-    const spendDir = fixtureRepo(acmeLayer(['- x <!-- override: coding.model-baseline relax -->']));
-    try {
-        const failing = captureCli(failDir, ['--fail-on-appetite', `--appetite=${exampleAppetite}`]);
+test('appetite matches only the winning override', () => {
+    const appetite = { failOn: [{ rule: 'coding.branch-naming', action: 'relax' }] };
+    withRepo(twoLayers(
+        ['<!-- override: coding.branch-naming relax -->'],
+        ['<!-- override: coding.branch-naming tighten -->']
+    ), (dir) => {
+        assert.deepEqual(matchAppetite(evaluatePreferenceOverrides({ repoRoot: dir, env: {} }), appetite), []);
+    });
+    withRepo(twoLayers(
+        ['<!-- override: coding.branch-naming tighten -->'],
+        ['<!-- override: coding.branch-naming relax -->']
+    ), (dir) => {
+        const matches = matchAppetite(evaluatePreferenceOverrides({ repoRoot: dir, env: {} }), appetite);
+        assert.deepEqual(matches.map((m) => m.where), ['org/acme/AGENTS.md:1']);
+    });
+});
+
+test('CLI: default exit 0; --fail-on-appetite exits 1 on a match, 0 otherwise, 2 without a file', () => {
+    withRepo(twoLayers([], ['- Free-form branches. <!-- override: coding.branch-naming relax -->']), (dir) => {
+        const report = cli(dir, []);
+        assert.equal(report.status, 0, report.stderr);
+        assert.match(report.stdout, /org\/acme\/AGENTS\.md:1 {2}coding\.branch-naming {2}relax {2}\(wins\)/);
+        assert.match(report.stdout, /npm run audit/);
+
+        const failing = cli(dir, ['--fail-on-appetite', `--appetite=${EXAMPLE_APPETITE}`]);
         assert.equal(failing.status, 1, failing.stderr);
-        assert.match(failing.stdout, /MATCH/);
-        const spending = captureCli(spendDir, ['--fail-on-appetite', `--appetite=${exampleAppetite}`]);
-        assert.equal(spending.status, 0, spending.stderr);
-        assert.match(spending.stdout, /No winning override matches this appetite/);
-        assert.match(spending.stdout, /attestations/i);
-    } finally {
-        fs.rmSync(failDir, { recursive: true, force: true });
-        fs.rmSync(spendDir, { recursive: true, force: true });
-    }
+        assert.match(failing.stdout, /MATCH {2}org\/acme\/AGENTS\.md:1 {2}coding\.branch-naming relax/);
+
+        assert.equal(cli(dir, ['--fail-on-appetite']).status, 2);
+        fs.copyFileSync(EXAMPLE_APPETITE, path.join(dir, 'AGENTS.appetite.json'));
+        assert.equal(cli(dir, ['--fail-on-appetite']).status, 1, 'AGENTS.appetite.json is the default path');
+    });
+    withRepo(twoLayers([], ['<!-- override: coding.model-baseline relax -->']), (dir) => {
+        const passing = cli(dir, ['--fail-on-appetite', `--appetite=${EXAMPLE_APPETITE}`]);
+        assert.equal(passing.status, 0, passing.stderr);
+        assert.match(passing.stdout, /No winning override matches failOn/);
+    });
 });
 
-test('CLI --fail-on-appetite without an appetite file exits 2', () => {
-    const dir = fixtureRepo(acmeLayer(['- x <!-- override: secrets.no-hardcode relax -->']));
-    try {
-        const result = captureCli(dir, ['--fail-on-appetite']);
-        assert.equal(result.status, 2);
-        assert.match(result.stderr, /No appetite file found/);
-    } finally {
-        fs.rmSync(dir, { recursive: true, force: true });
-    }
-});
-
-test('audit FAILs a core relaxation; the difference report still names it and does not waive it', () => {
-    const env = { ...process.env };
-    delete env.NOEMI_ORG_LAYERS;
-    const auditSrc = fs.readFileSync(path.join(repoRoot, 'scripts/audit-repo.js'), 'utf8');
-    assert.match(auditSrc, /evaluateLayerCompliance/);
-    assert.match(auditSrc, /layer_compliance/);
-    assert.match(auditSrc, /auditRuleCatalog/);
-    assert.match(auditSrc, /auditAppetiteExample/);
-
-    const clean = spawnSync('node', ['scripts/audit-repo.js'], { cwd: repoRoot, encoding: 'utf8', env });
-    assert.equal(clean.status, 0, clean.stderr);
-    assert.match(clean.stdout, /Auditing configuration layers hook/);
-    assert.match(clean.stdout, /Auditing layer compliance/);
-    assert.match(clean.stdout, /Repository audit passed\./);
-
-    const layer = path.join(repoRoot, 'test-artifacts', 'layer-diff-cli.md');
-    fs.mkdirSync(path.dirname(layer), { recursive: true });
-    fs.writeFileSync(layer, '- x <!-- override: secrets.no-hardcode relax -->\n', 'utf8');
-    const layeredEnv = { ...env, NOEMI_ORG_LAYERS: 'test-artifacts/layer-diff-cli.md' };
-    try {
-        const failing = spawnSync('node', ['scripts/audit-repo.js'], {
-            cwd: repoRoot,
-            encoding: 'utf8',
-            env: layeredEnv
-        });
-        assert.equal(failing.status, 1, failing.stdout);
-        assert.match(failing.stderr, /AUDIT FAIL: test-artifacts\/layer-diff-cli\.md:1: "relax" on core rule secrets\.no-hardcode/);
-
-        const reported = spawnSync('node', ['scripts/layer_diff.js', '--fail-on-appetite', `--appetite=${APPETITE_EXAMPLE}`], {
-            cwd: repoRoot,
-            encoding: 'utf8',
-            env: layeredEnv
-        });
-        assert.equal(reported.status, 1, reported.stderr);
-        assert.match(reported.stdout, /secrets\.no-hardcode/);
-        assert.match(reported.stdout, /does not waive them/);
-
-        const namedOnly = spawnSync('node', ['scripts/layer_diff.js'], {
-            cwd: repoRoot,
-            encoding: 'utf8',
-            env: layeredEnv
-        });
-        assert.equal(namedOnly.status, 0, namedOnly.stderr);
-        assert.match(namedOnly.stdout, /audit-FAIL/);
-    } finally {
-        fs.rmSync(layer, { force: true });
-    }
+test('CLI exits 2 on a malformed manifest or an unknown argument', () => {
+    withRepo({ 'AGENTS.layers': '../outside.md\n' }, (dir) => {
+        assert.equal(cli(dir, []).status, 2);
+    });
+    assert.equal(cli(repoRoot, ['--nope']).status, 2);
 });

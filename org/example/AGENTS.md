@@ -9,8 +9,7 @@
   How a layer is read:
   - It loads AFTER the upstream AGENTS.md and after every layer listed above it
     in AGENTS.layers. On conflict, this layer wins over everything loaded
-    before it, except core rules. AGENTS.local.md, if present, still loads
-    last, and it cannot relax a core rule either.
+    before it. AGENTS.local.md, if present, still wins over this layer.
   - Write deltas, not a copy of the baseline. Restating upstream rules makes
     the next upstream change look like a conflict.
   - When you replace an upstream rule, say so in "Overrides of earlier layers"
@@ -27,11 +26,6 @@
       - relaxing a preference rule: WARN
       - clarify / tighten: PASS
     Agents also ignore layer text that would loosen a core rule.
-    `npm run layers:diff` names each tagged override and a consequence class.
-    Default exit 0. It does not waive a core rule. The organization's appetite
-    file (AGENTS.appetite.example.json) is an additional bar for differences
-    the audit only warns on. This template clarifies where to look up the
-    vault project and relaxes only the interactive model pin.
   - Never put secrets, tokens, customer PII, or internal hostnames that are
     themselves sensitive in a layer. Reference vault paths or SecretOps
     project names instead.
@@ -91,7 +85,6 @@
   List every upstream (or MSP) rule this layer replaces, with the replacement.
   Leave the list empty rather than deleting the section, so agents can see
   that nothing is overridden. Mark each entry with its rule ID. Example entry
-  (a preference rule, so compliance reports it as WARN; the difference
-  report classifies coding.model-baseline as spend):
+  (a preference rule, so compliance reports it as WARN):
 -->
 - Replaces upstream "AI Model Baseline" for this organization's interactive sessions only: use the model routing configured by the organization's gateway. Reference workflows, lab examples, and smoke tests keep the upstream pin. <!-- override: coding.model-baseline relax -->

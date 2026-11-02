@@ -11,19 +11,14 @@
 #     or AGENTS.override.md (Codex treats it as a replacement, not a layer)
 #
 # Order is precedence: AGENTS.md loads first, then these lines top to bottom,
-# then AGENTS.local.md. Later sources win on conflict, except core rules.
-# A listed file that does not exist is skipped, so a layer may be listed
-# before it is vendored in.
+# then AGENTS.local.md. Later sources win on conflict. A listed file that does
+# not exist is skipped, so a layer may be listed before it is vendored in.
 #
 # NOEMI_ORG_LAYERS="a.md,b.md" replaces this list for one session (CI, tests).
 #
 # Layers may replace preference rules (mark them with
 # <!-- override: <rule-id> relax -->). Core rules (secrets.*, refusal.*) can
 # only be clarified or tightened; any attempt to relax one fails the audit.
-# There is no waiver. `npm run layers:diff` names tagged overrides. The
-# organization's appetite file (AGENTS.appetite.example.json) is an additional
-# bar for differences the audit only warns on. It cannot accept a core-rule
-# relaxation.
 #
 # After editing AGENTS.layers, run `npm run generate` and commit CLAUDE.md and
 # GEMINI.md so Claude Code and Gemini CLI import the same stack.

@@ -1,416 +1,172 @@
 'use strict';
 
 /**
- * Layer difference report (docs/configuration-layers.md).
+ * Preference-rule override report (docs/configuration-layers.md § Preference
+ * overrides and appetite).
  *
- * Later layers win on conflict, except core rules (secrets.*, refusal.*),
- * which scripts/layer_compliance.js still FAILs in `npm run audit`. There is
- * no waiver. This reporter names which tagged rule a later layer overrode
- * (`relax` / `clarify` / `tighten`) and a consequence class
- * (credentials-in-repo, identity, spend, style). Classes are descriptive
- * labels. Default exit 0. The deploying organization's appetite file is an
- * additional bar for differences the audit only warns on; `--fail-on-appetite`
- * is opt-in and cannot accept a core-rule relaxation.
+ * Scope is preference rules only. Core rules (secrets.*, refusal.*) are
+ * enforced by scripts/layer_compliance.js in `npm run audit`, which FAILs any
+ * attempt to relax one; this script does not read, score, or waive them.
+ *
+ * What this adds over layer_compliance.js:
+ *   - Resolution: when several layers override the same preference rule, it
+ *     names the override that wins (the last one in load order) and marks the
+ *     earlier ones superseded. The audit scores each marker on its own.
+ *   - An opt-in bar: an organization lists preference-rule overrides it will
+ *     not accept in an appetite file, and `--fail-on-appetite` exits 1 when a
+ *     winning override matches. The audit only WARNs on a preference relax.
+ *
+ * Default exit 0. Exit 1 only with --fail-on-appetite and a match. Exit 2 on
+ * a usage, manifest, or appetite-file error.
  */
 
 const fs = require('fs');
 const path = require('path');
-const { EXAMPLE_LAYER, LOCAL_LAYER, resolveLayers } = require('./context_layers');
+const { LOCAL_LAYER, resolveLayers } = require('./context_layers');
+const { OVERRIDE_ACTIONS, isCoreRuleId, parseBaselineRules, parseOverrides } = require('./layer_compliance');
 
-const RULE_ID = '[a-z0-9]+(?:[.-][a-z0-9]+)+';
-const RULE_MARKER = new RegExp(`<!--\\s*rule:\\s*(${RULE_ID})\\s*(?:\\((core|preference)\\))?\\s*-->`, 'g');
-const OVERRIDE_COMMENT = /<!--\s*override:([\s\S]*?)-->/g;
-const OVERRIDE_BODY = new RegExp(`^\\s*(${RULE_ID})\\s+([a-z]+)\\s*$`, 'i');
-const OVERRIDE_ACTIONS = new Set(['relax', 'clarify', 'tighten']);
-const APPETITE_EXAMPLE = 'AGENTS.appetite.example.json';
 const APPETITE_DEFAULT = 'AGENTS.appetite.json';
-const APPETITE_ENV = 'NOEMI_APPETITE';
+const APPETITE_EXAMPLE = 'AGENTS.appetite.example.json';
 
-const RULE_CATALOG = {
-    'secrets.no-ask-user': { class: 'credentials-in-repo' },
-    'secrets.no-hardcode': { class: 'credentials-in-repo' },
-    'secrets.fetch-on-demand': { class: 'credentials-in-repo' },
-    'refusal.principle': { class: 'identity' },
-    'refusal.criteria-mandatory': { class: 'identity' },
-    'coding.branch-naming': { class: 'style' },
-    'coding.model-baseline': { class: 'spend' },
-    'coding.naming-conventions': { class: 'style' }
-};
-
-function consequenceClass(ruleId) {
-    if (RULE_CATALOG[ruleId]) {
-        return RULE_CATALOG[ruleId].class;
-    }
-    if (String(ruleId).startsWith('secrets.')) {
-        return 'credentials-in-repo';
-    }
-    if (String(ruleId).startsWith('refusal.')) {
-        return 'identity';
-    }
-    return 'unclassified';
-}
-
-/** Core rule IDs match scripts/layer_compliance.js: secrets.* and refusal.*. */
-function isCoreRuleId(ruleId) {
-    const id = String(ruleId);
-    return id.startsWith('secrets.') || id.startsWith('refusal.');
-}
-
-/** A winning override that is not clarify/tighten on a core rule. Audit FAILs these. */
-function isCoreRelaxation(diff) {
-    return Boolean(diff.wins)
-        && isCoreRuleId(diff.rule)
-        && diff.action !== 'clarify'
-        && diff.action !== 'tighten';
-}
-
-/** Parse rule markers from baseline text. Returns { rules: Map, errors }. */
-function parseBaselineRules(text) {
-    const rules = new Map();
-    const errors = [];
-    String(text).split(/\r?\n/).forEach((line, index) => {
-        for (const match of line.matchAll(RULE_MARKER)) {
-            const id = match[1];
-            if (rules.has(id)) {
-                errors.push(`AGENTS.md:${index + 1}: duplicate rule ID "${id}".`);
-                continue;
-            }
-            rules.set(id, { id, tier: match[2] || 'core', line: index + 1 });
+function preferenceRules(repoRoot) {
+    const { rules } = parseBaselineRules(fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8'));
+    const ids = new Set();
+    for (const rule of rules.values()) {
+        if (rule.tier === 'preference' && !isCoreRuleId(rule.id)) {
+            ids.add(rule.id);
         }
-    });
-    return { rules, errors };
+    }
+    return ids;
 }
 
 /**
- * Parse override markers from a layer. Returns [{ rule, action, line, excerpt }]
- * or { malformed, raw, line, excerpt }.
+ * Overrides of preference rules in the active layers, in load order, with the
+ * winning override per rule marked. Returns { layers, overrides, errors }.
  */
-function parseOverrides(text) {
+function evaluatePreferenceOverrides({ repoRoot, env = process.env } = {}) {
+    let resolved;
+    try {
+        resolved = resolveLayers({ repoRoot, env });
+    } catch (error) {
+        return { layers: [], overrides: [], errors: [error.message] };
+    }
+    if (resolved.errors.length) {
+        const source = resolved.source || 'layers';
+        return {
+            layers: [],
+            overrides: [],
+            errors: resolved.errors.map((item) => `${source}:${item.line}: ${item.path} — ${item.error}`)
+        };
+    }
+
+    const preference = preferenceRules(repoRoot);
+    const layers = [...resolved.present, ...(resolved.local ? [LOCAL_LAYER] : [])];
     const overrides = [];
-    String(text).split(/\r?\n/).forEach((line, index) => {
-        for (const match of line.matchAll(OVERRIDE_COMMENT)) {
-            const body = match[1];
-            const excerpt = line.replace(OVERRIDE_COMMENT, ' ').trim().slice(0, 160);
-            const parsed = body.match(OVERRIDE_BODY);
-            if (parsed) {
-                overrides.push({
-                    rule: parsed[1],
-                    action: parsed[2].toLowerCase(),
-                    line: index + 1,
-                    excerpt
-                });
-            } else {
-                overrides.push({ malformed: true, raw: body.trim(), line: index + 1, excerpt });
+    for (const layer of layers) {
+        const text = fs.readFileSync(path.join(repoRoot, layer), 'utf8');
+        for (const override of parseOverrides(text)) {
+            // Malformed markers, unknown IDs, unknown actions and core rules
+            // are scored by layer_compliance.js; this report skips them.
+            if (override.malformed || !preference.has(override.rule) || !OVERRIDE_ACTIONS.has(override.action)) {
+                continue;
             }
-        }
-    });
-    return overrides;
-}
-
-/** Repo-invariant: the published baseline tags every catalogued ID. */
-function auditRuleCatalog(repoRoot) {
-    const failures = [];
-    const agentsMdPath = path.join(repoRoot, 'AGENTS.md');
-    if (!fs.existsSync(agentsMdPath)) {
-        return ['AGENTS.md is missing.'];
-    }
-    const { rules, errors } = parseBaselineRules(fs.readFileSync(agentsMdPath, 'utf8'));
-    failures.push(...errors);
-    for (const id of Object.keys(RULE_CATALOG)) {
-        if (!rules.has(id)) {
-            failures.push(`AGENTS.md is missing the stable rule ID marker "<!-- rule: ${id} -->".`);
+            overrides.push({
+                layer,
+                line: override.line,
+                where: `${layer}:${override.line}`,
+                rule: override.rule,
+                action: override.action,
+                wins: false,
+                supersededBy: null
+            });
         }
     }
-    return failures;
+    const last = new Map();
+    for (const item of overrides) {
+        last.set(item.rule, item);
+    }
+    for (const item of overrides) {
+        const winner = last.get(item.rule);
+        item.wins = winner === item;
+        item.supersededBy = item.wins ? null : winner.where;
+    }
+    return { layers, overrides, errors: [] };
 }
 
-function loadAppetite(filePath) {
+/** Load and validate an appetite file against the baseline's preference rules. */
+function loadAppetite(filePath, repoRoot) {
     let parsed;
     try {
         parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     } catch (error) {
         throw new Error(`appetite file is not valid JSON: ${error.message}`);
     }
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new Error('appetite file must be a JSON object');
-    }
-    if (parsed.version !== 1) {
-        throw new Error('appetite file must set "version": 1');
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || parsed.version !== 1) {
+        throw new Error('appetite file must be a JSON object with "version": 1');
     }
     if (!Array.isArray(parsed.failOn)) {
         throw new Error('appetite file must include a "failOn" array');
     }
-    for (const [index, spec] of parsed.failOn.entries()) {
-        if (!spec || typeof spec !== 'object' || Array.isArray(spec)) {
-            throw new Error(`failOn[${index}] must be an object`);
+    const preference = preferenceRules(repoRoot);
+    parsed.failOn.forEach((spec, index) => {
+        if (!spec || typeof spec !== 'object' || typeof spec.rule !== 'string') {
+            throw new Error(`failOn[${index}] must be an object with a "rule"`);
         }
-        if (!spec.rule && !spec.class) {
-            throw new Error(`failOn[${index}] must name a "rule" or a "class"`);
+        if (isCoreRuleId(spec.rule)) {
+            throw new Error(`failOn[${index}]: "${spec.rule}" is a core rule. Core rules are enforced by \`npm run audit\` (scripts/layer_compliance.js); the appetite file covers preference rules only.`);
         }
-        if (spec.action && !OVERRIDE_ACTIONS.has(spec.action) && spec.action !== 'malformed') {
+        if (!preference.has(spec.rule)) {
+            throw new Error(`failOn[${index}]: "${spec.rule}" is not a preference rule tagged in AGENTS.md`);
+        }
+        if (spec.action !== undefined && !OVERRIDE_ACTIONS.has(spec.action)) {
             throw new Error(`failOn[${index}] has unknown action "${spec.action}"`);
         }
-    }
-    if (parsed.attestations !== undefined && !Array.isArray(parsed.attestations)) {
-        throw new Error('appetite file "attestations" must be an array when present');
-    }
+    });
     return parsed;
 }
 
-function auditAppetiteExample(repoRoot) {
-    const examplePath = path.join(repoRoot, APPETITE_EXAMPLE);
-    if (!fs.existsSync(examplePath)) {
-        return [`${APPETITE_EXAMPLE} (the copyable appetite profile) is missing.`];
-    }
-    try {
-        loadAppetite(examplePath);
-        return [];
-    } catch (error) {
-        return [`${APPETITE_EXAMPLE}: ${error.message}`];
-    }
+/** Winning overrides that match an appetite failOn entry. */
+function matchAppetite(evaluation, appetite) {
+    return evaluation.overrides.filter((item) => item.wins && appetite.failOn.some((spec) => (
+        spec.rule === item.rule && (spec.action === undefined || spec.action === item.action)
+    )));
 }
 
-function differenceMatchesFailOn(diff, spec) {
-    if (spec.rule && spec.rule !== diff.rule) {
-        return false;
-    }
-    if (spec.class && spec.class !== diff.class) {
-        return false;
-    }
-    if (spec.action && spec.action !== diff.action) {
-        return false;
-    }
-    return true;
-}
-
-/**
- * Evaluate tagged overrides for a checkout. Pure apart from file reads.
- * Returns { layers, differences, malformed, catalogErrors, resolveErrors }.
- */
-function evaluateLayerDiff({ repoRoot, env = process.env } = {}) {
-    const catalogErrors = auditRuleCatalog(repoRoot);
-    const malformed = [];
-    const differences = [];
-
-    let resolved;
-    try {
-        resolved = resolveLayers({ repoRoot, env });
-    } catch (error) {
-        return {
-            layers: [],
-            differences: [],
-            malformed: [],
-            catalogErrors,
-            resolveErrors: [error.message]
-        };
-    }
-
-    const resolveErrors = resolved.errors.map((item) => {
-        const source = resolved.source || 'layers';
-        return `${source}:${item.line}: ${item.path} — ${item.error}`;
-    });
-
-    const layers = resolveErrors.length ? [] : [...resolved.present];
-    if (!resolveErrors.length && resolved.local) {
-        layers.push(LOCAL_LAYER);
-    }
-
-    if (resolveErrors.length === 0) {
-        for (const layer of layers) {
-            const text = fs.readFileSync(path.join(repoRoot, layer), 'utf8');
-            for (const override of parseOverrides(text)) {
-                const where = `${layer}:${override.line}`;
-                if (override.malformed) {
-                    malformed.push({
-                        layer,
-                        line: override.line,
-                        where,
-                        raw: override.raw,
-                        excerpt: override.excerpt
-                    });
-                    continue;
-                }
-                differences.push({
-                    layer,
-                    line: override.line,
-                    where,
-                    rule: override.rule,
-                    action: override.action,
-                    class: consequenceClass(override.rule),
-                    knownAction: OVERRIDE_ACTIONS.has(override.action),
-                    excerpt: override.excerpt,
-                    wins: false
-                });
-            }
-        }
-    }
-
-    const lastByRule = new Map();
-    for (const diff of differences) {
-        lastByRule.set(diff.rule, diff);
-    }
-    for (const diff of lastByRule.values()) {
-        diff.wins = true;
-    }
-
-    return { layers, differences, malformed, catalogErrors, resolveErrors };
-}
-
-function resolveAppetitePath({ repoRoot, env = process.env, appetitePath = null } = {}) {
-    if (appetitePath) {
-        return path.isAbsolute(appetitePath) ? appetitePath : path.join(repoRoot, appetitePath);
-    }
-    if (typeof env[APPETITE_ENV] === 'string' && env[APPETITE_ENV].trim()) {
-        const fromEnv = env[APPETITE_ENV].trim();
-        return path.isAbsolute(fromEnv) ? fromEnv : path.join(repoRoot, fromEnv);
-    }
-    const defaultPath = path.join(repoRoot, APPETITE_DEFAULT);
-    if (fs.existsSync(defaultPath)) {
-        return defaultPath;
-    }
-    return null;
-}
-
-function applyAppetite(evaluation, appetite, appetitePath) {
-    const winning = evaluation.differences.filter((diff) => diff.wins);
-    const matches = [];
-    for (const spec of appetite.failOn) {
-        for (const diff of winning) {
-            if (differenceMatchesFailOn(diff, spec)) {
-                matches.push({ ...diff, matchedBy: spec });
-            }
-        }
-    }
-    const attestations = Array.isArray(appetite.attestations)
-        ? appetite.attestations.filter((entry) => {
-            if (!entry || typeof entry !== 'object') {
-                return false;
-            }
-            return evaluation.differences.some((diff) => (
-                (!entry.rule || entry.rule === diff.rule)
-                && (!entry.action || entry.action === diff.action)
-            ));
-        })
-        : [];
-    return {
-        path: appetitePath,
-        owner: appetite.owner || null,
-        description: appetite.description || null,
-        matches,
-        attestations
-    };
-}
-
-function formatReport(evaluation, appetiteResult, { failOnAppetite = false } = {}) {
-    const lines = [];
-    lines.push('Layer difference report');
-    const stack = evaluation.layers.length
-        ? ['AGENTS.md', ...evaluation.layers].join(' -> ')
-        : 'AGENTS.md (baseline only)';
-    lines.push(`Load order: ${stack}`);
-    lines.push('Later sources win, except core rules (secrets.*, refusal.*), which cannot be relaxed.');
-    lines.push('Consequence classes are descriptive labels. This report does not waive a core rule.');
+function formatReport(evaluation, appetite) {
+    const lines = ['Preference-rule overrides'];
+    lines.push(`Load order: ${['AGENTS.md', ...evaluation.layers].join(' -> ')}`);
+    lines.push('Core rules (secrets.*, refusal.*) are not covered here; `npm run audit` (scripts/layer_compliance.js) enforces them.');
     lines.push('');
-
-    if (evaluation.resolveErrors.length) {
-        lines.push('Resolve errors:');
-        for (const message of evaluation.resolveErrors) {
-            lines.push(`  ${message}`);
-        }
-        lines.push('');
+    if (evaluation.overrides.length === 0) {
+        lines.push('No preference-rule overrides in the active layers.');
     }
-
-    if (evaluation.catalogErrors.length) {
-        lines.push('Baseline catalog:');
-        for (const message of evaluation.catalogErrors) {
-            lines.push(`  ${message}`);
-        }
-        lines.push('');
+    for (const item of evaluation.overrides) {
+        const state = item.wins ? 'wins' : `superseded by ${item.supersededBy}`;
+        lines.push(`  ${item.where}  ${item.rule}  ${item.action}  (${state})`);
     }
-
-    if (evaluation.differences.length === 0) {
-        lines.push('No tagged overrides in the active layers.');
-    } else {
-        lines.push('Tagged overrides:');
-        for (const diff of evaluation.differences) {
-            const win = diff.wins ? 'wins' : 'superseded';
-            const actionNote = diff.knownAction ? diff.action : `${diff.action} (unknown action)`;
-            const enforcement = isCoreRelaxation(diff) ? '  audit-FAIL' : '';
-            lines.push(`  ${diff.where}  ${diff.rule}  ${actionNote}  ${diff.class}  (${win})${enforcement}`);
-        }
-    }
-
-    if (evaluation.differences.some(isCoreRelaxation)) {
+    if (appetite) {
         lines.push('');
-        lines.push('Core-rule relaxations above are an audit FAIL (`npm run audit`). This report does not waive them. There is no waiver mechanism.');
-    }
-
-    if (evaluation.malformed.length) {
-        lines.push('');
-        lines.push('Malformed override markers:');
-        for (const item of evaluation.malformed) {
-            lines.push(`  ${item.where}  override:${item.raw}`);
+        lines.push(`Appetite: ${appetite.path}`);
+        if (appetite.matches.length === 0) {
+            lines.push('  No winning override matches failOn.');
         }
-    }
-
-    if (appetiteResult) {
-        lines.push('');
-        lines.push(`Appetite: ${appetiteResult.path}`);
-        if (appetiteResult.owner) {
-            lines.push(`  owner: ${appetiteResult.owner}`);
+        for (const item of appetite.matches) {
+            lines.push(`  MATCH  ${item.where}  ${item.rule} ${item.action}`);
         }
-        if (appetiteResult.matches.length === 0) {
-            lines.push('  No winning override matches this appetite.');
-        } else {
-            for (const match of appetiteResult.matches) {
-                lines.push(`  MATCH  ${match.where}  ${match.rule} ${match.action}  (${match.class})`);
-            }
-        }
-        if (appetiteResult.attestations.length) {
-            lines.push('Attestations (log only; they do not change the exit code and they do not waive a core rule):');
-            for (const entry of appetiteResult.attestations) {
-                const bits = [
-                    entry.rule || '(any rule)',
-                    entry.action || '(any action)',
-                    entry.owner ? `owner=${entry.owner}` : null,
-                    entry['review-by'] ? `review-by=${entry['review-by']}` : null
-                ].filter(Boolean);
-                lines.push(`  ${bits.join('  ')}`);
-                if (entry.reason) {
-                    lines.push(`    reason: ${entry.reason}`);
-                }
-            }
-        }
-    } else {
-        lines.push('');
-        lines.push(`Appetite: not applied (copy ${APPETITE_EXAMPLE} and pass --fail-on-appetite).`);
-    }
-
-    lines.push('');
-    if (failOnAppetite) {
-        lines.push(appetiteResult && appetiteResult.matches.length
-            ? 'Exit 1: winning overrides match this organization\'s appetite.'
-            : 'Exit 0: no winning override matches this organization\'s appetite.');
-    } else {
-        lines.push('Exit 0 (default). Pass --fail-on-appetite to exit 1 on appetite matches. A core-rule relaxation still fails `npm run audit`.');
     }
     return `${lines.join('\n')}\n`;
 }
 
 function parseCliArgs(argv) {
-    let failOnAppetite = false;
-    let appetitePath = null;
-    let json = false;
+    const args = { failOnAppetite: false, appetitePath: null };
     for (let index = 0; index < argv.length; index += 1) {
         const arg = argv[index];
         if (arg === '--fail-on-appetite') {
-            failOnAppetite = true;
-        } else if (arg === '--json') {
-            json = true;
+            args.failOnAppetite = true;
         } else if (arg.startsWith('--appetite=')) {
-            appetitePath = arg.slice('--appetite='.length);
-        } else if (arg === '--appetite') {
-            appetitePath = argv[index + 1] || null;
+            args.appetitePath = arg.slice('--appetite='.length);
+        } else if (arg === '--appetite' && argv[index + 1]) {
+            args.appetitePath = argv[index + 1];
             index += 1;
         } else if (arg === '--help' || arg === '-h') {
             return { help: true };
@@ -418,7 +174,7 @@ function parseCliArgs(argv) {
             return { error: `unknown argument: ${arg}` };
         }
     }
-    return { failOnAppetite, appetitePath, json };
+    return args;
 }
 
 function runCli({
@@ -430,13 +186,12 @@ function runCli({
 } = {}) {
     const args = parseCliArgs(argv);
     if (args.help) {
-        stdout.write(`Usage: node scripts/layer_diff.js [--json] [--appetite <path>] [--fail-on-appetite]
+        stdout.write(`Usage: node scripts/layer_diff.js [--appetite <path>] [--fail-on-appetite]
 
-Reports tagged AGENTS.md layer overrides. Default exit 0.
-Core rules (secrets.*, refusal.*) cannot be relaxed; npm run audit fails those attempts. This report does not waive them.
---fail-on-appetite exits 1 when a winning override matches the appetite file.
-Appetite path: --appetite, else ${APPETITE_ENV}, else ${APPETITE_DEFAULT} if present.
-The appetite file is an additional bar. It cannot accept a core-rule relaxation.
+Lists preference-rule overrides in the active layers and which one wins. Default exit 0.
+--fail-on-appetite exits 1 when a winning override matches the appetite file's failOn list.
+Appetite path: --appetite, else ${APPETITE_DEFAULT} if present. Template: ${APPETITE_EXAMPLE}.
+Core rules are enforced by npm run audit, not by this script.
 `);
         return 0;
     }
@@ -445,73 +200,53 @@ The appetite file is an additional bar. It cannot accept a core-rule relaxation.
         return 2;
     }
 
-    const evaluation = evaluateLayerDiff({ repoRoot, env });
-    if (evaluation.resolveErrors.length) {
-        stderr.write(`${evaluation.resolveErrors.join('\n')}\n`);
-        if (!args.json) {
-            stdout.write(formatReport(evaluation, null, { failOnAppetite: args.failOnAppetite }));
-        } else {
-            stdout.write(`${JSON.stringify({ evaluation, appetite: null }, null, 2)}\n`);
-        }
+    const evaluation = evaluatePreferenceOverrides({ repoRoot, env });
+    if (evaluation.errors.length) {
+        stderr.write(`${evaluation.errors.join('\n')}\n`);
         return 2;
     }
 
-    let appetiteResult = null;
-    const resolvedAppetite = resolveAppetitePath({
-        repoRoot,
-        env,
-        appetitePath: args.appetitePath
-    });
-    if (args.failOnAppetite && !resolvedAppetite) {
-        stderr.write(`No appetite file found. Copy ${APPETITE_EXAMPLE} to ${APPETITE_DEFAULT}, or pass --appetite / ${APPETITE_ENV}.\n`);
+    let appetitePath = null;
+    if (args.appetitePath) {
+        appetitePath = path.isAbsolute(args.appetitePath) ? args.appetitePath : path.join(repoRoot, args.appetitePath);
+    } else if (fs.existsSync(path.join(repoRoot, APPETITE_DEFAULT))) {
+        appetitePath = path.join(repoRoot, APPETITE_DEFAULT);
+    }
+    if (args.failOnAppetite && !appetitePath) {
+        stderr.write(`No appetite file found. Copy ${APPETITE_EXAMPLE} to ${APPETITE_DEFAULT}, or pass --appetite <path>.\n`);
         return 2;
     }
-    if (resolvedAppetite) {
+
+    let appetite = null;
+    if (appetitePath) {
         try {
-            const appetite = loadAppetite(resolvedAppetite);
-            appetiteResult = applyAppetite(evaluation, appetite, path.relative(repoRoot, resolvedAppetite) || resolvedAppetite);
+            const loaded = loadAppetite(appetitePath, repoRoot);
+            appetite = {
+                path: path.relative(repoRoot, appetitePath) || appetitePath,
+                matches: matchAppetite(evaluation, loaded)
+            };
         } catch (error) {
-            stderr.write(`${resolvedAppetite}: ${error.message}\n`);
+            stderr.write(`${appetitePath}: ${error.message}\n`);
             return 2;
         }
     }
 
-    if (args.json) {
-        stdout.write(`${JSON.stringify({ evaluation, appetite: appetiteResult }, null, 2)}\n`);
-    } else {
-        stdout.write(formatReport(evaluation, appetiteResult, { failOnAppetite: args.failOnAppetite }));
-    }
-
-    if (args.failOnAppetite && appetiteResult && appetiteResult.matches.length) {
-        return 1;
-    }
-    return 0;
+    stdout.write(formatReport(evaluation, appetite));
+    return args.failOnAppetite && appetite.matches.length ? 1 : 0;
 }
 
 if (require.main === module) {
-    const repoRoot = path.join(__dirname, '..');
-    process.exit(runCli({ repoRoot, env: process.env, argv: process.argv.slice(2) }));
+    process.exit(runCli({ repoRoot: path.join(__dirname, '..') }));
 }
 
 module.exports = {
     APPETITE_DEFAULT,
-    APPETITE_ENV,
     APPETITE_EXAMPLE,
-    EXAMPLE_LAYER,
-    OVERRIDE_ACTIONS,
-    RULE_CATALOG,
-    applyAppetite,
-    auditAppetiteExample,
-    auditRuleCatalog,
-    consequenceClass,
-    isCoreRelaxation,
-    isCoreRuleId,
-    evaluateLayerDiff,
+    evaluatePreferenceOverrides,
     formatReport,
     loadAppetite,
-    parseBaselineRules,
+    matchAppetite,
     parseCliArgs,
-    parseOverrides,
-    resolveAppetitePath,
+    preferenceRules,
     runCli
 };

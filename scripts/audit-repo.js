@@ -14,7 +14,6 @@ const {
 } = require('./context_helpers');
 const { auditConfigLayers, buildContextFile } = require('./context_layers');
 const { evaluateLayerCompliance } = require('./layer_compliance');
-const { auditAppetiteExample, auditRuleCatalog } = require('./layer_diff');
 
 const repoRoot = path.join(__dirname, '..');
 const agentsDir = path.join(repoRoot, 'agents');
@@ -232,20 +231,11 @@ function checkGeneratedOutputs() {
 
 // Configuration layers hook (docs/configuration-layers.md): the AGENTS.md
 // section exists and is last, the org/example template exists, AGENTS.local.md
-// is gitignored, catalogued rule IDs are present, the appetite example parses,
-// and every path in AGENTS.layers / AGENTS.layers.example is well-formed.
-// Missing optional layer files are deliberately NOT a failure. Appetite scoring
-// is an additional bar in `npm run layers:diff -- --fail-on-appetite`. It does
-// not waive a core rule; that check is checkLayerCompliance().
+// is gitignored, and every path in AGENTS.layers / AGENTS.layers.example is
+// well-formed. Missing optional layer files are deliberately NOT a failure.
 function checkConfigLayers() {
     console.log('Auditing configuration layers hook (AGENTS.layers)...');
     for (const message of auditConfigLayers(repoRoot)) {
-        fail(message);
-    }
-    for (const message of auditRuleCatalog(repoRoot)) {
-        fail(message);
-    }
-    for (const message of auditAppetiteExample(repoRoot)) {
         fail(message);
     }
 }

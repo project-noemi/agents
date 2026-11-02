@@ -171,8 +171,10 @@ assumption** (the public repo addressed by release tag); it lives in one functio
 `studio/src/api/types.ts`.
 
 ```bash
-# Offline: a throwaway token, shared by both processes through this one shell.
-export NOEMI_STUDIO_TOKEN="$(openssl rand -hex 32)"
+# Offline: print a throwaway token, then export it. This one shell runs both
+# processes, so they share it.
+openssl rand -hex 32
+export NOEMI_STUDIO_TOKEN=<the value printed above>
 NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com npm run studio &
 cd studio && VITE_STUDIO_BACKEND=http npm run dev
 

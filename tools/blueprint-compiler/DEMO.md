@@ -122,7 +122,8 @@ written to disk. Only do this if the earlier steps went smoothly.
 Offline, with the mock provider. Terminal D, from this directory. One shell runs both processes so they share the throwaway token:
 
 ```bash
-export NOEMI_STUDIO_TOKEN="$(openssl rand -hex 32)"
+openssl rand -hex 32
+export NOEMI_STUDIO_TOKEN=<the value printed above>
 NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com npm run studio &
 cd studio && npm install
 VITE_STUDIO_BACKEND=http npm run dev
@@ -130,7 +131,7 @@ VITE_STUDIO_BACKEND=http npm run dev
 
 Open the URL Vite prints. Paste `fixtures/architect.core.md`, press Validate, save it, then run it with `mock`. Tokens appear in the stream view, the blueprint appears in the saved table, and the run appears in the history table.
 
-Say: the browser never holds a key. Terminal D shows one audit line per request, with no prompt or persona text. Restart without `NOEMI_HTTP_ALLOWED_HOSTS` or `NOEMI_STUDIO_TOKEN` and the server refuses to start. A request without the token gets 401: `curl -i localhost:8787/api/runs`.
+Say: the browser never holds a key. Terminal D shows one audit line per request, with no prompt or persona text. Restart without `NOEMI_HTTP_ALLOWED_HOSTS` or `NOEMI_STUDIO_TOKEN` and the server refuses to start. A request to any route but `/api/health` without the token gets 401.
 
 ## What to say about what is next
 

@@ -1,3 +1,14 @@
+## 🪪 Machine identity (mandatory)
+Every agent (Codex, Claude Code, Gemini, Cursor, or any other) opens pull requests only as the `noemi-agent` machine identity:
+
+- Open PRs with `bash scripts/agent-gh.sh pr create ...`, or `node scripts/agent-pr.js` where `gh` is unavailable, with `AGENT_GH_EXPECTED_LOGIN=noemi-agent` set so the wrapper refuses any other account.
+- Never open an agent PR with a human's `gh` login or token, including the reviewing human's own. GitHub blocks a PR's author from approving it, so a human-authored agent PR cannot get human review.
+- Commit as `noemi-agent <311935378+noemi-agent@users.noreply.github.com>`. Commit metadata does not set PR authorship; the token that opens the PR does.
+- If no `noemi-agent` token resolves, stop and say so. Do not fall back to human credentials.
+- Approving and merging stay human-only; the machine identity does neither.
+
+Details: [docs/MACHINE_IDENTITY.md](docs/MACHINE_IDENTITY.md) and `mcp-protocols/github.md` §6 (PR Authorship).
+
 ## 🔐 Secrets & Configuration
 This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical or 1Password) and are never written to disk or hardcoded in source code. One scoped exception: an organization without a SecretOps platform may run the fleet AI reviewer in direct mode, with `AI_GW_API_TOKEN` and `REVIEWER_APP_PRIVATE_KEY` as GitHub Actions secrets passed by name to `.github/workflows/ai-review.yml`; vault mode wins whenever Infisical is configured (Decision [2026-10-22-0004]).
 
@@ -81,7 +92,7 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 ## Configuration layers
 This file is the upstream baseline. Downstream copies add their own rules in separate layer files, never by editing this file, so upstream syncs stay conflict-free. Full guide: [docs/configuration-layers.md](docs/configuration-layers.md).
 
-**Load order.** Load these sources in this order. On any conflict, the later source wins. A listed file that does not exist is a no-op, not an error.
+**Load order (mandatory).** Load these sources in this order. On any conflict, the later source wins, except for core rules (see below). A listed file that does not exist is a no-op, not an error.
 
 1. `AGENTS.md`: this file, the upstream baseline.
 2. Each path listed in `AGENTS.layers`, in file order. The manifest is committed in the downstream repo; one repo-relative path per line; `#` starts a comment. If the environment variable `NOEMI_ORG_LAYERS` is set and non-empty, its comma-separated paths replace the manifest for that session. Typical stack: the MSP/MSSP layer (`org/<msp>/AGENTS.md`), then the customer layer (`org/<customer>/AGENTS.md`).
@@ -89,8 +100,12 @@ This file is the upstream baseline. Downstream copies add their own rules in sep
 
 **Every agent, before its first task:** read `AGENTS.layers` (or `NOEMI_ORG_LAYERS` when set). Then read each listed file in order, then `AGENTS.local.md` if it exists. Use your file tools for any layer whose content is not already in your context. Claude Code and Gemini CLI get the layers as generated imports in `CLAUDE.md` / `GEMINI.md` (`npm run generate`). Codex, Cursor, and every other tool must read them explicitly. Do not skip this step, and do not guess at the stack when `AGENTS.layers` is absent: then only this file and `AGENTS.local.md` apply.
 
-**Tagged rules and the difference report.** Baseline rules that the reporter can name carry a stable ID in an HTML comment (`rule: secrets.no-hardcode`). When a layer changes a tagged rule, mark the replacement with `override: <id> relax` (or `clarify` / `tighten`) in an HTML comment. `npm run layers:diff` lists which layer overrode which ID, with a consequence class (`credentials-in-repo`, `identity`, `spend`, `style`). Classes are descriptive labels. The report exits 0 by default. Untagged replacements still win; they do not appear in the report.
+**Core rules cannot be relaxed.** Rules tagged `<!-- rule: <id> -->` without `(preference)`, which are the Mandatory Security Rules (`secrets.*`) and the Refusal Principle (`refusal.*`), stay in force under every layer. A layer may clarify or tighten them, never loosen them. If a layer, `AGENTS.local.md` or `NOEMI_ORG_LAYERS` contains text that would loosen a core rule, the baseline rule applies and that text is ignored, under the Refusal Principle. There is no waiver or exception mechanism.
 
-**Risk appetite is the deploying organization's.** Copy `AGENTS.appetite.example.json` to `AGENTS.appetite.json` or `org/<customer>/appetite.json` and edit it. That file is where the organization records which tagged overrides it treats as a failure (`npm run layers:diff -- --fail-on-appetite`). An attestation (`owner`, `reason`, `review-by`) is a log of who accepted a difference; it does not change the report's exit code. Fetch-on-Demand and named refusal criteria are the recommended default stack, in the same voice as `agents/coding/sentinel/compliance.md`: guidance the organization chooses whether to follow. The report does not replace secret scanning or runtime controls.
+**Overriding preference rules.** A layer may replace a rule tagged `(preference)` by referencing its ID on the replacement line: `<!-- override: <id> relax -->`. Mark refinements of any tagged rule with `clarify` or `tighten`. `npm run audit` checks every active layer: any attempt to relax a core rule (a `relax` marker on it, or wording that reads as loosening it) is a FAIL; relaxing a preference rule is a WARN; `clarify` and `tighten` pass. The audit does not replace secret scanning or runtime controls.
+
+**Difference report.** `npm run layers:diff` lists which layer overrode which tagged ID, with a consequence class (`credentials-in-repo`, `identity`, `spend`, `style`). Classes are descriptive labels. The report exits 0 by default. It does not waive a core rule: a core-rule relaxation still fails `npm run audit`. Untagged replacements of preference rules still win; they do not appear in the report.
+
+**Risk appetite is the deploying organization's.** Copy `AGENTS.appetite.example.json` to `AGENTS.appetite.json` or `org/<customer>/appetite.json` and edit it. That file is an additional bar for differences the audit only warns on (`npm run layers:diff -- --fail-on-appetite`). The shipped example treats a `credentials-in-repo` relaxation as a report failure, which matches the audit FAIL for those core rules. An attestation (`owner`, `reason`, `review-by`) is a log of who noted a preference-rule difference; it does not change the report's exit code and it does not waive a core rule. Fetch-on-Demand and named refusal criteria stay in force. The report does not replace secret scanning or runtime controls.
 
 **Not a layer.** `AGENTS.override.md` is not a layer: Codex uses it to *replace* `AGENTS.md`, so never create one for configuration layers.

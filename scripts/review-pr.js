@@ -950,6 +950,72 @@ async function listIssueComments(repo, pr, token) {
   return all;
 }
 
+/**
+ * Post a PR comment at most once, without losing it to a single 5xx.
+ *
+ * github-client retries only GET/HEAD on 5xx/network errors: a failed POST
+ * does not say whether GitHub stored the comment, and a blind retry posted
+ * duplicates. But not retrying at all means one 502 after the paid model
+ * calls loses the review for every organization. So each post carries a
+ * per-run hidden marker. After an ambiguous failure the PR's recent comments
+ * are listed: if the marker is there, the comment landed and that is
+ * success; if not, the POST is retried (up to `maxAttempts` in total). A
+ * definite rejection (4xx other than a rate limit) is never retried, and a
+ * failed lookup re-throws the POST error rather than risk a duplicate.
+ */
+const POST_ATTEMPTS = 4;
+
+function postMarker() {
+  return `<!-- noemi-review-post:${require('crypto').randomUUID()} -->`;
+}
+
+async function postOnce({
+  list,
+  post,
+  marker,
+  maxAttempts = POST_ATTEMPTS,
+  // A spent quota (reset beyond the wait cap) fails fast in gh(); retrying
+  // here would only repeat that.
+  retryIf = (err) => isTransientGitHubError(err) && !(err && err.rateLimitExhausted),
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  baseDelayMs = Number(process.env.GITHUB_RETRY_BASE_MS || process.env.REVIEW_RETRY_BASE_MS || 2000),
+}) {
+  if (!marker) throw new Error('postOnce: a marker is required');
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await post();
+    } catch (err) {
+      if (!retryIf(err)) throw err;
+      let comments;
+      try {
+        comments = await list();
+      } catch {
+        throw err;
+      }
+      const landed = (Array.isArray(comments) ? comments : [])
+        .find((c) => c && typeof c.body === 'string' && c.body.includes(marker));
+      if (landed) return landed;
+      if (attempt >= maxAttempts) throw err;
+      await sleep(Math.min(baseDelayMs * 2 ** (attempt - 1), 20000));
+    }
+  }
+}
+
+/** The issue-comments POST for this PR, through postOnce. */
+function postPrComment(repo, pr, ghToken, body) {
+  const marker = postMarker();
+  // `since` (minus clock-skew slack) keeps the lookup to recent comments,
+  // so a long PR thread does not push this run's comment past one page.
+  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  return postOnce({
+    marker,
+    post: () => gh(`/repos/${repo}/issues/${pr}/comments`, {
+      token: ghToken, method: 'POST', body: { body: `${body}\n\n${marker}` },
+    }),
+    list: () => gh(`/repos/${repo}/issues/${pr}/comments?since=${encodeURIComponent(since)}&per_page=100`, { token: ghToken }),
+  });
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const repo = process.env.GITHUB_REPOSITORY;
@@ -1014,7 +1080,7 @@ async function main() {
       '',
       'An agent evaluating changes to its own constraints is circular regardless of capability, so this escalates to human review by design. No model was invoked.',
     ].join('\n');
-    if (args.post) await gh(`/repos/${repo}/issues/${args.pr}/comments`, { token: ghToken, method: 'POST', body: { body } });
+    if (args.post) await postPrComment(repo, args.pr, ghToken, body);
     process.stderr.write(`${JSON.stringify({ task: 'AI review', result: 'halted: carve-out', carved })}\n`);
     process.stdout.write(`${body}\n`);
     writeHaltMarker(`carve-out: ${carved.join(', ')}`);
@@ -1141,7 +1207,7 @@ async function main() {
   if (args.post) {
     // Deliberately the issue-comments endpoint. This runner has no code path
     // that submits a review event, so it cannot approve.
-    await gh(`/repos/${repo}/issues/${args.pr}/comments`, { token: ghToken, method: 'POST', body: { body: comment } });
+    await postPrComment(repo, args.pr, ghToken, comment);
   }
 
   process.stderr.write(`${JSON.stringify({
@@ -1175,7 +1241,7 @@ module.exports = {
   detectCarveOut, limitDiffForPrompt, MAX_DIFF_FILE_CHARS, validateFindings, normalizeGateReply, gateVerdict, recommend, writeHaltMarker,
   parseOverrideActors, parseOverrideCommands, evaluateOverrides, runGates, isContinuedOverride,
   OVERRIDE_CONTINUE_GATES, OVERRIDE_ACTORS_VAR,
-  gh, isTransientGitHubError,
+  gh, isTransientGitHubError, postOnce, postPrComment,
   callGemini, callGatewayGate, confirmGatewayPin, gatewayReviewPin, resolveReviewRoute, reviewAuthLabel, reviewBackendLabel,
   geminiFetchTimeoutMs, geminiPost, isTransientGeminiError, wrapGeminiFetchError, formatThrown,
   buildGatePrompt, buildRemediationPrompt, renderComment,

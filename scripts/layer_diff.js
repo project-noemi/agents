@@ -3,11 +3,14 @@
 /**
  * Layer difference report (docs/configuration-layers.md).
  *
- * Later layers win on conflict. This reporter names which tagged rule a later
- * layer overrode (`relax` / `clarify` / `tighten`) and a consequence class
+ * Later layers win on conflict, except core rules (secrets.*, refusal.*),
+ * which scripts/layer_compliance.js still FAILs in `npm run audit`. There is
+ * no waiver. This reporter names which tagged rule a later layer overrode
+ * (`relax` / `clarify` / `tighten`) and a consequence class
  * (credentials-in-repo, identity, spend, style). Classes are descriptive
- * labels. Default exit 0. The deploying organization's appetite file is where
- * "is this acceptable" lives; `--fail-on-appetite` is opt-in.
+ * labels. Default exit 0. The deploying organization's appetite file is an
+ * additional bar for differences the audit only warns on; `--fail-on-appetite`
+ * is opt-in and cannot accept a core-rule relaxation.
  */
 
 const fs = require('fs');
@@ -45,6 +48,20 @@ function consequenceClass(ruleId) {
         return 'identity';
     }
     return 'unclassified';
+}
+
+/** Core rule IDs match scripts/layer_compliance.js: secrets.* and refusal.*. */
+function isCoreRuleId(ruleId) {
+    const id = String(ruleId);
+    return id.startsWith('secrets.') || id.startsWith('refusal.');
+}
+
+/** A winning override that is not clarify/tighten on a core rule. Audit FAILs these. */
+function isCoreRelaxation(diff) {
+    return Boolean(diff.wins)
+        && isCoreRuleId(diff.rule)
+        && diff.action !== 'clarify'
+        && diff.action !== 'tighten';
 }
 
 /** Parse rule markers from baseline text. Returns { rules: Map, errors }. */
@@ -291,7 +308,8 @@ function formatReport(evaluation, appetiteResult, { failOnAppetite = false } = {
         ? ['AGENTS.md', ...evaluation.layers].join(' -> ')
         : 'AGENTS.md (baseline only)';
     lines.push(`Load order: ${stack}`);
-    lines.push('Later sources win. Consequence classes are descriptive labels.');
+    lines.push('Later sources win, except core rules (secrets.*, refusal.*), which cannot be relaxed.');
+    lines.push('Consequence classes are descriptive labels. This report does not waive a core rule.');
     lines.push('');
 
     if (evaluation.resolveErrors.length) {
@@ -317,8 +335,14 @@ function formatReport(evaluation, appetiteResult, { failOnAppetite = false } = {
         for (const diff of evaluation.differences) {
             const win = diff.wins ? 'wins' : 'superseded';
             const actionNote = diff.knownAction ? diff.action : `${diff.action} (unknown action)`;
-            lines.push(`  ${diff.where}  ${diff.rule}  ${actionNote}  ${diff.class}  (${win})`);
+            const enforcement = isCoreRelaxation(diff) ? '  audit-FAIL' : '';
+            lines.push(`  ${diff.where}  ${diff.rule}  ${actionNote}  ${diff.class}  (${win})${enforcement}`);
         }
+    }
+
+    if (evaluation.differences.some(isCoreRelaxation)) {
+        lines.push('');
+        lines.push('Core-rule relaxations above are an audit FAIL (`npm run audit`). This report does not waive them. There is no waiver mechanism.');
     }
 
     if (evaluation.malformed.length) {
@@ -343,7 +367,7 @@ function formatReport(evaluation, appetiteResult, { failOnAppetite = false } = {
             }
         }
         if (appetiteResult.attestations.length) {
-            lines.push('Attestations (log only; they do not change the exit code):');
+            lines.push('Attestations (log only; they do not change the exit code and they do not waive a core rule):');
             for (const entry of appetiteResult.attestations) {
                 const bits = [
                     entry.rule || '(any rule)',
@@ -368,7 +392,7 @@ function formatReport(evaluation, appetiteResult, { failOnAppetite = false } = {
             ? 'Exit 1: winning overrides match this organization\'s appetite.'
             : 'Exit 0: no winning override matches this organization\'s appetite.');
     } else {
-        lines.push('Exit 0 (default). Pass --fail-on-appetite to exit 1 on appetite matches.');
+        lines.push('Exit 0 (default). Pass --fail-on-appetite to exit 1 on appetite matches. A core-rule relaxation still fails `npm run audit`.');
     }
     return `${lines.join('\n')}\n`;
 }
@@ -409,8 +433,10 @@ function runCli({
         stdout.write(`Usage: node scripts/layer_diff.js [--json] [--appetite <path>] [--fail-on-appetite]
 
 Reports tagged AGENTS.md layer overrides. Default exit 0.
+Core rules (secrets.*, refusal.*) cannot be relaxed; npm run audit fails those attempts. This report does not waive them.
 --fail-on-appetite exits 1 when a winning override matches the appetite file.
 Appetite path: --appetite, else ${APPETITE_ENV}, else ${APPETITE_DEFAULT} if present.
+The appetite file is an additional bar. It cannot accept a core-rule relaxation.
 `);
         return 0;
     }
@@ -478,6 +504,8 @@ module.exports = {
     auditAppetiteExample,
     auditRuleCatalog,
     consequenceClass,
+    isCoreRelaxation,
+    isCoreRuleId,
     evaluateLayerDiff,
     formatReport,
     loadAppetite,

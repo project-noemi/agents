@@ -2,7 +2,7 @@
 
 `AGENTS.md` is the upstream baseline that every copy of this repository shares. Organizations that run their own copy, for example an MSP/MSSP managing many customers, and those customers themselves, add rules **in separate layer files**, never by editing `AGENTS.md`. Upstream syncs then never collide with local rules, and every agent sees one explicit, ordered stack.
 
-This guide covers the model, the files, the generator that wires the stack into Claude Code and Gemini CLI, how an MSP and a customer each add a layer, the difference report and appetite file, sync safety, and per-tool behaviour.
+This guide covers the model, the files, the generator that wires the stack into Claude Code and Gemini CLI, how an MSP and a customer each add a layer, compliance, the difference report and appetite file, sync safety, and per-tool behaviour.
 
 ## The four-layer model
 
@@ -21,9 +21,14 @@ Layers 2 and 3 are selected by a committed manifest, `AGENTS.layers`. A reposito
 2. Each path in `AGENTS.layers`, top to bottom. If the environment variable `NOEMI_ORG_LAYERS` is set and non-empty, its comma-separated paths **replace** the manifest for that session.
 3. `AGENTS.local.md`, if it exists. It always loads last.
 
-On any conflict, **the later source wins**. A listed file that does not exist is a no-op, not an error, so a manifest can list a layer before it is vendored in.
+On any conflict, **the later source wins**, with one exception. A listed file that does not exist is a no-op, not an error, so a manifest can list a layer before it is vendored in.
 
-A later layer may change a tagged baseline rule. `npm run layers:diff` names which layer overrode which ID and a consequence class. Whether that matches the organization's risk appetite is that organization's policy (see [Difference report and appetite](#difference-report-and-appetite)). Fetch-on-Demand and named refusal criteria are the recommended default stack, in the same voice as [`agents/coding/sentinel/compliance.md`](../agents/coding/sentinel/compliance.md): guidance the deploying organization chooses whether to follow.
+**Core rules are non-relaxable.** The Mandatory Security Rules (`secrets.*`) and the Refusal Principle (`refusal.*`) stay in force under every layer. A layer may clarify or tighten them, never loosen them, and there is no waiver or exception mechanism. Two things back this up:
+
+- **At runtime**, `AGENTS.md` tells every agent that layer text which would loosen a core rule does not apply: the baseline rule wins, under the Refusal Principle.
+- **In CI**, `npm run audit` fails any active layer that tries to relax a core rule (see [Compliance](#compliance)).
+
+Preference rules, and rules without a stable ID, follow plain later-wins. `npm run layers:diff` names tagged overrides and a consequence class. The organization's appetite file is an additional bar for differences the audit only warns on (see [Difference report and appetite](#difference-report-and-appetite)). It does not waive a core rule. Fetch-on-Demand and named refusal criteria stay in force.
 
 Layers should say what they replace. The template [`org/example/AGENTS.md`](../org/example/AGENTS.md) has an **Overrides of earlier layers** section for that, so agents never have to infer which of two contradictory rules applies.
 
@@ -141,7 +146,7 @@ Each path has exactly one owner, so no sync writes to another owner's files:
 
 | Path | Written by | Upstream sync | MSP layer pull | Customer |
 |------|-----------|---------------|----------------|----------|
-| `AGENTS.md`, `AGENTS.layers.example`, `org/example/`, scripts, docs | Upstream | Updates | Never touches | Does not edit |
+| `AGENTS.md`, `AGENTS.layers.example`, `AGENTS.appetite.example.json`, `org/example/`, scripts, docs | Upstream | Updates | Never touches | Does not edit |
 | `org/<msp>/` | MSP | Never touches (upstream never ships it) | Updates | Does not edit |
 | `org/<customer>/`, `AGENTS.layers` | Customer | Never touches (upstream ships no live manifest) | Never touches | Owns |
 | `AGENTS.local.md` | Developer | Gitignored | Gitignored | Gitignored |
@@ -180,37 +185,34 @@ Each path has exactly one owner, so no sync writes to another owner's files:
 
 Any tool that loads `AGENTS.md` as text gets the same instruction. Ask it to "list the instruction files you loaded" to confirm the stack.
 
-## Difference report and appetite
+## Compliance
 
-`npm run layers:diff` (`scripts/layer_diff.js`) reads the active layers, including `AGENTS.local.md` when present, and lists every tagged override. Default **exit 0**. `npm run audit` does not score those overrides. The deploying organization's appetite file is where "is this acceptable" lives.
+`npm run audit` (`scripts/audit-repo.js`, which CI runs in `validate.yml`) scores every active layer, including `AGENTS.local.md` when present, through `scripts/layer_compliance.js`. Each finding is one of three levels:
 
-| What the reporter shows | Meaning |
-|-------|---------|
-| `relax` / `clarify` / `tighten` on a tagged ID | A later layer declared that change. The last marker for that ID **wins**. |
-| Consequence class | A descriptive label: `credentials-in-repo`, `identity`, `spend`, `style`, or `unclassified`. Not a moral rank. |
-| Malformed `override:` marker | The comment did not parse as `<rule-id> <action>`. It is listed; it is not an audit FAIL. |
-| Appetite `MATCH` | A winning override matches the organization's `failOn` list. Printed only when an appetite file is loaded. |
+| Level | Meaning | Effect on `npm run audit` |
+|-------|---------|---------------------------|
+| **FAIL** | Any attempt to relax a core rule; a missing or downgraded core rule ID in `AGENTS.md`; a malformed manifest | Printed as `AUDIT FAIL: …`; the audit exits 1 |
+| **WARN** | A relaxed preference rule; an override of an unknown rule ID; a malformed marker that names no core rule | Printed as `AUDIT WARN: …`; the audit still passes |
+| **PASS** | A `clarify` or `tighten` marker, which loosens no prohibition | Printed as `PASS: …` |
 
-`--fail-on-appetite` (opt-in) exits 1 when a winning override matches the appetite file. Appetite path: `--appetite`, else `NOEMI_APPETITE`, else `AGENTS.appetite.json` if that file exists. An attestation (`owner`, `reason`, `review-by`) is a log of who accepted a difference. It does not change the exit code.
-
-Upstream ships [`AGENTS.appetite.example.json`](../AGENTS.appetite.example.json) as a copyable recommendation: it fails on `credentials-in-repo` relaxations. Copy it to `AGENTS.appetite.json` or `org/<customer>/appetite.json` and edit it. Fetch-on-Demand and named refusal criteria are the recommended default stack.
+No flag, file or environment variable turns a FAIL into a WARN. An appetite file and its attestations do not either.
 
 ### Stable rule IDs
 
-The baseline tags the rules the reporter can name with HTML-comment markers:
+The baseline tags the rules compliance tracks with HTML-comment markers. The class column is what `npm run layers:diff` prints; it is a descriptive label.
 
-| ID | Rule | Class |
-|----|------|-------|
-| `secrets.no-ask-user` | Never ask the user for secrets in chat | credentials-in-repo |
-| `secrets.no-hardcode` | Never hardcode secret values in files, `.env` files, or logs | credentials-in-repo |
-| `secrets.fetch-on-demand` | Resolve credentials at runtime with `infisical run` / `op run` | credentials-in-repo |
-| `refusal.principle` | The Refusal Principle | identity |
-| `refusal.criteria-mandatory` | Every persona has a `### Refusal Criteria` subsection | identity |
-| `coding.branch-naming` | Branch name format | style |
-| `coding.model-baseline` | Reference model pin | spend |
-| `coding.naming-conventions` | Slug-based artifact names | style |
+| ID | Rule | Tier | Class |
+|----|------|------|-------|
+| `secrets.no-ask-user` | Never ask the user for secrets in chat | core | credentials-in-repo |
+| `secrets.no-hardcode` | Never hardcode secret values in files, `.env` files, or logs | core | credentials-in-repo |
+| `secrets.fetch-on-demand` | Resolve credentials at runtime with `infisical run` / `op run` | core | credentials-in-repo |
+| `refusal.principle` | The Refusal Principle | core | identity |
+| `refusal.criteria-mandatory` | Every persona has a `### Refusal Criteria` subsection | core | identity |
+| `coding.branch-naming` | Branch name format | preference | style |
+| `coding.model-baseline` | Reference model pin | preference | spend |
+| `coding.naming-conventions` | Slug-based artifact names | preference | style |
 
-Markers look like `<!-- rule: secrets.no-hardcode -->` or `<!-- rule: coding.branch-naming (preference) -->`. The published baseline must keep these IDs so the report can name them. That is a repository invariant (`npm run audit`), not a rank on downstream layers.
+Markers look like `<!-- rule: secrets.no-hardcode -->` (core is the default) or `<!-- rule: coding.branch-naming (preference) -->`. Removing a core marker from `AGENTS.md`, or tagging any `secrets.*` / `refusal.*` rule as a preference, is a FAIL. The published baseline must also keep the preference IDs so the difference report can name them.
 
 ### Declaring an override in a layer
 
@@ -222,29 +224,55 @@ Reference the rule ID on the line with the replacement text:
 - Never log secret *names* either. <!-- override: secrets.no-hardcode tighten -->
 ```
 
-Untagged replacements still win under later-wins. They do not appear in the report.
+| Marker | Rule tier | Result |
+|--------|-----------|--------|
+| `relax`, or any action other than `clarify` / `tighten` | core (`secrets.*`, `refusal.*`), including unknown IDs with those prefixes | **FAIL** |
+| malformed `override:` marker that names a core rule | core | **FAIL** |
+| `relax` | preference | **WARN** |
+| unknown rule ID or action, or a malformed marker | not core | **WARN** |
+| `clarify` / `tighten` | any | **PASS** |
 
-### What the report does not do
+**Wording check (FAIL).** Every line of every active layer, including lines that carry a `clarify` or `tighten` marker, is also scanned for phrasing that reads like loosening a core rule. Examples are "may hardcode …", "paste the API key", "may write secrets to …", "skip infisical run" and "ignore the refusal criteria". A hit is a FAIL: reword the line. A marker cannot exempt a line from this check. Free-text matching misses some rewordings, so review of the layer change is still the primary check, and the runtime rule in `AGENTS.md` still applies.
 
-**The report does not control what an agent does at runtime.** It names tagged differences in the committed layer files. Every repository, with or without layers, still needs controls outside the prompt:
+Untagged replacements of preference rules still win under later-wins. They do not appear in the difference report. Untagged text that would loosen a core rule does not apply, and the wording check FAILs it.
+
+### What compliance does not do
+
+**An audit does not control what an agent does at runtime.** It checks the committed layer files. The difference report does not either, and it does not waive a FAIL. Every repository, with or without layers, still needs controls outside the prompt:
 
 - **secret scanning** on push and in CI (e.g. GitHub secret scanning with push protection, gitleaks, trufflehog);
 - **pre-commit hooks** that block credentials and `.env` files before they are committed;
 - **runtime controls**: injection-only credentials (`infisical run` / `op run`), least-privilege and short-lived tokens, egress and filesystem restrictions for agent sandboxes, and tool permission deny-lists.
 
+## Difference report and appetite
+
+`npm run layers:diff` (`scripts/layer_diff.js`) reads the active layers, including `AGENTS.local.md` when present, and lists every tagged override. Default **exit 0**. The report is not the enforcement path. `npm run audit` still FAILs any attempt to relax a core rule, and there is no waiver. The deploying organization's appetite file is an additional, opt-in bar for differences the audit only warns on, such as a preference-rule relax.
+
+| What the reporter shows | Meaning |
+|-------|---------|
+| `relax` / `clarify` / `tighten` on a tagged ID | A later layer declared that change. The last marker for that ID **wins** among preference rules. A winning `relax` on a core rule is still an audit FAIL. |
+| Consequence class | A descriptive label from the table in [Stable rule IDs](#stable-rule-ids): `credentials-in-repo`, `identity`, `spend`, `style`, or `unclassified`. |
+| Malformed `override:` marker | Listed here. Compliance scores it: FAIL when it names a core rule, otherwise WARN. |
+| Appetite `MATCH` | A winning override matches the organization's `failOn` list. Printed only when an appetite file is loaded. A match does not waive a core-rule FAIL, and the absence of a match does not either. |
+
+`--fail-on-appetite` (opt-in) exits 1 when a winning override matches the appetite file. Appetite path: `--appetite`, else `NOEMI_APPETITE`, else `AGENTS.appetite.json` if that file exists. An attestation (`owner`, `reason`, `review-by`) is a log of who noted a preference-rule difference. It does not change the exit code and it does not waive a core rule.
+
+Upstream ships [`AGENTS.appetite.example.json`](../AGENTS.appetite.example.json) as a copyable recommendation: its `failOn` list names `credentials-in-repo` relaxations, the same class the audit already FAILs. Copy it to `AGENTS.appetite.json` or `org/<customer>/appetite.json` and edit the preference-rule entries. Do not use it to accept a secrets or refusal relaxation. There is no accept list and no waiver file.
+
 ## CI checks
 
-`npm run audit` enforces the layer *contract* through `scripts/context_layers.js` (FAIL on violation):
+`npm run audit` enforces the layer contract through `scripts/context_layers.js` and `scripts/layer_compliance.js` (FAIL on violation):
 
 - `AGENTS.md` ends with a top-level `# Configuration layers` section that names `AGENTS.layers`, `NOEMI_ORG_LAYERS` and `AGENTS.local.md`.
-- `org/example/AGENTS.md` exists.
+- `org/example/AGENTS.md` exists, its override markers use valid IDs, and it relaxes no core rule.
 - `AGENTS.appetite.example.json` exists and parses.
-- Every catalogued rule ID is present in `AGENTS.md`.
+- Every catalogued rule ID is present in `AGENTS.md`. Every core rule ID is still tagged core.
 - Every path in `AGENTS.layers` and `AGENTS.layers.example` (whichever exist) is well-formed: relative, inside the repository, `.md`, not reserved, no duplicates.
 - `.gitignore` ignores `AGENTS.local.md`.
 - `CLAUDE.md`/`GEMINI.md` equal the generator's output for this checkout.
+- No active layer or the template relaxes a core rule.
 
-Listed layer files that are **missing do not fail the build**. A tagged override, including a `relax` of a secrets or refusal rule, does **not** fail `npm run audit`. Tests live in `tests/config-layers.test.js` and `tests/layer-diff.test.js`.
+Listed layer files that are **missing do not fail the build**. A `relax` of a secrets or refusal rule **does** fail `npm run audit`. Tests live in `tests/config-layers.test.js`, `tests/layer-compliance.test.js`, and `tests/layer-diff.test.js`.
 
 ## Risks
 
@@ -252,5 +280,7 @@ Listed layer files that are **missing do not fail the build**. A tagged override
 - **Stale generated imports:** re-run `npm run generate` after any manifest or layer change. CI catches committed staleness.
 - **Context growth:** every layer loads every session; the Codex cap is 32 KiB by default.
 - **Ownership drift:** editing a vendored MSP layer in a customer repo breaks subtree pulls. Use the customer layer instead.
-- **Untagged replacements:** they still win and stay invisible to `layers:diff`. Tag the override so the report can name it.
-- **Report is not enforcement:** see [What the report does not do](#what-the-report-does-not-do).
+- **Wording-check false positives:** a harmless line can read like a relaxation. Reword it; there is deliberately no way to suppress the check.
+- **Untagged preference replacements:** they still win and stay invisible to `layers:diff`. Tag the override so the report can name it.
+- **Appetite is not a waiver:** `failOn` and attestations never turn a core-rule FAIL into a pass.
+- **Report is not enforcement:** see [What compliance does not do](#what-compliance-does-not-do).

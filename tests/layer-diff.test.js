@@ -4,6 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
+const { evaluateLayerCompliance } = require('../scripts/layer_compliance');
 const {
     APPETITE_EXAMPLE,
     RULE_CATALOG,
@@ -65,12 +66,13 @@ test('baseline AGENTS.md tags every catalogued rule ID', () => {
     assert.deepEqual(auditRuleCatalog(repoRoot), []);
 });
 
-test('AGENTS.md states later-wins and names the appetite file', () => {
+test('AGENTS.md states later-wins, names the appetite file, and keeps core rules non-relaxable', () => {
     assert.match(BASELINE, /the later source wins/);
+    assert.match(BASELINE, /except for core rules/);
     assert.match(BASELINE, /AGENTS\.appetite\.example\.json/);
     assert.match(BASELINE, /npm run layers:diff/);
-    assert.doesNotMatch(BASELINE, /Core rules cannot be relaxed/);
-    assert.doesNotMatch(BASELINE, /There is no waiver or exception mechanism/);
+    assert.match(BASELINE, /\*\*Core rules cannot be relaxed\.\*\*/);
+    assert.match(BASELINE, /There is no waiver or exception mechanism\./);
     assert.doesNotMatch(BASELINE, /AGENTS\.waivers/);
 });
 
@@ -92,13 +94,22 @@ test('the layer template parses and uses catalogued IDs', () => {
     }
 });
 
-test('relaxing a secrets rule is a named difference, not an audit FAIL', () => {
-    const result = evaluate(acmeLayer(['- Dummy keys in fixtures. <!-- override: secrets.no-hardcode relax -->']));
+test('the reporter names a secrets relaxation, and compliance still FAILs it', () => {
+    const files = acmeLayer(['- Dummy keys in fixtures. <!-- override: secrets.no-hardcode relax -->']);
+    const result = evaluate(files);
     assert.equal(result.differences.length, 1);
     assert.equal(result.differences[0].rule, 'secrets.no-hardcode');
     assert.equal(result.differences[0].action, 'relax');
     assert.equal(result.differences[0].class, 'credentials-in-repo');
     assert.equal(result.differences[0].wins, true);
+    const dir = fixtureRepo(files);
+    try {
+        const compliance = evaluateLayerCompliance({ repoRoot: dir, env: {} });
+        assert.equal(compliance.findings[0].level, 'FAIL');
+        assert.match(compliance.findings[0].message, /cannot be relaxed/);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
 });
 
 test('a committed AGENTS.waivers.json is ignored', () => {
@@ -197,6 +208,8 @@ test('CLI default exit is 0 when a secrets rule is relaxed', () => {
         assert.equal(result.status, 0, result.stderr);
         assert.match(result.stdout, /secrets\.no-hardcode/);
         assert.match(result.stdout, /credentials-in-repo/);
+        assert.match(result.stdout, /audit-FAIL/);
+        assert.match(result.stdout, /does not waive them/);
         assert.match(result.stdout, /Exit 0 \(default\)/);
     } finally {
         fs.rmSync(dir, { recursive: true, force: true });
@@ -232,31 +245,50 @@ test('CLI --fail-on-appetite without an appetite file exits 2', () => {
     }
 });
 
-test('audit CLI stays on repository invariants and does not score layer relaxations', () => {
+test('audit FAILs a core relaxation; the difference report still names it and does not waive it', () => {
     const env = { ...process.env };
     delete env.NOEMI_ORG_LAYERS;
     const auditSrc = fs.readFileSync(path.join(repoRoot, 'scripts/audit-repo.js'), 'utf8');
-    assert.doesNotMatch(auditSrc, /evaluateLayerDiff|evaluateLayerCompliance|layer_compliance/);
+    assert.match(auditSrc, /evaluateLayerCompliance/);
+    assert.match(auditSrc, /layer_compliance/);
     assert.match(auditSrc, /auditRuleCatalog/);
     assert.match(auditSrc, /auditAppetiteExample/);
 
     const clean = spawnSync('node', ['scripts/audit-repo.js'], { cwd: repoRoot, encoding: 'utf8', env });
     assert.equal(clean.status, 0, clean.stderr);
     assert.match(clean.stdout, /Auditing configuration layers hook/);
-    assert.doesNotMatch(clean.stdout, /Auditing layer compliance/);
+    assert.match(clean.stdout, /Auditing layer compliance/);
     assert.match(clean.stdout, /Repository audit passed\./);
 
     const layer = path.join(repoRoot, 'test-artifacts', 'layer-diff-cli.md');
     fs.mkdirSync(path.dirname(layer), { recursive: true });
     fs.writeFileSync(layer, '- x <!-- override: secrets.no-hardcode relax -->\n', 'utf8');
+    const layeredEnv = { ...env, NOEMI_ORG_LAYERS: 'test-artifacts/layer-diff-cli.md' };
     try {
+        const failing = spawnSync('node', ['scripts/audit-repo.js'], {
+            cwd: repoRoot,
+            encoding: 'utf8',
+            env: layeredEnv
+        });
+        assert.equal(failing.status, 1, failing.stdout);
+        assert.match(failing.stderr, /AUDIT FAIL: test-artifacts\/layer-diff-cli\.md:1: "relax" on core rule secrets\.no-hardcode/);
+
         const reported = spawnSync('node', ['scripts/layer_diff.js', '--fail-on-appetite', `--appetite=${APPETITE_EXAMPLE}`], {
             cwd: repoRoot,
             encoding: 'utf8',
-            env: { ...env, NOEMI_ORG_LAYERS: 'test-artifacts/layer-diff-cli.md' }
+            env: layeredEnv
         });
         assert.equal(reported.status, 1, reported.stderr);
         assert.match(reported.stdout, /secrets\.no-hardcode/);
+        assert.match(reported.stdout, /does not waive them/);
+
+        const namedOnly = spawnSync('node', ['scripts/layer_diff.js'], {
+            cwd: repoRoot,
+            encoding: 'utf8',
+            env: layeredEnv
+        });
+        assert.equal(namedOnly.status, 0, namedOnly.stderr);
+        assert.match(namedOnly.stdout, /audit-FAIL/);
     } finally {
         fs.rmSync(layer, { force: true });
     }

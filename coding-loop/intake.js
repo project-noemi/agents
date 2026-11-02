@@ -10,8 +10,14 @@
  * is forbidden by the skill.
  */
 
+const { matchTarget, ownerEntryMatches, repoEntryMatches } = require('./providers/contract.js');
+
 const BOT_LOGINS = new Set(['dependabot', 'renovate', 'github-actions']);
 const WRITE_PERMISSIONS = new Set(['admin', 'maintain', 'write']);
+// The only scanner verdicts that let a body through. Exact strings: a
+// lower-case 'approved', 'ERROR', 'TIMEOUT' or a typo is an unknown state,
+// and an unknown state is refused (fail closed), never treated as clean.
+const SCAN_PROCEED_STATUSES = new Set(['APPROVED', 'REDACTED']);
 
 const EMPTY_SECTION_MARKERS = [
   /^_no response_$/i,
@@ -31,8 +37,15 @@ function labelsOf(issue) {
   }).filter(Boolean);
 }
 
+/**
+ * Accepts the intake shape (`author` login + `author_type`) and a provider
+ * WorkItem (`author: { login, isBot }`, the provider's own bot verdict).
+ */
 function isBotAuthor(issue) {
-  const login = String((issue && issue.author) || '').replace(/^@/, '').toLowerCase();
+  const author = issue && issue.author;
+  if (author && typeof author === 'object' && author.isBot === true) return true;
+  const rawLogin = author && typeof author === 'object' ? author.login : author;
+  const login = String(rawLogin || '').replace(/^@/, '').toLowerCase();
   const type = String((issue && issue.author_type) || '').toLowerCase();
   if (type === 'bot') return true;
   if (login.endsWith('[bot]')) return true;
@@ -54,7 +67,12 @@ function isEmptyOrTemplate(issue) {
   return withoutHeadings.every((line) => EMPTY_SECTION_MARKERS.some((re) => re.test(line)));
 }
 
-function repoAllowed(org, repo, repos) {
+/**
+ * `repos` entries are a bare GitHub slug (`owner/name`, exact match as
+ * always) or a full provider key (`azure-devops:org/project/repo`,
+ * case-insensitive). See providers/contract.js repoEntryMatches.
+ */
+function repoAllowed(target, repos) {
   // Missing or [] means every repo in orgs (documented internal default).
   // A present non-array is a broken allowlist — fail closed, do not treat
   // it as "allow all" (review finding on #423, merged over that fail).
@@ -62,7 +80,7 @@ function repoAllowed(org, repo, repos) {
     return { ok: false, reason: 'tenant-misconfigured' };
   }
   const allow = Array.isArray(repos) ? repos : [];
-  if (allow.length > 0 && !allow.includes(`${org}/${repo}`)) {
+  if (allow.length > 0 && !allow.some((entry) => repoEntryMatches(entry, target))) {
     return { ok: false, reason: 'outside-tenant' };
   }
   return { ok: true };
@@ -80,36 +98,59 @@ function withVia(result, via) {
  */
 function tenantAllows(issue, tenant, entitlement) {
   const org = issue && issue.org;
-  const repo = issue && issue.repo;
+  // `issue.provider` (default github) and `issue.project` place the repo on
+  // its forge; `orgs` entries are a bare GitHub owner or `<provider>:<owner>`.
+  const target = matchTarget(issue);
   const orgs = (tenant && Array.isArray(tenant.orgs)) ? tenant.orgs : [];
-  if (org && orgs.includes(org)) {
-    return withVia(repoAllowed(org, repo, tenant && tenant.limits ? tenant.limits.repos : undefined), 'tenant');
+  if (org && target && orgs.some((entry) => ownerEntryMatches(entry, target))) {
+    return withVia(repoAllowed(target, tenant && tenant.limits ? tenant.limits.repos : undefined), 'tenant');
   }
   if (!org || !entitlement) {
     return { ok: false, reason: 'outside-tenant' };
   }
   if (entitlement.error) return { ok: false, reason: 'entitlement-unverified' };
-  if (!entitlement.installation) return { ok: false, reason: 'app-not-installed' };
-  if (entitlement.installation.suspended) return { ok: false, reason: 'installation-suspended' };
+  // `grant` is the provider-neutral name; `installation` is the GitHub-era
+  // name hosts and tests still pass.
+  const grant = entitlement.grant !== undefined ? entitlement.grant : entitlement.installation;
+  if (!grant) return { ok: false, reason: 'app-not-installed' };
+  if (grant.suspended) return { ok: false, reason: 'installation-suspended' };
   if (!entitlement.client) return { ok: false, reason: 'unregistered-client' };
   if (entitlement.client.status !== 'active') return { ok: false, reason: 'client-suspended' };
-  return withVia(repoAllowed(org, repo, entitlement.client.repos), 'client');
+  if (!target) return { ok: false, reason: 'outside-tenant' };
+  return withVia(repoAllowed(target, entitlement.client.repos), 'client');
 }
 
 /**
- * Tenant or client entitlement, plus the requester check for client runs:
- * a client run needs a named requester with write access to the repo, so an
- * outsider on a public client repo cannot spend the shared pool.
+ * Tenant or client entitlement, plus the requester check on EVERY run: a
+ * named requester with write access to the repo. Client-only was not enough
+ * — on a public tenant repo anyone who opened an issue spent the shared
+ * pool and drew a conductor comment. A missing or unverifiable requester is
+ * `trigger-unverified`; never default it to the token's own login (that is
+ * the bot, which would always pass).
  */
 function entitlementGate({ issue, tenant, entitlement, trigger } = {}) {
   const allowed = tenantAllows(issue, tenant, entitlement);
-  if (!allowed.ok || allowed.via !== 'client') return allowed;
+  if (!allowed.ok) return allowed;
   if (!trigger || !trigger.login || trigger.error) return { ok: false, reason: 'trigger-unverified' };
+  // Set by run.js when someone below the requester bar edited the item's
+  // text (--requested-by-author on a forge with provider.bodyEditors).
+  if (typeof trigger.refusal === 'string' && trigger.refusal) return { ok: false, reason: trigger.refusal };
   if (!WRITE_PERMISSIONS.has(trigger.permission)) return { ok: false, reason: 'trigger-not-writer' };
   return allowed;
 }
 
-function classifyIssue({ issue, tenant, entitlement, trigger, scan, budget } = {}) {
+/** Refusals caused by WHO asked. The run leaves no trace on the issue for these. */
+const REQUESTER_REFUSALS = new Set(['trigger-unverified', 'trigger-not-writer', 'body-edited-by-non-requester']);
+
+/**
+ * `hiddenInstructions`: run.js found instruction-like text in the item's
+ * hiddenText (an HTML comment, a display:none span, white-on-white text).
+ * A person reviewing the item cannot see it, so the item is REFUSED
+ * (`hidden-instructions`) before any model reads it.
+ */
+function classifyIssue({
+  issue, tenant, entitlement, trigger, scan, budget, hiddenInstructions = false,
+} = {}) {
   if (!issue || typeof issue !== 'object') {
     return {
       tier: 'REFUSED',
@@ -141,16 +182,8 @@ function classifyIssue({ issue, tenant, entitlement, trigger, scan, budget } = {
     };
   }
 
-  if (isEmptyOrTemplate(issue)) {
-    return {
-      tier: 'NEEDS_INFO',
-      reasons: ['empty-or-template-body'],
-      questions: ['What repository path should change, and how will we know it worked?'],
-      label: 'noemi:needs-info',
-      confidence: 'high',
-    };
-  }
-
+  // Entitlement and requester BEFORE the empty-body gate: NEEDS_INFO posts a
+  // conductor question, and an outsider must not be able to draw one.
   const allowed = entitlementGate({ issue, tenant, entitlement, trigger });
   if (!allowed.ok) {
     return {
@@ -158,6 +191,26 @@ function classifyIssue({ issue, tenant, entitlement, trigger, scan, budget } = {
       reasons: [allowed.reason],
       questions: [],
       label: 'noemi:wont-act',
+      confidence: 'high',
+    };
+  }
+
+  if (hiddenInstructions) {
+    return {
+      tier: 'REFUSED',
+      reasons: ['hidden-instructions'],
+      questions: [],
+      label: 'noemi:wont-act',
+      confidence: 'high',
+    };
+  }
+
+  if (isEmptyOrTemplate(issue)) {
+    return {
+      tier: 'NEEDS_INFO',
+      reasons: ['empty-or-template-body'],
+      questions: ['What repository path should change, and how will we know it worked?'],
+      label: 'noemi:needs-info',
       confidence: 'high',
     };
   }
@@ -205,6 +258,16 @@ function classifyIssue({ issue, tenant, entitlement, trigger, scan, budget } = {
     };
   }
 
+  if (!SCAN_PROCEED_STATUSES.has(scan.status)) {
+    return {
+      tier: 'REFUSED',
+      reasons: ['scan-status-unknown'],
+      questions: [],
+      label: 'noemi:wont-act',
+      confidence: 'high',
+    };
+  }
+
   return {
     tier: 'PENDING_SUFFICIENCY',
     reasons: ['deterministic-gates-passed'],
@@ -214,23 +277,20 @@ function classifyIssue({ issue, tenant, entitlement, trigger, scan, budget } = {
   };
 }
 
+/**
+ * REST payload → the intake shape. Kept for hosts that import it; the
+ * GitHub provider owns the mapping (required lazily: the provider imports
+ * BOT_LOGINS from this module).
+ */
 function issueFromGitHub(repoFullName, payload) {
-  const [org, repo] = String(repoFullName || '').split('/');
-  const user = payload && payload.user ? payload.user : {};
-  return {
-    org,
-    repo,
-    number: payload && payload.number,
-    author: user.login,
-    author_type: user.type === 'Bot' ? 'bot' : 'user',
-    title: payload && payload.title,
-    body: payload && payload.body,
-    labels: payload && payload.labels,
-  };
+  return require('./providers/github/index.js').issueFromPayload(repoFullName, payload);
 }
 
 module.exports = {
   BOT_LOGINS,
+  REQUESTER_REFUSALS,
+  SCAN_PROCEED_STATUSES,
+  WRITE_PERMISSIONS,
   classifyIssue,
   entitlementGate,
   issueFromGitHub,

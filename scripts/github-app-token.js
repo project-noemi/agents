@@ -10,6 +10,7 @@
  */
 
 const crypto = require('crypto');
+const { githubApiBase } = require('./github-client.js');
 
 function toBase64Url(obj) {
   return Buffer.from(JSON.stringify(obj)).toString('base64url');
@@ -34,6 +35,9 @@ async function mintGithubAppInstallationToken({
   privateKey,
   owner,
   fetchImpl = fetch,
+  // GitHub Enterprise Server: GITHUB_API_URL (set on every Actions runner),
+  // else github.com. Validated in githubApiBase (https only).
+  apiBase = githubApiBase(process.env),
 } = {}) {
   if (!appId || !privateKey) {
     const err = new Error('GitHub App mint requires appId and privateKey.');
@@ -54,7 +58,7 @@ async function mintGithubAppInstallationToken({
   const perPage = 100;
   while (true) {
     const list = await fetchImpl(
-      `https://api.github.com/app/installations?per_page=${perPage}&page=${page}`,
+      `${apiBase}/app/installations?per_page=${perPage}&page=${page}`,
       { headers },
     );
     if (!list.ok) {
@@ -105,7 +109,7 @@ async function mintGithubAppInstallationToken({
   }
 
   const minted = await fetchImpl(
-    `https://api.github.com/app/installations/${installation.id}/access_tokens`,
+    `${apiBase}/app/installations/${encodeURIComponent(installation.id)}/access_tokens`,
     { method: 'POST', headers },
   );
   if (!minted.ok) {

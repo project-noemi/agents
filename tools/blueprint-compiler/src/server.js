@@ -20,12 +20,16 @@
  * Trust boundary:
  *   - Gateway keys stay in this process's environment.
  *   - NOEMI_HTTP_ALLOWED_HOSTS is required at startup.
+ *   - NOEMI_STUDIO_TOKEN is required at startup. Every route but /api/health needs
+ *     it as a bearer token. The Vite proxy adds it, so a browser never holds it.
+ *   - Requests are rate limited per minute, with a smaller limit for runs.
  *   - JSON bodies are size-capped.
  *   - The Host header is restricted to allowed hosts.
  *   - One audit record is written per request.
  *   - Saved blueprints and run history live in one folder (NOEMI_STUDIO_DATA_DIR).
  *     File names come from server-made ids, never from browser input.
  */
+import { createHash, timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import {
@@ -36,6 +40,7 @@ import {
 } from "./compile.js";
 import { loadServerConfig, RUNTIMES } from "./config.js";
 import { auditFromRequest, writeAudit } from "./audit.js";
+import { createRateLimiter } from "./rate-limit.js";
 import { createBlueprintStore, ID } from "./store/blueprints.js";
 import { StoreError } from "./store/files.js";
 import { createRunStore, runRecordFrom } from "./store/runs.js";
@@ -52,6 +57,14 @@ class RequestError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+const sha256 = (text) => createHash("sha256").update(text).digest();
+
+// Hashing first gives timingSafeEqual equal lengths and hides the token's length.
+function hasToken(header, token) {
+  const presented = /^Bearer (.+)$/.exec(header ?? "")?.[1] ?? "";
+  return timingSafeEqual(sha256(presented), sha256(token));
 }
 
 /** Throws RequestError(400) unless `input` is one of the accepted shapes. */
@@ -434,6 +447,9 @@ export function createServer(opts = {}) {
     }),
   ];
 
+  const takeRequest = createRateLimiter(config.rateLimit);
+  const takeRun = createRateLimiter(config.runRateLimit);
+
   function match(method, path) {
     for (const r of routes) {
       if (r.method !== method) continue;
@@ -480,6 +496,21 @@ export function createServer(opts = {}) {
 
         res.end();
         return;
+      }
+
+      // Liveness only: it reveals nothing and spends nothing.
+      if (path !== "/api/health") {
+        if (!hasToken(req.headers.authorization, config.token)) {
+          res.setHeader("www-authenticate", "Bearer");
+          throw new RequestError(401, "Missing or invalid Studio token.");
+        }
+
+        const retryAfter = takeRequest() || (found?.route.name === "run" ? takeRun() : 0);
+
+        if (retryAfter) {
+          res.setHeader("retry-after", String(retryAfter));
+          throw new RequestError(429, "Too many requests. Try again shortly.");
+        }
       }
 
       if (!found) {

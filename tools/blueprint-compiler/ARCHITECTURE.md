@@ -115,7 +115,7 @@ Known dependency note: `npm audit` reports a moderate, transitive finding (`spri
 
 Trust boundary: keys and loader settings are server-side and read once at startup. Browser input is limited to text, an allowlisted URL or a registry ref, never a path. Records come from `auditFromRequest`, which logs inputs by kind and size or host, and errors by code only.
 
-**Known gap: no authentication.** The routes, including blueprint writes, deletes and run history, have no login. Binding to loopback and the `Host` check limit who can reach them, but any local process still can. AGENTS.md (Management API Security) requires authentication before this runs anywhere shared.
+**Access.** `NOEMI_STUDIO_TOKEN` is required at startup and every route but `/api/health` needs it as a bearer token, compared in constant time over hashes. The Vite proxy adds it on the server side, so the browser never holds it. `rate-limit.js` applies one fixed-window count per minute to the whole server and a smaller one to runs, because runs spend gateway budget. It stores no client data. A shared token is an interim control: it does not identify users, and Casdoor remains the target before this runs anywhere shared (AGENTS.md, Management API Security).
 
 ## Non-goals (Sprint 1–5)
 

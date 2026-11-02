@@ -9,6 +9,12 @@ import test from "node:test";
 import { createServer } from "../src/server.js";
 import { withEnv } from "./helpers/fake-network.js";
 
+// Every request here carries the token, unless a test sends its own header.
+const TOKEN = "test-studio-token-0123456789abcdef";
+const rawFetch = (...args) => globalThis.fetch(...args);
+const fetch = (url, init = {}) =>
+  rawFetch(url, { ...init, headers: { authorization: `Bearer ${TOKEN}`, ...init.headers } });
+
 // Offline: loopback only, and every server gets its own temp data folder.
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const fixtures = join(pkg, "fixtures");
@@ -24,7 +30,7 @@ async function withStudio(extra, fn) {
   const dataDir = await mkdtemp(join(tmpdir(), "studio-api-"));
   const lines = [];
   const server = createServer({
-    env: { NOEMI_HTTP_ALLOWED_HOSTS: "127.0.0.1", NOEMI_STUDIO_DATA_DIR: dataDir, ...extra },
+    env: { NOEMI_HTTP_ALLOWED_HOSTS: "127.0.0.1", NOEMI_STUDIO_TOKEN: TOKEN, NOEMI_STUDIO_DATA_DIR: dataDir, ...extra },
     repoRoot: fixtures,
     audit: { write: (s) => lines.push(s) },
   });
@@ -137,7 +143,7 @@ test("blueprints: the configured limit is a 409", () =>
 
 test("server: refuses to start with a bad store limit", () => {
   for (const extra of [{ NOEMI_STUDIO_MAX_BLUEPRINTS: "0" }, { NOEMI_STUDIO_MAX_RUNS: "many" }]) {
-    assert.throws(() => createServer({ env: { NOEMI_HTTP_ALLOWED_HOSTS: "example.com", ...extra } }), { code: "SERVER_CONFIG" });
+    assert.throws(() => createServer({ env: { NOEMI_HTTP_ALLOWED_HOSTS: "example.com", NOEMI_STUDIO_TOKEN: TOKEN, ...extra } }), { code: "SERVER_CONFIG" });
   }
 });
 

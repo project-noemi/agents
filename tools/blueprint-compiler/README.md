@@ -63,6 +63,9 @@ op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.co
 | `NOEMI_STUDIO_DATA_DIR` | The one folder for saved blueprints and run history. Created on first use, git-ignored | `data/` in this package |
 | `NOEMI_STUDIO_MAX_BLUEPRINTS` | Most blueprints that can be saved | `200` |
 | `NOEMI_STUDIO_MAX_RUNS` | Run-history rows kept, oldest dropped first | `500` |
+| `NOEMI_STUDIO_TOKEN` | **Secret.** Bearer token for every Studio server route but `/api/health`, at least 32 characters. Required to start | none |
+| `NOEMI_STUDIO_RATE_LIMIT` | Studio server requests allowed per minute | `120` |
+| `NOEMI_STUDIO_RUN_RATE_LIMIT` | Studio runs allowed per minute | `20` |
 | `NOEMI_REPO_ROOT` | Root that `skills/` and `mcp-protocols/` resolve against. Use an absolute path; a relative one resolves against the current directory. Not a secret | this clone's root |
 
 A 401 from the gateway means the virtual key is missing or invalid; a 403 means
@@ -168,9 +171,13 @@ assumption** (the public repo addressed by release tag); it lives in one functio
 `studio/src/api/types.ts`.
 
 ```bash
-NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com npm run studio
-# live providers: infisical run --env=dev -- env NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com npm run studio
+# Offline: a throwaway token, shared by both processes through this one shell.
+export NOEMI_STUDIO_TOKEN="$(openssl rand -hex 32)"
+NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com npm run studio &
 cd studio && VITE_STUDIO_BACKEND=http npm run dev
+
+# Live providers: run each command under your secrets manager instead.
+# infisical run --env=dev -- env NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com npm run studio
 ```
 
 | Route | Body | Response |
@@ -215,10 +222,15 @@ over to the next one only until its first token: after that the run ends with
   stores the prompt, persona text, output or error messages. History is best
   effort: an unwritable folder does not fail a run. `data/` is plain local files, so
   back it up or point `NOEMI_STUDIO_DATA_DIR` somewhere that is.
-- **No authentication yet.** Any process on the machine can call these routes,
-  including the ones that write and delete blueprints or spend gateway budget. Keep
-  the server on loopback, and do not deploy it beyond a developer machine until
-  it has authentication (AGENTS.md, Management API Security).
+- **Token.** The server refuses to start without `NOEMI_STUDIO_TOKEN`. Every route
+  but `/api/health` returns 401 without `Authorization: Bearer <token>`. The Vite
+  proxy adds the header on the server side, so the browser never holds the token.
+  This is a shared token, not user login; Casdoor is still the long-term answer
+  (AGENTS.md, Management API Security). Inject it like any other secret, and do not
+  write it to a file.
+- **Rate limits.** Requests over `NOEMI_STUDIO_RATE_LIMIT` or runs over
+  `NOEMI_STUDIO_RUN_RATE_LIMIT` in a minute get 429 with `Retry-After`. The counts are
+  for the whole server and hold no client data. `/api/health` is not limited.
 
 ## Skill and MCP resolution
 

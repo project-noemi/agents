@@ -39,6 +39,10 @@ npm run lint
 
    In dev, Vite forwards `/api` to `STUDIO_API_URL` (default `http://127.0.0.1:8787`).
 
+   Set `NOEMI_STUDIO_TOKEN` to the same value for the server and for Vite. The Vite
+   proxy adds it to each request on the server side, so the browser never holds it.
+   Never give it a `VITE_` prefix: those variables are built into the browser code.
+
 `VITE_STUDIO_BACKEND` and `STUDIO_API_URL` are configuration, not secrets. API keys
 stay on the server, which runs under `infisical run` / `op run`; nothing in the
 browser needs or receives them. If the server loads URLs, it must set
@@ -59,28 +63,32 @@ Vite prints a local address, usually http://localhost:5173. Open it in your brow
 
 By default this uses the offline mock backend, so no server is needed. You can save, open, rename and delete blueprints, run with the mock provider, and watch the run history table fill up. The mock keeps everything in memory, so a page refresh resets it. The header shows “Backend: offline mock (no server)”.
 
-To use the real server, where blueprints are saved to disk: you need two terminals.
+To use the real server, where blueprints are saved to disk: you need two terminals. Both need the same `NOEMI_STUDIO_TOKEN`. Pick a throwaway value of at least 32 characters for local use, and set it in each terminal. Do not put it in a file.
 
 Terminal 1, the server, from tools/blueprint-compiler/:
 
 powershell
 # PowerShell
 $env:NOEMI_HTTP_ALLOWED_HOSTS = "raw.githubusercontent.com"
+$env:NOEMI_STUDIO_TOKEN = "<your throwaway token>"
 npm run studio
 cmd
 :: Command Prompt
 set NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com
+set NOEMI_STUDIO_TOKEN=<your throwaway token>
 npm run studio
 
-It prints Studio server listening on http://127.0.0.1:8787. It refuses to start without NOEMI_HTTP_ALLOWED_HOSTS, which is deliberate.
+It prints Studio server listening on http://127.0.0.1:8787. It refuses to start without NOEMI_HTTP_ALLOWED_HOSTS or NOEMI_STUDIO_TOKEN, which is deliberate.
 
 Terminal 2, the website, from tools/blueprint-compiler/studio/:
 
 powershell
 $env:VITE_STUDIO_BACKEND = "http"
+$env:NOEMI_STUDIO_TOKEN = "<the same token>"
 npm run dev
 cmd
 set VITE_STUDIO_BACKEND=http
+set NOEMI_STUDIO_TOKEN=<the same token>
 npm run dev
 
 Open http://localhost:5173 again. The header should now say “Backend: Studio server”.

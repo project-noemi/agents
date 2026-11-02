@@ -6,8 +6,15 @@ import http from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { createRateLimiter } from "../src/rate-limit.js";
 import { createServer } from "../src/server.js";
 import { withEnv } from "./helpers/fake-network.js";
+
+// Every request here carries the token, unless a test sends its own header.
+const TOKEN = "test-studio-token-0123456789abcdef";
+const rawFetch = (...args) => globalThis.fetch(...args);
+const fetch = (url, init = {}) =>
+  rawFetch(url, { ...init, headers: { authorization: `Bearer ${TOKEN}`, ...init.headers } });
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const fixtures = join(pkg, "fixtures");
@@ -47,7 +54,7 @@ async function withStudio(env, fn) {
   // Run history is written on every /api/run: keep it out of the real data folder.
   const dataDir = await mkdtemp(join(tmpdir(), "studio-data-"));
   const server = createServer({
-    env: { NOEMI_HTTP_ALLOWED_HOSTS: "127.0.0.1", NOEMI_STUDIO_DATA_DIR: dataDir, ...env },
+    env: { NOEMI_HTTP_ALLOWED_HOSTS: "127.0.0.1", NOEMI_STUDIO_TOKEN: TOKEN, NOEMI_STUDIO_DATA_DIR: dataDir, ...env },
     repoRoot: fixtures,
     audit: { write: (s) => lines.push(s) },
   });
@@ -81,7 +88,7 @@ test("server: refuses to start without NOEMI_HTTP_ALLOWED_HOSTS", () => {
 });
 
 test("server: refuses to start with a bad port, body cap, or origin", () => {
-  const base = { NOEMI_HTTP_ALLOWED_HOSTS: "example.com" };
+  const base = { NOEMI_HTTP_ALLOWED_HOSTS: "example.com", NOEMI_STUDIO_TOKEN: TOKEN };
   for (const extra of [{ NOEMI_STUDIO_PORT: "80a" }, { NOEMI_STUDIO_MAX_BODY_BYTES: "0" }, { NOEMI_STUDIO_ORIGIN: "not a url" }]) {
     assert.throws(() => createServer({ env: { ...base, ...extra } }), { code: "SERVER_CONFIG" });
   }
@@ -314,4 +321,85 @@ test("server: CORS headers and preflight only for NOEMI_STUDIO_ORIGIN", async ()
     const other = await fetch(`${base}/api/run`, { method: "OPTIONS", headers: { origin: "https://evil.example" } });
     assert.equal(other.status, 404);
   }));
+});
+
+test("server: refuses to start without a long enough NOEMI_STUDIO_TOKEN", () => {
+  for (const value of [undefined, "", "too-short"]) {
+    assert.throws(
+      () => createServer({ env: { NOEMI_HTTP_ALLOWED_HOSTS: "example.com", NOEMI_STUDIO_TOKEN: value } }),
+      { code: "SERVER_CONFIG", message: /NOEMI_STUDIO_TOKEN/ },
+    );
+  }
+});
+
+test("server: every route but health needs the token, and the token is never logged", async () => {
+  await withEnv(clean, () => withStudio({}, async ({ base, audit, rawAudit }) => {
+    assert.equal((await rawFetch(`${base}/api/health`)).status, 200);
+
+    const attempts = [
+      [`${base}/api/providers`, {}],
+      [`${base}/api/runs`, {}],
+      [`${base}/api/blueprints`, {}],
+      [`${base}/api/unknown`, {}],
+      [`${base}/api/providers`, { authorization: "Bearer wrong-token" }],
+      [`${base}/api/providers`, { authorization: TOKEN }],
+    ];
+    for (const [url, headers] of attempts) {
+      const res = await rawFetch(url, { headers });
+      assert.equal(res.status, 401, url);
+      assert.equal(res.headers.get("www-authenticate"), "Bearer");
+    }
+
+    const run = await rawFetch(`${base}/api/run`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ input: { kind: "text", markdown: architect }, provider: "mock" }),
+    });
+    assert.equal(run.status, 401);
+
+    assert.equal((await fetch(`${base}/api/providers`)).status, 200);
+    assert.equal(audit().filter((r) => r.result === "rejected:401").length, attempts.length + 1);
+    assert.ok(!rawAudit().includes(TOKEN), "the token never reaches the audit record");
+  }));
+});
+
+test("server: run and request limits answer 429 with Retry-After", async () => {
+  await withEnv(clean, () => withStudio({ NOEMI_STUDIO_RUN_RATE_LIMIT: "2" }, async ({ base, audit }) => {
+    const run = () => post(base, "/api/run", { input: { kind: "text", markdown: architect }, provider: "mock" });
+    for (const expected of [200, 200, 429]) {
+      const res = await run();
+      assert.equal(res.status, expected);
+      if (expected === 429) assert.ok(Number(res.headers.get("retry-after")) > 0);
+      await res.text();
+    }
+    assert.equal((await fetch(`${base}/api/providers`)).status, 200, "other routes keep working");
+    assert.equal(audit().at(-2).result, "rejected:429");
+  }));
+
+  await withEnv(clean, () => withStudio({ NOEMI_STUDIO_RATE_LIMIT: "2" }, async ({ base }) => {
+    const statuses = [];
+    for (let i = 0; i < 3; i += 1) statuses.push((await fetch(`${base}/api/providers`)).status);
+    assert.deepEqual(statuses, [200, 200, 429]);
+    assert.equal((await rawFetch(`${base}/api/health`)).status, 200, "health is not limited");
+  }));
+});
+
+test("server: rate limits must be whole numbers of at least 1", () => {
+  for (const name of ["NOEMI_STUDIO_RATE_LIMIT", "NOEMI_STUDIO_RUN_RATE_LIMIT"]) {
+    assert.throws(
+      () => createServer({ env: { NOEMI_HTTP_ALLOWED_HOSTS: "example.com", NOEMI_STUDIO_TOKEN: TOKEN, [name]: "0" } }),
+      { code: "SERVER_CONFIG" },
+    );
+  }
+});
+
+test("rate limiter: refuses over the limit and resets with the window", () => {
+  let now = 1_000;
+  const take = createRateLimiter(2, () => now);
+  assert.equal(take(), 0);
+  assert.equal(take(), 0);
+  now += 10_000;
+  assert.equal(take(), 50);
+  now += 50_000;
+  assert.equal(take(), 0);
 });

@@ -329,7 +329,10 @@ test("cli: a failed remote load exits 1 with a LOAD audit record, not a stack tr
   });
 });
 
-test("cli: --runtime mastra --provider xai runs end to end against a loopback gateway", async () => {
+const mastraAvailable = await import("@mastra/core/agent").then(() => true, () => false);
+const mastraSkip = { skip: !mastraAvailable && "@mastra/core is not installed" };
+
+test("cli: --runtime mastra --provider xai runs end to end against a loopback gateway", mastraSkip, async () => {
   const gw = http.createServer((req, res) => {
     req.resume();
     req.on("end", () => {

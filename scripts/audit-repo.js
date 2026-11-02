@@ -12,6 +12,8 @@ const {
     findPlaceholderViolations,
     buildSkillsDist
 } = require('./context_helpers');
+const { auditConfigLayers, buildContextFile } = require('./context_layers');
+const { evaluateLayerCompliance } = require('./layer_compliance');
 
 const repoRoot = path.join(__dirname, '..');
 const agentsDir = path.join(repoRoot, 'agents');
@@ -33,6 +35,14 @@ let failed = false;
 function fail(message) {
     failed = true;
     console.error(`AUDIT FAIL: ${message}`);
+}
+
+// A WARN is reported but does not fail the audit. It is used only for
+// non-security layer findings (docs/configuration-layers.md § Compliance).
+let warnings = 0;
+function warn(message) {
+    warnings += 1;
+    console.error(`AUDIT WARN: ${message}`);
 }
 
 // Mandatory Audit Log JSON schema keys per Requirement §3 (Decision [2026-05-20]).
@@ -196,14 +206,55 @@ function checkSkills() {
 }
 
 function checkGeneratedOutputs() {
+    // Expected content = the `@AGENTS.md` pointer plus, only when configuration
+    // layers resolve on this checkout, the generated layer import block
+    // (scripts/context_layers.js). Upstream ships no live layers, so here the
+    // expectation is still exactly CONTEXT_POINTER (Decision [2026-09-22-0001]).
+    let expected;
+    try {
+        expected = buildContextFile({ repoRoot, env: process.env, pointer: CONTEXT_POINTER }).content;
+    } catch (error) {
+        fail(error.message);
+        return;
+    }
     for (const outputPath of generatedOutputs) {
         if (!fs.existsSync(outputPath)) {
             fail(`${path.basename(outputPath)} is missing — run \`npm run generate\`.`);
             continue;
         }
         const content = fs.readFileSync(outputPath, 'utf8');
-        if (content !== CONTEXT_POINTER) {
-            fail(`${path.basename(outputPath)} must be exactly ${JSON.stringify(CONTEXT_POINTER)} (Decision [2026-09-22-0001]).`);
+        if (content !== expected) {
+            fail(`${path.basename(outputPath)} must be exactly ${JSON.stringify(expected)} (Decision [2026-09-22-0001]; configuration layers per docs/configuration-layers.md) — run \`npm run generate\`.`);
+        }
+    }
+}
+
+// Configuration layers hook (docs/configuration-layers.md): the AGENTS.md
+// section exists and is last, the org/example template exists, AGENTS.local.md
+// is gitignored, and every path in AGENTS.layers / AGENTS.layers.example is
+// well-formed. Missing optional layer files are deliberately NOT a failure.
+function checkConfigLayers() {
+    console.log('Auditing configuration layers hook (AGENTS.layers)...');
+    for (const message of auditConfigLayers(repoRoot)) {
+        fail(message);
+    }
+}
+
+// Layer compliance (scripts/layer_compliance.js): core rules (secrets.*,
+// refusal.*) cannot be relaxed by any layer, so any attempt is a FAIL with no
+// waiver or downgrade path. Only preference-rule relaxations and unparseable
+// markers that name no core rule are WARN; clarifications and tightenings PASS.
+function checkLayerCompliance() {
+    console.log('Auditing layer compliance (core rule IDs and layer overrides)...');
+    const result = evaluateLayerCompliance({ repoRoot, env: process.env });
+    console.log(`Active layers: ${result.layers.length ? result.layers.join(' -> ') : 'none (baseline only)'}.`);
+    for (const finding of result.findings) {
+        if (finding.level === 'FAIL') {
+            fail(finding.message);
+        } else if (finding.level === 'WARN') {
+            warn(finding.message);
+        } else {
+            console.log(`PASS: ${finding.message}`);
         }
     }
 }
@@ -439,6 +490,8 @@ function main() {
     checkPersonas();
     checkSkills();
     checkGeneratedOutputs();
+    checkConfigLayers();
+    checkLayerCompliance();
     checkSkillsDistDeterminism();
     checkLicensingPosture();
     checkPhaseZeroKit();
@@ -450,7 +503,7 @@ function main() {
         process.exit(1);
     }
 
-    console.log('Repository audit passed.');
+    console.log(warnings ? `Repository audit passed with ${warnings} warning(s).` : 'Repository audit passed.');
 }
 
 main();

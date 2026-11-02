@@ -4,6 +4,10 @@ This is the safest beginner path in Project NoeMI.
 
 Use it when you are new to AI, comfortable around technology, and want one real success before you connect Google Workspace, Microsoft 365, GitHub, n8n, or Docker.
 
+## How to get started safely
+
+Get started safely with one read-only win on local repository content. Do not send mail, merge code, or spend money on this first pass.
+
 ## Decision Point: Choose The Matching Workstation Path
 
 Use the matching workstation guide alongside this one:

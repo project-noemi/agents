@@ -9,6 +9,7 @@ const {
     parseCliArgs,
     readConfig
 } = require('./context_helpers');
+const { buildContextFile, LAYERS_ENV } = require('./context_layers');
 
 const defaultConfigPath = path.join(__dirname, '../mcp.config.json');
 const agentsMdPath = path.join(__dirname, '../AGENTS.md');
@@ -31,11 +32,34 @@ const TARGETS = [
     }
 ];
 
-function generate(target) {
+/**
+ * CLAUDE.md / GEMINI.md = the `@AGENTS.md` pointer, plus a marked block of
+ * explicit `@path` imports for the configuration layers that resolve on this
+ * checkout (AGENTS.layers or NOEMI_ORG_LAYERS, then AGENTS.local.md; missing
+ * files skipped). With no layers present the output is exactly the pointer.
+ * See scripts/context_layers.js and docs/configuration-layers.md.
+ */
+function resolveContext() {
+    const { content, resolved } = buildContextFile({ repoRoot, env: process.env, pointer: CONTEXT_POINTER });
+    if (resolved.source !== 'none') {
+        console.log(`Configuration layers from ${resolved.source}: ${resolved.present.length} present`
+            + (resolved.missing.length ? `, ${resolved.missing.length} missing (skipped: ${resolved.missing.join(', ')})` : '')
+            + '.');
+    }
+    if (resolved.source === LAYERS_ENV) {
+        console.warn(`  ${LAYERS_ENV} is set: do not commit CLAUDE.md/GEMINI.md generated from a session override.`);
+    }
+    if (resolved.local) {
+        console.warn('  AGENTS.local.md is present: CLAUDE.md/GEMINI.md now import it. Do not commit that line.');
+    }
+    return content;
+}
+
+function generate(target, content) {
     console.log(`Generating ${target.name}.md as an AGENTS.md pointer...`);
     try {
-        fs.writeFileSync(target.output, CONTEXT_POINTER, 'utf8');
-        console.log(`Successfully generated ${target.output} (${JSON.stringify(CONTEXT_POINTER.trim())}).`);
+        fs.writeFileSync(target.output, content, 'utf8');
+        console.log(`Successfully generated ${target.output} (${JSON.stringify(content.trim())}).`);
         return true;
     } catch (error) {
         console.error(`Error generating ${target.name}.md: ${error.message}`);
@@ -128,9 +152,17 @@ function run() {
 
     console.log(`Using config: ${config.config}`);
 
+    let contextContent;
+    try {
+        contextContent = resolveContext();
+    } catch (error) {
+        console.error(error.message);
+        process.exit(1);
+    }
+
     let success = true;
     for (const target of TARGETS) {
-        if (!generate(target)) {
+        if (!generate(target, contextContent)) {
             success = false;
         }
     }

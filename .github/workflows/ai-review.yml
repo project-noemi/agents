@@ -408,6 +408,11 @@ jobs:
           GEMINI_ALLOW_PREVIEW: ${{ vars.GEMINI_ALLOW_PREVIEW || '1' }}
           GEMINI_PREFER_PREVIEW_PRO: ${{ vars.GEMINI_PREFER_PREVIEW_PRO || '1' }}
           REVIEW_TOOLING_REF: ${{ inputs.tooling-ref || 'develop' }}
+          # Override allowlist (docs/AI_REVIEW_OVERRIDE.md). Resolved in the
+          # caller's context, so set it at org or repo level. Empty: no
+          # override is honored. Passed as an argument, not env, so the
+          # Infisical vault injected by `infisical run` cannot supply it.
+          OVERRIDE_ACTORS: ${{ vars.NOEMI_REVIEW_OVERRIDE_ACTORS }}
         run: |
           export REVIEW_HALT_FILE="$RUNNER_TEMP/ai-review-halt"
           export REVIEW_FINDINGS_FILE="$RUNNER_TEMP/ai-review-findings.json"
@@ -418,7 +423,7 @@ jobs:
           if [[ "$MODEL_ROUTE" == vertex ]]; then
             strip=(env -u AI_GW_API_TOKEN -u AI_GW_API_KEY)
           fi
-          args=(--pr "$PR_NUMBER" --floor pro --prefer-pro --prefer-preview-pro --allow-preview)
+          args=(--pr "$PR_NUMBER" --floor pro --prefer-pro --prefer-preview-pro --allow-preview --override-actors "$OVERRIDE_ACTORS")
           # Direct-mode values leave the environment before either branch, so
           # they never reach review-pr.js in vault mode.
           direct_key="$DIRECT_GATEWAY_KEY"

@@ -35,7 +35,7 @@ function createServer(env: Env) {
     "search_knowledge",
     {
       description:
-        "Search the Project NoéMI public knowledge corpus (Bible, governance, methodology, Phase 0, skills). Returns ranked markdown chunks.",
+        "Ask about the NoéMI hands-on workshop series, Phase 0 security, and how to get a first safe, read-only win. Read-only, public documents only, no personal data, no sign-in required, rate-limited. Returns ranked markdown chunks.",
       inputSchema: {
         query: z
           .string()

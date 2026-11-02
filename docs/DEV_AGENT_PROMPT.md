@@ -260,3 +260,15 @@ Rationale: your merges previously happened by admin bypass with zero approvals
 and no review verdict consulted — the Admin Override Watch flags every such
 event. The gate converts your finish into a governed one: passing review +
 green checks + a human approval.
+
+### Graphite stacked PRs
+
+1. Detecting a stack: PR descriptions mention "Stack:" or "Base PR", or sequential PRs are based on each other's branches.
+2. Never merge a child PR into its parent branch. The merge target is always `develop`. Never change a PR's base by hand.
+3. Merge from the bottom up into `develop`, in one Graphite stack merge or through the Graphite merge queue.
+4. If an upper PR is ready first, leave it open until everything below it has landed.
+5. After anything lands on `develop`, run `gt sync`, `gt restack`, then `gt submit --stack`.
+6. To fix a lower PR, use `gt modify` on that branch, then `gt restack` and `gt submit --stack`. Force-pushing is expected on stacked branches. Do not use "merge develop in, no rebase, no force-push" on stacked branches; that rule applies only to non-stacked branches.
+7. Keep stacks to 3–5 PRs of about 500 changed lines each. Split larger plans into several short stacks.
+8. Ship-together notes must say "Ship together with #N. Merge from the bottom up into develop", never "Merge with #N".
+9. Run the AI reviewer once per revision (or on demand), not on every push.

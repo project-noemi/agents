@@ -14,7 +14,8 @@ const agentsRoot = path.resolve(serviceRoot, "../..");
 const outFile = path.join(serviceRoot, "src/corpus.generated.json");
 
 /**
- * Curated public corpus only (Decision [2026-09-22-0003]).
+ * Curated public corpus only (Decision [2026-09-22-0003], extended by
+ * [2026-10-25-0001]). Getting-started guides are public onboarding.
  * Do NOT include MACHINE_IDENTITY / internal identity registers or other
  * admin-architecture docs — those are not public knowledge-base material.
  */
@@ -24,6 +25,11 @@ const SOURCES = [
   { path: "docs/GOVERNANCE.md", title: "Governance" },
   { path: "docs/METHODOLOGY.md", title: "Methodology" },
   { path: "docs/PHASE_ZERO_SECURITY_BASELINE.md", title: "Phase 0 Security Baseline" },
+  { path: "docs/examples/zero-to-first-agent.md", title: "Zero to First Agent" },
+  { path: "docs/examples/cross-platform-kickstart.md", title: "Cross-Platform Kickstart" },
+  { path: "docs/examples/macos-linux-kickstart.md", title: "macOS and Linux Kickstart" },
+  { path: "docs/examples/windows-kickstart.md", title: "Windows Kickstart" },
+  { path: "docs/examples/chromeos-kickstart.md", title: "ChromeOS Kickstart" },
 ];
 
 function walkSkillsDist() {

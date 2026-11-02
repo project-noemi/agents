@@ -58,6 +58,14 @@ function redactModelError(text, apiKey) {
     .slice(0, 400);
 }
 
+/** One header from a fetch Headers object or a node:http header map. */
+function headerValue(headers, name) {
+  if (!headers) return '';
+  if (typeof headers.get === 'function') return String(headers.get(name) || '');
+  const value = headers[name] != null ? headers[name] : headers[name.toLowerCase()];
+  return value == null ? '' : String(Array.isArray(value) ? value[0] : value);
+}
+
 function hostOf(apiBase) {
   try {
     return new URL(apiBase).host;
@@ -124,6 +132,7 @@ function postJson(url, { apiKey, body, timeoutMs, headers = {} }) {
         resolve({
           ok: res.statusCode >= 200 && res.statusCode < 300,
           status: res.statusCode,
+          headers: res.headers,
           text: async () => text,
           json: async () => JSON.parse(text),
         });
@@ -175,6 +184,30 @@ function isBudgetOrForbidden(status, raw) {
   return STOP_TYPES.test(type) || STOP_MESSAGE.test(message);
 }
 
+/**
+ * The JSON object or array in a reply, tolerating a code fence or prose around
+ * it. Returns null when there is neither.
+ */
+function parseJsonValue(text) {
+  const raw = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  const attempt = (s) => {
+    try {
+      const value = JSON.parse(s);
+      return value && typeof value === 'object' ? value : null;
+    } catch {
+      return null;
+    }
+  };
+  const whole = attempt(raw);
+  if (whole) return whole;
+  const between = (open, close) => {
+    const start = raw.indexOf(open);
+    const end = raw.lastIndexOf(close);
+    return start >= 0 && end > start ? attempt(raw.slice(start, end + 1)) : null;
+  };
+  return between('{', '}') || between('[', ']');
+}
+
 function parseJsonObject(text) {
   const raw = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   const attempt = (s) => {
@@ -194,6 +227,9 @@ function parseJsonObject(text) {
 
 /**
  * One chat completion that must answer with one JSON object.
+ * `normalize`, when given, receives the parsed reply — an object or an array —
+ * and returns the object to use, or null to refuse it as unparseable. Without
+ * it, only an object is accepted.
  * @returns {Promise<{ json: object, model: string, finishReason: string }>}
  */
 async function chatJson({
@@ -207,6 +243,7 @@ async function chatJson({
   timeoutMs,
   label = 'Model',
   env = process.env,
+  normalize,
 } = {}) {
   const url = `${apiBase}/chat/completions`;
   const body = JSON.stringify({
@@ -252,7 +289,14 @@ async function chatJson({
         { code: 'budget-or-forbidden', upstreamStatus: res.status },
       );
     }
-    throw httpError(`${label} ${model} → ${res.status}${suffix}`, res.status);
+    // Retry-After rides on the error so the caller's withRetry can honour it
+    // (coding-loop/http.js retryAfterMs). Absent header: no field, as before.
+    const retryAfter = headerValue(res.headers, 'retry-after');
+    throw httpError(
+      `${label} ${model} → ${res.status}${suffix}`,
+      res.status,
+      retryAfter ? { headers: { 'retry-after': retryAfter } } : {},
+    );
   }
   let payload;
   try {
@@ -263,7 +307,9 @@ async function chatJson({
   const choice = payload && payload.choices && payload.choices[0] ? payload.choices[0] : {};
   const message = choice.message || {};
   const content = typeof message.content === 'string' ? message.content : '';
-  const json = parseJsonObject(content);
+  const json = typeof normalize === 'function'
+    ? normalize(parseJsonValue(content))
+    : parseJsonObject(content);
   if (!json) {
     const reasoningLen = typeof message.reasoning_content === 'string' ? message.reasoning_content.length : 0;
     const preview = redactModelError(content, apiKey).slice(0, 120);
@@ -309,6 +355,7 @@ module.exports = {
   completionTokenFields,
   isBudgetOrForbidden,
   parseJsonObject,
+  parseJsonValue,
   postJson,
   redactModelError,
   transportError,

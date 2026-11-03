@@ -261,7 +261,12 @@ function formatSource(source) {
   return `Path: ${neutralizeFenceTags(source.path)}\n${fenceData('file', source.content)}`;
 }
 
-const MAX_SOURCE_CHARS = 100000;
+// Per-file cap on the base-branch sources the writer reads for context. Every path the
+// plan names is loaded whole, and an owning requirements document of a fleet repository
+// runs past 100k characters, so the old cap refused Stage C for any issue that cited it
+// (Decision [2026-11-03-0001]). 500k characters is roughly 125k tokens, inside the
+// writer model's context together with the plan and the issue.
+const MAX_SOURCE_CHARS = 500000;
 
 /**
  * Read each plan file from the target repository at the base branch through
@@ -413,6 +418,7 @@ async function draftChanges({
 module.exports = {
   CARVE_OUT,
   MAX_FILES,
+  MAX_SOURCE_CHARS,
   XAI_API,
   NEWPUSH_AI_GW_V1,
   DEFAULT_GW_GROK_MODEL,

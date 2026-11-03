@@ -1,0 +1,404 @@
+{
+  "name": "event-driven-batch-webhook-validation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ertesito",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        -288,
+        160
+      ],
+      "id": "31616188-ad53-4185-8750-dfff13fccd08",
+      "name": "Webhook",
+      "webhookId": "c1607412-a12b-4f76-8d75-e8f486c01f66"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.body",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        160,
+        16
+      ],
+      "id": "0769a205-8c49-43b8-9619-828b857d7fc2",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "598a810e-b410-4a84-aa27-182d475fe760",
+              "leftValue": "={{ $json.nev }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "2beba7d3-4b7b-44e8-8490-dfde8b3698c8",
+              "leftValue": "={{ $json.email }}",
+              "rightValue": "@",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        384,
+        16
+      ],
+      "id": "8760e804-8a85-4bf5-833d-4e814c501401",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    \"Státusz\": \"Hiba történt az adatok validálásánál\",\n    \"Hibaüzenet\": $input.first().json.error ? $input.first().json.error.message : \"Ismeretlen hiba\",\n    \"Eredeti_Adat\": $('Webhook').first().json.body.body\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        112
+      ],
+      "id": "3ba188d0-9a26-456a-88f3-f7343e2842f8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "example@email.com",
+          "mode": "list",
+          "cachedResultName": "example@email.com"
+        },
+        "start": "={{ $json.datum }}",
+        "end": "={{ DateTime.fromISO($json.datum).plus({ hours: 1 }).toISO() }}",
+        "additionalFields": {
+          "summary": "=Meeting - {{ $json.nev }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        608,
+        -80
+      ],
+      "id": "060ef2fa-3c68-4415-8cea-0f14fbe63195",
+      "name": "Create an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "5sRCEG9qzfzBWzSx",
+          "name": "Google Calendar account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cd30b448-3ef2-4be8-aaa5-0a70220bcfba",
+              "name": "EmailIdopont",
+              "value": "={{ new Date(new Date($('Split Out').item.json.datum).getTime() - 15 * 60000).toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1040,
+        -144
+      ],
+      "id": "5d381e08-2320-494b-9b7d-c35044f4a8dd",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1264,
+        -144
+      ],
+      "id": "e88d9a32-5b93-4922-95f5-82fc88f64092",
+      "name": "Wait",
+      "webhookId": "3d8a0b9d-1517-49e2-9eca-6e86e368b367"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Split Out').item.json.email }}",
+        "subject": "Meeting",
+        "message": "=\"Szia {{ $('Split Out').item.json.nev }}! 15 perc múlva kezdünk. Itt a link: {{ $('Split Out').item.json.link }}\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1488,
+        -144
+      ],
+      "id": "dd684d19-7c75-4fa6-8eb0-e0436f6edb87",
+      "name": "Send a message",
+      "webhookId": "7b77011b-2411-4b1f-9bb6-3e26737f7921",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "otstK1UkdaOi0x0c",
+          "name": "Gmail account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    \"Státusz\": \"Hiba történt a naptárnál\",\n    \"Hibaüzenet\": $input.first().json.error,\n    \"Eredeti adat\": $('Webhook').first().json.body.body\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        16
+      ],
+      "id": "14933c45-e34a-438d-b0a9-388b2b56ff50",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    \"Státusz\": \"Hiba történt az email küldésekor\",\n    \"Hibaüzenet\": $input.first().json.error,\n    \"Eredeti adat\": $('Webhook').first().json.body.body\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        -32
+      ],
+      "id": "447897a4-b639-4620-a7bc-393fe004776e",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1616,
+        -448
+      ],
+      "id": "1933ea2e-419c-4c20-83c8-befd39fefc4f",
+      "name": "Wait1",
+      "webhookId": "a72f8807-41a0-4bd0-a6c5-d525adee7fce"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "value": "example@email.com",
+          "mode": "list",
+          "cachedResultName": "example@email.com"
+        },
+        "eventId": "={{ $('Create an event').item.json.id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1840,
+        -448
+      ],
+      "id": "85daf700-ca62-4991-aa26-97054eddd4d7",
+      "name": "Delete an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "5sRCEG9qzfzBWzSx",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "messageId": "={{ $('Send a message').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1808,
+        -256
+      ],
+      "id": "2be5b9cb-97a4-42cd-806d-0dfedefffb4d",
+      "name": "Delete a message",
+      "webhookId": "288dae87-f9d3-45f1-bea1-9ddaeb7f89fc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "otstK1UkdaOi0x0c",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Delete an event",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Delete a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Budapest",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "1027d49e-231b-4d56-996a-78130d39123f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0ac0c262fba6ca1237de800086bc1082e00d18fdbc81f64a5c4464ad89c097fb"
+  },
+  "nodeGroups": [],
+  "id": "p7lWTEVsiekoy4FW",
+  "tags": []
+}

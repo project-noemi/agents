@@ -4,7 +4,10 @@
 # Does not approve or merge. Conductor comments only when a conductor
 # credential is injected: CONDUCTOR_APP_ID + CONDUCTOR_APP_PRIVATE_KEY
 # (the runtime mints a one-hour installation token per run, docs/MACHINE_IDENTITY.md)
-# or an already-minted CONDUCTOR_GH_TOKEN. Budget is fail-closed: set
+# or an already-minted CONDUCTOR_GH_TOKEN. Every secret arrives BY NAME
+# from the caller (never `secrets: inherit`). The run is attributed to the
+# person who triggered it (issue opener / dispatcher) via --requested-by;
+# without write access on the repo they are refused. Budget is fail-closed: set
 # vars.CODING_LOOP_BUDGET_OK=true to assert capacity. Live Gemini B′ is
 # fail-closed too: set vars.CODING_LOOP_LIVE_CRITIC=true and org WIF
 # (same vars as the fleet reviewer). Unset, Stage B′ stays structural.
@@ -50,7 +53,8 @@ on:
     # hand every secret of the calling repository to this workflow. All stay optional:
     # without a conductor credential the loop runs without --post (it reads the issue with
     # github.token and posts nothing); without AGENT_GH_TOKEN it never opens a PR;
-    # without a writer key it prepares the Stage C envelope and leaves opened: false.
+    # without a writer key it prepares the Stage C envelope and leaves opened: false;
+    # without the App key and the registry, client entitlement fails closed.
     # The App pair is the standard conductor credential (docs/MACHINE_IDENTITY.md): the
     # runtime mints a one-hour installation token for the repository owner on every run.
     # CONDUCTOR_GH_TOKEN is the already-minted override for debugging the mint path.
@@ -76,16 +80,29 @@ on:
       XAI_API_KEY:
         description: 'Direct api.x.ai key for Stage C --open-pr when no gateway key is set'
         required: false
+      NOEMI_CLIENT_REGISTRY:
+        description: 'JSON client-org registry for entitlement (NewPush dispatchers; leave unset elsewhere)'
+        required: false
 
 permissions:
   contents: read
   issues: write
-  id-token: write          # WIF for --live-critic; unused when that var is unset
 
 jobs:
   intake:
     name: Stage A–C prepare
     runs-on: ubuntu-latest
+    # One loop per repo+issue at a time: two runs racing on the same issue
+    # would both comment, fight over the noemi:* label, and both try to
+    # create noemi/issue-N. Job level so it holds under workflow_call too.
+    # Queue, never cancel a run mid-write.
+    concurrency:
+      group: coding-loop-${{ inputs.repo || github.repository }}-${{ inputs.issue || github.event.issue.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+      id-token: write      # WIF for --live-critic; unused when that var is unset. The caller must grant it.
     steps:
       - uses: actions/checkout@v4
         with:
@@ -128,13 +145,18 @@ jobs:
       - name: Run coding loop
         env:
           GH_TOKEN: ${{ secrets.CONDUCTOR_GH_TOKEN || github.token }}
-          CONDUCTOR_APP_ID: ${{ secrets.CONDUCTOR_APP_ID }}
-          CONDUCTOR_APP_PRIVATE_KEY: ${{ secrets.CONDUCTOR_APP_PRIVATE_KEY }}
           CONDUCTOR_GH_TOKEN: ${{ secrets.CONDUCTOR_GH_TOKEN }}
+          CONDUCTOR_APP_ID: ${{ secrets.CONDUCTOR_APP_ID || vars.CONDUCTOR_APP_ID }}
+          CONDUCTOR_APP_PRIVATE_KEY: ${{ secrets.CONDUCTOR_APP_PRIVATE_KEY }}
           AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
           AI_GW_API_TOKEN: ${{ secrets.AI_GW_API_TOKEN }}
           AI_GW_API_KEY: ${{ secrets.AI_GW_API_KEY }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          NOEMI_CLIENT_REGISTRY: ${{ secrets.NOEMI_CLIENT_REGISTRY }}
+          # The human who triggered the run, never the bot: the issue opener
+          # for `issues`, the dispatcher otherwise. Passed through env, never
+          # interpolated into the script (a login is attacker-chosen text).
+          REQUESTED_BY: ${{ github.event_name == 'issues' && github.event.sender.login || github.actor }}
           ISSUE: ${{ inputs.issue || github.event.issue.number }}
           REPO: ${{ inputs.repo || github.repository }}
           BUDGET_OK: ${{ vars.CODING_LOOP_BUDGET_OK }}
@@ -159,6 +181,11 @@ jobs:
           fi
           if [[ -n "${CONDUCTOR_GH_TOKEN:-}" || ( -n "${CONDUCTOR_APP_ID:-}" && -n "${CONDUCTOR_APP_PRIVATE_KEY:-}" ) ]]; then
             extra+=(--post)
+          fi
+          # Empty requester: omit the flag; run.js then refuses the issue as
+          # trigger-unverified (fail closed) instead of exiting on a bad flag.
+          if [[ -n "${REQUESTED_BY:-}" ]]; then
+            extra+=(--requested-by "$REQUESTED_BY")
           fi
           if [[ -n "${AGENT_GH_TOKEN:-}" ]]; then
             extra+=(--implement)

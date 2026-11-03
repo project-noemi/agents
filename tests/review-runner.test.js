@@ -1293,3 +1293,79 @@ test('workflow: credentials come from Infisical when configured, else from named
     assert.match(caller, /REVIEWER_APP_PRIVATE_KEY: \$\{\{ secrets\.REVIEWER_APP_PRIVATE_KEY \}\}/);
     assert.doesNotMatch(caller.replace(/#.*$/gm, ''), /secrets: inherit/);
 });
+
+// A POST is not retried by github-client on 5xx, so the runner itself makes
+// the fleet comment survive one 502 without ever posting it twice.
+test('postOnce: a 5xx whose comment landed is success; one that did not is retried; 4xx is not', async () => {
+    const { postOnce } = require('../scripts/review-pr.js');
+    const marker = '<!-- noemi-review-post:test -->';
+    const err = (status) => Object.assign(new Error(`GitHub POST → ${status}`), { status });
+    const noSleep = async () => {};
+
+    // Landed despite the 502: one POST, no duplicate.
+    let posts = 0;
+    const landed = await postOnce({
+        marker,
+        sleep: noSleep,
+        post: async () => { posts += 1; throw err(502); },
+        list: async () => [{ id: 1, body: 'older review' }, { id: 2, body: `review\n\n${marker}` }],
+    });
+    assert.equal(landed.id, 2);
+    assert.equal(posts, 1);
+
+    // Did not land: retried, and the second POST's result is returned.
+    posts = 0;
+    const retried = await postOnce({
+        marker,
+        sleep: noSleep,
+        post: async () => { posts += 1; if (posts === 1) throw new TypeError('fetch failed'); return { id: 3 }; },
+        list: async () => [{ id: 1, body: 'older review' }],
+    });
+    assert.deepEqual(retried, { id: 3 });
+    assert.equal(posts, 2);
+
+    // Never lands: at most 4 POSTs, then the error.
+    posts = 0;
+    await assert.rejects(() => postOnce({
+        marker, sleep: noSleep, post: async () => { posts += 1; throw err(503); }, list: async () => [],
+    }), (e) => e.status === 503);
+    assert.equal(posts, 4);
+
+    // A definite rejection, or a failed lookup, is not retried (no duplicate risk taken).
+    posts = 0;
+    await assert.rejects(() => postOnce({
+        marker, sleep: noSleep, post: async () => { posts += 1; throw err(422); }, list: async () => [],
+    }), (e) => e.status === 422);
+    await assert.rejects(() => postOnce({
+        marker, sleep: noSleep, post: async () => { posts += 1; throw err(502); }, list: async () => { throw err(502); },
+    }), (e) => e.status === 502);
+    assert.equal(posts, 2);
+});
+
+test('postPrComment: the posted body carries the marker the lookup searches for', async () => {
+    const { postPrComment } = require('../scripts/review-pr.js');
+    const realFetch = global.fetch;
+    const realBase = process.env.GITHUB_RETRY_BASE_MS;
+    process.env.GITHUB_RETRY_BASE_MS = '1';
+    const calls = [];
+    let postedBody = '';
+    global.fetch = async (url, opts) => {
+        calls.push({ url, method: opts.method });
+        if (opts.method === 'POST') {
+            postedBody = JSON.parse(opts.body).body;
+            return { ok: false, status: 502, headers: { get: () => null }, text: async () => 'bad gateway' };
+        }
+        return { ok: true, status: 200, headers: { get: () => null }, json: async () => [{ id: 9, body: postedBody }] };
+    };
+    try {
+        const out = await postPrComment('o/r', 5, 't', '### review');
+        assert.equal(out.id, 9);
+        assert.match(postedBody, /^### review\n\n<!-- noemi-review-post:[0-9a-f-]{36} -->$/);
+        assert.deepEqual(calls.map((c) => c.method), ['POST', 'GET']);
+        assert.match(calls[1].url, /\/repos\/o\/r\/issues\/5\/comments\?since=/);
+    } finally {
+        global.fetch = realFetch;
+        if (realBase === undefined) delete process.env.GITHUB_RETRY_BASE_MS;
+        else process.env.GITHUB_RETRY_BASE_MS = realBase;
+    }
+});

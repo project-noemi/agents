@@ -9,7 +9,9 @@
 # AI_GW_API_TOKEN (or AI_GW_API_KEY / XAI_API_KEY) lets Stage C draft with Grok
 # and pass --open-pr (Decision [2026-10-29-0001]).
 # Optional: vars.CODING_LOOP_LIVE_CRITIC=true plus org WIF for Gemini B′.
-# Does not approve or merge.
+# Does not approve or merge. The issue opener (or dispatcher) needs write
+# access on this repository, or the loop refuses the issue and leaves no
+# comment or label.
 # Passes exactly the secrets the loop declares — never `secrets: inherit`,
 # which would hand every secret of this repository to the reusable workflow.
 # The called workflow requests `id-token: write` (WIF for live Gemini B′). GitHub
@@ -26,14 +28,25 @@ on:
         description: 'Issue number'
         required: true
         type: string
+      profile:
+        description: 'code (default) or spec (agents and skills only)'
+        required: false
+        type: string
+        default: code
 
 jobs:
   loop:
     uses: project-noemi/agents/.github/workflows/coding-loop.yml@main
+    # The reusable job asks for id-token: write (WIF for --live-critic). A
+    # caller that does not grant it fails at startup, so grant it here.
     permissions:
       contents: read
       issues: write
       id-token: write
+    # Only these, by name. Never `secrets: inherit`: the loop gets no other
+    # secret of this repository. Unset ones arrive empty and the loop fails
+    # closed on them. NOEMI_CLIENT_REGISTRY is NewPush's confidential client
+    # list; leave it unset outside NewPush-run dispatchers.
     secrets:
       CONDUCTOR_APP_ID: ${{ secrets.CONDUCTOR_APP_ID }}
       CONDUCTOR_APP_PRIVATE_KEY: ${{ secrets.CONDUCTOR_APP_PRIVATE_KEY }}
@@ -42,5 +55,7 @@ jobs:
       AI_GW_API_TOKEN: ${{ secrets.AI_GW_API_TOKEN }}
       AI_GW_API_KEY: ${{ secrets.AI_GW_API_KEY }}
       XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+      NOEMI_CLIENT_REGISTRY: ${{ secrets.NOEMI_CLIENT_REGISTRY }}
     with:
       issue: ${{ inputs.issue || github.event.issue.number }}
+      profile: ${{ inputs.profile || 'code' }}

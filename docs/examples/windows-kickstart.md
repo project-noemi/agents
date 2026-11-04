@@ -1,6 +1,6 @@
 # Windows Kickstart
 
-Use this guide when your main machine is Windows and you want the safest beginner path into Project NoeMI.
+Use this guide when your main machine is Windows and you want the safest beginner path into Project NoéMI.
 
 If you have not chosen a workstation path yet, start with [`cross-platform-kickstart.md`](cross-platform-kickstart.md) first.
 

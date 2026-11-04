@@ -1,6 +1,6 @@
 # Zero To First Agent
 
-This is the safest beginner path in Project NoeMI.
+This is the safest beginner path in Project NoéMI.
 
 Use it when you are new to AI, comfortable around technology, and want one real success before you connect Google Workspace, Microsoft 365, GitHub, n8n, or Docker.
 

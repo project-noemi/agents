@@ -1,0 +1,240 @@
+# Deploy the NoéMI Knowledge MCP (services/noemi-knowledge-mcp, https://mcp.noemi.newpush.com)
+# from a published agents release, and rebuild its corpus from that release.
+#
+# Order of a release (docs/KNOWLEDGE_MCP_DEPLOY.md): agents release -> this deploy ->
+# website FAQ republish (project-noemi/website "Deploy Production"), because the website
+# build quotes the live Knowledge MCP.
+#
+# Triggers:
+#   - release: published         a release created by a person or an App token.
+#   - workflow_run (Release)     release.yml creates releases with GITHUB_TOKEN, and GitHub does
+#                                not start `release` workflows for GITHUB_TOKEN events, so this
+#                                workflow also runs after each successful release run. A run that
+#                                tagged nothing finds the live service already on the latest tag
+#                                and stops without deploying.
+#   - workflow_dispatch          manual, optional `tag` (empty = latest published release).
+#
+# Every deploy checks out the release tag, refuses a tag whose commit is not on main, runs the
+# service tests (which rebuild the corpus), deploys with SERVICE_VERSION set to the tag, and then
+# checks /health for that version and a corpus built during this run.
+#
+# Auth: Cloudflare API token (Workers Scripts: Edit on the account that owns the Worker).
+# Cloudflare does not accept GitHub OIDC tokens, so there is no keyless option here; the token
+# is an Environment secret, never a repository file.
+#
+# Required in GitHub Environment "knowledge-mcp-production" (set by the secrets owner; names only):
+#   secret CLOUDFLARE_API_TOKEN    Workers Scripts: Edit, scoped to the one account
+#   secret CLOUDFLARE_ACCOUNT_ID   account that owns the noemi-knowledge-mcp Worker
+# One-time setup, protection rules and the branch/tag policy: docs/KNOWLEDGE_MCP_DEPLOY.md.
+name: Deploy Knowledge MCP
+
+on:
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["Release (CalVer date-versioned)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to deploy (YYYY.MM.DD or YYYY.MM.DD.N). Empty = latest published release."
+        type: string
+        required: false
+        default: ""
+
+concurrency:
+  group: deploy-knowledge-mcp
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  HEALTH_URL: https://mcp.noemi.newpush.com/health
+
+jobs:
+  resolve:
+    name: Resolve release tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # After a Release run, only a successful one can have published a release.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      deploy: ${{ steps.live.outputs.deploy }}
+    steps:
+      - name: Resolve tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          case "${EVENT_NAME}" in
+            release)
+              if [ "${RELEASE_PRERELEASE}" = "true" ]; then
+                echo "::error::Release ${RELEASE_TAG} is a pre-release; the Knowledge MCP deploys only published releases."
+                exit 1
+              fi
+              tag="${RELEASE_TAG}" ;;
+            workflow_dispatch)
+              tag="${INPUT_TAG}"
+              if [ -z "${tag}" ]; then
+                tag="$(gh api "repos/${REPO}/releases/latest" --jq .tag_name)"
+              fi ;;
+            workflow_run)
+              tag="$(gh api "repos/${REPO}/releases/latest" --jq .tag_name)" ;;
+            *)
+              echo "::error::Unexpected event ${EVENT_NAME}."
+              exit 1 ;;
+          esac
+          if ! printf '%s' "${tag}" | grep -Eq '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$'; then
+            echo "::error::'${tag}' is not a CalVer release tag (YYYY.MM.DD or YYYY.MM.DD.N)."
+            exit 1
+          fi
+          # The tag must be a published, non-draft, non-pre-release GitHub Release.
+          meta="$(gh api "repos/${REPO}/releases/tags/${tag}" --jq '[.draft, .prerelease] | map(tostring) | join(" ")')"
+          if [ "${meta}" != "false false" ]; then
+            echo "::error::${tag} is not a published release (draft/prerelease: ${meta})."
+            exit 1
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Release tag: ${tag}"
+
+      - name: Compare with the live service
+        id: live
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -uo pipefail
+          live="$(curl -fsS --max-time 20 "${HEALTH_URL}" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{process.stdout.write(String(JSON.parse(s).version||""))}catch{process.stdout.write("")}})' || true)"
+          echo "Live version: ${live:-unknown}"
+          # A manual run always deploys (for example to rebuild the corpus). An automatic run
+          # skips when the live service already reports this tag.
+          if [ "${EVENT_NAME}" != "workflow_dispatch" ] && [ "${live}" = "${TAG}" ]; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "The live service already reports ${TAG}; nothing to deploy."
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    name: Worker -> mcp.noemi.newpush.com
+    needs: resolve
+    if: needs.resolve.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: knowledge-mcp-production
+      url: https://mcp.noemi.newpush.com/health
+    steps:
+      # Defense in depth for the Environment's branch and tag policy: the workflow file that
+      # runs must come from develop, main or a release tag, never a topic branch.
+      - name: Require a trusted ref
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          case "${REF}" in
+            refs/heads/develop|refs/heads/main|refs/tags/*) ;;
+            *)
+              echo "::error::Refusing to deploy from ${REF}. Run this workflow from develop or main."
+              exit 1 ;;
+          esac
+
+      # Fail fast with setup guidance before any checkout or install.
+      - name: Check Environment secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=""
+          [ -n "${CLOUDFLARE_API_TOKEN}" ] || missing="${missing} CLOUDFLARE_API_TOKEN"
+          [ -n "${CLOUDFLARE_ACCOUNT_ID}" ] || missing="${missing} CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "${missing}" ]; then
+            echo "::error::Missing Environment \"knowledge-mcp-production\" secrets:${missing}. See docs/KNOWLEDGE_MCP_DEPLOY.md."
+            exit 1
+          fi
+
+      - name: Checkout release tag
+        uses: actions/checkout@v6
+        with:
+          ref: refs/tags/${{ needs.resolve.outputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Only promoted code may run with the deploy token present.
+      - name: Verify the tag is on main
+        env:
+          TAG: ${{ needs.resolve.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::Refusing to deploy ${TAG} ($(git rev-parse --short HEAD)): commit is not on main."
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Install service dependencies
+        working-directory: services/noemi-knowledge-mcp
+        run: npm ci --no-audit --no-fund
+
+      # Rebuilds the corpus from this checkout, then runs vitest, including the FAQ
+      # retrieval contract (eval/faq-questions.json). A failing contract stops the deploy.
+      - name: Test (rebuilds the corpus)
+        working-directory: services/noemi-knowledge-mcp
+        run: npm test
+
+      - name: Record deploy start
+        id: start
+        run: echo "at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy Worker
+        working-directory: services/noemi-knowledge-mcp
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          WRANGLER_SEND_METRICS: "false"
+        run: |
+          set -euo pipefail
+          npm run build:corpus
+          npx --no-install wrangler deploy --var "SERVICE_VERSION:${TAG}"
+
+      - name: Check /health
+        env:
+          TAG: ${{ needs.resolve.outputs.tag }}
+          STARTED_AT: ${{ steps.start.outputs.at }}
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3 4 5 6; do
+            body="$(curl -fsS --max-time 20 "${HEALTH_URL}" || true)"
+            if printf '%s' "${body}" | node -e '
+              let s = "";
+              process.stdin.on("data", (d) => (s += d)).on("end", () => {
+                let h;
+                try { h = JSON.parse(s); } catch { process.exit(1); }
+                const tag = process.env.TAG;
+                const started = Date.parse(process.env.STARTED_AT) - 5 * 60 * 1000;
+                const built = Date.parse(h?.corpus?.generatedAt ?? "");
+                const ok = h.status === "ok" && h.version === tag && Number.isFinite(built) && built >= started;
+                console.log(`status=${h.status} version=${h.version} corpus.generatedAt=${h?.corpus?.generatedAt}`);
+                process.exit(ok ? 0 : 1);
+              });
+            '; then
+              echo "/health reports ${TAG} with a corpus built in this run."
+              exit 0
+            fi
+            echo "Attempt ${attempt}: /health does not report ${TAG} with a fresh corpus yet."
+            sleep 20
+          done
+          echo "::error::${HEALTH_URL} did not report version ${TAG} with a corpus built in this run."
+          exit 1

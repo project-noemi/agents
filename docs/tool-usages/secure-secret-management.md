@@ -4,7 +4,7 @@
 
 ## Overview
 
-Project NoeMI uses a **Fetch-on-Demand** security model:
+Project NoéMI uses a **Fetch-on-Demand** security model:
 
 1. **Storage (The Vault):** secrets live only in a SecretOps platform
 2. **Access (The Injector):** the client or runtime receives secrets at launch time through a wrapper such as `infisical run` or `op run`
@@ -28,14 +28,14 @@ You do **not** need machine identities for your first harmless local task.
 
 ## The Two Recommended SecretOps Paths
 
-Project NoeMI supports both of these beginner-friendly injector patterns:
+Project NoéMI supports both of these beginner-friendly injector patterns:
 
 - **Infisical:** open-source SecretOps with `infisical run`
 - **1Password CLI:** mature vault-backed wrapper with `op run`
 
 Choose one for a given workflow and standardize on it within the team.
 
-### Why These Two Paths Fit NoeMI
+### Why These Two Paths Fit NoéMI
 
 - they inject secrets into process memory at runtime, scoped to a folder or manifest per task
 - they support secure local builder habits
@@ -103,7 +103,7 @@ Fetch-on-Demand keeps secrets out of files, Git and chat. It does not protect a 
 
 ### Agent configuration files are code
 
-Files such as `opencode.json`, `.mcp.json`, `.cursor/mcp.json` and `.claude/settings.json` decide which servers and commands an agent runs. Review them like code, and keep keys out of them: they reference an environment variable injected from the vault (for example `${MAIL_API_TOKEN}`) and never hold a key value. If you find a key in one, move it to the vault and revoke the original.
+Files such as `opencode.json`, `.mcp.json`, `.cursor/mcp.json` and `.claude/settings.json` decide which servers and commands an agent runs. Review them like code, and keep keys out of them: they reference an environment variable injected from the vault, using the client's own reference syntax, and never hold a key value. If you find a key in one, move it to the vault and revoke the original.
 
 ## Step 3: Build Secure Muscle Memory
 
@@ -112,7 +112,7 @@ The first useful rule for beginners is:
 - repo-only, read-only tasks can start without secrets
 - the moment a task touches external systems, wrap the launch with `infisical run` or `op run`
 
-That is how NoeMI keeps the transition from experimentation to business work secure without making beginners memorize infrastructure patterns on day one.
+That is how NoéMI keeps the transition from experimentation to business work secure without making beginners memorize infrastructure patterns on day one.
 
 ## Suggested Local Aliases
 
@@ -258,4 +258,4 @@ The beginner breakthrough is simple but important:
 
 if the secret was never pasted into chat and never written to a local file, the model has much less chance to leak it. Fetch-on-Demand does not make a compromised tool safe, though: anything running in the agent's process can read what was injected, so inject only what the task needs.
 
-That is why Phase 0 matters so early in NoeMI. The team learns secure habits before the first business-facing workflow becomes powerful enough to do damage.
+That is why Phase 0 matters so early in NoéMI. The team builds secure habits before the first business-facing workflow becomes powerful enough to do damage.

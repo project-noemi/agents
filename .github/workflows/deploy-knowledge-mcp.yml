@@ -161,7 +161,7 @@ jobs:
           fi
 
       - name: Checkout release tag
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: refs/tags/${{ needs.resolve.outputs.tag }}
           fetch-depth: 0
@@ -179,7 +179,7 @@ jobs:
           fi
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: "24"
 
@@ -197,6 +197,12 @@ jobs:
         id: start
         run: echo "at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
+      # Rebuild the corpus after the deploy start is recorded, so /health can prove it is fresh.
+      # Runs without any secret in the environment.
+      - name: Build corpus
+        working-directory: services/noemi-knowledge-mcp
+        run: npm run build:corpus
+
       - name: Deploy Worker
         working-directory: services/noemi-knowledge-mcp
         env:
@@ -206,7 +212,6 @@ jobs:
           WRANGLER_SEND_METRICS: "false"
         run: |
           set -euo pipefail
-          npm run build:corpus
           npx --no-install wrangler deploy --var "SERVICE_VERSION:${TAG}"
 
       - name: Check /health

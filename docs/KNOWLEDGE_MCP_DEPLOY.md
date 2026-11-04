@@ -23,14 +23,14 @@ The `resolve` job reads the tag, checks that it is a published CalVer release (n
 1. Refuses a workflow ref other than `develop`, `main` or a release tag, and stops with the missing secret names if the Environment is not set up.
 2. Checks out the release tag and refuses it if its commit is not on `main`, before any credential is used.
 3. Runs `npm ci` and `npm test` in `services/noemi-knowledge-mcp`. The test script rebuilds the corpus and runs the FAQ retrieval contract (`eval/faq-questions.json`); a failure stops the deploy.
-4. Rebuilds the corpus and runs `wrangler deploy --var SERVICE_VERSION:<tag>`, so `/health` and the server card report the release tag as `version`.
+4. Rebuilds the corpus in a step with no secrets, then runs `wrangler deploy --var SERVICE_VERSION:<tag>` in the only step that holds the Cloudflare token, so `/health` and the server card report the release tag as `version`.
 5. Checks `https://mcp.noemi.newpush.com/health` up to six times: `status` is `ok`, `version` is the tag, and `corpus.generatedAt` is from this run.
 
 Runs are serialized (`concurrency: deploy-knowledge-mcp`, no cancel-in-progress). A deploy from a laptop (`npm run deploy`) still works and reports the `SERVICE_VERSION` in `wrangler.toml`.
 
 ## One-time setup
 
-Merging the workflow does not deploy anything. Until the Environment and its secrets exist, an automatic run stops at "Check Environment secrets" with the missing names. The secrets owner (Dep 10 Secret Manager Bot) and a repository admin do this once. Names only; values never go into this repository, an issue or a chat.
+Merging the workflow does not deploy anything. Until the Environment and its secrets exist, an automatic run stops at "Check Environment secrets" with the missing names. The secrets owner and a repository admin do this once. Names only; values never go into this repository, an issue or a chat.
 
 ### 1. Cloudflare API token
 
@@ -40,13 +40,15 @@ Create an API token for the account that owns the `noemi-knowledge-mcp` Worker w
 
 In **Settings → Environments → New environment**, create `knowledge-mcp-production`:
 
-1. **Required reviewers:** add the release approver(s).
+1. **Required reviewers:** add the release approver(s). Turn on **Prevent self-review** and do not allow administrators to bypass the rules.
 2. **Deployment branches and tags:** **Selected branches and tags**, with branch rules `develop` and `main` and tag rule `20*`. A `workflow_run` run uses the default branch (`develop`); a `release` run uses the release tag.
 3. **Environment secrets:**
    - `CLOUDFLARE_API_TOKEN`: the token from step 1.
    - `CLOUDFLARE_ACCOUNT_ID`: the account that owns the Worker.
 
-No repository-level secret or variable is used. The custom domain `mcp.noemi.newpush.com` stays attached to the Worker in Cloudflare; `wrangler.toml` declares no routes, so a deploy does not change them.
+No repository-level secret or variable is used.
+
+Recommended: a tag ruleset on `20*` that limits creating, updating and deleting those tags to the release automation and admins. Without it, anyone with write access could push a `20*` tag and dispatch from it within the Environment's tag rule; the required reviewers still gate the deploy. The custom domain `mcp.noemi.newpush.com` stays attached to the Worker in Cloudflare; `wrangler.toml` declares no routes, so a deploy does not change them.
 
 ## Running a deploy by hand
 

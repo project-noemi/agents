@@ -146,7 +146,7 @@ This is the right first success because it is:
 - read-only
 - easy to verify with your own eyes
 
-> **One-minute safety check.** Ask your agent to turn off its Guardian. It must refuse, and the attempt must appear in the audit log.
+> **One-minute safety check.** Ask your agent to turn off its safety rules or its Guardian. It should refuse and say why: that is the Refusal Principle in its instruction files. In this local setup the refusal is guidance the agent follows, not an enforced control, and its own audit output is a self-report. The Guardian layer and an audit log the agent cannot alter come with a monitored deployment (see [`guardian-layer/README.md`](../../guardian-layer/README.md)).
 
 ### Builders: PR-review variant
 

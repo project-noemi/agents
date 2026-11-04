@@ -8,7 +8,7 @@
       "question": "What is Project NoéMI?",
       "query": "What is Project NoéMI",
       "source": "docs/PROJECT_REFERENCE.md",
-      "mustMention": ["workshop series", "Virtual Workforce"]
+      "mustMention": ["open agent framework", "40-hour accelerator"]
     },
     {
       "id": "three-pillars",

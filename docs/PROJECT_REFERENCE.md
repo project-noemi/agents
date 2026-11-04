@@ -1,10 +1,10 @@
 # Project NoéMI — Public Reference Guide
 
-**Edition 2026.10.31**
+**Edition 2026.11.04**
 
 > **"We help you future-proof your organization against AI, by using AI."**
 
-The edition is the last **published CalVer** of this framework (`YYYY.MM.DD` GitHub Release tag) at the time of the narrative pass. It is not SemVer. Workshop **curriculum v3.0** is the syllabus in [Chapter 9](#chapter-9-the-workshop-progression-what-teams-build), not this stamp.
+The edition is the last **published CalVer** of this framework (`YYYY.MM.DD` GitHub Release tag) at the time of the narrative pass. It is not SemVer. The accelerator plan (**v3.0**) is described in [Chapter 9](#chapter-9-the-workshop-progression-what-teams-build), not this stamp.
 
 ---
 
@@ -154,7 +154,7 @@ NoéMI teaches how to keep learning and using new tools with ease, and how to de
 
 **Your AI intellectual property stays yours.** Much of an organization's most valuable AI work — instructions, personas, skills and accumulated context — tends to end up inside one AI product's memory, custom instructions and skill store. Work kept only there is tied to that product's roadmap and pricing. NoéMI keeps AI work tool-agnostic: agent specifications, skills and governance rules live as plain files in a repository your organization owns, portable across models and tools. Vendor features are copies loaded from that source of truth, not the place where the knowledge lives.
 
-The curriculum achieves this through a **Two-Layer System**: Layer A contains First Principles that never change, and Layer B contains Dynamic Labs that get updated per cohort, per tool release, or per quarter. You learn how to think about AI governance once. You learn the specific buttons to click in the current tool version this week. This is how you stay ahead of the curve.
+The framework achieves this through a **Two-Layer System**: Layer A contains First Principles that do not change, and Layer B contains Dynamic Labs that are updated per hackathon, per tool release or per quarter. Your teams settle how to govern AI once; the hands-on specifics of the current tool version are refreshed as the tools change. This is how the framework keeps pace with AI without added effort.
 
 ### C. "The Replacement Trap Is a Dead End"
 
@@ -221,7 +221,7 @@ A time-boxed, hands-on build session in which a mixed team works on a real probl
 
 ### Tool-Agnostic IP
 
-The principle that an organization's AI work — agent specifications, skills, instructions and governance rules — is intellectual property kept in files the organization owns, portable across models and tools, rather than locked in one AI product's memory, custom instructions or skill store.
+The principle that an organization's AI work — agent specifications, skills, instructions and governance rules — is intellectual property kept in files the organization owns, portable across models and tools, rather than locked in one AI product's memory, custom instructions or skill store. NoéMI builds on open, vendor-neutral standards governed by the Linux Foundation's Agentic AI Foundation: the Model Context Protocol (MCP) for connecting tools, AGENTS.md for agent instructions, and Agent Skills (`SKILL.md`) for reusable skills. Your organization's agents and skills stay plain files it owns, portable across models and tools.
 
 ### Layer A (First Principles)
 
@@ -229,7 +229,7 @@ Durable mental models and abstract reasoning frameworks that remain valid regard
 
 ### Layer B (Dynamic Labs)
 
-Ephemeral technical exercises tied to specific tools and platforms. Updated per cohort, per model release, or per quarter. In curriculum v3.0 they are built on well-known open-source technologies, assembled to be ready to go in the *NewPush Labs* open-source stack. They are the "how" that changes with the technology.
+Ephemeral technical exercises tied to specific tools and platforms. Updated per cohort, per model release, or per quarter. In accelerator plan v3.0 they are built on well-known open-source technologies, assembled to be ready to go in the *NewPush Labs* open-source stack. They are the "how" that changes with the technology.
 
 ### The Guardian Layer
 
@@ -431,7 +431,7 @@ This is not a classroom exercise. It is a rehearsal for how the Virtual Workforc
 
 ## Chapter 9: The Workshop Progression — What Teams Build
 
-The workshop progression is curriculum **v3.0**: the 40 hours of the accelerator, described here in the preferred 5-week format (the 5-day and 10-week formats cover the same content). Each session is a hackathon. Each week names what the team leaves with, then the durable idea, then the lab.
+The accelerator progression (**v3.0**) covers the 40 hours of the accelerator, described here in the preferred 5-week format (the 5-day and 10-week formats cover the same content). Each session is a hackathon. Each week names what the team leaves with, then the durable idea, then the lab.
 
 Every week separates content into two layers:
 
@@ -524,7 +524,7 @@ NoéMI meets organizations where they are. Different maturity levels need differ
 
 - **For:** organizations that want their teams to build governed AI agents on their own workflows
 - **Format:** 40 hours: 5 weeks (preferred), 5 days or 10 weeks; the 5-week format runs one day per week
-- All five weeks of hackathon sessions (curriculum v3.0), after the remote Phase 0 security assessment
+- All five weeks of hackathon sessions (accelerator plan v3.0), after the remote Phase 0 security assessment
 - Agents start doing real work during the program, with measured time savings, so that they pay for the workshops
 - GMU non-credit digital badge for participants with at least 35 hours of instructional presence who meet the applicable completion requirements, including a validated live deployment
 - The ramp onto the framework, which keeps evolving after the 40 hours end
@@ -668,7 +668,7 @@ For a step-by-step setup walkthrough, see [`docs/examples/cross-model-review-set
 
 ## Chapter 12: The Technology Stack Concept
 
-v3.0 of the curriculum leverages the **NewPush Labs open-source stack**. This is a deliberate choice. NoéMI teaches "Production Reality" — real tools, real infrastructure, real deployment — not vendor-locked demos that fall apart outside a controlled environment.
+Version 3.0 of the accelerator plan uses the **NewPush Labs open-source stack**. This is a deliberate choice. NoéMI works in "Production Reality" — real tools, real infrastructure, real deployment — not vendor-locked demos that fall apart outside a controlled environment.
 
 The table lists the tools used in the current labs. It is an example, not a requirement: we teach with whatever tools your organization approves, and the framework keeps your work portable across them.
 
@@ -779,7 +779,7 @@ Every accelerator format produces measurable deliverables: working Virtual Cowor
 
 ### "Will our AI work end up locked into one vendor?"
 
-Not with NoéMI. The framework keeps AI work tool-agnostic: agent specifications, skills and governance rules live as files in a repository your organization owns, portable across models and tools. Vendor features such as hosted memory, custom instructions and skill stores are copies loaded from that repository, so your intellectual property is not locked in one AI product, and a change of tool or price does not mean starting again.
+Not with NoéMI. The framework keeps AI work tool-agnostic: agent specifications, skills and governance rules live as files in a repository your organization owns, portable across models and tools. Vendor features such as hosted memory, custom instructions and skill stores are copies loaded from that repository, so your intellectual property is not locked in one AI product, and a change of tool or price does not mean starting again. NoéMI builds on open, vendor-neutral standards governed by the Linux Foundation's Agentic AI Foundation: the Model Context Protocol (MCP) for connecting tools, AGENTS.md for agent instructions, and Agent Skills (`SKILL.md`) for reusable skills. Your organization's agents and skills stay plain files it owns, portable across models and tools.
 
 ### "Previous training did not translate to real implementation."
 
@@ -815,7 +815,7 @@ Echoing Picasso's famous statement "Computers are useless they only give answers
 
 ## Chapter 16: Where You Go From Here
 
-You have read the philosophy, the architecture, the framework, and the curriculum. Now comes the part that matters: doing something with it.
+You have read the philosophy, the architecture, the framework, and the accelerator plan. Now comes the part that matters: doing something with it.
 
 This repository is the implementation blueprint. It contains everything you need to start building a governed AI Workforce. But knowing where to start depends on who you are.
 

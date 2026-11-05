@@ -10,7 +10,7 @@
  * @param {import("../ir.js").BlueprintIR} ir
  * @param {string} prompt
  */
-import { emptyError, loadGatewayConfig, postJson } from "./gateway.js";
+import { emptyError, loadGatewayConfig, postSse } from "./gateway.js";
 import { buildSystemPrompt } from "./prompt.js";
 
 // On the gateway's OpenAI surface the model is always `provider/id`.
@@ -27,50 +27,71 @@ export const gatewayModelId = (env = process.env) => {
   return configured.startsWith("xai/") ? configured : `xai/${configured}`;
 };
 
-export async function runXai(ir, prompt) {
+export async function runXai(ir, prompt, { onToken } = {}) {
   const config = loadGatewayConfig({ timeoutVar: TIMEOUT_VAR });
   const model = gatewayModelId();
-
   const started = Date.now();
-  const data = await postJson(
+
+  let output = "";
+  let usage = {};
+
+  await postSse(
     `${config.gateway}/v1/chat/completions`,
     {
       model,
+      stream: true,
+      stream_options: { include_usage: true },
       messages: [
         { role: "system", content: buildSystemPrompt(ir) },
         { role: "user", content: prompt },
       ],
     },
     config,
-    "xai"
+    "xai",
+    (event, markEmitted) => {
+      if (event.error) {
+        const error = new Error("xAI returned a stream error.");
+        error.noFallback = output.length > 0;
+        throw error;
+      }
+
+      if (event.usage) usage = event.usage;
+
+      const choice = event.choices?.[0];
+      if (choice?.finish_reason === "content_filter") {
+        const error = emptyError("xAI filtered the response (finish_reason content_filter).");
+        error.noFallback = output.length > 0;
+        throw error;
+      }
+
+      const refusal = choice?.delta?.refusal;
+      if (refusal) {
+        const error = emptyError(`xAI refused: ${String(refusal).slice(0, 200)}`);
+        error.noFallback = output.length > 0;
+        throw error;
+      }
+
+      const text = choice?.delta?.content;
+      if (typeof text === "string" && text.length > 0) {
+        markEmitted();
+        output += text;
+        onToken?.(text);
+      }
+    }
   );
 
-  const choice = data.choices?.[0];
-  if (!choice) {
-    throw emptyError("xAI returned no choices.");
-  }
-  if (choice.finish_reason === "content_filter") {
-    throw emptyError("xAI filtered the response (finish_reason content_filter).");
-  }
-  if (choice.message?.refusal) {
-    throw emptyError(`xAI refused: ${String(choice.message.refusal).slice(0, 200)}`);
-  }
-  const text = choice.message?.content ?? "";
-  if (typeof text !== "string" || !text.trim()) {
+  if (!output.trim()) {
     throw emptyError("xAI returned an empty response.");
   }
 
-  const usage = data.usage ?? {};
   return {
     provider: "xai",
     model,
-    output: text,
+    output,
     usage: {
       inputTokens: usage.prompt_tokens ?? 0,
       outputTokens: usage.completion_tokens ?? 0,
       latencyMs: Date.now() - started,
-      // Like gemini.js: not priced yet -- revisit with the LLM Arena
-      // scoreboard (Sprint 5), which needs real cost numbers.
       costUsd: 0,
     },
   };

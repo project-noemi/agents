@@ -12,6 +12,7 @@ import {
   geminiBody,
   networkFailure,
   timeoutFailure,
+  sseResponse,
 } from "./helpers/fake-network.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -41,7 +42,22 @@ for (const [label, stub] of [
 }
 
 test("gemini success does not touch the fallback chain", async () => {
-  const fake = recordFetch(async () => jsonResponse(geminiBody("hello from gemini")));
+  const fake = recordFetch(async () =>
+    sseResponse([
+      {
+        candidates: [
+          {
+            content: { parts: [{ text: "hello from gemini" }] },
+            finishReason: "STOP",
+          },
+        ],
+        usageMetadata: {
+          promptTokenCount: 1,
+          candidatesTokenCount: 1,
+        },
+      },
+    ])
+  );
   await withEnv(geminiThenMock, () =>
     withFetch(fake, async () => {
       const result = await compileFile(persona, { repoRoot, provider: "gemini" });

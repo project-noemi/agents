@@ -6,7 +6,7 @@ import {
   withEnv,
   withFetch,
   recordFetch,
-  jsonResponse,
+  sseResponse,
   geminiBody,
   timeoutFailure,
 } from "./helpers/fake-network.js";
@@ -17,6 +17,8 @@ const ir = {
   sections: { Role: "Keep structure sound.\nReview diffs for drift." },
   skills: ["verification/pre-flight-check"],
 };
+
+const geminiSse = (body) => sseResponse([body]);
 
 test("missing AI_GW_API_KEY fails closed without ever calling fetch", async () => {
   await withEnv({ AI_GW_API_KEY: undefined }, () =>
@@ -30,9 +32,6 @@ test("missing AI_GW_API_KEY fails closed without ever calling fetch", async () =
           (err) => {
             assert.match(err.message, /AI_GW_API_KEY is not set/);
             assert.equal(err.code, "PROVIDER_CONFIG");
-            // No .status and not a TypeError -- fallback.js's isFallbackError()
-            // must treat this as NOT fallback-worthy, so a missing key fails
-            // the whole compile rather than silently degrading to mock/grok.
             assert.equal(Number.isInteger(err.status), false);
             assert.notEqual(err.name, "TypeError");
             return true;
@@ -51,20 +50,22 @@ test("a successful call returns the mock.js-shaped result with real usage", asyn
         async (url, init) => {
           assert.equal(
             String(url),
-            "https://ai-gw.newpush.com/google/v1beta/models/gemini-3.8-flash:generateContent"
+            "https://ai-gw.newpush.com/google/v1beta/models/gemini-3.8-flash:streamGenerateContent?alt=sse"
           );
           assert.equal(init.headers.Authorization, "Bearer test-key");
           assert.equal(init.headers["x-goog-api-key"], undefined, "no Google-style key header");
           assert.ok(!String(url).includes("test-key"), "key must never appear in the URL");
-          return {
-            ok: true,
-            json: async () => ({
+          return sseResponse([
+            {
               candidates: [
-                { content: { parts: [{ text: "hello from gemini" }] } },
+                {
+                  content: { parts: [{ text: "hello from gemini" }] },
+                  finishReason: "STOP",
+                },
               ],
               usageMetadata: { promptTokenCount: 42, candidatesTokenCount: 7 },
-            }),
-          };
+            },
+          ]);
         },
         async () => {
           const result = await runGemini(ir, "hello");
@@ -82,7 +83,7 @@ test("a successful call returns the mock.js-shaped result with real usage", asyn
 });
 
 test("a google/-prefixed model is sent bare on the Google-native surface", async () => {
-  const fake = recordFetch(async () => jsonResponse(geminiBody("ok")));
+  const fake = recordFetch(async () => geminiSse(geminiBody("ok")));
   await withEnv(
     { AI_GW_API_KEY: "test-key", AI_GW_BASE_URL: undefined, GEMINI_MODEL: "google/gemini-3.1-pro-preview" },
     () =>
@@ -90,7 +91,7 @@ test("a google/-prefixed model is sent bare on the Google-native surface", async
         const result = await runGemini(ir, "hello");
         assert.equal(
           fake.calls[0].url,
-          "https://ai-gw.newpush.com/google/v1beta/models/gemini-3.1-pro-preview:generateContent"
+          "https://ai-gw.newpush.com/google/v1beta/models/gemini-3.1-pro-preview:streamGenerateContent?alt=sse"
         );
         assert.equal(result.model, "gemini-3.1-pro-preview");
       })
@@ -98,7 +99,7 @@ test("a google/-prefixed model is sent bare on the Google-native surface", async
 });
 
 test("AI_GW_BASE_URL overrides the gateway origin", async () => {
-  const fake = recordFetch(async () => jsonResponse(geminiBody("ok")));
+  const fake = recordFetch(async () => geminiSse(geminiBody("ok")));
   await withEnv(
     { AI_GW_API_KEY: "test-key", AI_GW_BASE_URL: "https://gw.example.test/", GEMINI_MODEL: undefined },
     () =>
@@ -106,7 +107,7 @@ test("AI_GW_BASE_URL overrides the gateway origin", async () => {
         await runGemini(ir, "hello");
         assert.equal(
           fake.calls[0].url,
-          "https://gw.example.test/google/v1beta/models/gemini-3.8-flash:generateContent"
+          "https://gw.example.test/google/v1beta/models/gemini-3.8-flash:streamGenerateContent?alt=sse"
         );
       })
   );
@@ -176,7 +177,7 @@ test("a raw network failure (fetch throwing TypeError) propagates unmodified", a
 });
 
 test("every request carries a timeout signal so a hung call can fall back", async () => {
-  const fake = recordFetch(async () => jsonResponse(geminiBody("ok")));
+  const fake = recordFetch(async () => geminiSse(geminiBody("ok")));
   await withEnv({ AI_GW_API_KEY: "test-key" }, () =>
     withFetch(fake, async () => {
       await runGemini(ir, "hello");
@@ -192,10 +193,11 @@ test("a timeout propagates as TimeoutError (fallback-eligible)", async () => {
     })
   );
 });
+
 const blueprint = { ...ir, refusalCriteria: "1. Refused Task Types: deleting prod." };
 
 test("persona context goes in systemInstruction, and the user turn is only the prompt", async () => {
-  const fake = recordFetch(async () => jsonResponse(geminiBody("ok")));
+  const fake = recordFetch(async () => geminiSse(geminiBody("ok")));
   await withEnv({ AI_GW_API_KEY: "test-key", AI_GW_BASE_URL: undefined }, () =>
     withFetch(fake, () => runGemini(blueprint, "hello")));
   const body = JSON.parse(fake.calls[0].init.body);
@@ -218,7 +220,7 @@ test("blocked, filtered, or empty responses fail closed with PROVIDER_EMPTY", as
   ];
   for (const body of cases) {
     await withEnv({ AI_GW_API_KEY: "test-key" }, () =>
-      withFetch(async () => jsonResponse(body), async () => {
+      withFetch(async () => geminiSse(body), async () => {
         await assert.rejects(() => runGemini(blueprint, "hello"), (err) => {
           assert.equal(err.code, "PROVIDER_EMPTY", JSON.stringify(body));
           assert.equal(isFallbackError(err), false);
@@ -230,9 +232,13 @@ test("blocked, filtered, or empty responses fail closed with PROVIDER_EMPTY", as
 });
 
 test("MAX_TOKENS with text is a normal (truncated) answer, not an error", async () => {
-  const body = { candidates: [{ finishReason: "MAX_TOKENS", content: { parts: [{ text: "long" }] } }] };
+  const body = {
+    candidates: [
+      { finishReason: "MAX_TOKENS", content: { parts: [{ text: "long" }] } },
+    ],
+  };
   await withEnv({ AI_GW_API_KEY: "test-key" }, () =>
-    withFetch(async () => jsonResponse(body), async () => {
+    withFetch(async () => geminiSse(body), async () => {
       assert.equal((await runGemini(blueprint, "hello")).output, "long");
     })
   );

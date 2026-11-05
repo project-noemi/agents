@@ -10,7 +10,7 @@
  * @param {import("../ir.js").BlueprintIR} ir
  * @param {string} prompt
  */
-import { emptyError, loadGatewayConfig, postJson } from "./gateway.js";
+import { emptyError, loadGatewayConfig, postSse } from "./gateway.js";
 import { buildSystemPrompt } from "./prompt.js";
 
 // Google-native ids carry no `google/` prefix (that form is for the gateway's
@@ -32,48 +32,66 @@ export const gatewayModelId = (env = process.env) => `google/${nativeModel(env)}
 // BLOCKLIST, PROHIBITED_CONTENT, SPII, OTHER, ...) means the text can't be trusted.
 const OK_FINISH = new Set([undefined, "STOP", "MAX_TOKENS", "FINISH_REASON_UNSPECIFIED"]);
 
-export async function runGemini(ir, prompt) {
+
+export async function runGemini(ir, prompt, { onToken } = {}) {
   const config = loadGatewayConfig({ timeoutVar: TIMEOUT_VAR });
   const model = nativeModel();
-
   const started = Date.now();
-  const data = await postJson(
-    `${config.gateway}/google/v1beta/models/${model}:generateContent`,
+
+  let output = "";
+  let usage = {};
+  let finishReason;
+
+  await postSse(
+    `${config.gateway}/google/v1beta/models/${model}:streamGenerateContent?alt=sse`,
     {
       systemInstruction: { parts: [{ text: buildSystemPrompt(ir) }] },
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     },
     config,
-    "gemini"
+    "gemini",
+    (event, markEmitted) => {
+      const blockReason = event.promptFeedback?.blockReason;
+      if (blockReason) {
+        const error = emptyError(`Gemini blocked the prompt (${blockReason}).`);
+        error.noFallback = output.length > 0;
+        throw error;
+      }
+
+      const candidate = event.candidates?.[0];
+      if (candidate?.finishReason) finishReason = candidate.finishReason;
+
+      if (finishReason && !OK_FINISH.has(finishReason)) {
+        const error = emptyError(`Gemini stopped with finishReason ${finishReason}.`);
+        error.noFallback = output.length > 0;
+        throw error;
+      }
+
+      const text =
+        candidate?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+
+      if (text) {
+        markEmitted();
+        output += text;
+        onToken?.(text);
+      }
+
+      if (event.usageMetadata) usage = event.usageMetadata;
+    }
   );
 
-  const blockReason = data.promptFeedback?.blockReason;
-  if (blockReason) {
-    throw emptyError(`Gemini blocked the prompt (${blockReason}).`);
-  }
-  const candidate = data.candidates?.[0];
-  if (!candidate) {
-    throw emptyError("Gemini returned no candidates.");
-  }
-  if (!OK_FINISH.has(candidate.finishReason)) {
-    throw emptyError(`Gemini stopped with finishReason ${candidate.finishReason}.`);
-  }
-  const text = candidate.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-  if (!text.trim()) {
+  if (!output.trim()) {
     throw emptyError("Gemini returned an empty response.");
   }
 
-  const usage = data.usageMetadata ?? {};
   return {
     provider: "gemini",
     model,
-    output: text,
+    output,
     usage: {
       inputTokens: usage.promptTokenCount ?? 0,
       outputTokens: usage.candidatesTokenCount ?? 0,
       latencyMs: Date.now() - started,
-      // Sprint 2 doesn't price responses yet -- revisit alongside token/cost
-      // reporting when the LLM Arena scoreboard (Sprint 5) needs real numbers.
       costUsd: 0,
     },
   };

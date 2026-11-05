@@ -117,6 +117,22 @@ infisical run --env=dev -- node src/cli.js compile fixtures/architect.core.md --
 Say: same code path, real gateway. The key is injected at runtime and never
 written to disk. Only do this if the earlier steps went smoothly.
 
+## 7. Studio: author, save, run, stream (3 min)
+
+Offline, with the mock provider. Terminal D, from this directory. One shell runs both processes so they share the throwaway token:
+
+```bash
+openssl rand -hex 32
+export NOEMI_STUDIO_TOKEN=<the value printed above>
+NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com npm run studio &
+cd studio && npm install
+VITE_STUDIO_BACKEND=http npm run dev
+```
+
+Open the URL Vite prints. Paste `fixtures/architect.core.md`, press Validate, save it, then run it with `mock`. Tokens appear in the stream view, the blueprint appears in the saved table, and the run appears in the history table.
+
+Say: the browser never holds a key. Terminal D shows one audit line per request, with no prompt or persona text. Restart without `NOEMI_HTTP_ALLOWED_HOSTS` or `NOEMI_STUDIO_TOKEN` and the server refuses to start. A request to any route but `/api/health` without the token gets 401.
+
 ## What to say about what is next
 
 - **Studio (Sprint 4)** sits on `compileSource` / `compileUrl` / `compileRegistry`
@@ -135,4 +151,6 @@ written to disk. Only do this if the earlier steps went smoothly.
 | `UNRESOLVED_SKILL` in step 2 | `NOEMI_REPO_ROOT` not set to `fixtures/` | `export NOEMI_REPO_ROOT="$PWD/fixtures"` |
 | `PROVIDER_CONFIG` in step 4 | `AI_GW_API_KEY` or `AI_GW_BASE_URL` not exported in this shell | Re-export both |
 | `@mastra/core could not be loaded` | `npm install` not run | `npm install` in this directory |
+| `Studio server not started` in step 7 | `NOEMI_HTTP_ALLOWED_HOSTS` or `NOEMI_STUDIO_TOKEN` not set | Set both as shown in step 7 |
+| `Missing or invalid Studio token` in the browser | Vite and the server were started with different tokens | Start both from the same shell |
 | Step 5 hits the real internet | `NOEMI_REGISTRY_URL` not exported | Export it, or use the full `http://127.0.0.1:8790/...` URL |

@@ -69,3 +69,97 @@ export function loadLoaderConfig(env = process.env) {
     },
   };
 }
+const DEFAULT_STUDIO_HOST = "127.0.0.1";
+// Matches the Studio dev proxy default (studio/vite.config.ts).
+const DEFAULT_STUDIO_PORT = 8787;
+// Room for the largest persona the loaders accept plus JSON escaping and a prompt.
+const DEFAULT_STUDIO_MAX_BODY_BYTES = 512 * 1024;
+// Saved blueprints and run history live together in this one folder. It is
+// git-ignored (see .gitignore). Tests point NOEMI_STUDIO_DATA_DIR at a temp folder.
+const DEFAULT_DATA_DIR = resolve(fileURLToPath(new URL("../data", import.meta.url)));
+const DEFAULT_MAX_BLUEPRINTS = 200;
+const DEFAULT_MAX_RUNS = 500;
+// Long enough that guessing it is not a practical attack.
+const MIN_STUDIO_TOKEN_CHARS = 32;
+const DEFAULT_RATE_LIMIT = 120;
+// Runs spend gateway budget, so they get a much smaller share.
+const DEFAULT_RUN_RATE_LIMIT = 20;
+
+function serverError(message) {
+  const err = new Error(message);
+  err.code = "SERVER_CONFIG";
+  return err;
+}
+
+// Settings for server.js. Same call-time rule as above. Throws SERVER_CONFIG.
+// The Studio server lets a browser name a URL, so it refuses to start without
+// a host allowlist: an empty NOEMI_HTTP_ALLOWED_HOSTS would mean any https host.
+export function loadServerConfig(env = process.env) {
+  let loader;
+  try {
+    loader = loadLoaderConfig(env);
+  } catch (err) {
+    throw serverError(err.message);
+  }
+  if (!loader.allowedHosts.length) {
+    throw serverError("NOEMI_HTTP_ALLOWED_HOSTS must list at least one host before the Studio server starts.");
+  }
+
+  // Every route but /api/health needs this bearer token. It is a secret: inject
+  // it at runtime like any other key, never write it to a file.
+  const token = env.NOEMI_STUDIO_TOKEN?.trim();
+  if (!token || token.length < MIN_STUDIO_TOKEN_CHARS) {
+    throw serverError(`NOEMI_STUDIO_TOKEN must be set to at least ${MIN_STUDIO_TOKEN_CHARS} characters before the Studio server starts.`);
+  }
+
+  const port = env.NOEMI_STUDIO_PORT?.trim();
+  if (port && !(/^\d+$/.test(port) && Number(port) <= 65535)) {
+    throw serverError(`NOEMI_STUDIO_PORT must be a port number; got "${port}".`);
+  }
+  let maxBodyBytes;
+  try {
+    maxBodyBytes = loaderInt(env, "NOEMI_STUDIO_MAX_BODY_BYTES", DEFAULT_STUDIO_MAX_BODY_BYTES);
+  } catch (err) {
+    throw serverError(err.message);
+  }
+
+  let maxBlueprints;
+  let maxRuns;
+  let rateLimit;
+  let runRateLimit;
+  try {
+    maxBlueprints = loaderInt(env, "NOEMI_STUDIO_MAX_BLUEPRINTS", DEFAULT_MAX_BLUEPRINTS);
+    maxRuns = loaderInt(env, "NOEMI_STUDIO_MAX_RUNS", DEFAULT_MAX_RUNS);
+    rateLimit = loaderInt(env, "NOEMI_STUDIO_RATE_LIMIT", DEFAULT_RATE_LIMIT);
+    runRateLimit = loaderInt(env, "NOEMI_STUDIO_RUN_RATE_LIMIT", DEFAULT_RUN_RATE_LIMIT);
+  } catch (err) {
+    throw serverError(err.message);
+  }
+  const dataOverride = env.NOEMI_STUDIO_DATA_DIR?.trim();
+
+  // Optional single CORS origin, for a Studio served from somewhere other than
+  // the Vite proxy. Unset means same-origin only.
+  const rawOrigin = env.NOEMI_STUDIO_ORIGIN?.trim();
+  let origin = null;
+  if (rawOrigin) {
+    try {
+      origin = new URL(rawOrigin).origin;
+    } catch {
+      throw serverError(`NOEMI_STUDIO_ORIGIN must be an origin such as http://localhost:5173; got "${rawOrigin}".`);
+    }
+  }
+
+  return {
+    host: env.NOEMI_STUDIO_HOST?.trim() || DEFAULT_STUDIO_HOST,
+    port: port ? Number(port) : DEFAULT_STUDIO_PORT,
+    maxBodyBytes,
+    dataDir: dataOverride ? resolve(dataOverride) : DEFAULT_DATA_DIR,
+    maxBlueprints,
+    maxRuns,
+    rateLimit,
+    runRateLimit,
+    token,
+    origin,
+    loader,
+  };
+}

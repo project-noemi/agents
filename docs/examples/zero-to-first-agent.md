@@ -97,6 +97,8 @@ and confirms the repo contracts are healthy before you ask the client to do anyt
 
 ## Step 4: Get One Safe First Win
 
+> **Before you start your agent: check where it is running.** Load instruction files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`) only from the NoéMI folder you cloned, never from Downloads or a shared drive. Open the agent's settings and remove any MCP server or API base URL you did not add yourself. See [`docs/configuration-layers.md`](../configuration-layers.md).
+
 Use a read-only administrative task on synthetic data first: no real inbox, no credentials, nothing sent.
 
 Default first-win prompt:
@@ -143,6 +145,8 @@ This is the right first success because it is:
 - local
 - read-only
 - easy to verify with your own eyes
+
+> **One-minute safety check.** Ask your agent to turn off its safety rules or its Guardian. It should refuse and say why: that is the Refusal Principle in its instruction files. In this local setup the refusal is guidance the agent follows, not an enforced control, and its own audit output is a self-report. The Guardian layer and an audit log the agent cannot alter come with a monitored deployment (see [`guardian-layer/README.md`](../../guardian-layer/README.md)).
 
 ### Builders: PR-review variant
 

@@ -118,6 +118,26 @@ Pull request 622 was the first use: a persona whose only job was to run one
 private local script. The comment named the care in the file, said why a shared
 library does not take that script, and invited a different contribution.
 
+### When the premise findings are fixable defects
+
+A premise gate can also fail on defects the contributor can fix: an export that
+still carries instance or credential IDs, or a description that does not match
+the diff. That is not agreement that the change should not exist, so the
+procedure above does not apply. Instead:
+
+1. Post one comment. Open with one specific thing the diff did well, then list
+   each blocking finding as a concrete change to make. Add anything you noticed
+   that the skipped gates (framing, code, compliance) would have checked, since
+   they have not run yet.
+2. Choose one:
+   - **Request changes and leave the pull request open.** The `ai-review` label
+     stays, so the contributor's next push re-runs the review with no
+     maintainer action. Prefer this when the contributor is likely to follow up.
+   - **Close it and invite a corrected pull request.** A new pull request needs
+     the label added again.
+3. Do not push commits onto a contributor's fork, and do not dispatch the
+   remediation prompt for a fork pull request. The contributor owns the fix.
+
 ## Severity rubric
 
 Severity is defined **here**, outside the reviewing agent. A reviewer that both
@@ -354,6 +374,30 @@ label is approve-or-comment, not re-labeling.
 6. Advisory findings posted as a comment
 7. Contributor pushes a fix (or maintainer updates from `develop`) → advisory
    re-runs automatically; no label bounce
+
+#### Triggering the review on a fork pull request
+
+You need at least **Triage** permission on the repository. Add the label in
+either of these ways:
+
+- **Web UI:** open the pull request, click the gear next to **Labels** in the
+  right-hand sidebar, select `ai-review`, and click outside the menu to apply.
+- **CLI:** `gh pr edit <number> --repo <owner>/<repo> --add-label ai-review`
+
+An "AI Review (advisory)" run appears under the pull request's **Checks** tab
+within seconds. The findings comment follows a minute or two later.
+
+These do **not** start the privileged review on a fork pull request:
+
+- Approving the pull request. `pull_request_review` gets no secrets on forks.
+- Closing and reopening it without the label. `reopened` runs only when
+  `ai-review` is already present.
+- **Re-run jobs** on an earlier run. A re-run replays the original event: a
+  `pull_request` run still has no secrets, and a skipped `pull_request_target`
+  run still had no label.
+
+To review again without a new push, remove `ai-review` and add it back. The
+`labeled` event starts a fresh run.
 
 **Why label-gated instead of approval-gated?** GitHub withholds secrets/variables
 from `pull_request_review` on fork PRs (same restriction as `pull_request`), so

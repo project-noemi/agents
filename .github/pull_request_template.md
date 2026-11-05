@@ -50,5 +50,7 @@ If any item was skipped, explain why:
 - 
 
 Fork PRs: a maintainer adds the `ai-review` label **once**; later pushes re-run
-advisory while it remains. The unprivileged "AI Review (fork notice)" check may
-warn; it is not a required status check.
+advisory while it remains. Approving or re-running jobs does not start it; see
+[Triggering the review on a fork pull request](../docs/AI_REVIEW_GOVERNANCE.md#triggering-the-review-on-a-fork-pull-request).
+The unprivileged "AI Review (fork notice)" check may warn; it is not a required
+status check.

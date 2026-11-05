@@ -6,7 +6,7 @@
 
 1. Get one safe, read-only win in about 15 minutes. The first task is administrative: an inbox, a calendar, meeting minutes, or a short report. [macOS / Linux](docs/examples/macos-linux-kickstart.md) · [Windows](docs/examples/windows-kickstart.md) · [ChromeOS](docs/examples/chromeos-kickstart.md)
 2. Secure the perimeter first. [Phase 0 Security Baseline](docs/PHASE_ZERO_SECURITY_BASELINE.md)
-3. Book a workshop. [AI readiness at noemi.newpush.com](https://noemi.newpush.com)
+3. Plan your ramp onto the framework: the 40-hour NoéMI Accelerator. [AI Readiness at noemi.newpush.com](https://noemi.newpush.com)
 
 **Safe by default**
 
@@ -16,11 +16,15 @@
 * A human approves every send, merge, and spend.
 * The Guardian Layer watches the agents that do the work. [Project reference](docs/PROJECT_REFERENCE.md)
 
+**Your AI work stays yours**
+
+Agent specifications, skills and governance rules are plain files in a repository your organization owns. They use open, vendor-neutral standards governed by the Linux Foundation's [Agentic AI Foundation](https://www.linuxfoundation.org/press/agentic-ai-foundation-announces-four-new-projects-agent-skills-open-responses-openenv-and-opensandbox): the Model Context Protocol (MCP), AGENTS.md and Agent Skills (`SKILL.md`, see [`skills-dist/`](skills-dist/)). They move with you across models and tools. Independent research points the same way: Menlo Ventures' [2026: The State of Enterprise AI](https://menlovc.com/perspective/2026-the-state-of-enterprise-ai/) finds that agents succeed where they have an organization's own procedural knowledge of how work gets done. In NoéMI, that knowledge is your intellectual property, and it stays in your repository rather than in one AI product's memory.
+
 ---
 
 ## What This Repository Contains
 
-This repository is the open, auditable agent library used in the NoéMI hands-on workshops, where teams build AI agents that take administrative work off their desks in the first week, then extend them into innovation, sales and profitability, safely.
+This repository is the open, auditable agent library of the NoéMI framework. Project NoéMI is an open agent framework that evolves at the pace of AI; your organization owns and deploys it. Your team's know-how lives in your own repository as open, portable files, so it moves with you between AI vendors. The 40-hour NoéMI Accelerator is the ramp onto the framework: hands-on hackathons in which teams build agents that take administrative work off their desks from the first weeks, with measured returns designed to pay for the workshops, and then extend them into innovation, sales and profitability, safely.
 
 It provides a structured blueprint for building a **governed Virtual Workforce** using:
 
@@ -157,7 +161,7 @@ Project NoéMI introduces the **1:50 Equilibrium**—a scalable organizational m
 
 In practice, one trained Accelerator can guide AI usage across dozens of users safely.
 
-This model is reinforced through the NoéMI workshop series, where participants earn **Badges of Completion (micro-credentials)** issued with **George Mason University (GMU)** across three levels after a validated live deployment:
+This model is reinforced in the hackathons of the 40-hour NoéMI Accelerator, where participants earn **Badges of Completion (micro-credentials)** issued with **George Mason University (GMU)** across three levels after a validated live deployment:
 
 * AI Fluent Professional
 * AI Implementation Specialist
@@ -201,7 +205,7 @@ Without Phase 0, scaling AI introduces risk faster than value.
 * a SaaS product
 * a no-code automation tool
 * a runtime or execution engine
-* the NoéMI workshop series itself
+* the NoéMI Accelerator itself
 
 It is designed to work with orchestrators such as:
 
@@ -281,7 +285,7 @@ Beyond the license, NoéMI is built on **spec-and-governance transparency**: eve
 
 ## Context
 
-* **Project NoéMI** — the methodology, 4D framework, and GMU-backed workshop series
+* **Project NoéMI** — the framework, its methodology and the 4D framework; the GMU-backed 40-hour accelerator is the ramp onto it
 * **This repository** — the implementation blueprint for the Virtual Workforce
 * **NewPush** — the founding cybersecurity and infrastructure organization
 

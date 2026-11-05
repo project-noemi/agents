@@ -36,6 +36,10 @@ Requires Node **24+**. Secrets via Infisical / `wrangler` login — never commit
 
 ## Deploy
 
+Releases deploy through `.github/workflows/deploy-knowledge-mcp.yml` ("Deploy Knowledge MCP"): it deploys each published agents release, rebuilds the corpus, sets `SERVICE_VERSION` to the release tag and checks `/health`. Order: agents release, then this deploy, then the website FAQ republish. Setup and details: [`docs/KNOWLEDGE_MCP_DEPLOY.md`](../../docs/KNOWLEDGE_MCP_DEPLOY.md).
+
+Manual deploy from a workstation:
+
 ```bash
 # Cloudflare account with Workers deploy permission (not DNS-Edit-only)
 npx wrangler login   # or CLOUDFLARE_API_TOKEN with Workers Scripts:Edit

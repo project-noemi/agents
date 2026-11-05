@@ -1,0 +1,174 @@
+{
+  "name": "scaled-event-workflow",
+  "id": "/providers/Microsoft.Flow/flows/scaled-event-workflow",
+  "type": "Microsoft.Flow/flows",
+  "properties": {
+    "apiId": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+    "displayName": "Scaled Event-Driven Workflow",
+    "definition": {
+      "metadata": {
+        "workflowEntityId": null,
+        "processAdvisorMetadata": null,
+        "flowChargedByPaygo": null,
+        "flowclientsuspensionreason": "None",
+        "flowclientsuspensiontime": null,
+        "flowclientsuspensionreasondetails": null,
+        "creator": {
+          "id": "00000000-0000-0000-0000-000000000000",
+          "type": "User",
+          "tenantId": "00000000-0000-0000-0000-000000000000"
+        },
+        "provisioningMethod": "FromDefinition",
+        "failureAlertSubscription": true,
+        "clientLastModifiedTime": "2026-10-05T13:08:10Z",
+        "lastModifiedBy": "00000000-0000-0000-0000-000000000000",
+        "connectionKeySavedTimeKey": "2026-10-05T13:08:10Z",
+        "creationSource": "Portal",
+        "modifiedSources": "Portal"
+      },
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "manual": {
+          "metadata": {},
+          "type": "Request",
+          "kind": "Http",
+          "inputs": {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string" },
+                  "timestamp": { "type": "string" },
+                  "status": { "type": "string" },
+                  "payload": { "type": "string" }
+                },
+                "required": ["id", "timestamp", "status", "payload"]
+              }
+            },
+            "triggerAuthenticationType": "All"
+          }
+        }
+      },
+      "actions": {
+        "Apply_to_each": {
+          "foreach": "@triggerBody()",
+          "actions": {
+            "Condition": {
+              "actions": {
+                "HTTP": {
+                  "type": "Http",
+                  "inputs": {
+                    "uri": "https://api.your-endpoint.com/v1/process",
+                    "method": "POST",
+                    "headers": { "Content-Type": "application/json" },
+                    "body": "@items('Apply_to_each')"
+                  },
+                  "runtimeConfiguration": { "contentTransfer": { "transferMode": "Chunked" } }
+                },
+                "Create_file": {
+                  "runAfter": { "HTTP": ["Succeeded"] },
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "folderPath": "/hiba",
+                      "name": "esemeny_log.txt",
+                      "body": "@items('Apply_to_each')"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                      "connectionName": "shared_onedriveforbusiness",
+                      "operationId": "CreateFile"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  },
+                  "runtimeConfiguration": { "contentTransfer": { "transferMode": "Chunked" } }
+                },
+                "Send_an_email_(V2)": {
+                  "runAfter": { "Create_file": ["Succeeded"] },
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "parameters": {
+                      "emailMessage/To": "notification@example.com",
+                      "emailMessage/Subject": "naplo",
+                      "emailMessage/Body": "<p class=\"editor-paragraph\">sikeresen lefutott esemeny</p>",
+                      "emailMessage/Importance": "Normal"
+                    },
+                    "host": {
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365",
+                      "connectionName": "shared_office365",
+                      "operationId": "SendEmailV2"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                }
+              },
+              "else": {
+                "actions": {
+                  "Create_file_1": {
+                    "type": "OpenApiConnection",
+                    "inputs": {
+                      "parameters": {
+                        "folderPath": "/hiba",
+                        "name": "hiba_log",
+                        "body": "@items('Apply_to_each')"
+                      },
+                      "host": {
+                        "apiId": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+                        "connectionName": "shared_onedriveforbusiness",
+                        "operationId": "CreateFile"
+                      },
+                      "authentication": "@parameters('$authentication')"
+                    },
+                    "runtimeConfiguration": { "contentTransfer": { "transferMode": "Chunked" } }
+                  }
+                }
+              },
+              "expression": {
+                "and": [
+                  { "not": { "equals": ["@items('Apply_to_each')?['id']", ""] } }
+                ]
+              },
+              "type": "If"
+            }
+          },
+          "runAfter": {},
+          "type": "Foreach",
+          "runtimeConfiguration": { "concurrency": { "repetitions": 20 } }
+        }
+      },
+      "outputs": {}
+    },
+    "connectionReferences": {
+      "shared_onedriveforbusiness": {
+        "connectionName": "shared-onedriveforbusiness",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_onedriveforbusiness",
+        "tier": "NotSpecified",
+        "apiName": "onedriveforbusiness",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      },
+      "shared_office365": {
+        "connectionName": "shared-office365",
+        "source": "Embedded",
+        "id": "/providers/Microsoft.PowerApps/apis/shared_office365",
+        "tier": "NotSpecified",
+        "apiName": "office365",
+        "isProcessSimpleApiReferenceConversionAlreadyDone": false
+      }
+    },
+    "flowFailureAlertSubscribed": false,
+    "isManaged": false
+  }
+}

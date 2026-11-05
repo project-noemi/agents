@@ -198,7 +198,7 @@ NewPush's security methodology, mapped to the AI TRiSM framework (Gartner, Inc.)
 
 ### Shadow AI
 
-The unauthorized, ungoverned use of public AI tools by employees who paste proprietary data — the organization's **Secret Sauce** — into unvetted platforms. Phase 0 exists specifically to eliminate Shadow AI.
+Any AI use that the organization has not approved, cannot see, or does not govern. It began with employees pasting proprietary data — the organization's **Secret Sauce** — into public chatbots. Today it also includes AI features that vendors switch on inside SaaS tools the organization already approved, coding assistants and agents running on personal accounts or keys, AI calls built into the organization's own software, and agents that act with an employee's or a service account's credentials. A chatbot can leak data; an agent can also take actions, such as sending messages, changing records or running commands. Phase 0 exists to find Shadow AI, close the risky cases, and move the useful ones onto a governed path.
 
 ### The "Secret Sauce"
 
@@ -577,8 +577,9 @@ The logic is unforgiving: every AI capability you deploy without governance is a
 **1. The Shadow AI Audit**
 
 - Complete inventory of AI tools currently accessed by the workforce
+- Inventory AI features inside approved SaaS, agents and connectors, and the identities they run as
 - Define the Refusal Principle — what data and tasks must **never** touch AI
-- Identify and eliminate unauthorized AI usage
+- Find unapproved AI use, close the risky cases, and move the useful ones onto a governed path
 - Answer the question: "Is your Secret Sauce already in someone else's training data?"
 
 **2. The Data Perimeter & Access Control**
@@ -772,6 +773,26 @@ This is exactly why NoéMI uses the Two-Layer System. Layer A (First Principles)
 ### "My team already gets huge productivity gains from self-directed AI use."
 
 Individual gains without governance equal organizational risk. Who audits what data your developers paste into public LLMs? Who handles compliance when an AI agent hallucinates a response to a customer? Who is accountable when an automated workflow sends confidential data to the wrong endpoint? NoéMI provides the governance layer that turns individual productivity into enterprise-safe operations.
+
+### "We already block public AI websites. Is our Shadow AI problem solved?"
+
+Blocking public chatbots addresses the oldest form of Shadow AI, and only on managed devices and networks. It does not reach the newer forms: AI features that a vendor switches on inside a SaaS tool you approved years ago, which sit on the same domain as the tool itself; coding assistants and agents that developers run on personal subscriptions or keys; AI calls built into your own applications; and agents connected to mailboxes, chat or the CRM with an employee's credentials. As the security practitioner Anton Chuvakin puts it, the risk has moved "from passive data leakage to active, autonomous rogue actions". Blocking is one control among several. NoéMI's Phase 0 starts by finding out what is actually in use, then applies the control that fits each case.
+
+### "Our approved SaaS vendors keep adding AI features. Is that Shadow AI?"
+
+It can be. When a vendor adds an AI assistant or agent to a product you approved, and it is on by default or a workspace administrator turns it on, nobody in your organization chose to adopt it, but your data now flows through it. Your original vendor review covered a different product. The practical response is to treat a new AI feature or a new AI subprocessor as a trigger for a short, focused review: check the tenant's AI settings, data retention and training options, and the vendor's subprocessor notices, then decide whether to leave it on, restrict it or turn it off. Phase 0 includes a review of AI settings in the core SaaS tenants in scope, and NoéMI teams learn to keep that review current as vendors ship new features.
+
+### "What is the difference between a shadow chatbot and a shadow agent?"
+
+A chatbot talks; an agent acts. An unapproved chatbot can leak the data someone types into it. An unapproved agent can also do things: send email, update records, call other systems or run commands, often with the full permissions of the person or service account it runs as. Anton Chuvakin summarises the risk as "Shadow Agent Risk = Reach x Agency": what the agent can reach, multiplied by what it is allowed to do on its own. Three questions sort the cases quickly: whose identity does it run as, what can it change, and who would notice if it did something wrong. NoéMI gives every agent its own machine identity with narrowly scoped access and a named human owner, so an agent can be seen, limited and switched off without locking out the person behind it.
+
+### "Our people connect AI tools to email, files and the CRM. What should we check?"
+
+Start with the permissions granted to those connections, not with the AI tool. Check which AI apps and connectors employees have authorised through single sign-on or app consent screens, what each one may read and change, and whether any of them hold broad access such as a full mailbox or an entire file store. Prefer read-only access where it is enough, require administrator approval for high-impact permissions, and give automations their own identity and an owner instead of an employee's personal login. Review the list regularly: an assistant approved last quarter may have gained new connectors since. Phase 0 reviews these grants for the systems in scope and records which ones should be narrowed or removed.
+
+### "How does NoéMI help us find and govern Shadow AI without banning AI?"
+
+Every engagement starts with Phase 0, the AI readiness questionnaire, together with a free security audit that is included and runs alongside it. Together they build an inventory of the AI already in use: tools and accounts, AI features inside existing SaaS, coding assistants and connectors, and automations or agents with their own credentials. Each finding is sorted by what it can reach and what it can do. Low-risk use is moved onto an approved tool that serves people at least as well as the one they chose themselves; risky cases are narrowed, given an owner, or switched off. During the 40-hour accelerator, each team builds its first agents on that governed path, supported by a NoéMI Accelerator, with machine identities, scoped access, human approval for sensitive actions and an audit trail. The goal is not less AI. It is AI the organization can see, trust and account for.
 
 ### "Show me ROI metrics."
 

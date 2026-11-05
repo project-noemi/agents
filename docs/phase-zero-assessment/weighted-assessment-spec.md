@@ -6,7 +6,7 @@ A design specification for a **self-scored, weighted** variant of the Phase 0 as
 
 This spec defines a self-serve, weighted-scoring version of the Phase 0 assessment that an SME can complete without an assessor present, delivered as a classman LMS class. It complements — it does not replace — the assessor-led [security-assessment.md](security-assessment.md) and [ai-readiness-assessment.md](ai-readiness-assessment.md); those go deeper, while this variant produces a fast, self-scorable readiness signal with the same two-track banding the [readiness-rubric.md](readiness-rubric.md) already uses.
 
-It reuses the exact assessment areas from the kit — 7 Security areas from [security-assessment.md](security-assessment.md) and 9 AI-Readiness areas from [ai-readiness-assessment.md](ai-readiness-assessment.md) (areas 1–8 on `main` plus the incoming *Individual Adoption Readiness* area introduced by PR #327). Questions are derived from the probe bullets under each area — no new areas are invented here.
+It reuses the exact assessment areas from the kit — 7 Security areas from [security-assessment.md](security-assessment.md) and 10 AI-Readiness areas from [ai-readiness-assessment.md](ai-readiness-assessment.md) (areas 1–8, the *Individual Adoption Readiness* area introduced by PR #327, and Area 10, *AI Already in Use and Agent Permissions*). Questions are derived from the probe bullets under each area.
 
 ## B. Scoring Model
 
@@ -32,7 +32,7 @@ The scale is consistent across every question. There is no negative score and no
 For each track, sum the points earned and divide by the track maximum (3 × number of questions in that track) to get a normalized percentage. With the question bank in Section C:
 
 - **Security:** 16 questions → max **48 points**
-- **AI-Readiness:** 21 questions → max **63 points**
+- **AI-Readiness:** 27 questions → max **81 points**
 
 Map each track's percentage to a band (thresholds are **tunable defaults**, not fixed law):
 
@@ -48,7 +48,7 @@ The band names are exactly those in [readiness-rubric.md](readiness-rubric.md).
 
 > **Recommendation:** A single fatal answer forces its track to `not ready yet`, no matter how high the total score. Some gaps cannot be averaged away.
 
-Certain lowest-level options are marked `[critical-gap]` in the question bank (for example: no verified backups, no MFA, no named process owner). The rule:
+Certain lowest-level options are marked `[critical-gap]` in the question bank (for example: no verified backups, no MFA, no named process owner, agents acting on personal or shared credentials with no owner). The rule:
 
 > **If any `[critical-gap]` option is selected — i.e. a critical-gap answer at the `not-yet` (0-point) level — that track's band is forced to `not ready yet`, regardless of the computed percentage.**
 
@@ -186,7 +186,7 @@ Source: [security-assessment.md](security-assessment.md).
 - (1) Aware but not yet addressed
 - (0) Not considered
 
-### AI-Readiness Track (9 areas, 21 questions)
+### AI-Readiness Track (10 areas, 27 questions)
 
 Source: [ai-readiness-assessment.md](ai-readiness-assessment.md). Area 9 aligns with the *Individual Adoption Readiness* area added by PR #327.
 
@@ -336,6 +336,46 @@ Aligns with the *Individual Adoption Readiness* area from PR #327. Answer for th
 - (1) Concerns are known but unspoken
 - (0) Concerns are hidden or ignored
 
+#### A10. AI Already in Use and Agent Permissions
+
+Source: Area 10 of [ai-readiness-assessment.md](ai-readiness-assessment.md). A10.3 at `0` is a critical gap: it forces the AI-Readiness track to `not ready yet`.
+
+**A10.1 — Do you know which AI tools, accounts and features people use for work today, including personal accounts?**
+- (3) Maintained inventory, checked against sign-in, expense or network evidence
+- (2) Inventory exists, built from surveys or memory, not yet checked
+- (1) Partial picture for some teams only
+- (0) No inventory; unknown
+
+**A10.2 — Are AI features inside the SaaS tools you already use (email, documents, CRM, helpdesk) known and deliberately set?**
+- (3) Reviewed in each core tenant; on or off by decision; new AI features trigger a review
+- (2) Reviewed once; no trigger for new features
+- (1) Aware some exist; settings not reviewed
+- (0) Not known which AI features are on
+
+**A10.3 — Do any AI assistants, agents or automations act (send, change, delete, run commands) using an employee's personal login or a shared credential?**
+- (3) No; every acting agent has its own scoped identity and a named owner
+- (2) A few exceptions, known, owned and scheduled for change
+- (1) Several exceptions, or ownership unclear
+- (0) Unknown, or yes with no inventory or owner `[critical-gap]`
+
+**A10.4 — Are the permissions granted to AI connectors and integrations limited to what each needs?**
+- (3) Grants reviewed; high-impact scopes (full mailbox, whole file store, write to production data) need administrator approval
+- (2) Grants reviewed once; no approval rule for high-impact scopes
+- (1) Employees can grant any scope; not reviewed
+- (0) Not known what has been granted
+
+**A10.5 — Do staff know which AI tools are approved, how to request a new one, and which data must never go into AI?**
+- (3) Short written policy, a fast request path, and role-relevant briefing for staff
+- (2) Policy exists; request path slow or unclear
+- (1) Informal guidance only
+- (0) No policy or guidance
+
+**A10.6 — Would you notice new AI use or an agent behaving unusually, and are agents reviewed and retired on a schedule?**
+- (3) Alerts on new AI apps and high-impact grants; agents reviewed on a schedule and retired with their owner
+- (2) Some monitoring; reviews ad hoc
+- (1) Would notice only by chance
+- (0) No monitoring and no review
+
 ## D. Computing The Result
 
 Worked example for one workflow (illustrative numbers).
@@ -345,7 +385,7 @@ Worked example for one workflow (illustrative numbers).
 - Points band: `ready now` (85% ≥ 80%)
 - Critical-gap override: **triggered** by S4.2 → Security forced to **`not ready yet`**
 
-**AI-Readiness track** — sum of the 21 answers = **44 / 63 = 70%**. No `[critical-gap]` option was selected (A1.2 and A4.1 both scored above `0`).
+**AI-Readiness track** — sum of the 27 answers = **57 / 81 = 70%**. No `[critical-gap]` option was selected (A1.2, A4.1 and A10.3 all scored above `0`).
 
 - Points band: `ready with guardrails` (55–79%)
 - Critical-gap override: not triggered → AI-Readiness stays **`ready with guardrails`**

@@ -14,6 +14,12 @@
 # Stage C opens a noemi-agent PR when AGENT_GH_TOKEN and a writer key
 # (AI_GW_API_TOKEN, else AI_GW_API_KEY, else XAI_API_KEY) are both present
 # (Decision [2026-10-29-0001]). Missing the writer key still prepares the envelope.
+# Robot and model credentials (Decision [2026-11-05-0001]): when both
+# INFISICAL_PROJECT_ID and INFISICAL_IDENTITY_ID are set, those four values
+# are read by name from Infisical (OIDC, env dev, path /) and the Actions
+# secrets of the same names are ignored. Neither variable set keeps direct
+# mode. One of the two fails the job. A present producer token is checked
+# against GET /user and must be noemi-agent before the loop starts.
 name: Coding Loop
 
 on:
@@ -69,16 +75,16 @@ on:
         description: 'Already-minted conductor installation token (debugging override; comments and labels as noemi-conductor)'
         required: false
       AGENT_GH_TOKEN:
-        description: 'Producer token (opens the PR as noemi-agent)'
+        description: 'Producer token (opens the PR as noemi-agent). Ignored when vault mode is configured.'
         required: false
       AI_GW_API_TOKEN:
-        description: 'NewPush AI gateway key for Stage C --open-pr (wins over XAI_API_KEY)'
+        description: 'NewPush AI gateway key for Stage C --open-pr (wins over XAI_API_KEY). Ignored in vault mode.'
         required: false
       AI_GW_API_KEY:
-        description: 'Alias for AI_GW_API_TOKEN'
+        description: 'Alias for AI_GW_API_TOKEN. Ignored in vault mode.'
         required: false
       XAI_API_KEY:
-        description: 'Direct api.x.ai key for Stage C --open-pr when no gateway key is set'
+        description: 'Direct api.x.ai key for Stage C --open-pr when no gateway key is set. Ignored in vault mode.'
         required: false
       NOEMI_CLIENT_REGISTRY:
         description: 'JSON client-org registry for entitlement (NewPush dispatchers; leave unset elsewhere)'
@@ -102,7 +108,7 @@ jobs:
     permissions:
       contents: read
       issues: write
-      id-token: write      # WIF for --live-critic; unused when that var is unset. The caller must grant it.
+      id-token: write      # Infisical OIDC when vault variables are set; WIF when live-critic is set. The caller must grant it.
     steps:
       - uses: actions/checkout@v4
         with:
@@ -112,6 +118,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+
+      - name: Resolve credential source
+        id: creds
+        env:
+          INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+          INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
+        run: node coding-loop/actions-credentials.js --mode-only
 
       - name: Check live-critic configuration
         id: critic
@@ -142,6 +155,13 @@ jobs:
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
           token_format: access_token
 
+      - name: Install Infisical CLI
+        if: steps.creds.outputs.mode == 'vault'
+        run: |
+          curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | sudo -E bash
+          sudo apt-get install -y infisical
+          infisical --version
+
       - name: Run coding loop
         env:
           GH_TOKEN: ${{ secrets.CONDUCTOR_GH_TOKEN || github.token }}
@@ -153,6 +173,11 @@ jobs:
           AI_GW_API_KEY: ${{ secrets.AI_GW_API_KEY }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
           NOEMI_CLIENT_REGISTRY: ${{ secrets.NOEMI_CLIENT_REGISTRY }}
+          MODE: ${{ steps.creds.outputs.mode }}
+          INFISICAL_PROJECT_ID: ${{ vars.INFISICAL_PROJECT_ID }}
+          INFISICAL_IDENTITY_ID: ${{ vars.INFISICAL_IDENTITY_ID }}
+          INFISICAL_OIDC_AUDIENCE: ${{ vars.INFISICAL_OIDC_AUDIENCE || 'infisical' }}
+          INFISICAL_DISABLE_UPDATE_CHECK: 'true'
           # The human who triggered the run, never the bot: the issue opener
           # for `issues`, the dispatcher otherwise. Passed through env, never
           # interpolated into the script (a login is attacker-chosen text).
@@ -166,8 +191,115 @@ jobs:
           GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT || 'project-noemi' }}
           GOOGLE_CLOUD_LOCATION: ${{ vars.GOOGLE_CLOUD_LOCATION || 'global' }}
           GEMINI_BACKEND: ${{ vars.GEMINI_BACKEND || 'vertex' }}
+        shell: bash
         run: |
           set -euo pipefail
+          if [[ "$MODE" != "direct" && "$MODE" != "vault" ]]; then
+            echo "::error title=Credential mode::Expected direct or vault."
+            exit 1
+          fi
+          if [[ "$MODE" == "vault" ]]; then
+            node coding-loop/actions-credentials.js --check-audience
+            OIDC_AUDIENCE="$INFISICAL_OIDC_AUDIENCE"
+            JWT=$(curl -sfS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${OIDC_AUDIENCE}" | jq -r .value)
+            if [[ -z "$JWT" || "$JWT" == "null" ]]; then
+              echo "::error title=OIDC token unavailable::Could not mint a GitHub identity token."
+              exit 1
+            fi
+            echo "::add-mask::$JWT"
+            vault_home=$(mktemp -d "${RUNNER_TEMP:-/tmp}/infisical-home.XXXXXX")
+            set +e
+            access=$(HOME="$vault_home" infisical login --method=oidc-auth \
+              --machine-identity-id="$INFISICAL_IDENTITY_ID" --jwt="$JWT" --plain --silent 2>/dev/null)
+            login_rc=$?
+            set -e
+            unset JWT
+            if [[ "$login_rc" -ne 0 || -z "${access:-}" ]]; then
+              unset access
+              rm -rf "$vault_home"
+              echo "::error title=Infisical login failed::OIDC login did not return an access token."
+              exit 1
+            fi
+            export FETCHED_PLAIN="$access"
+            if ! token_class=$(node coding-loop/actions-credentials.js --classify); then
+              unset FETCHED_PLAIN access
+              rm -rf "$vault_home"
+              exit 1
+            fi
+            unset FETCHED_PLAIN
+            if [[ "$token_class" != "present" ]]; then
+              unset access
+              rm -rf "$vault_home"
+              echo "::error title=Infisical login failed::OIDC login did not return an access token."
+              exit 1
+            fi
+            echo "::add-mask::$access"
+            if infisical secrets-manager --help >/dev/null 2>&1; then
+              export INFISICAL_CLI_SHAPE=current
+            elif infisical secrets get --help >/dev/null 2>&1; then
+              export INFISICAL_CLI_SHAPE=legacy
+            else
+              unset access
+              rm -rf "$vault_home"
+              echo "::error title=Infisical CLI::The installed CLI has no named secret-read command."
+              exit 1
+            fi
+            # Vault wins for these four names. Clear any direct-mode values first.
+            AGENT_GH_TOKEN=""
+            AI_GW_API_TOKEN=""
+            AI_GW_API_KEY=""
+            XAI_API_KEY=""
+            unset INFISICAL_SECRET_PATH
+            names=$(node coding-loop/actions-credentials.js --secret-names)
+            while IFS= read -r name; do
+              [[ -z "$name" ]] && continue
+              case "$name" in
+                AGENT_GH_TOKEN|AI_GW_API_TOKEN|AI_GW_API_KEY|XAI_API_KEY) ;;
+                *)
+                  unset access
+                  rm -rf "$vault_home"
+                  echo "::error title=Secret name::Refusing an unexpected secret name."
+                  exit 1
+                  ;;
+              esac
+              argv_text=$(node coding-loop/actions-credentials.js --secret-argv "$name")
+              mapfile -t argv <<< "$argv_text"
+              set +e
+              raw=$(HOME="$vault_home" INFISICAL_TOKEN="$access" infisical "${argv[@]}" 2>/dev/null)
+              read_rc=$?
+              set -e
+              if [[ "$read_rc" -ne 0 ]]; then
+                unset raw access
+                rm -rf "$vault_home"
+                echo "::error title=Infisical read failed::Could not read ${name}."
+                exit 1
+              fi
+              export FETCHED_PLAIN="$raw"
+              if ! class=$(node coding-loop/actions-credentials.js --classify); then
+                unset FETCHED_PLAIN raw access
+                rm -rf "$vault_home"
+                exit 1
+              fi
+              unset FETCHED_PLAIN
+              if [[ "$class" == "present" ]]; then
+                echo "::add-mask::$raw"
+                printf -v "$name" '%s' "$raw"
+              elif [[ "$class" == "absent" ]]; then
+                printf -v "$name" '%s' ""
+              else
+                unset raw access
+                rm -rf "$vault_home"
+                echo "::error title=Unexpected secret classification::Refusing to export ${name}."
+                exit 1
+              fi
+              unset raw
+            done <<< "$names"
+            unset names argv_text
+            unset access INFISICAL_TOKEN INFISICAL_CLI_SHAPE
+            rm -rf "$vault_home"
+          fi
+          unset INFISICAL_TOKEN
           extra=()
           if [[ "${BUDGET_OK}" == "true" ]]; then
             extra+=(--budget-ok)
@@ -188,6 +320,13 @@ jobs:
             extra+=(--requested-by "$REQUESTED_BY")
           fi
           if [[ -n "${AGENT_GH_TOKEN:-}" ]]; then
+            if ! command -v gh >/dev/null 2>&1; then
+              echo "::error title=Producer identity::gh is required to verify the producer login before producer writes."
+              exit 1
+            fi
+            login=$(GH_TOKEN="$AGENT_GH_TOKEN" gh api user --jq .login)
+            LOGIN_TO_ASSERT="$login" node coding-loop/actions-credentials.js --assert-login
+            unset login LOGIN_TO_ASSERT
             extra+=(--implement)
             if [[ -n "${AI_GW_API_TOKEN:-}${AI_GW_API_KEY:-}${XAI_API_KEY:-}" ]]; then
               extra+=(--open-pr)

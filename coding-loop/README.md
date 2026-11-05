@@ -445,6 +445,21 @@ workflow mints `GCP_ACCESS_TOKEN` via `google-github-actions/auth`. One-time
 pool/provider setup: [`docs/examples/cross-model-review-setup.md`](../docs/examples/cross-model-review-setup.md)
 Part 1.
 
+**Robot and model secrets in Actions** (Decision [2026-11-05-0001]): the same
+workflow reads `AGENT_GH_TOKEN`, `AI_GW_API_TOKEN`, `AI_GW_API_KEY`, and
+`XAI_API_KEY` from Infisical when both `INFISICAL_PROJECT_ID` and
+`INFISICAL_IDENTITY_ID` are set. Login is GitHub OIDC as the identity those
+variables already name (`infisical login --method=oidc-auth`), audience
+`INFISICAL_OIDC_AUDIENCE` or `infisical`. The read is one named secret at a
+time from environment `dev` at path `/`. The official Infisical GitHub Action
+injects every secret in a folder, so this workflow does not use it. Direct
+mode (both variables unset) still uses the named Actions secrets. One variable
+without the other fails the job. Before `--implement`, a present producer
+token must be the GitHub user `noemi-agent`. Conductor credentials, the client
+registry, the budget flag, and the requester check are unchanged. Callers in
+`templates/ci/coding-loop-caller.yml` pin `@main`, so they keep the previous
+workflow until a release promotes `develop`.
+
 ## Graphite stacked PRs
 
 1. Detecting a stack: PR descriptions mention "Stack:" or "Base PR", or sequential PRs are based on each other's branches.

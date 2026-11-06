@@ -4,7 +4,7 @@ services:
   app:
     build: .
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       - PORT=8080
       - NODE_ENV=development
@@ -20,14 +20,14 @@ services:
   mongo:
     image: mongo:6.0
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
       - mongo_data:/data/db
 
   ngrok:
     image: wernight/ngrok
     ports:
-      - "4040:4040"
+      - "127.0.0.1:4040:4040"
     environment:
       - NGROK_PROTOCOL=http
       - NGROK_PORT=app:8080

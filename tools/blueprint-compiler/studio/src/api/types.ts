@@ -118,6 +118,43 @@ export type RunRecord = {
   fallbacks: { provider: string; reason: string }[]
 }
 
+// ---- LLM Arena (Sprint 5) --------------------------------------------------
+// One saved blueprint and one prompt, run on every provider at the same time.
+// A provider that fails is recorded as failed; the Arena never falls back.
+
+export type ArenaRequest = {
+  blueprintId: string
+  prompt: string
+}
+
+// One event per message on the Arena stream. Every per-provider event names its
+// provider, so the events of the providers can arrive interleaved.
+export type ArenaEvent =
+  // First event: the compiled blueprint and the providers that will run.
+  | { type: 'arena'; id: string; blueprint: string; providers: string[] }
+  | { type: 'start'; provider: string; model?: string }
+  | { type: 'token'; provider: string; text: string }
+  | { type: 'done'; provider: string; model?: string; usage: Usage }
+  // This provider failed. The others carry on.
+  | { type: 'failed'; provider: string; stage: Stage; errors: CompileError[] }
+  // The whole Arena run failed before any provider ran (for example a bad blueprint).
+  | { type: 'error'; stage: Stage; errors: CompileError[] }
+  // Last event: every provider has finished and the run is saved.
+  | { type: 'end'; id: string }
+
+// One scoreboard row per provider, totalled over the saved Arena runs.
+export type ScoreboardRow = {
+  provider: string
+  runs: number
+  ok: number
+  failed: number
+  // Average over successful answers; null when there are none.
+  avgLatencyMs: number | null
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
+}
+
 export interface StudioApi {
   validate(input: BlueprintInput): Promise<ValidateResult>
   run(request: RunRequest, signal?: AbortSignal): AsyncIterable<StreamEvent>
@@ -129,4 +166,6 @@ export interface StudioApi {
   deleteBlueprint(id: string): Promise<void>
   // Newest first.
   listRuns(): Promise<RunRecord[]>
+  arena(request: ArenaRequest, signal?: AbortSignal): AsyncIterable<ArenaEvent>
+  scoreboard(): Promise<ScoreboardRow[]>
 }

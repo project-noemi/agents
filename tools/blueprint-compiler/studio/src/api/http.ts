@@ -1,8 +1,11 @@
 import type {
+  ArenaEvent,
+  ArenaRequest,
   BlueprintInput,
   RunRecord,
   RunRequest,
   SavedBlueprint,
+  ScoreboardRow,
   SavedBlueprintSummary,
   StreamEvent,
   StudioApi,
@@ -34,7 +37,7 @@ async function errorText(res: Response): Promise<string> {
 
 // The run stream is server-sent events over a POST response: each event is
 // one `data: <json>` block, separated by a blank line.
-async function* readEvents(res: Response): AsyncGenerator<StreamEvent> {
+async function* readEvents<E = StreamEvent>(res: Response): AsyncGenerator<E> {
   if (!res.body) throw new Error('The server returned no stream.')
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
   let buffer = ''
@@ -51,7 +54,7 @@ async function* readEvents(res: Response): AsyncGenerator<StreamEvent> {
         .filter((line) => line.startsWith('data:'))
         .map((line) => line.slice(5).trimStart())
         .join('\n')
-      if (data) yield JSON.parse(data) as StreamEvent
+      if (data) yield JSON.parse(data) as E
     }
   }
 }
@@ -93,4 +96,18 @@ export const httpApi: StudioApi = {
 
   deleteBlueprint: (id) =>
     request<void>(`/blueprints/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  // Same server-sent events format as /run.
+  async *arena(req: ArenaRequest, signal?: AbortSignal) {
+    const res = await fetch(`${BASE}/arena`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify(req),
+      signal,
+    })
+    if (!res.ok) throw new Error(await errorText(res))
+    yield* readEvents<ArenaEvent>(res)
+  },
+
+  scoreboard: () => request<ScoreboardRow[]>('/arena/scoreboard'),
 }

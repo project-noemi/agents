@@ -1,198 +1,48 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, backend } from './api'
-import type { RunRecord, SavedBlueprintSummary, ValidateResult } from './api'
-import { BlueprintForm } from './components/BlueprintForm'
-import { BlueprintTable } from './components/BlueprintTable'
-import { RunTable } from './components/RunTable'
-import { StreamView } from './components/StreamView'
-import { ValidationPanel } from './components/ValidationPanel'
-import { EMPTY_FORM, IDLE_RUN, toInput } from './state'
-import type { FormState, RunState } from './state'
+import { useEffect, useState } from 'react'
+import { api as defaultApi, backend } from './api'
+import type { StudioApi } from './api'
+import { ArenaPage } from './pages/ArenaPage'
+import { StudioPage } from './pages/StudioPage'
 
-const describe = (err: unknown) => (err instanceof Error ? err.message : String(err))
+type Page = 'studio' | 'arena'
 
-function App() {
-  const [form, setForm] = useState<FormState>(EMPTY_FORM)
-  const [saved, setSaved] = useState<SavedBlueprintSummary[]>([])
-  const [validation, setValidation] = useState<ValidateResult>()
-  const [runs, setRuns] = useState<RunRecord[]>([])
-  const [run, setRun] = useState<RunState>(IDLE_RUN)
-  const [busy, setBusy] = useState(false)
-  const [notice, setNotice] = useState<string>()
-  const abortRef = useRef<AbortController | null>(null)
+const PAGES: { id: Page; label: string; hash: string }[] = [
+  { id: 'studio', label: 'Studio', hash: '#/' },
+  { id: 'arena', label: 'Arena', hash: '#/arena' },
+]
 
-  const refreshSaved = useCallback(async () => {
-    try {
-      setSaved(await api.listBlueprints())
-    } catch (err) {
-      setNotice(`Could not load saved blueprints: ${describe(err)}`)
-    }
-  }, [])
+// Hash routing keeps the two pages linkable without a router dependency.
+const pageFromHash = (): Page => (window.location.hash.startsWith('#/arena') ? 'arena' : 'studio')
 
-  const refreshRuns = useCallback(async () => {
-    try {
-      setRuns(await api.listRuns())
-    } catch (err) {
-      setNotice(`Could not load run history: ${describe(err)}`)
-    }
-  }, [])
+function App({ api = defaultApi }: { api?: StudioApi }) {
+  const [page, setPage] = useState<Page>(pageFromHash)
 
-  // Initial load of the saved list and the run history.
   useEffect(() => {
-    let live = true
-    api.listBlueprints().then(
-      (items) => live && setSaved(items),
-      (err) => live && setNotice(`Could not load saved blueprints: ${describe(err)}`),
-    )
-    api.listRuns().then(
-      (items) => live && setRuns(items),
-      (err) => live && setNotice(`Could not load run history: ${describe(err)}`),
-    )
-    return () => {
-      live = false
-    }
+    const onHash = () => setPage(pageFromHash())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
   }, [])
-
-  // A change to the blueprint source makes the last validation stale.
-  const onChange = (next: FormState) => {
-    if (JSON.stringify(toInput(next)) !== JSON.stringify(toInput(form))) setValidation(undefined)
-    setForm(next)
-  }
-
-  // Runs an API call with the buttons disabled and failures shown as a notice.
-  const withBusy = async (action: () => Promise<void>) => {
-    setBusy(true)
-    setNotice(undefined)
-    try {
-      await action()
-    } catch (err) {
-      setNotice(describe(err))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const onValidate = () =>
-    withBusy(async () => {
-      setValidation(await api.validate(toInput(form)))
-    })
-
-  const onSave = () =>
-    withBusy(async () => {
-      const result = await api.saveBlueprint({ id: form.id, name: form.name.trim(), markdown: form.markdown })
-      setForm({ ...form, id: result.id, name: result.name })
-      setNotice(`Saved "${result.name}".`)
-      await refreshSaved()
-    })
-
-  const onOpen = (id: string) =>
-    withBusy(async () => {
-      const b = await api.getBlueprint(id)
-      setForm({ ...form, id: b.id, name: b.name, markdown: b.markdown, sourceKind: 'text' })
-      setValidation(undefined)
-    })
-
-  const onRename = (id: string, name: string) =>
-    withBusy(async () => {
-      const renamed = await api.renameBlueprint(id, name)
-      if (form.id === id) setForm({ ...form, name: renamed.name })
-      await Promise.all([refreshSaved(), refreshRuns()])
-    })
-
-  const onDelete = (id: string) =>
-    withBusy(async () => {
-      await api.deleteBlueprint(id)
-      if (form.id === id) setForm({ ...form, id: undefined })
-      await refreshSaved()
-    })
-
-  const onNew = () => {
-    setForm({ ...EMPTY_FORM, provider: form.provider, runtime: form.runtime })
-    setValidation(undefined)
-    setRun(IDLE_RUN)
-    setNotice(undefined)
-  }
-
-  const onRun = async () => {
-    const controller = new AbortController()
-    abortRef.current = controller
-    setNotice(undefined)
-    setRun({ status: 'running', text: '' })
-    try {
-      const events = api.run(
-        {
-          input: toInput(form),
-          // Only a saved blueprint that is still the one in the editor links its history rows.
-          blueprintId: form.sourceKind === 'text' ? form.id : undefined,
-          prompt: form.prompt,
-          provider: form.provider,
-          runtime: form.runtime,
-        },
-        controller.signal,
-      )
-      for await (const event of events) {
-        if (event.type === 'start') setRun((r) => ({ ...r, start: event }))
-        else if (event.type === 'token') setRun((r) => ({ ...r, text: r.text + event.text }))
-        else if (event.type === 'done') setRun((r) => ({ ...r, status: 'done', done: event }))
-        else setRun((r) => ({ ...r, status: 'error', failure: event }))
-      }
-      if (controller.signal.aborted) setRun((r) => ({ ...r, status: 'stopped' }))
-    } catch (err) {
-      if (controller.signal.aborted) setRun((r) => ({ ...r, status: 'stopped' }))
-      else setRun((r) => ({ ...r, status: 'error', message: describe(err) }))
-    } finally {
-      abortRef.current = null
-      // The server records a run before it sends the closing event.
-      void refreshRuns()
-    }
-  }
-
-  const onStop = () => abortRef.current?.abort()
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 p-4">
-      <header>
-        <h1 className="text-2xl font-semibold">NoéMI Studio</h1>
-        <p className="text-sm">Backend: {backend === 'mock' ? 'offline mock (no server)' : 'Studio server'}</p>
+    <>
+      <header className="app-bar">
+        <div className="container-studio flex min-h-(--size-app-bar) flex-wrap items-center gap-x-4">
+          <p className="mr-auto">NoéMI Studio</p>
+          <nav aria-label="Pages" className="flex gap-1">
+            {PAGES.map((p) => (
+              <a key={p.id} href={p.hash} className="btn" aria-current={page === p.id ? 'page' : undefined}>
+                {p.label}
+              </a>
+            ))}
+          </nav>
+          <p className="text-body-sm">Backend: {backend === 'mock' ? 'offline mock (no server)' : 'Studio server'}</p>
+        </div>
       </header>
 
-      {notice ? (
-        <p role="status" className="border p-2">
-          {notice}
-        </p>
-      ) : null}
-
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Saved blueprints</h2>
-        <BlueprintTable items={saved} selectedId={form.id} onOpen={onOpen} onRename={onRename} onDelete={onDelete} />
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Blueprint</h2>
-        <BlueprintForm
-          form={form}
-          onChange={onChange}
-          running={run.status === 'running'}
-          busy={busy}
-          onValidate={onValidate}
-          onRun={onRun}
-          onStop={onStop}
-          onSave={onSave}
-          onNew={onNew}
-        />
-        {validation ? <ValidationPanel result={validation} /> : null}
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Output</h2>
-        <StreamView run={run} />
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Run history</h2>
-        <RunTable runs={runs} blueprints={saved} onRefresh={refreshRuns} />
-      </section>
-    </main>
+      <main className="container-studio py-4">
+        {page === 'arena' ? <ArenaPage api={api} /> : <StudioPage api={api} />}
+      </main>
+    </>
   )
 }
 

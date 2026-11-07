@@ -8,8 +8,8 @@ export function ValidationPanel({ result }: { result: ValidateResult }) {
 
   const { ir, resolved } = result
   return (
-    <div className="border border-green-600 p-2">
-      <p className="font-semibold">Valid blueprint</p>
+    <div className="alert alert-success">
+      <p className="alert-title">Valid blueprint</p>
       <dl className="grid grid-cols-[max-content_1fr] gap-x-3">
         <dt>ID</dt>
         <dd>

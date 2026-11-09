@@ -95,6 +95,8 @@ The strategic aim is concrete: help enterprises convert AI from a labor-displace
 - Building the managerial capability to supervise AI doing bounded operational work
 - Creating conditions for measurable ROI instead of endless experimentation
 
+**An illustrative first workflow:** A team brings a recurring meeting follow-up task and a baseline for the effort it takes today. Using notes the team is authorized to share in its approved environment, an AI workflow can propose a short summary, a follow-up message and a task list. A person checks and corrects the draft and decides whether to send anything or create tasks. The team can compare the time spent, including review and exceptions, with its baseline. This is an example, not a customer result or a guarantee of savings; tools, access and safeguards depend on the organization.
+
 **Key facts:**
 
 - **Lead Organization:** NewPush® (cybersecurity/infrastructure company, founded in 1999)

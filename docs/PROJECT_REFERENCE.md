@@ -1,10 +1,10 @@
 # Project NoéMI — Public Reference Guide
 
-**Edition 2026.10.31**
+**Edition 2026.11.04**
 
 > **"We help you future-proof your organization against AI, by using AI."**
 
-The edition is the last **published CalVer** of this framework (`YYYY.MM.DD` GitHub Release tag) at the time of the narrative pass. It is not SemVer. Workshop **curriculum v3.0** is the syllabus in [Chapter 9](#chapter-9-the-workshop-progression-what-teams-build), not this stamp.
+The edition is the last **published CalVer** of this framework (`YYYY.MM.DD` GitHub Release tag) at the time of the narrative pass. It is not SemVer. The accelerator plan (**v3.0**) is described in [Chapter 9](#chapter-9-the-workshop-progression-what-teams-build), not this stamp.
 
 ---
 
@@ -80,7 +80,7 @@ That is what Project NoéMI was built to do.
 
 Project NoéMI is an open agent framework that your organization owns and deploys, delivered by **NewPush®**. The framework evolves at the pace of AI: as models, tools and practices change, the framework is updated, and the agents your teams have built can take up those updates.
 
-The way onto the framework is the **NoéMI 40-hour accelerator**: a hands-on workshop series, run as hackathons (see [Chapter 8](#chapter-8-the-high-tech-surfboard-how-teams-build-together)), in which your teams build governed AI agents on their own work. The first agents take administrative overhead off people's desks; the next ones support innovation, sales and profitability. These agents start doing real work during the accelerator, so they deliver a return right away; their time savings are measured against the organization's own figures, and they are built to pay for the workshops (see ["Show me ROI metrics"](#show-me-roi-metrics)). Everything runs inside a security perimeter your organization controls. Participants who meet the eligibility requirements can earn a George Mason University non-credit digital badge.
+The way onto the framework is the **NoéMI 40-hour accelerator**: a series of hands-on hackathons (see [Chapter 8](#chapter-8-the-high-tech-surfboard-how-teams-build-together)), in which your teams build governed AI agents on their own work. The first agents take administrative overhead off people's desks; the next ones support innovation, sales and profitability. These agents start doing real work during the accelerator, so they deliver a return right away; their time savings are measured against the organization's own figures, and they are built to pay for the workshops (see ["Show me ROI metrics"](#show-me-roi-metrics)). Everything runs inside a security perimeter your organization controls. Participants who meet the eligibility requirements can earn a George Mason University non-credit digital badge.
 
 The accelerator is the ramp; the framework is what your organization keeps. When the 40 hours end, your teams are already using the framework, and its updates keep them moving forward without having to start over each time the technology changes.
 
@@ -154,7 +154,7 @@ NoéMI teaches how to keep learning and using new tools with ease, and how to de
 
 **Your AI intellectual property stays yours.** Much of an organization's most valuable AI work — instructions, personas, skills and accumulated context — tends to end up inside one AI product's memory, custom instructions and skill store. Work kept only there is tied to that product's roadmap and pricing. NoéMI keeps AI work tool-agnostic: agent specifications, skills and governance rules live as plain files in a repository your organization owns, portable across models and tools. Vendor features are copies loaded from that source of truth, not the place where the knowledge lives.
 
-The curriculum achieves this through a **Two-Layer System**: Layer A contains First Principles that never change, and Layer B contains Dynamic Labs that get updated per cohort, per tool release, or per quarter. You learn how to think about AI governance once. You learn the specific buttons to click in the current tool version this week. This is how you stay ahead of the curve.
+The framework achieves this through a **Two-Layer System**: Layer A contains First Principles that do not change, and Layer B contains Dynamic Labs that are updated per hackathon, per tool release or per quarter. Your teams settle how to govern AI once; the hands-on specifics of the current tool version are refreshed as the tools change. This is how the framework keeps pace with AI without added effort.
 
 ### C. "The Replacement Trap Is a Dead End"
 
@@ -198,7 +198,7 @@ NewPush's security methodology, mapped to the AI TRiSM framework (Gartner, Inc.)
 
 ### Shadow AI
 
-The unauthorized, ungoverned use of public AI tools by employees who paste proprietary data — the organization's **Secret Sauce** — into unvetted platforms. Phase 0 exists specifically to eliminate Shadow AI.
+Any AI use that the organization has not approved, cannot see, or does not govern. It began with employees pasting proprietary data — the organization's **Secret Sauce** — into public chatbots. Today it also includes AI features that vendors switch on inside SaaS tools the organization already approved, coding assistants and agents running on personal accounts or keys, AI calls built into the organization's own software, and agents that act with an employee's or a service account's credentials. A chatbot can leak data; an agent can also take actions, such as sending messages, changing records or running commands. Phase 0 exists to find Shadow AI, close the risky cases, and move the useful ones onto a governed path.
 
 ### The "Secret Sauce"
 
@@ -221,7 +221,7 @@ A time-boxed, hands-on build session in which a mixed team works on a real probl
 
 ### Tool-Agnostic IP
 
-The principle that an organization's AI work — agent specifications, skills, instructions and governance rules — is intellectual property kept in files the organization owns, portable across models and tools, rather than locked in one AI product's memory, custom instructions or skill store.
+The principle that an organization's AI work — agent specifications, skills, instructions and governance rules — is intellectual property kept in files the organization owns, portable across models and tools, rather than locked in one AI product's memory, custom instructions or skill store. NoéMI builds on open, vendor-neutral standards governed by the Linux Foundation's Agentic AI Foundation: the Model Context Protocol (MCP) for connecting tools, AGENTS.md for agent instructions, and Agent Skills (`SKILL.md`) for reusable skills. Your organization's agents and skills stay plain files it owns, portable across models and tools.
 
 ### Layer A (First Principles)
 
@@ -229,7 +229,7 @@ Durable mental models and abstract reasoning frameworks that remain valid regard
 
 ### Layer B (Dynamic Labs)
 
-Ephemeral technical exercises tied to specific tools and platforms. Updated per cohort, per model release, or per quarter. In curriculum v3.0 they are built on well-known open-source technologies, assembled to be ready to go in the *NewPush Labs* open-source stack. They are the "how" that changes with the technology.
+Ephemeral technical exercises tied to specific tools and platforms. Updated per cohort, per model release, or per quarter. In accelerator plan v3.0 they are built on well-known open-source technologies, assembled to be ready to go in the *NewPush Labs* open-source stack. They are the "how" that changes with the technology.
 
 ### The Guardian Layer
 
@@ -431,7 +431,7 @@ This is not a classroom exercise. It is a rehearsal for how the Virtual Workforc
 
 ## Chapter 9: The Workshop Progression — What Teams Build
 
-The workshop progression is curriculum **v3.0**: the 40 hours of the accelerator, described here in the preferred 5-week format (the 5-day and 10-week formats cover the same content). Each session is a hackathon. Each week names what the team leaves with, then the durable idea, then the lab.
+The accelerator progression (**v3.0**) covers the 40 hours of the accelerator, described here in the preferred 5-week format (the 5-day and 10-week formats cover the same content). Each session is a hackathon. Each week names what the team leaves with, then the durable idea, then the lab.
 
 Every week separates content into two layers:
 
@@ -524,7 +524,7 @@ NoéMI meets organizations where they are. Different maturity levels need differ
 
 - **For:** organizations that want their teams to build governed AI agents on their own workflows
 - **Format:** 40 hours: 5 weeks (preferred), 5 days or 10 weeks; the 5-week format runs one day per week
-- All five weeks of hackathon sessions (curriculum v3.0), after the remote Phase 0 security assessment
+- All five weeks of hackathon sessions (accelerator plan v3.0), after the remote Phase 0 security assessment
 - Agents start doing real work during the program, with measured time savings, so that they pay for the workshops
 - GMU non-credit digital badge for participants with at least 35 hours of instructional presence who meet the applicable completion requirements, including a validated live deployment
 - The ramp onto the framework, which keeps evolving after the 40 hours end
@@ -577,8 +577,9 @@ The logic is unforgiving: every AI capability you deploy without governance is a
 **1. The Shadow AI Audit**
 
 - Complete inventory of AI tools currently accessed by the workforce
+- Inventory AI features inside approved SaaS, agents and connectors, and the identities they run as
 - Define the Refusal Principle — what data and tasks must **never** touch AI
-- Identify and eliminate unauthorized AI usage
+- Find unapproved AI use, close the risky cases, and move the useful ones onto a governed path
 - Answer the question: "Is your Secret Sauce already in someone else's training data?"
 
 **2. The Data Perimeter & Access Control**
@@ -668,7 +669,7 @@ For a step-by-step setup walkthrough, see [`docs/examples/cross-model-review-set
 
 ## Chapter 12: The Technology Stack Concept
 
-v3.0 of the curriculum leverages the **NewPush Labs open-source stack**. This is a deliberate choice. NoéMI teaches "Production Reality" — real tools, real infrastructure, real deployment — not vendor-locked demos that fall apart outside a controlled environment.
+Version 3.0 of the accelerator plan uses the **NewPush Labs open-source stack**. This is a deliberate choice. NoéMI works in "Production Reality" — real tools, real infrastructure, real deployment — not vendor-locked demos that fall apart outside a controlled environment.
 
 The table lists the tools used in the current labs. It is an example, not a requirement: we teach with whatever tools your organization approves, and the framework keeps your work portable across them.
 
@@ -773,13 +774,33 @@ This is exactly why NoéMI uses the Two-Layer System. Layer A (First Principles)
 
 Individual gains without governance equal organizational risk. Who audits what data your developers paste into public LLMs? Who handles compliance when an AI agent hallucinates a response to a customer? Who is accountable when an automated workflow sends confidential data to the wrong endpoint? NoéMI provides the governance layer that turns individual productivity into enterprise-safe operations.
 
+### "We already block public AI websites. Is our Shadow AI problem solved?"
+
+Blocking public chatbots addresses the oldest form of Shadow AI, and only on managed devices and networks. It does not reach the newer forms: AI features that a vendor switches on inside a SaaS tool you approved years ago, which sit on the same domain as the tool itself; coding assistants and agents that developers run on personal subscriptions or keys; AI calls built into your own applications; and agents connected to mailboxes, chat or the CRM with an employee's credentials. As the security practitioner Anton Chuvakin puts it, the risk has moved "from passive data leakage to active, autonomous rogue actions". Blocking is one control among several. NoéMI's Phase 0 starts by finding out what is actually in use, then applies the control that fits each case.
+
+### "Our approved SaaS vendors keep adding AI features. Is that Shadow AI?"
+
+It can be. When a vendor adds an AI assistant or agent to a product you approved, and it is on by default or a workspace administrator turns it on, nobody in your organization chose to adopt it, but your data now flows through it. Your original vendor review covered a different product. The practical response is to treat a new AI feature or a new AI subprocessor as a trigger for a short, focused review: check the tenant's AI settings, data retention and training options, and the vendor's subprocessor notices, then decide whether to leave it on, restrict it or turn it off. Phase 0 includes a review of AI settings in the core SaaS tenants in scope, and NoéMI teams learn to keep that review current as vendors ship new features.
+
+### "What is the difference between a shadow chatbot and a shadow agent?"
+
+A chatbot talks; an agent acts. An unapproved chatbot can leak the data someone types into it. An unapproved agent can also do things: send email, update records, call other systems or run commands, often with the full permissions of the person or service account it runs as. Anton Chuvakin summarises the risk as "Shadow Agent Risk = Reach x Agency": what the agent can reach, multiplied by what it is allowed to do on its own. Three questions sort the cases quickly: whose identity does it run as, what can it change, and who would notice if it did something wrong. NoéMI gives every agent its own machine identity with narrowly scoped access and a named human owner, so an agent can be seen, limited and switched off without locking out the person behind it.
+
+### "Our people connect AI tools to email, files and the CRM. What should we check?"
+
+Start with the permissions granted to those connections, not with the AI tool. Check which AI apps and connectors employees have authorised through single sign-on or app consent screens, what each one may read and change, and whether any of them hold broad access such as a full mailbox or an entire file store. Prefer read-only access where it is enough, require administrator approval for high-impact permissions, and give automations their own identity and an owner instead of an employee's personal login. Review the list regularly: an assistant approved last quarter may have gained new connectors since. Phase 0 reviews these grants for the systems in scope and records which ones should be narrowed or removed.
+
+### "How does NoéMI help us find and govern Shadow AI without banning AI?"
+
+Every engagement starts with Phase 0, the AI readiness questionnaire, together with a free security audit that is included and runs alongside it. Together they build an inventory of the AI already in use: tools and accounts, AI features inside existing SaaS, coding assistants and connectors, and automations or agents with their own credentials. Each finding is sorted by what it can reach and what it can do. Low-risk use is moved onto an approved tool that serves people at least as well as the one they chose themselves; risky cases are narrowed, given an owner, or switched off. During the 40-hour accelerator, each team builds its first agents on that governed path, supported by a NoéMI Accelerator, with machine identities, scoped access, human approval for sensitive actions and an audit trail. The goal is not less AI. It is AI the organization can see, trust and account for.
+
 ### "Show me ROI metrics."
 
 Every accelerator format produces measurable deliverables: working Virtual Coworkers with calculated time savings. The agents built in the workshops start doing real work during the program, so the return begins right away and is meant to pay for the workshops. The formula is straightforward: Time Saved x Labor Cost = ROI. The figures are measured, not promised: they come from the organization's own before-and-after numbers, and results depend on the workflows chosen. The larger return is organizational: the ability to deploy AI safely across the enterprise, not just in one team's side project. A public case study will be linked here when one is approved for publication.
 
 ### "Will our AI work end up locked into one vendor?"
 
-Not with NoéMI. The framework keeps AI work tool-agnostic: agent specifications, skills and governance rules live as files in a repository your organization owns, portable across models and tools. Vendor features such as hosted memory, custom instructions and skill stores are copies loaded from that repository, so your intellectual property is not locked in one AI product, and a change of tool or price does not mean starting again.
+Not with NoéMI. The framework keeps AI work tool-agnostic: agent specifications, skills and governance rules live as files in a repository your organization owns, portable across models and tools. Vendor features such as hosted memory, custom instructions and skill stores are copies loaded from that repository, so your intellectual property is not locked in one AI product, and a change of tool or price does not mean starting again. NoéMI builds on open, vendor-neutral standards governed by the Linux Foundation's Agentic AI Foundation: the Model Context Protocol (MCP) for connecting tools, AGENTS.md for agent instructions, and Agent Skills (`SKILL.md`) for reusable skills. Your organization's agents and skills stay plain files it owns, portable across models and tools.
 
 ### "Previous training did not translate to real implementation."
 
@@ -815,7 +836,7 @@ Echoing Picasso's famous statement "Computers are useless they only give answers
 
 ## Chapter 16: Where You Go From Here
 
-You have read the philosophy, the architecture, the framework, and the curriculum. Now comes the part that matters: doing something with it.
+You have read the philosophy, the architecture, the framework, and the accelerator plan. Now comes the part that matters: doing something with it.
 
 This repository is the implementation blueprint. It contains everything you need to start building a governed AI Workforce. But knowing where to start depends on who you are.
 

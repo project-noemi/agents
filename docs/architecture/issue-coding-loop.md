@@ -247,6 +247,17 @@ reviewer and passes `--live-critic`. Pass `--scan` to run `coding-loop/scan.js`
 on the fetched body, or `--scan-status` for a precomputed result. Omitting
 both classifies the issue as REFUSED (fail closed).
 
+Robot and model credentials follow the reviewer vault/direct split (Decision
+[2026-11-05-0001]). Both `INFISICAL_PROJECT_ID` and `INFISICAL_IDENTITY_ID`
+select vault mode: GitHub OIDC, then a named read of `AGENT_GH_TOKEN`,
+`AI_GW_API_TOKEN`, `AI_GW_API_KEY`, and `XAI_API_KEY` from Infisical
+environment `dev` at path `/`. Neither variable selects direct mode, which
+keeps the Actions secrets passed by name. Setting only one fails the job.
+Vault mode does not fall back to those Actions secrets. A producer token is
+checked with `GET /user` and the job stops before `coding-loop/run.js` unless
+the login is `noemi-agent`. Conductor credentials and `NOEMI_CLIENT_REGISTRY`
+stay named secrets. The workflow does not export the vault folder.
+
 On `develop`, AI Review (advisory) is **required to complete** and remains
 advisory on the verdict (Decision [2026-08-17-0001]). A GitHub outage that
 fails the comment POST is not a review. The runner retries transient GitHub

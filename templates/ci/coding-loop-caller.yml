@@ -8,6 +8,11 @@
 # AGENT_GH_TOKEN lets the loop open the PR as noemi-agent.
 # AI_GW_API_TOKEN (or AI_GW_API_KEY / XAI_API_KEY) lets Stage C draft with Grok
 # and pass --open-pr (Decision [2026-10-29-0001]).
+# Vault mode: when this repository has both Actions variables INFISICAL_PROJECT_ID
+# and INFISICAL_IDENTITY_ID, the reusable workflow reads those four values from
+# Infisical with GitHub OIDC and ignores the four secrets below. Leave both
+# variables unset to keep direct mode. Conductor credentials and
+# NOEMI_CLIENT_REGISTRY stay named secrets in both modes.
 # Optional: vars.CODING_LOOP_LIVE_CRITIC=true plus org WIF for Gemini B′.
 # Does not approve or merge. The issue opener (or dispatcher) needs write
 # access on this repository, or the loop refuses the issue and leaves no

@@ -1,0 +1,10 @@
+From: Room Bookings <rooms@example.org>
+To: team@example.com
+Date: Mon, 2 Nov 2026 11:20:00 +0000
+Subject: Booking confirmed: Room B, Thursday 14:00-15:00
+Content-Type: text/plain; charset=utf-8
+
+This is an automated message.
+
+Your booking for Room B on Thursday 5 November, 14:00-15:00, is
+confirmed. To change it, use the booking page at example.org.

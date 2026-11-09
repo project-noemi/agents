@@ -1,0 +1,12 @@
+From: Example Coffee Shop <orders@example.org>
+To: team@example.com
+Date: Mon, 2 Nov 2026 15:02:00 +0000
+Subject: Your receipt for order 5531
+Content-Type: text/plain; charset=utf-8
+
+Thank you for your order.
+
+Order 5531: 2 bags of coffee beans, 1 box of tea.
+Paid by company card.
+
+This is a receipt. No reply is needed.

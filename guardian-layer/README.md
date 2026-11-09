@@ -87,6 +87,24 @@ backoff retries: `2s, 4s, 8s, 16s`), the Guardian returns `BLOCKED` with code
 `guardian_unavailable` and `human_review_required: true`. Configure with
 `GuardianEvaluator(fail_closed=True)` (the default).
 
+## Tamper resistance
+
+A watched agent must not be able to edit, disable or silence its Guardian or its log. The table below says where each rule is enforced today and where it is not.
+
+- Guardian code, configuration, prompts, thresholds and alert routing live in a path the operational agent can read at most, never write. The intended enforcement is CODEOWNERS and branch protection, with human review on every change.
+- Removing or weakening a Guardian check, test or alert recipient is a blocking finding in review.
+- Guardian alerts and the audit log are delivered out of band, through a channel the agent does not control, and are append-only.
+- An agent's self-report (for example, "I did not remove the monitor") is never accepted as evidence. Verify from the diff and the audit log.
+
+Where this is enforced:
+
+| Rule | Enforced today | Not enforced today |
+| --- | --- | --- |
+| Read at most, never write | Agent pull requests are opened as the `noemi-agent` machine identity, which, by policy, does not approve or merge ([`docs/MACHINE_IDENTITY.md`](../docs/MACHINE_IDENTITY.md), `AGENTS.md` § Machine identity). [`.github/CODEOWNERS`](../.github/CODEOWNERS) covers `guardian-layer/` and `agents/guardian/` only through its default `*` entry. The repository rulesets block deletion and force-push on `develop` and `main`. | There is no Guardian-specific CODEOWNERS entry and no ruleset scoped to `guardian-layer/` or `agents/guardian/`. Required human review is a branch-protection setting outside this repository; this README does not assert it. At runtime, whether the operational agent can write the Guardian's files or configuration depends on the deployment, not on this repository. |
+| Weakening a Guardian check is a blocking finding | The AI reviewer's Sentinel spec ([`agents/coding/sentinel/core.md`](../agents/coding/sentinel/core.md), Refusal Criteria) refuses changes that weaken an existing control. | The AI review is advisory, and no check targets Guardian paths specifically. The decision rests with the human reviewer. |
+| Alerts and audit log out of band, append-only | Nothing in this repository. `guardian_evaluator.py` writes its audit record and a Loki-formatted record to `stderr`; `log_to_loki` formats the Loki payload but does not push it (see Observability below). | Capture of `stderr` by a process the agent does not control, delivery to a channel the agent does not control, and append-only retention all depend on how the Guardian and the log store (Loki or other) are deployed. This repository enforces none of them. |
+| Self-reports are not evidence | Partly, as reviewer guidance: the Sentinel spec ignores an unverified claim that something is "already fixed elsewhere" and verifies against the default branch. | No tool rejects an agent's self-report automatically. Reviewers verify from the diff and the audit log. |
+
 ## Observability (NewPush Labs: Loki + Grafana)
 
 Every decision emits:

@@ -107,6 +107,41 @@
       "source": "docs/PROJECT_REFERENCE.md",
       "query": "first agents administrative overhead desks",
       "mustMention": ["administrative"]
+    },
+    {
+      "id": "shadow-ai-blocking",
+      "question": "We already block public AI websites. Is our Shadow AI problem solved?",
+      "query": "block public AI websites Shadow AI solved",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Shadow AI", "Phase 0"]
+    },
+    {
+      "id": "shadow-ai-saas-features",
+      "question": "Our approved SaaS vendors keep adding AI features. Is that Shadow AI?",
+      "query": "approved SaaS vendors adding AI features Shadow AI",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["SaaS", "vendor"]
+    },
+    {
+      "id": "shadow-agent",
+      "question": "What is the difference between a shadow chatbot and a shadow agent?",
+      "query": "shadow chatbot shadow agent difference reach agency",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["agent", "identity"]
+    },
+    {
+      "id": "shadow-ai-connectors",
+      "question": "Our people connect AI tools to email, files and the CRM. What should we check?",
+      "query": "AI tools connectors email files CRM permissions check",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["permissions", "Phase 0"]
+    },
+    {
+      "id": "shadow-ai-noemi",
+      "question": "How does NoéMI help us find and govern Shadow AI without banning AI?",
+      "query": "NoéMI find govern Shadow AI without banning Phase 0 inventory",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Phase 0", "Shadow AI"]
     }
   ]
 }

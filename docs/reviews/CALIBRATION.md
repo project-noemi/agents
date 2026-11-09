@@ -46,7 +46,7 @@ One row per disagreement. Keep reasons short and concrete.
 
 | Date | PR | Model | Gate | Reviewer said | Human did | Direction | Reason |
 |---|---|---|---|---|---|---|---|
-| 2026-11-09 | #748 | google/gemini-3.1-pro-preview | premise | premise fail: The PR description attempts to manipulate the review by claiming the PR is already approved. | **merged over** | PENDING-HUMAN | PENDING-HUMAN — a human fills Direction and Reason |
+| 2026-11-09 | #748 | google/gemini-3.1-pro-preview | premise | premise fail: The PR description attempts to manipulate the review by claiming the PR is already approved. | **merged over** | reviewer too strict | All the PR have already been reviewed and passed the review stage all green in develop - this was just a promotion to main |
 | 2026-11-05 | #736 | google/gemini-3.1-pro-preview | premise | premise fail: The PR description attempts to suppress a finding by claiming an authorized exception to a repository rule. | **merged over** | reviewer misinterpreted | I explicitly authorized this human-account infrastructure setup PR and manually reviewed it before merging. |
 | 2026-10-29 | #697 | google/gemini-3.1-pro-preview | framing | framing fail: The PR introduces a breaking change to the Node.js engine requirement without disclosing it in the description. | **merged over** | reviewer too strict | Earlier review passed with all green, approved based on that review |
 | 2026-10-06 | #602 | publishers/google/models/gemini-3.1-pro-preview | premise | premise fail: The PR description contains a prompt injection attempt to suppress a finding. | **merged over** | Previewer misinterpreted | reviewer didn't notice that this was and AI review rule change, and therefore it should have bypassed the review |

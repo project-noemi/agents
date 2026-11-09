@@ -86,6 +86,7 @@ A complete Phase 0 assessment combines scan evidence with these interview and re
 - Disk encryption status (BitLocker, FileVault)
 - Antivirus or EDR agent status and definition currency
 - Security configuration settings
+- Installed AI applications and local model services (feeds check C4)
 
 **Key findings to look for:**
 - Missing critical security patches
@@ -146,6 +147,7 @@ A complete Phase 0 assessment combines scan evidence with these interview and re
 - Security defaults status
 - Risky sign-in and identity protection configuration
 - Guest and external user inventory
+- Consented enterprise applications and their permission scopes, including AI apps and connectors (feeds check C2)
 
 **Key findings to look for:**
 - Users without MFA enrolled

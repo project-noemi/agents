@@ -47,6 +47,7 @@ The security assessment does **not** tell the client whether the use case is com
 - patch cadence
 - EDR or MDR coverage
 - critical SaaS security settings
+- AI feature settings in critical SaaS tenants
 - current asset inventory
 
 ### 4. Backup, Recovery, and Incident Response
@@ -77,10 +78,27 @@ The security assessment does **not** tell the client whether the use case is com
 - connector exposure
 - SaaS risk
 - data-processing and contract concerns
+- AI features and AI subprocessors added by existing vendors
 
 ## Technical Validation Procedure
 
 For the concrete scan deployment procedure that maps automated tooling to these assessment areas, see [network-security-assessment.md](network-security-assessment.md). That document provides per-scan prerequisites, expected outputs, a client deployment guide, and guidance on adapting the workflow to any assessment platform.
+
+### AI Already in Use: Audit Checks
+
+These checks gather the evidence for Area 10 of the [AI Readiness Assessment](ai-readiness-assessment.md). They are read-only, stay within the [consent template](consent-template.md) scope, and make no changes to client systems. Findings record that a credential or grant exists and where, never its value.
+
+| Check | Evidence source | Existing scan category it extends | Feeds |
+|---|---|---|---|
+| C1. AI apps and personal accounts in use | Web proxy, DNS or secure web gateway logs for AI services; expense and card data for AI subscriptions; SSO app catalogue | Interview and document review (new); LAN discovery for egress where available | A10.1, self-assessment 16 |
+| C2. Connector and app grants | Identity provider app consent and OAuth grants (for example, Entra ID enterprise applications; Google Workspace third-party app access), listed by scope | Cloud Identity and Configuration (extend outputs to consented apps and their scopes) | A10.3, A10.4, self-assessment 17 |
+| C3. AI features in core SaaS tenants | Admin settings for AI features in the in-scope tenants (office suite, CRM, helpdesk); vendor subprocessor notices | Interview and configuration review (new) | A10.2 |
+| C4. Coding assistants, local models and tool connections on endpoints | Installed AI applications and running processes; local model services listening on the network; tool-connection (MCP) configuration files on developer machines | Endpoint Assessment (extend software inventory to AI tools) | A10.1, A10.3 |
+| C5. AI credentials in code and configuration | Secrets scan of in-scope repositories and configuration for model provider API keys | Database Security / Secrets (extend patterns to AI provider keys) | A10.3, security S6.1 |
+| C6. Non-human activity on human accounts | Sign-in and API logs for machine-speed activity, off-hours bursts, or cloud-hosting source networks on employee tokens | Cloud Identity and Configuration (risky sign-ins); logging review | A10.3, A10.6, security S5 |
+| C7. Policy, request path and review cadence | AI use policy, request records, agent register and review dates | Interview and document review | A10.5, A10.6 |
+
+C2 (app grants) and C4 (endpoint AI inventory) may need read permissions beyond the standard scans, for example read access to the identity provider's consented-app list; list them in the signed consent before the audit runs. The audit sees managed devices, managed networks and the tenants in scope. It does not see personal devices, AI used off the corporate network, or local models that make no network calls.
 
 ## What Good Output Looks Like
 

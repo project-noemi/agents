@@ -372,6 +372,45 @@ but is safe because:
 - Concurrency group includes `github.event_name` so fork-notice cannot cancel
   the privileged advisory on the same PR number
 
+### GitHub default block of `pull_request_target`
+
+GitHub's default Actions event policy blocks `pull_request_target` in public
+repositories that do not already have an applicable event policy
+([changelog](https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2/),
+[docs](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target#default-policy-for-pull_request_target)).
+Private and internal repositories are unaffected. The default runs in
+**evaluate** mode until **2 December 2026**, then becomes a hard block.
+Scheduled brownouts (16:00–18:00 UTC on 9 November 2026 and 16 November 2026)
+already fail those runs with `startup_failure`, an annotation, and **no jobs**
+— so the required "AI Review (advisory)" check never appears.
+
+This workflow still needs `pull_request_target`. Fork `pull_request` withholds
+repository and organization secrets and variables, so the privileged advisory
+cannot run on that event. The workflow follows GitHub's hardening guidance:
+it never checks out, builds, or runs pull-request head code; it checks out
+`project-noemi/agents` at a pinned ref and consumes the diff as API data.
+
+A repository administrator must allow `pull_request_target` for **this file
+only** (Decision [2026-11-09-0001]):
+
+1. **Script (preferred):** `bash scripts/setup-ai-review-event-policy.sh`
+   (optional `REPO=owner/repo`; `--dry-run` prints the payload). Requires
+   repository admin. The `noemi-agent` token cannot apply it.
+2. **UI:** Settings → Actions → Policies → New policy. Name
+   `Allow pull_request_target on AI Review`. Enforcement **Active**. Target
+   workflow `.github/workflows/ai-review.yml`. Allowed events:
+   `pull_request`, `pull_request_target`, `workflow_dispatch`,
+   `workflow_call` (every event this workflow listens for; an allowlist of
+   only `pull_request_target` would block the others).
+
+Do not allow `pull_request_target` on `~ALL` workflows. Fleet copies of
+`templates/ci/ai-review-caller.yml` use the same path after deploy and need
+the same policy on each public repository.
+
+A blocked run does not retry when the brownout ends or when the policy is
+applied. Remove and re-add the `ai-review` label (or close/reopen, or
+`workflow_dispatch`) so `pull_request_target` fires again.
+
 ### Dismissal of approvals on blocking findings
 
 When the privileged advisory review finds **blocking findings** (critical or high
@@ -446,6 +485,17 @@ is also re-approval after changes.
      label already present on `synchronize`/`reopened`
    - **Severity:** Prevented by GitHub's permission model
 
+**4. Missing Actions event policy on a public repository:**
+   - **Risk:** GitHub's default public-repo policy blocks `pull_request_target`.
+     During brownouts and after 2 December 2026 the privileged advisory never
+     starts (`startup_failure`, empty jobs), even when a maintainer added
+     `ai-review`.
+   - **Mitigation:** Allowlist only `.github/workflows/ai-review.yml` via
+     `scripts/setup-ai-review-event-policy.sh` or Settings → Actions →
+     Policies (Decision [2026-11-09-0001]). Relabel after a blocked run.
+   - **Severity:** High until the policy exists on each public consumer —
+     the required check never runs
+
 ## Audit
 
 Every review records:
@@ -487,6 +537,7 @@ findings posted by `noemi-reviewer`. No static credential is stored in GitHub.
 | Phase 2 (reviewer approvals) | ❌ not authorized | override-rate evidence from phase 1 |
 | Admin Override Watch | ✅ daily 05:30 UTC; detectors pinned to the real 2026-08-14 incidents | humans attesting findings |
 | `Cross-Model PR Review` required-to-complete on `develop` | ⚠️ in `setup-branch-protection.sh`, apply pending | admin runs the script |
+| Actions event policy allowlisting `pull_request_target` on `.github/workflows/ai-review.yml` | ⚠️ script ready, apply pending | repository admin runs `scripts/setup-ai-review-event-policy.sh` |
 | Multi-repo deployment | ✅ done 2026-08-16 — reviewer live on 32/39 fleet repos (3 pending develop→main promotion, 4 exempt) | — |
 
 ### Calibration: the evidence phase 2 requires

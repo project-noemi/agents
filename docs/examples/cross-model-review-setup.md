@@ -571,6 +571,26 @@ so an approval cannot auto-trigger a privileged review. The label gate uses
 label remains) which **does** have access to credentials, and is safe because
 label addition is maintainer-only and the workflow never checks out PR code.
 
+### Allow `pull_request_target` in an Actions event policy
+
+GitHub's default policy for public repositories blocks `pull_request_target`
+from 2 December 2026 ([changelog](https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2/)).
+Brownouts (16:00–18:00 UTC on 9 November 2026 and 16 November 2026) already
+fail those runs with `startup_failure` and no jobs.
+
+This workflow still needs that event (fork `pull_request` has no secrets).
+After you install the caller, a **repository administrator** allowlists it
+for `.github/workflows/ai-review.yml` only:
+
+```bash
+bash scripts/setup-ai-review-event-policy.sh
+```
+
+Or Settings → Actions → Policies, targeting that workflow file. Payload:
+`scripts/ai-review-event-policy.json`. Do not allow `pull_request_target` on
+every workflow. If a privileged run already failed with `startup_failure`,
+remove and re-add the `ai-review` label so the event fires again.
+
 **What happens after the advisory runs:**
 
 - **No blocking findings:** Label remains, PR proceeds normally

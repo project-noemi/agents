@@ -18,6 +18,12 @@
 #
 # The review is ADVISORY: it posts findings as a comment and never approves,
 # merges, or blocks. Do not add it to required status checks.
+#
+# GITHUB DEFAULT BLOCK (Decision [2026-11-09-0001]): public repositories block
+# pull_request_target unless an Actions event policy allowlists it for this
+# file. After this caller is merged, a repository administrator must run
+#   bash scripts/setup-ai-review-event-policy.sh
+# (or Settings → Actions → Policies) targeting .github/workflows/ai-review.yml.
 name: AI Review (advisory)
 
 on:

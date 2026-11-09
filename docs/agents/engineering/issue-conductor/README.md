@@ -10,7 +10,7 @@ Actions workflow. Mastra may host a webhook in that section later; it is
 not required to classify an issue (Decision [2026-08-20-0006]). Do not host
 the loop in `newpush/newpush-mastra-orchestration` (MSP Slack agent) and do
 not open a second `project-noemi` repo for it.
-The `noemi-conductor` GitHub identity is **planned, not provisioned**.
+The `noemi-conductor` GitHub App is **provisioned** and installed on all repositories in `newpush`, `project-noemi`, and `newpush-labs` (Decision [2026-09-26-0001]). See `docs/MACHINE_IDENTITY.md`.
 
 | Item | Location |
 |---|---|
@@ -35,8 +35,10 @@ The `noemi-conductor` GitHub identity is **planned, not provisioned**.
 ## Enablement order (host, after this spec)
 
 1. Provision `noemi-conductor` with Issues read/write only (no Contents write,
-   no Pull-request review).
-2. Run Stages A / B / B′ on one pilot org with budget caps live.
+   no Pull-request review). Done (Decision [2026-09-26-0001]).
+2. Run Stages A / B / B′ on one pilot org with budget caps live. The pilot
+   copy must carry the Stage B done-condition quote and the
+   `CODING_LOOP_LIVE_CRITIC` workflow switch before a live Gemini critic run.
 3. Turn on Stage C (`noemi-agent` PRs) and Stage D (existing reviewer App).
 4. Expand to the remaining operated orgs once skip and budget rules have a
    week of evidence.

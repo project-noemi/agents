@@ -2,18 +2,38 @@
 
 > **Future-Proof Your Company Against AI, By Using AI**
 
+**Start here**
+
+1. Get one safe, read-only win in about 15 minutes. The first task is administrative: an inbox, a calendar, meeting minutes, or a short report. [macOS / Linux](docs/examples/macos-linux-kickstart.md) · [Windows](docs/examples/windows-kickstart.md) · [ChromeOS](docs/examples/chromeos-kickstart.md)
+2. Secure the perimeter first. [Phase 0 Security Baseline](docs/PHASE_ZERO_SECURITY_BASELINE.md)
+3. Plan your ramp onto the framework: the 40-hour NoéMI Accelerator. [AI Readiness at noemi.newpush.com](https://noemi.newpush.com)
+
+**Safe by default**
+
+* Read-only first. The kickstart above does not send, merge, or spend.
+* Secrets are fetched on demand and are never stored in prompts. [Phase 0](docs/PHASE_ZERO_SECURITY_BASELINE.md)
+* Agent actions use a separate machine identity. [Machine identity](docs/MACHINE_IDENTITY.md)
+* A human approves every send, merge, and spend.
+* The Guardian Layer watches the agents that do the work. [Project reference](docs/PROJECT_REFERENCE.md)
+
+**Your AI work stays yours**
+
+Agent specifications, skills and governance rules are plain files in a repository your organization owns. They use open, vendor-neutral standards governed by the Linux Foundation's [Agentic AI Foundation](https://www.linuxfoundation.org/press/agentic-ai-foundation-announces-four-new-projects-agent-skills-open-responses-openenv-and-opensandbox): the Model Context Protocol (MCP), AGENTS.md and Agent Skills (`SKILL.md`, see [`skills-dist/`](skills-dist/)). They move with you across models and tools. Independent research points the same way: Menlo Ventures' [2026: The State of Enterprise AI](https://menlovc.com/perspective/2026-the-state-of-enterprise-ai/) finds that agents succeed where they have an organization's own procedural knowledge of how work gets done. In NoéMI, that knowledge is your intellectual property, and it stays in your repository rather than in one AI product's memory.
+
 ---
 
 ## What This Repository Contains
 
-This repository is the **technical reference architecture and agent specification library** inspired by **Project NoéMI**—the global AI fluency accelerator program.
+This repository is the open, auditable agent library of the NoéMI framework. Project NoéMI is an open agent framework that evolves at the pace of AI; your organization owns and deploys it. Your team's know-how lives in your own repository as open, portable files, so it moves with you between AI vendors. The 40-hour NoéMI Accelerator is the ramp onto the framework: hands-on hackathons in which teams build agents that take administrative work off their desks from the first weeks, with measured returns designed to pay for the workshops, and then extend them into innovation, sales and profitability, safely.
 
 It provides a structured blueprint for building a **governed Virtual Workforce** using:
 
-* 31 AI agent specifications across 9 domains (coding, communication, education, engineering, guardian, infrastructure, marketing, operations, product)
-* 16 reusable skills covering classification, verification, reporting, security, orchestration, and operations
-* 17 MCP protocol definitions for safe integration with Google Workspace (Drive, Docs, Sheets, Slides, Calendar, Gmail, Meet, Chat, Keep, Forms, Contacts, Admin), Slack, GitHub, n8n, web search, and unified logging (Loki/Grafana)
-* Governance frameworks aligned with **Phase 0 Security**, **Gartner AI TRiSM**, and the **4D AI Fluency Framework** (Delegation, Description, Discernment, Diligence)
+* 33 AI agent specifications across 9 domains (coding, communication, education, engineering, guardian, infrastructure, marketing, operations, product)
+* 20 skills — 19 markdown skills plus the model-fusion-consensus definition pack — covering classification, verification, reporting, security, orchestration, and operations
+* 18 MCP protocol definitions for safe integration with Google Workspace (Drive, Docs, Sheets, Slides, Calendar, Gmail, Meet, Chat, Keep, Forms, Contacts, Admin), Slack, GitHub, n8n, web search, and unified logging (Loki/Grafana)
+
+The public site's repository panel, checked on 2026-10-25, counts 12 agent units: each domain once, with the coding domain split into architect, bolt, mender, and sentinel. Skills (20) and MCP protocols (18) use the same count as that panel. The 33 above are the specification files in those units.
+* Governance frameworks aligned with **Phase 0 Security**, **AI TRiSM** (a framework defined by Gartner®, Inc.), and the **4D AI Fluency Framework** (Delegation, Description, Discernment, Diligence)
 * Value lenses and operating profiles that let teams tune agents to specific business contexts without forking the specs
 
 These components are designed to move organizations from **unstructured, high-risk AI usage** to a **controlled, auditable, and scalable operating model**.
@@ -32,11 +52,25 @@ This enables them to:
 * protect internal logic and intellectual property
 * move at their own pace without blocking on upstream changes
 
+### GitHub Packages on a private clone
+
+A copy of this repository still contains `.github/workflows/publish-gmail-ea.yml`. On your org that workflow pushes `ghcr.io/<your-org>/gmail-executive-assistant`. GitHub creates that package **private**. Keep it private for private agent work.
+
+1. In the GitHub org: **Settings → Packages → Package creation**. Leave **Public** unchecked. **Private** stays available, so members can still publish packages only your org can pull.
+2. Do not use a package's **Danger Zone → Change visibility → Public** unless that image is meant to be pulled without credentials. GitHub will not let you make that package private again.
+3. The workflow does not change visibility. On `project-noemi` it requires an anonymous `docker manifest inspect` because the reference image is public. On any other owner it **fails** if that anonymous inspect succeeds, so a copied workflow cannot quietly ship a world-pullable image.
+
+Details: [docs/UPSTREAM_SYNC.md](docs/UPSTREAM_SYNC.md#github-packages-on-a-private-clone). Decision [2026-10-05-0005].
+
 In practice:
 
 * teams start with a small number of agents and workflows
 * validate them against real business use cases
 * gradually extend the system with additional agents, skills, and integrations
+
+### Layering your own rules on top of AGENTS.md
+
+Keep `AGENTS.md` as the shared upstream baseline and put organization rules in **configuration layers**: an MSP/MSSP layer (`org/<msp>/AGENTS.md`), a customer layer (`org/<customer>/AGENTS.md`), and a gitignored `AGENTS.local.md`. They load in the order listed in a committed `AGENTS.layers` manifest, and later layers win. Upstream syncs never touch them. Layers may replace preference rules, but the core secrets and refusal rules can only be clarified or tightened: `npm run audit` fails any layer that tries to relax them, and agents ignore such text. The audit is not a runtime control, so keep secret scanning and pre-commit hooks in place. See [docs/configuration-layers.md](docs/configuration-layers.md) and the template [org/example/AGENTS.md](org/example/AGENTS.md).
 
 ---
 
@@ -127,7 +161,7 @@ Project NoéMI introduces the **1:50 Equilibrium**—a scalable organizational m
 
 In practice, one trained Accelerator can guide AI usage across dozens of users safely.
 
-This model is reinforced through the NoéMI training program, where participants earn **Badges of Completion (micro-credentials)** issued with **George Mason University (GMU)** across three levels:
+This model is reinforced in the hackathons of the 40-hour NoéMI Accelerator, where participants earn **Badges of Completion (micro-credentials)** issued with **George Mason University (GMU)** across three levels after a validated live deployment:
 
 * AI Fluent Professional
 * AI Implementation Specialist
@@ -171,12 +205,12 @@ Without Phase 0, scaling AI introduces risk faster than value.
 * a SaaS product
 * a no-code automation tool
 * a runtime or execution engine
-* the NoéMI training program itself
+* the NoéMI Accelerator itself
 
 It is designed to work with orchestrators such as:
 
 * n8n (primary orchestration layer in the NewPush Labs stack)
-* Gemini CLI (canonical baseline pinned to Gemini 3.6 Flash)
+* Gemini CLI (canonical baseline pinned to Gemini 3.8 Flash)
 * Claude Code
 * OpenAI Codex
 * LangChain
@@ -209,7 +243,7 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 → [Club operations (Rotary example)](examples/rotary-club-operations/)
 (A generic club-operations persona plus a Rotary District 1911 deployment; minutes, calendar, and speaker-brief exercises)
 
-**Onboarding by Platform** — go straight to the guide for your machine and get one safe, read-only AI win in ~15 minutes:
+**Onboarding by Platform** — the same 15-minute read-only win as **Start here**, for the guide that matches your machine:
 → [macOS / Linux](docs/examples/macos-linux-kickstart.md)
 &nbsp;·&nbsp; [Windows](docs/examples/windows-kickstart.md)
 &nbsp;·&nbsp; [ChromeOS](docs/examples/chromeos-kickstart.md)
@@ -229,6 +263,14 @@ All reference tooling and Docker images use **Node.js 24** as the technical base
 
 ---
 
+## Attribution
+
+> Attribution: AI TRiSM (AI trust, risk and security management) is a framework defined by Gartner, Inc. Gartner® is a registered trademark and service mark of Gartner, Inc. and/or its affiliates in the U.S. and internationally.
+
+The 4 Ds of AI Fluency — Dakan, R. and Feller, J., "Framework for AI Fluency," v1.1, CC BY-NC-ND 4.0.
+
+---
+
 ## License & Transparency
 
 **Category:** [Fair Source](https://fair.io/)
@@ -243,7 +285,7 @@ Beyond the license, NoéMI is built on **spec-and-governance transparency**: eve
 
 ## Context
 
-* **Project NoéMI** — the methodology, 4D framework, and GMU-backed training program
+* **Project NoéMI** — the framework, its methodology and the 4D framework; the GMU-backed 40-hour accelerator is the ramp onto it
 * **This repository** — the implementation blueprint for the Virtual Workforce
 * **NewPush** — the founding cybersecurity and infrastructure organization
 

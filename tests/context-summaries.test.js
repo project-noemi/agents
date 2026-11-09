@@ -42,25 +42,21 @@ test('firstSentences: dotted tokens like YYYY.MM.DD do not truncate or drop text
     assert.match(out, /YYYY\.MM\.DD/);
 });
 
-test('generated files keep every skill hard gate resident', () => {
-    const config = JSON.parse(fs.readFileSync(path.join(repoRoot, 'mcp.config.json'), 'utf8'));
-    const skillCount = config.active_skills.length;
-    for (const file of ['CLAUDE.md', 'GEMINI.md']) {
-        const content = fs.readFileSync(path.join(repoRoot, file), 'utf8');
-        const skills = content.match(/<!-- SKILLS_INJECTIONS_START -->([\s\S]*?)<!-- SKILLS_INJECTIONS_END -->/)[1];
-        const nevers = (skills.match(/^- \*\*Never:\*\*/gm) || []).length;
-        const askFirsts = (skills.match(/^- \*\*Ask First:\*\*/gm) || []).length;
-        assert.equal(nevers, skillCount, `${file}: every active skill's Never gate must be resident`);
-        assert.equal(askFirsts, skillCount, `${file}: every active skill's Ask First gate must be resident`);
+test('published skills keep every hard gate resident', () => {
+    const distDir = path.join(repoRoot, 'skills-dist');
+    const dirs = fs.readdirSync(distDir, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+    assert.ok(dirs.length > 0);
+    for (const dir of dirs) {
+        const skillMd = fs.readFileSync(path.join(distDir, dir.name, 'SKILL.md'), 'utf8');
+        assert.match(skillMd, /### Refusal Criteria/, `${dir.name}: Refusal Criteria must travel in SKILL.md`);
+        assert.match(skillMd, /Never/, `${dir.name}: Never gate must travel in SKILL.md`);
     }
 });
 
-test('generated files keep the github protocol fully inline', () => {
-    for (const file of ['CLAUDE.md', 'GEMINI.md']) {
-        const content = fs.readFileSync(path.join(repoRoot, file), 'utf8');
-        assert.match(content, /PR Authorship \(Machine Identity\)/,
-            `${file}: the machine-identity safety contract must stay always-loaded`);
-    }
+test('AGENTS.md keeps the github protocol on the load path', () => {
+    const content = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
+    assert.match(content, /mcp-protocols\/github\.md/,
+        'machine-identity safety contract must stay reachable from AGENTS.md');
 });
 
 test('extractSectionBody stops at the next same-level heading', () => {

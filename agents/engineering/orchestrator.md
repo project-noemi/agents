@@ -67,7 +67,7 @@ Rankings, higher = better. Cost reflects actual paid cost (not list price). Inte
 ### 3. Delegate via the Native Mechanism
 - For Claude models, set the Agent/Workflow `model` parameter.
 - For `gpt-5.5`, invoke the `openai/codex-plugin-cc` plugin's slash commands or `codex-cli-runtime` skills directly (see Tool Usage). Adopt configuration from `~/.codex/config.toml`.
-- For Grok Build review, critique, or write-capable rescue, invoke `/grok-build:*` (after `/grok-build:check`) or the `grok-build:grok-delegate` subagent. Prefer bridge `--background` for long work so stop owns both process trees.
+- For Grok Build review, critique, or write-capable rescue, invoke `/grok-build:*` (after `/grok-build:check`, and for any bridge run also the headless readiness gate, `node <agents-checkout>/scripts/check-headless-hooks.js --grok-home "$GROK_HOME"` against the loop-owned home; any non-zero exit is a stop, like missing auth) or the `grok-build:grok-delegate` subagent. Prefer bridge `--background` for long work so stop owns both process trees.
 - When this session is hosting the **issue-coding loop** (`docs/architecture/issue-coding-loop.md`): Fable/Opus keep triage and plan; dispatch Stage C implementation with `/grok-build:delegate` (not a custom `curl` to xAI). Pass `--profile spec` when the issue is a persona or skill. Do not stand up Mastra for this.
 
 ### 4. Review and Escalate
@@ -101,7 +101,7 @@ Subagents and automated workflows should call these native slash commands or the
 
 Grok is handled natively through the `grok-build@xai-grok-build` Claude Code plugin ([upstream](https://github.com/xai-org/grok-build-plugin-cc)). Prefer these over hand-rolled `grok` CLI strings so PID tracking, logs, and stop stay owned by the bridge:
 
-- `/grok-build:check` — Confirm Node, `grok` on PATH, and soft auth (`grok models`) before other Grok commands.
+- `/grok-build:check` — Confirm Node, `grok` on PATH, and soft auth (`grok models`) before other Grok commands. For any bridge run (review, critique, delegate) also run the headless readiness gate from a project-noemi/agents checkout (`scripts/check-headless-hooks.js --grok-home "$GROK_HOME"`, Decision [2026-09-27-0001]); it verifies the loop-owned profile, which `check` does not.
 - `/grok-build:review` — Read-only review of local git state. Supports `--base`, `--scope`, `--wait` / `--background`, optional `--model` / `--effort`.
 - `/grok-build:critique` — Design and risk challenge pass (not just defect hunting). Accepts focus text; still non-mutating.
 - `/grok-build:delegate` — Investigation or implementation via the `grok-build:grok-delegate` subagent (write-capable by default; use `--resume` / `--fresh` for thread control).

@@ -1,0 +1,17 @@
+name = "noemi-knowledge-mcp"
+main = "src/index.ts"
+compatibility_date = "2025-09-15"
+compatibility_flags = ["nodejs_compat"]
+
+# Custom domain (operator): mcp.noemi.newpush.com → this Worker
+# routes = [{ pattern = "mcp.noemi.newpush.com/*", zone_name = "newpush.com" }]
+
+# `agents` peer-depends on Vercel AI SDK `ai` for chat clients; MCP-only
+# Workers never need it. Alias to a stub so wrangler can bundle.
+[alias]
+ai = "./src/stubs/ai.ts"
+
+[vars]
+PUBLIC_ORIGIN = "https://mcp.noemi.newpush.com"
+SERVICE_NAME = "com.newpush/noemi-knowledge-mcp"
+SERVICE_VERSION = "0.1.0"

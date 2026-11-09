@@ -5,14 +5,15 @@ const path = require('path');
 const {
     REQUIRED_AGENT_SECTIONS,
     REQUIRED_GLOBAL_SECTIONS,
-    REQUIRED_TEMPLATE_MARKERS,
-    buildGlobalMandates,
+    CONTEXT_POINTER,
     discoverAgents,
     extractAgentHeadings,
     extractTopLevelSections,
     findPlaceholderViolations,
     buildSkillsDist
 } = require('./context_helpers');
+const { auditConfigLayers, buildContextFile } = require('./context_layers');
+const { evaluateLayerCompliance } = require('./layer_compliance');
 
 const repoRoot = path.join(__dirname, '..');
 const agentsDir = path.join(repoRoot, 'agents');
@@ -34,6 +35,14 @@ let failed = false;
 function fail(message) {
     failed = true;
     console.error(`AUDIT FAIL: ${message}`);
+}
+
+// A WARN is reported but does not fail the audit. It is used only for
+// non-security layer findings (docs/configuration-layers.md § Compliance).
+let warnings = 0;
+function warn(message) {
+    warnings += 1;
+    console.error(`AUDIT WARN: ${message}`);
 }
 
 // Mandatory Audit Log JSON schema keys per Requirement §3 (Decision [2026-05-20]).
@@ -67,12 +76,8 @@ function checkTemplates() {
             continue;
         }
         const content = fs.readFileSync(templatePath, 'utf8');
-        for (const marker of REQUIRED_TEMPLATE_MARKERS) {
-            const startTag = `<!-- ${marker}_START -->`;
-            const endTag = `<!-- ${marker}_END -->`;
-            if (!content.includes(startTag) || !content.includes(endTag)) {
-                fail(`${path.basename(templatePath)} missing marker pair: ${startTag} / ${endTag}`);
-            }
+        if (content !== CONTEXT_POINTER) {
+            fail(`${path.relative(repoRoot, templatePath)} must be exactly ${JSON.stringify(CONTEXT_POINTER)} (Decision [2026-09-22-0001]).`);
         }
     }
 }
@@ -201,26 +206,55 @@ function checkSkills() {
 }
 
 function checkGeneratedOutputs() {
-    let mandates;
+    // Expected content = the `@AGENTS.md` pointer plus, only when configuration
+    // layers resolve on this checkout, the generated layer import block
+    // (scripts/context_layers.js). Upstream ships no live layers, so here the
+    // expectation is still exactly CONTEXT_POINTER (Decision [2026-09-22-0001]).
+    let expected;
     try {
-        mandates = buildGlobalMandates(agentsMdPath);
+        expected = buildContextFile({ repoRoot, env: process.env, pointer: CONTEXT_POINTER }).content;
     } catch (error) {
         fail(error.message);
         return;
     }
-
-    const mandateHeadings = [...mandates.matchAll(/^##\s+(.+)$/gm)].map((match) => match[1]);
-
     for (const outputPath of generatedOutputs) {
         if (!fs.existsSync(outputPath)) {
+            fail(`${path.basename(outputPath)} is missing — run \`npm run generate\`.`);
             continue;
         }
-
         const content = fs.readFileSync(outputPath, 'utf8');
-        for (const heading of mandateHeadings) {
-            if (!content.includes(`## ${heading}`)) {
-                fail(`${path.basename(outputPath)} is missing injected mandate heading: ${heading}`);
-            }
+        if (content !== expected) {
+            fail(`${path.basename(outputPath)} must be exactly ${JSON.stringify(expected)} (Decision [2026-09-22-0001]; configuration layers per docs/configuration-layers.md) — run \`npm run generate\`.`);
+        }
+    }
+}
+
+// Configuration layers hook (docs/configuration-layers.md): the AGENTS.md
+// section exists and is last, the org/example template exists, AGENTS.local.md
+// is gitignored, and every path in AGENTS.layers / AGENTS.layers.example is
+// well-formed. Missing optional layer files are deliberately NOT a failure.
+function checkConfigLayers() {
+    console.log('Auditing configuration layers hook (AGENTS.layers)...');
+    for (const message of auditConfigLayers(repoRoot)) {
+        fail(message);
+    }
+}
+
+// Layer compliance (scripts/layer_compliance.js): core rules (secrets.*,
+// refusal.*) cannot be relaxed by any layer, so any attempt is a FAIL with no
+// waiver or downgrade path. Only preference-rule relaxations and unparseable
+// markers that name no core rule are WARN; clarifications and tightenings PASS.
+function checkLayerCompliance() {
+    console.log('Auditing layer compliance (core rule IDs and layer overrides)...');
+    const result = evaluateLayerCompliance({ repoRoot, env: process.env });
+    console.log(`Active layers: ${result.layers.length ? result.layers.join(' -> ') : 'none (baseline only)'}.`);
+    for (const finding of result.findings) {
+        if (finding.level === 'FAIL') {
+            fail(finding.message);
+        } else if (finding.level === 'WARN') {
+            warn(finding.message);
+        } else {
+            console.log(`PASS: ${finding.message}`);
         }
     }
 }
@@ -232,11 +266,9 @@ function checkGeneratedOutputs() {
 const CANONICAL_LICENSE_ID = 'FSL-1.1-Apache-2.0';
 const CANONICAL_LICENSE_HEADER = 'Functional Source License, Version 1.1, Apache 2.0 Future License';
 
-// The github protocol carries the machine-identity PR-authorship rules and the
-// develop-only merge flow — the fleet's operational safety contract. Summary
-// injection (Decision [2026-08-13-0001]) keeps it fully inline via
-// INLINE_FULL_PROTOCOLS; this guard fails the audit if that invariant ever
-// silently degrades (e.g. a config or generator change drops the full body).
+// Machine-identity PR authorship lives in mcp-protocols/github.md. After
+// Decision [2026-09-22-0001], CLAUDE.md/GEMINI.md only point at AGENTS.md, so
+// the always-loaded contract is the pointer in AGENTS.md — not a pasted body.
 function checkInlineSafetyContract() {
     let config;
     try {
@@ -248,14 +280,9 @@ function checkInlineSafetyContract() {
     if (!Array.isArray(config.active_mcps) || !config.active_mcps.includes('github')) {
         return;
     }
-    for (const outputPath of generatedOutputs) {
-        if (!fs.existsSync(outputPath)) {
-            continue;
-        }
-        const content = fs.readFileSync(outputPath, 'utf8');
-        if (!content.includes('PR Authorship (Machine Identity)')) {
-            fail(`${path.basename(outputPath)}: github is an active MCP but its full protocol (PR Authorship / Machine Identity rules) is not inline — the always-loaded safety contract has been lost.`);
-        }
+    const agentsMd = fs.readFileSync(agentsMdPath, 'utf8');
+    if (!agentsMd.includes('mcp-protocols/github.md')) {
+        fail('AGENTS.md must point at mcp-protocols/github.md so machine-identity PR authorship stays on the load path after CLAUDE.md/GEMINI.md became pointers.');
     }
 }
 
@@ -370,6 +397,14 @@ function checkPhaseZeroKit() {
 const MERGE_GATE_PATH = '.github/workflows/require-develop-source.yml';
 const CANONICAL_GATE_CONDITION = 'if [[ "${{ github.head_ref }}" != "develop" ]]; then';
 
+function checkBibleEdition() {
+    console.log('Auditing Bible edition stamp (CalVer, not SemVer)...');
+    const { checkBibleEditionFile } = require('./bible-edition');
+    for (const error of checkBibleEditionFile(repoRoot)) {
+        fail(error);
+    }
+}
+
 function checkMergeGateInvariant() {
     console.log('Auditing merge-gate invariant (develop is the only PR source into main)...');
     const gatePath = path.join(repoRoot, MERGE_GATE_PATH);
@@ -455,17 +490,20 @@ function main() {
     checkPersonas();
     checkSkills();
     checkGeneratedOutputs();
+    checkConfigLayers();
+    checkLayerCompliance();
     checkSkillsDistDeterminism();
     checkLicensingPosture();
     checkPhaseZeroKit();
     checkMergeGateInvariant();
     checkBranchModel();
+    checkBibleEdition();
 
     if (failed) {
         process.exit(1);
     }
 
-    console.log('Repository audit passed.');
+    console.log(warnings ? `Repository audit passed with ${warnings} warning(s).` : 'Repository audit passed.');
 }
 
 main();

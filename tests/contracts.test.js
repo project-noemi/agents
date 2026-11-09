@@ -6,7 +6,6 @@ const {
     REQUIRED_AGENT_SECTIONS,
     REQUIRED_GLOBAL_SECTIONS,
     REQUIRED_SKILL_SECTIONS,
-    REQUIRED_TEMPLATE_MARKERS,
     discoverAgents,
     discoverSkills,
     extractAgentHeadings,
@@ -41,6 +40,11 @@ test('AGENTS.md includes the required top-level mandate sections', () => {
     }
 });
 
+test('compliance guidance is not indexed as a persona', () => {
+    const agents = discoverAgents(path.join(repoRoot, 'agents'));
+    assert.equal(agents.some((agent) => agent.path.endsWith('compliance.md')), false);
+});
+
 test('all personas expose the required contract headings', () => {
     const agents = discoverAgents(path.join(repoRoot, 'agents'));
     assert.ok(agents.length > 0, 'Expected at least one persona');
@@ -73,13 +77,10 @@ test('all skills expose the required contract headings', () => {
     }
 });
 
-test('context templates retain all required injection markers', () => {
+test('context templates are AGENTS.md pointers', () => {
+    const { CONTEXT_POINTER } = require('../scripts/context_helpers');
     for (const templateName of ['templates/context/GEMINI.template.md', 'templates/context/CLAUDE.template.md']) {
-        const template = read(templateName);
-        for (const marker of REQUIRED_TEMPLATE_MARKERS) {
-            assert.match(template, new RegExp(`<!-- ${marker}_START -->`));
-            assert.match(template, new RegExp(`<!-- ${marker}_END -->`));
-        }
+        assert.equal(read(templateName), CONTEXT_POINTER, `${templateName} must match CONTEXT_POINTER`);
     }
 });
 
@@ -173,6 +174,9 @@ test('root env template documents the shared Gemini runtime key', () => {
     const envTemplate = read('.env.template');
     assert.match(envTemplate, /^GEMINI_API_KEY=/m);
     assert.match(envTemplate, /^XAI_API_KEY=/m);
+    assert.match(envTemplate, /^AI_GW_API_TOKEN=/m);
+    assert.match(envTemplate, /^AI_GW_API_KEY=/m);
+    assert.match(envTemplate, /^AI_GW_BASE_URL=/m);
 });
 
 test('repo pins the Node baseline consistently across CI, package metadata, and local version files', () => {

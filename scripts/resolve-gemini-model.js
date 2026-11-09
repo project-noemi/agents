@@ -93,13 +93,21 @@ function parseArgs(argv) {
  * Found by ranking the real published list rather than by reasoning: synthetic
  * test names had no modality suffixes, so the defect was invisible until the
  * live catalogue was ranked.
+ *
+ * Decision [2026-10-06-0001]: also exclude `live`, `transcribe`, and `translate`
+ * variants from Flash discovery — these are specialized models that should not
+ * match a generic "flash" tier request.
  */
-const NON_TEXT_MODALITY = /(?:^|-)(?:image|tts|audio|embedding|robotics|omni)|computer-use|live-|-info$/;
+const NON_TEXT_MODALITY = /(?:^|-)(?:image|tts|audio|embedding|robotics|omni)|computer-use|-live$|live-|-info$|-transcribe$|-translate$/;
 
 /**
  * Classify a model ID into ranking components. Deliberately pattern-based, not
  * an allowlist of known names — an allowlist would reintroduce the staleness
  * this script exists to avoid, silently ignoring any future generation.
+ *
+ * Decision [2026-10-06-0001]: Version comparison is now numeric (major.minor)
+ * rather than parseFloat, so 3.10 ranks above 3.8. Tier detection requires
+ * "flash" in the name for flash tier to prevent misclassifying variants.
  */
 function classify(id) {
   // Strip both shapes: `models/x` (Generative Language API) and
@@ -108,13 +116,23 @@ function classify(id) {
   if (!/^gemini-/.test(name)) return null;
   if (NON_TEXT_MODALITY.test(name)) return null;
 
-  const versionMatch = name.match(/gemini-(\d+(?:\.\d+)?)/);
-  const generation = versionMatch ? parseFloat(versionMatch[1]) : 0;
+  // Parse version as major.minor for numeric comparison
+  const versionMatch = name.match(/gemini-(\d+)(?:\.(\d+))?/);
+  let generation = 0;
+  if (versionMatch) {
+    const major = parseInt(versionMatch[1], 10);
+    const minor = versionMatch[2] ? parseInt(versionMatch[2], 10) : 0;
+    generation = major + minor / 100; // 3.8 -> 3.08, 3.10 -> 3.10
+  }
 
-  let tier = 'flash';
+  // Require explicit tier markers to avoid misclassification
+  let tier = null;
   if (/flash-lite/.test(name)) tier = 'flash-lite';
   else if (/\bpro\b|-pro/.test(name)) tier = 'pro';
-  else if (/flash/.test(name)) tier = 'flash';
+  else if (/\bflash\b/.test(name)) tier = 'flash';
+  
+  // If no tier detected, it's not a usable model
+  if (!tier) return null;
 
   const reasoning = /thinking|reasoning/.test(name);
   const preview = /preview|exp(erimental)?|-rc|latest/.test(name);
@@ -216,6 +234,13 @@ function selectModel(models, {
   return { chosen, tradeoff };
 }
 
+/**
+ * Decision [2026-10-06-0001]: meetsFloor checks whether a model satisfies a
+ * minimum capability tier. For Pro review discovery (the original use case),
+ * >= semantics are preserved so preferPro can fall back across generations.
+ * For Flash-specific resolution (resolveFlash), exact tier filtering is done
+ * explicitly to prevent flash requests from returning pro models.
+ */
 function meetsFloor(model, floor) {
   const floorRank = TIER_RANK[floor];
   if (floorRank === undefined) {
@@ -351,6 +376,48 @@ async function listModels(token, cfg = backendConfig()) {
   return out;
 }
 
+/**
+ * Decision [2026-10-06-0001]: Resolve the highest-generation stable Flash model.
+ * Prefers stable over preview, numerically compares versions (so 3.10 > 3.8),
+ * requires "flash" in the name, excludes live/transcribe/translate variants.
+ * Falls back to gemini-3.8-flash if no Flash is found in the catalogue.
+ */
+function resolveFlash(available) {
+  const flashModels = available
+    .map(classify)
+    .filter(Boolean)
+    .filter((m) => m.tier === 'flash')
+    .filter((m) => !m.preview); // Prefer stable over preview for Flash
+
+  if (flashModels.length === 0) {
+    // Fallback to pinned baseline
+    return {
+      model: 'models/gemini-3.8-flash',
+      tier: 'flash',
+      generation: 3.08,
+      reasoning: false,
+      resolved_at: new Date().toISOString(),
+      fallback: 'no flash models in catalogue; using pinned gemini-3.8-flash',
+    };
+  }
+
+  // Sort by generation (descending), then by reasoning capability
+  flashModels.sort((a, b) => {
+    if (a.generation !== b.generation) return b.generation - a.generation;
+    return (b.reasoning ? 1 : 0) - (a.reasoning ? 1 : 0);
+  });
+
+  const chosen = flashModels[0];
+  return {
+    model: chosen.id,
+    tier: chosen.tier,
+    generation: chosen.generation,
+    reasoning: chosen.reasoning,
+    resolved_at: new Date().toISOString(),
+    considered: flashModels.length,
+  };
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
@@ -362,7 +429,8 @@ async function main() {
       'models/gemini-2.5-pro',
       'models/gemini-3.0-flash',
       'models/gemini-3.6-pro-thinking',
-      'models/gemini-3.6-flash',
+      'models/gemini-3.8-flash',
+      'models/gemini-3.10-flash',
     ];
     const ranked = rank(sample, args);
     process.stdout.write(`${JSON.stringify({ dryRun: true, ranked }, null, 2)}\n`);
@@ -434,7 +502,7 @@ async function main() {
 // without shelling out; still runs as a CLI when invoked directly.
 module.exports = {
   classify, rank, compareModels, selectModel, meetsFloor, listModels,
-  resolvePinnedModel, bareName,
+  resolvePinnedModel, bareName, resolveFlash,
   backendConfig, generateUrl, vertexHost, TIER_RANK, NON_TEXT_MODALITY,
 };
 

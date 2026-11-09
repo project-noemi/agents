@@ -1,0 +1,276 @@
+# Coding loop pickup — Azure Pipelines host (Azure DevOps Boards + Repos).
+#
+# HOST ONLY. This file decides when the loop starts and which credentials it
+# gets. It holds no verdict logic: skip / refuse / needs-info / accepted,
+# entitlement, the requester check and the identity split all live in
+# coding-loop/run.js (see docs/architecture/issue-coding-loop.md, "Product loop
+# vs orchestration host"). It mirrors .github/workflows/coding-loop.yml.
+# Operator guide: docs/examples/azure-devops-coding-loop.md.
+#
+# Does not approve, merge, or write code by itself. Fail closed throughout:
+#   - --budget-ok only when CODING_LOOP_BUDGET_OK is exactly 'true'.
+#   - --live-critic only when CODING_LOOP_LIVE_CRITIC is exactly 'true' AND
+#     AI_GW_API_TOKEN (the AI gateway route) is present; a request without it
+#     fails the run instead of silently downgrading.
+#   - --post only when a conductor token was minted.
+#   - --implement only when a producer token was minted AND
+#     ADO_AGENT_EXPECTED_ID is set (the CLI refuses producer writes without it).
+#   - The requester is the work item author, re-read from the API by the CLI
+#     (--requested-by-author) and checked against ADO_REQUESTER_GROUP. The
+#     service hook payload is never trusted for identity.
+#
+# Identity split: conductor and producer are two DIFFERENT Entra service
+# principals behind two DIFFERENT Azure Resource Manager service connections
+# (workload identity federation, no stored secret). The pipeline's own
+# System.AccessToken (Project Collection Build Service) is never used as the
+# conductor or the producer: it would collapse the split, and the loop treats
+# the Build Service as a bot author.
+#
+# Trigger: an Incoming WebHook service connection fed by an Azure DevOps
+# service hook on `workitem.created` ONLY (the loop's own comments and field
+# edits fire workitem.updated / workitem.commented; subscribing to those would
+# loop). The incoming webhook endpoint is UNAUTHENTICATED unless the service
+# connection has a secret, in which case Azure DevOps verifies the HMAC-SHA1
+# signature header. Do not wire this pipeline to a connection without a secret.
+# YAML cannot see whether the connection has one, so the operator attests it:
+# webhook-triggered runs fail in the first step unless the plain variable
+# CODING_LOOP_WEBHOOK_HMAC_CONFIRMED is exactly 'true' (set it only after
+# checking the connection; see the operator guide, step 4). Manual runs (a
+# person queued the pipeline) do not need it.
+#
+# Injection rules (payload text is attacker-influenced):
+#   1. `${{ parameters.<webhook>.* }}` is compile-time template expansion. It
+#      appears ONLY in the `variables:` block below, never in a script body.
+#   2. Only three payload values are read: the work item id, its project and
+#      the event type. Everything else (title, body, author) the CLI re-reads
+#      from the Azure DevOps API.
+#   3. Scripts read values through `env:` only, never `$(macro)` or `${{ }}`
+#      inside a script body, and never echo a raw payload value (it could carry
+#      a `##vso[` logging command).
+#   4. The first step validates the id (digits only) and the project (exact
+#      match with CODING_LOOP_REPO) before anything else runs.
+#
+# Secrets: from a variable group linked to Azure Key Vault (Fetch-on-Demand;
+# nothing is stored in the pipeline). Infisical (`infisical run`) is the
+# documented alternative.
+
+# Webhook and manual runs only.
+trigger: none
+pr: none
+
+# Queue every run in order. The default (runLatest) would cancel queued runs
+# and drop work items. Add an Exclusive Lock check on the conductor service
+# connection to serialize runs (Azure Pipelines has no per-item concurrency
+# group; the CLI's own noemi:* state on the item guards a re-run).
+lockBehavior: sequential
+
+parameters:
+  # Manual runs: the work item id. Leave empty for webhook runs.
+  - name: workItemId
+    displayName: 'Work item ID (manual runs only)'
+    type: string
+    default: ''
+  - name: profile
+    displayName: 'code (default) or spec (agents and skills only)'
+    type: string
+    default: code
+    values:
+      - code
+      - spec
+
+resources:
+  repositories:
+    # Loop tooling, read-only. Pin ref to a CalVer tag for production.
+    - repository: noemi
+      type: github
+      endpoint: noemi-github-readonly   # GitHub service connection (read-only)
+      name: project-noemi/agents
+      ref: refs/heads/main
+  webhooks:
+    - webhook: NoemiWorkItemCreated
+      connection: noemi-workitem-created   # Incoming WebHook connection WITH a secret
+      filters:
+        - path: eventType
+          value: workitem.created
+
+variables:
+  # Secrets: a variable group linked to Azure Key Vault. Key Vault names allow
+  # no underscores, so the secrets are AI-GW-API-TOKEN and
+  # NOEMI-CLIENT-REGISTRY; the run step maps them to the env names the CLI
+  # reads. Secret variables never reach a script unless mapped in `env:`.
+  - group: noemi-coding-loop-secrets
+  # Plain settings: ADO_AGENT_EXPECTED_ID, ADO_REQUESTER_GROUP,
+  # CODING_LOOP_REPO, CODING_LOOP_BUDGET_OK, CODING_LOOP_LIVE_CRITIC,
+  # CODING_LOOP_WEBHOOK_HMAC_CONFIRMED.
+  - group: noemi-coding-loop
+
+  # Service connection NAMES, compile time (a service connection cannot be
+  # chosen by a runtime variable). Edit here; queue-time users cannot override
+  # YAML variables. Empty disables the role: no conductor means no --post, no
+  # producer means no --implement. They must name different connections.
+  - name: NOEMI_CONDUCTOR_CONNECTION
+    value: 'noemi-conductor-wif'
+  - name: NOEMI_PRODUCER_CONNECTION
+    value: ''
+
+  # Raw inputs. The ONLY place payload template expressions appear. Validated
+  # by the first step; nothing downstream reads these directly.
+  - name: NOEMI_RAW_MANUAL_ITEM
+    value: ${{ parameters.workItemId }}
+  - name: NOEMI_RAW_HOOK_ITEM
+    value: ${{ parameters.NoemiWorkItemCreated.resource.id }}
+  - name: NOEMI_RAW_HOOK_PROJECT
+    value: ${{ parameters.NoemiWorkItemCreated.resource.fields['System.TeamProject'] }}
+  - name: NOEMI_RAW_HOOK_EVENT
+    value: ${{ parameters.NoemiWorkItemCreated.eventType }}
+
+jobs:
+  - job: intake
+    displayName: 'Stage A–C prepare'
+    pool:
+      vmImage: ubuntu-latest
+    # Entra access tokens live ~60–90 minutes; keep the run inside that.
+    timeoutInMinutes: 60
+    steps:
+      - checkout: none
+
+      - bash: |
+          set -euo pipefail
+          fail() { echo "##vso[task.logissue type=error]$1"; exit 1; }
+          # An undefined variable reaches env as its literal macro text.
+          unset_macro() { local v="${!1:-}"; if [[ "$v" == '$('*')' ]]; then unset "$1"; fi; }
+          for v in RAW_MANUAL_ITEM RAW_HOOK_ITEM RAW_HOOK_PROJECT RAW_HOOK_EVENT REPO_SPEC CONDUCTOR_CONN PRODUCER_CONN HMAC_CONFIRMED; do
+            unset_macro "$v"
+          done
+
+          if [[ -n "${RAW_MANUAL_ITEM:-}" ]]; then
+            item="${RAW_MANUAL_ITEM}"
+          else
+            # The incoming webhook is unauthenticated without a connection
+            # secret, and YAML cannot check for one: the operator attests it.
+            [[ "${HMAC_CONFIRMED:-}" == "true" ]] || fail "Webhook run without CODING_LOOP_WEBHOOK_HMAC_CONFIRMED=true (the connection must have a secret); refusing."
+            [[ "${RAW_HOOK_EVENT:-}" == "workitem.created" ]] || fail "Not a workitem.created event; refusing."
+            item="${RAW_HOOK_ITEM:-}"
+          fi
+          # Digits only. Never echo the raw value.
+          id_re='^[1-9][0-9]{0,9}$'
+          [[ "$item" =~ $id_re ]] || fail "Work item id is not a positive integer; refusing."
+
+          [[ -n "${REPO_SPEC:-}" ]] || fail "CODING_LOOP_REPO is unset (org/project/repo)."
+          repo_re='^[A-Za-z0-9][A-Za-z0-9-]{0,49}/[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}/[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$'
+          [[ "${REPO_SPEC}" =~ $repo_re ]] || fail "CODING_LOOP_REPO must be org/project/repo."
+          project="$(cut -d/ -f2 <<<"${REPO_SPEC}")"
+          # Webhook runs: the item's project must be the configured one. The
+          # CLI re-checks against the API; this stops foreign items early.
+          if [[ -z "${RAW_MANUAL_ITEM:-}" && "${RAW_HOOK_PROJECT:-}" != "$project" ]]; then
+            fail "Work item project does not match CODING_LOOP_REPO; refusing."
+          fi
+
+          if [[ -n "${CONDUCTOR_CONN:-}" && "${CONDUCTOR_CONN}" == "${PRODUCER_CONN:-}" ]]; then
+            fail "Conductor and producer must use different service connections."
+          fi
+
+          echo "##vso[task.setvariable variable=NOEMI_ITEM_ID]${item}"
+          echo "##vso[task.setvariable variable=NOEMI_REPO]ado:${REPO_SPEC}"
+        displayName: 'Validate inputs'
+        env:
+          RAW_MANUAL_ITEM: $(NOEMI_RAW_MANUAL_ITEM)
+          RAW_HOOK_ITEM: $(NOEMI_RAW_HOOK_ITEM)
+          RAW_HOOK_PROJECT: $(NOEMI_RAW_HOOK_PROJECT)
+          RAW_HOOK_EVENT: $(NOEMI_RAW_HOOK_EVENT)
+          REPO_SPEC: $(CODING_LOOP_REPO)
+          CONDUCTOR_CONN: $(NOEMI_CONDUCTOR_CONNECTION)
+          PRODUCER_CONN: $(NOEMI_PRODUCER_CONNECTION)
+          HMAC_CONFIRMED: $(CODING_LOOP_WEBHOOK_HMAC_CONFIRMED)
+
+      - checkout: noemi
+        fetchDepth: 1
+        persistCredentials: false
+
+      - task: UseNode@1
+        displayName: 'Node.js 24'
+        inputs:
+          version: '24.x'
+
+      # Conductor: comments and tags on the work item. Its own Entra SP.
+      - ${{ if ne(variables.NOEMI_CONDUCTOR_CONNECTION, '') }}:
+          - task: AzureCLI@2
+            displayName: 'Mint conductor token (Entra WIF)'
+            inputs:
+              azureSubscription: ${{ variables.NOEMI_CONDUCTOR_CONNECTION }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              addSpnToEnvironment: false
+              inlineScript: |
+                set -euo pipefail
+                token="$(az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 --query accessToken -o tsv)"
+                if [[ -z "$token" ]]; then
+                  echo "##vso[task.logissue type=error]Conductor token mint returned nothing."
+                  exit 1
+                fi
+                echo "##vso[task.setvariable variable=ADO_CONDUCTOR_TOKEN;issecret=true]${token}"
+
+      # Producer: branch, commits, pull request. A DIFFERENT Entra SP.
+      - ${{ if ne(variables.NOEMI_PRODUCER_CONNECTION, '') }}:
+          - task: AzureCLI@2
+            displayName: 'Mint producer token (Entra WIF)'
+            inputs:
+              azureSubscription: ${{ variables.NOEMI_PRODUCER_CONNECTION }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              addSpnToEnvironment: false
+              inlineScript: |
+                set -euo pipefail
+                token="$(az account get-access-token --resource 499b84ac-1321-427f-aa17-267ca6975798 --query accessToken -o tsv)"
+                if [[ -z "$token" ]]; then
+                  echo "##vso[task.logissue type=error]Producer token mint returned nothing."
+                  exit 1
+                fi
+                echo "##vso[task.setvariable variable=ADO_AGENT_TOKEN;issecret=true]${token}"
+
+      - bash: |
+          set -euo pipefail
+          unset_macro() { local v="${!1:-}"; if [[ "$v" == '$('*')' ]]; then unset "$1"; fi; }
+          for v in ADO_CONDUCTOR_TOKEN ADO_AGENT_TOKEN ADO_AGENT_EXPECTED_ID ADO_REQUESTER_GROUP \
+                   NOEMI_CLIENT_REGISTRY AI_GW_API_TOKEN BUDGET_OK LIVE_CRITIC; do
+            unset_macro "$v"
+          done
+
+          extra=()
+          if [[ "${BUDGET_OK:-}" == "true" ]]; then
+            extra+=(--budget-ok)
+          fi
+          if [[ "${LIVE_CRITIC:-}" == "true" ]]; then
+            if [[ -z "${AI_GW_API_TOKEN:-}" ]]; then
+              echo "##vso[task.logissue type=error]live-critic requested without AI_GW_API_TOKEN."
+              exit 1
+            fi
+            extra+=(--live-critic)
+          fi
+          if [[ -n "${ADO_CONDUCTOR_TOKEN:-}" ]]; then
+            extra+=(--post)
+          fi
+          if [[ -n "${ADO_AGENT_TOKEN:-}" ]]; then
+            if [[ -z "${ADO_AGENT_EXPECTED_ID:-}" ]]; then
+              echo "##vso[task.logissue type=warning]Producer token present but ADO_AGENT_EXPECTED_ID unset; not implementing."
+            else
+              extra+=(--implement)
+            fi
+          fi
+          node coding-loop/run.js --repo "$NOEMI_REPO" --item "$NOEMI_ITEM_ID" --scan \
+            --requested-by-author --profile "$PROFILE" "${extra[@]}"
+        displayName: 'Run coding loop'
+        env:
+          NOEMI_REPO: $(NOEMI_REPO)
+          NOEMI_ITEM_ID: $(NOEMI_ITEM_ID)
+          PROFILE: ${{ parameters.profile }}
+          BUDGET_OK: $(CODING_LOOP_BUDGET_OK)
+          LIVE_CRITIC: $(CODING_LOOP_LIVE_CRITIC)
+          ADO_REQUESTER_GROUP: $(ADO_REQUESTER_GROUP)
+          NOEMI_CLIENT_REGISTRY: $(NOEMI-CLIENT-REGISTRY)
+          AI_GW_API_TOKEN: $(AI-GW-API-TOKEN)
+          ${{ if ne(variables.NOEMI_CONDUCTOR_CONNECTION, '') }}:
+            ADO_CONDUCTOR_TOKEN: $(ADO_CONDUCTOR_TOKEN)
+          ${{ if ne(variables.NOEMI_PRODUCER_CONNECTION, '') }}:
+            ADO_AGENT_TOKEN: $(ADO_AGENT_TOKEN)
+            ADO_AGENT_EXPECTED_ID: $(ADO_AGENT_EXPECTED_ID)

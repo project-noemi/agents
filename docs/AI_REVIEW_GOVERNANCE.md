@@ -45,6 +45,16 @@ See `docs/MACHINE_IDENTITY.md` for provisioning.
 Reviews run in sequence. A failed gate stops the review; later gates are
 skipped, not merely failed.
 
+**Override mode** is the one exception: an allowlisted human
+(`NOEMI_REVIEW_OVERRIDE_ACTORS`) can override a failed premise, framing, or
+code gate for one head SHA with a PR comment, and the later gates then run. The
+overridden gate is reported as OVERRIDDEN with its original findings, never as
+a pass. A compliance override is recorded only. Overrides happen only at the
+owner's direction, relayed through the Dep 12 PR Watch Bot; the coding bot
+never overrides its own work. Each accepted override is snapshotted as
+evidence on a draft calibration PR per rule ID, which a human reviews and
+merges. See `docs/AI_REVIEW_OVERRIDE.md`.
+
 | Gate | 4D dimension | Question |
 |---|---|---|
 | 1. Premise | Delegation | Should this change exist at all? |
@@ -67,6 +77,46 @@ reads as endorsed even when the reviewer never asked whether it was needed.
 "This should not be merged at all" is the most consequential and most subjective
 verdict available. It is never auto-actioned, in any phase. The reviewer
 recommends; a human decides.
+
+### When the human agrees the change should not exist
+
+Decision [2026-10-24-0001]. Use this when a person has read the premise finding
+and agrees the change should not be in the tree. Disagreeing is a different
+path: say so, and re-approve or ask for a different change.
+
+1. Post one comment. The reviewer's comment stays. The human comment is the one
+   the contributor should answer. It has three parts:
+   - One specific thing the contribution did well, taken from the diff.
+   - Why this repository is not taking the change. Personas and skills here are
+     ones another organization could run for a problem the fleet already has.
+   - What a welcome next contribution is, when the submission was a good-faith
+     mismatch: a change to an agent or skill already in the tree, or a new one
+     whose inputs and outputs do not depend on a private script or a single
+     machine. Open it from `develop` on a branch named `<type>/<area>-<slice>`.
+     On a fork, a maintainer adds the `ai-review` label.
+2. Close the pull request. Leave the contributor's branch in place.
+3. Do not push commits onto the contributor's fork.
+4. Do not dispatch the reviewer's remediation prompt, and do not ask for a
+   larger version of the same idea in this pull request. That prompt assumes a
+   defect to fix. Agreeing with the premise means the change should not exist.
+
+When the finding is that the change is unsafe, or outside the repository's
+purpose in a way a rewrite would not cure, close it with a polite comment that
+names the boundary. Do not invite a rewritten version of that same change.
+
+Copy this shape and fill the brackets from the diff:
+
+```
+Thank you for sending this. <one specific thing the diff did well>.
+
+We are closing it without merging. <why this change does not belong in the shared library>.
+
+You are welcome to contribute again. A useful next pull request <changes an agent or skill already here, or adds one another organization could run>. Open it from `develop` on a branch named `<type>/<area>-<slice>`. On a fork, a maintainer adds the `ai-review` label.
+```
+
+Pull request 622 was the first use: a persona whose only job was to run one
+private local script. The comment named the care in the file, said why a shared
+library does not take that script, and invited a different contribution.
 
 ## Severity rubric
 
@@ -91,8 +141,14 @@ The reviewer halts and escalates to human review when a diff touches:
 - branch protection settings
 - `.github/CODEOWNERS`
 - `.github/workflows/require-develop-source.yml`
+- `.github/workflows/ai-review.yml`
+- `.github/workflows/calibration-watch.yml`
 - `docs/MACHINE_IDENTITY.md` (the identity register)
 - this document
+- `scripts/review-pr.js` and `scripts/calibration-watch.js`
+- `scripts/model-config.js` and `scripts/model-chat.js` (the model route and the chat call every gate uses)
+- `agents/coding/sentinel/core.md` and `agents/coding/sentinel/compliance.md`
+- `agents/engineering/pr-reviewer.md`
 
 Not a capability judgment. These are the controls that constrain agents, and an
 agent evaluating changes to its own constraints is circular regardless of how
@@ -113,7 +169,15 @@ pin; `auto` or an empty value discovers. A pin that is missing from the
 catalogue, or that is not a usable Gemini text model, halts rather than
 silently reviewing on a different model.
 
-**This does not change the `models/gemini-3.6-flash` pin in `CLAUDE.md`.** That
+With a NewPush AI gateway key (`AI_GW_API_TOKEN`, Decision [2026-10-22-0001])
+there is no discovery. The review pin is `GEMINI_REVIEW_MODEL` with the
+`google/` prefix added when missing, and `auto` or empty means
+`google/gemini-3.1-pro-preview`. An explicit pin that is not in the key's
+model list halts. The default pin missing, or a gateway error during a gate,
+fails the run; it is never a halt, because a halt passes the required check. The
+floor and preview flags apply only to Vertex discovery.
+
+**This does not change the `models/gemini-3.8-flash` pin in `CLAUDE.md`.** That
 pin governs reference workflows, lab examples, and smoke tests, where
 determinism and predictable cost are the point. Review has the opposite
 objective and therefore its own policy.
@@ -214,10 +278,13 @@ empty-vars restriction as `pull_request`. Auto-trigger-on-approval is not viable
 for fork PRs without using `pull_request_target`, which requires careful gating.
 
 When the AI review workflow runs on a fork PR via `pull_request`, configuration
-variables (`INFISICAL_PROJECT_ID`, etc.) are empty, and **the review fails
-visibly** rather than silently succeeding with no review performed. A green
-check with no comment would be indistinguishable from a completed review and
-is the failure mode this gate prevents.
+variables (`INFISICAL_PROJECT_ID`, etc.) are empty. The unprivileged
+**"AI Review (fork notice)"** job **warns and succeeds**. It must not fail:
+that check is not required, and a red X makes a mergeable fork PR look blocked
+(Decision [2026-09-24-0001]). Merge is still blocked because the required
+**"AI Review (advisory)"** check has not run until a maintainer adds the
+`ai-review` label. A green *advisory* check with no review performed is the
+failure mode the split-check pattern prevents — not a green fork-notice.
 
 ### Reviewing fork PRs safely
 
@@ -244,12 +311,13 @@ The workflow defines **two jobs with distinct check names** to prevent race
 conditions and silent pass-through:
 
 1. **"AI Review (fork notice)"** — Unprivileged, runs on `pull_request` when
-   config unavailable (fork PRs). Fails visibly with instructions. **NOT** a
-   required check on `develop`.
+   config unavailable (fork PRs). Warns with instructions and **succeeds**.
+   **NOT** a required check on `develop`.
 
 2. **"AI Review (advisory)"** — Privileged, runs actual review on in-repo
-   `pull_request` (with config), `pull_request_target: [labeled]` (ai-review
-   label), and `workflow_dispatch`. **IS REQUIRED** on `develop` branch protection.
+   `pull_request` (with config), `pull_request_target` when the `ai-review`
+   label is added or already present (`labeled`, `synchronize`, `reopened`),
+   and `workflow_dispatch`. **IS REQUIRED** on `develop` branch protection.
 
 **Why split:** A single-job workflow with conditional steps would show green when
 skipped on fork PRs, defeating the "no silent pass" requirement. The split also
@@ -274,14 +342,18 @@ logic, and integrates naturally into the PR workflow (review code → add label)
 
 When a maintainer adds the **`ai-review` label** to a fork PR, the "AI Review
 (advisory)" job **automatically triggers** in the base repository context via
-`pull_request_target: types: [labeled]`:
+`pull_request_target`. The label is a **persistent trust signal**: later
+pushes re-run advisory while it remains. Maintainer work after the first
+label is approve-or-comment, not re-labeling.
 
-1. Fork PR arrives → automatic review fails visibly (no variables)
+1. Fork PR arrives → fork-notice warns (no variables); required advisory is pending
 2. Maintainer reviews the code
-3. **Maintainer adds 'ai-review' label** (trust signal)
+3. **Maintainer adds 'ai-review' label once** (trust signal)
 4. Label addition triggers the advisory review in base context
 5. Advisory runs with access to Infisical/GCP credentials
 6. Advisory findings posted as a comment
+7. Contributor pushes a fix (or maintainer updates from `develop`) → advisory
+   re-runs automatically; no label bounce
 
 **Why label-gated instead of approval-gated?** GitHub withholds secrets/variables
 from `pull_request_review` on fork PRs (same restriction as `pull_request`), so
@@ -290,11 +362,15 @@ approval cannot auto-trigger a privileged review. The label gate uses
 but is safe because:
 
 - Label addition is a **maintainer-only action** (requires triage permission)
-- Job condition verifies `github.event.label.name == 'ai-review'` (no other labels)
-- Does NOT trigger on open/synchronize (avoids unconstrained `pull_request_target`)
+- Job condition verifies `github.event.label.name == 'ai-review'` on `labeled`,
+  or that the PR already has `ai-review` on `synchronize`/`reopened`
+- Does NOT trigger privileged review on unlabeled `opened`/`synchronize`
+  (avoids unconstrained `pull_request_target`)
 - Workflow still never checks out PR head code (only tooling repo at pinned ref)
 - Diff fetched via API only (read-only data, never executed)
 - Review scripts from tooling repo, not from PR under review
+- Concurrency group includes `github.event_name` so fork-notice cannot cancel
+  the privileged advisory on the same PR number
 
 ### Dismissal of approvals on blocking findings
 
@@ -307,8 +383,10 @@ severity), the workflow **dismisses all existing approving reviews** on that PR:
    found N blocking finding(s) after this approval. Review advisory comment by
    @noemi-reviewer-bot and re-approve when findings are addressed or accepted."
 4. PR becomes non-mergeable (branch protection requires approval on `develop`)
-5. Maintainer reads advisory findings, then either:
-   - Requests changes from contributor, or
+5. Maintainer reads advisory findings, then:
+   - If the failed gate is premise and the maintainer agrees, follows
+     [When the human agrees the change should not exist](#when-the-human-agrees-the-change-should-not-exist).
+   - Otherwise, requests changes from the contributor, or
    - Re-approves after determining findings are addressed or acceptable
 
 **Why dismiss approvals?** Phase 1 is advisory-only — the "AI Review (advisory)"
@@ -319,7 +397,8 @@ Dismissing the approval creates the merge gate: someone must explicitly re-appro
 *after* seeing the advisory, which is the informed-decision point.
 
 **When dismissal applies:**
-- Label-gated review (`pull_request_target: [labeled]`): dismisses + removes label
+- Label-gated review (`pull_request_target`): dismisses; **keeps** the `ai-review`
+  label so the next push re-runs advisory (Decision [2026-09-24-0001])
 - Manual dispatch (`workflow_dispatch`): dismisses (keeps label if present)
 - In-repo `pull_request`: dismisses if approvals exist
 
@@ -347,17 +426,15 @@ is also re-approval after changes.
    - **Severity:** Low — requires both defeating the carve-out gate AND bypassing
      human code-owner review
 
-**2. Label removal abuse:**
-   - **Risk:** A malicious fork PR could craft a diff that causes the advisory to
-     spuriously report blocking findings, triggering removal of the `ai-review`
-     label
-   - **Mitigation:** The advisory reviews code content, not code execution, so a
-     malicious diff would need to defeat the Gemini reviewer's detection of
-     injection attempts (prompt injection is itself a critical finding). Label
-     removal is visible in the PR timeline, and the maintainer can re-add the
-     label to re-run the review or use workflow_dispatch
-   - **Severity:** Low — requires defeating cross-model adversarial review, and
-     the maintainer can override by re-adding the label
+**2. Label persistence after blocking findings:**
+   - **Risk:** Keeping `ai-review` after a blocking finding means the next push
+     automatically re-runs privileged review. A noisy or injected finding no
+     longer forces a maintainer to re-add the label, which is the intended
+     throughput trade (Decision [2026-09-24-0001]).
+   - **Mitigation:** Dismissal of approvals remains the merge gate. The label
+     means "this fork is trusted to be reviewed," not "this revision passed."
+     Maintainers can still remove the label to stop automatic re-review.
+   - **Severity:** Low — privileged path still never checks out PR head code
 
 **3. Label gate bypass via non-maintainer:**
    - **Risk:** A non-maintainer (external contributor) could add a label that
@@ -365,7 +442,8 @@ is also re-approval after changes.
    - **Mitigation:** GitHub's permissions model restricts label addition on fork
      PRs to users with triage permission or higher. External contributors cannot
      add labels to their own fork PRs in the base repository. The job condition
-     also explicitly checks `github.event.label.name == 'ai-review'`
+     also requires `github.event.label.name == 'ai-review'` on `labeled` and the
+     label already present on `synchronize`/`reopened`
    - **Severity:** Prevented by GitHub's permission model
 
 ## Audit
@@ -388,7 +466,7 @@ handoff point for anyone picking the work up.
 
 **Phase 1 is operational.** The first fully automated cross-model review ran in
 CI on 2026-08-11 against PR #379: Workload Identity Federation to Google, OIDC
-to Infisical, `gemini-3.6-flash` resolved at runtime, all three gates executed,
+to Infisical, `gemini-3.8-flash` resolved at runtime, all three gates executed,
 findings posted by `noemi-reviewer`. No static credential is stored in GitHub.
 
 | Item | State | Blocked on |
@@ -447,7 +525,7 @@ Branches → `develop` → Edit → Require status checks → search "AI Review
 (advisory)" → check it → Save). This activates the fork PR race-condition
 protection: fork PRs cannot merge while the advisory is pending, and cannot merge
 if no advisory ever ran. The unprivileged "AI Review (fork notice)" check is
-**NOT** required (it fails on fork PRs by design).
+**NOT** required (it warns on fork PRs and succeeds; Decision [2026-09-24-0001]).
 
 The setup script does not add this automatically because the check must exist
 (have run at least once) before it can be required, and a fresh deployment has no

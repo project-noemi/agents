@@ -67,6 +67,7 @@ vs `.github/workflows/ai-review.yml`).
 | Layer | Owns | Must not |
 |---|---|---|
 | Product (`coding-loop/*.js`, skills, `docs/model-routing.json`) | skip / refuse / needs-info / accepted / carve-out; identity checks; model family contract | grow a job queue, webhook server, or conversation memory |
+| Forge provider (`coding-loop/providers/*`, Decision [2026-10-27-0005]) | repository naming, item reads, comments, labels, entitlement lookups, commits, change requests | hold verdicts, carve-outs or scan logic; weaken the identity split |
 | Host (CLI `run.js` `main()`, Actions `coding-loop.yml`, later Mastra/n8n/Temporal) | when the loop starts, where labels are stored, how a run is re-queued | re-encode `classifyIssue`, default a missing scan to `APPROVED`, post as the wrong identity |
 
 **Fleet host (unattended):** Node CLI plus the reusable workflow
@@ -87,14 +88,16 @@ Mastra remains a *candidate* later host for a durable issue webhook. It is
 not how Fable/Opus learn to drive Grok. Classman curriculum delivery is out
 of this repository's purview.
 
-The `noemi-conductor` GitHub App is still planned, not provisioned. Do not
-post conductor comments as `noemi-agent` or the reviewer.
+The `noemi-conductor` GitHub App is provisioned (App id `5066927`) and installed
+on all repositories in `newpush`, `project-noemi`, and `newpush-labs` (Decision
+[2026-09-26-0001]). Do not post conductor comments as `noemi-agent` or the reviewer.
 
 **Plug a different host** (preference order):
 
 1. Import the functions as tools/steps (`classifyIssue`, `scanIssueBody`,
    `completeThroughStageB`, `draftChanges` with injected `callModel`,
-   `openImplementationPr` with injected `ghImpl`).
+   `openImplementationPr` with injected `ghImpl`, or a `provider`, `ref` and
+   `cred` from `coding-loop/providers/` for a forge other than GitHub).
 2. Exec `node coding-loop/run.js` with explicit `--scan` / `--budget-ok`
    (what Actions does).
 3. Do **not** copy the gates into the framework. That is lock-in.
@@ -110,7 +113,7 @@ long-running webhook or Fable-with-tools. Do not adopt it to get skip/bot/scan
 
 | Stage | Identity | May do | Must not do |
 |---|---|---|---|
-| A, B, B′ comments and labels | `noemi-conductor` (planned) | Read issues, comment, apply `noemi:*` labels | Write code, open PRs, review PRs, approve, merge |
+| A, B, B′ comments and labels | `noemi-conductor` (provisioned) | Read issues, comment, apply `noemi:*` labels | Write code, open PRs, review PRs, approve, merge |
 | C — implement | `noemi-agent` | Open branches and PRs | Approve or merge |
 | D — PR red-team | `noemi-reviewer-bot[bot]` | Post review findings | Author code, approve, merge |
 | Merge | Human Accelerator | Approve and merge | Hand those acts to any machine identity |
@@ -119,7 +122,7 @@ Producer, conductor, and reviewer are three identities. Sharing the reviewer
 App with the conductor would mix issue chatter with review findings and
 collapse attribution. Sharing `noemi-agent` with the conductor would make the
 coding PR look like it was opened by the same actor that planned it. The
-conductor App is **planned, not provisioned** — see `docs/MACHINE_IDENTITY.md`.
+conductor App is **provisioned** — see `docs/MACHINE_IDENTITY.md` (Decision [2026-09-26-0001]).
 
 ## Pickup
 
@@ -152,12 +155,12 @@ GitHub issue opened
         ├─ out of scope / unsafe → noemi:wont-act, STOP
         └─ actionable
                 ▼
-  Stage B   Fable 5 Max family     plan comment + noemi:planned
+  Stage B   Gemini Argon family    plan comment + noemi:planned
                 ▼
   Stage B′  Gemini Pro family      red-team the plan
         │
-        ├─ fail, cycles < max → revise plan, repeat B′
-        ├─ fail, cycles = max → noemi:needs-info, STOP
+        ├─ fail, cycles remain → revision prompt on the plan, repeat B′
+        ├─ unchanged plan or cycles = max → noemi:needs-info, STOP
         └─ pass
                 ▼
   Stage C   Grok latest family     implement as noemi-agent → branch + PR
@@ -190,9 +193,20 @@ The red-team family (Gemini Pro, same selection rule as the fleet reviewer)
 attacks the plan, not the future diff. Verdicts:
 
 - **pass** — proceed to Stage C
-- **fail** and `cycle < planRedTeam.maxCycles` — conductor revises the plan
-  (Stage B model family) and repeats B′
-- **fail** and `cycle == maxCycles` — apply `noemi:needs-info`, comment the
+- **fail** and cycles remain — B′ writes a revision prompt from the findings.
+  The host executes that prompt on the plan (not on the code, and not on the
+  issue), then repeats B′. A revision that does not change the plan, drops
+  the skip-red-team record, or adds a path that is not a repository file
+  grounded in the issue stops the cycle. A source file the issue names stays
+  even when this checkout does not contain it. A finding that asks for a path
+  the issue does not name is recorded under Stop conditions; the revision does
+  not invent that path. A plan that says the goal cannot be done, that contains
+  a skip-red-team instruction, or that says a required path was not named is
+  `needs-info` and does not proceed to Stage C. With no reviser, invalid files may
+  still be dropped and the plan re-formatted; an unchanged plan stops. The
+  same draft is not resubmitted. Until Stage B has an unattended resolver,
+  `--live-critic` executes the prompt with the same Gemini Pro caller as B′.
+- **fail** at `planRedTeam.maxCycles` — apply `noemi:needs-info`, comment the
   unresolved findings, **stop**. Never start Stage C on a rejected plan.
 
 Default `maxCycles` is 3 (`docs/model-routing.json` → `planRedTeam`).
@@ -204,16 +218,25 @@ Default `maxCycles` is 3 (`docs/model-routing.json` → `planRedTeam`).
 as `noemi-agent`. Label `noemi:in-progress`. Open a PR against `develop` (then
 `dev`). Never against `main` when an integration branch exists (Decision
 [2026-08-16-0003]). `--implement` prepares the envelope (`opened: false`).
-`--implement --open-pr` calls Grok (`coding-loop/writer.js`) and opens the
-PR with `AGENT_GH_TOKEN` (`coding-loop/dispatch.js`). Pickup does not open
-PRs just because the producer token is present.
+`--implement --open-pr` reads the allow-listed files from the base branch,
+calls Grok for one JSON object (`coding-loop/writer.js`), and opens the
+PR with `AGENT_GH_TOKEN` (`coding-loop/dispatch.js`). The body starts with
+`Closes #N`, or with `Part of #N` when the accepted plan says the agent does
+not finish the work. Pickup passes `--open-pr` when the producer token and a
+writer key (`AI_GW_API_TOKEN`, else `AI_GW_API_KEY`, else `XAI_API_KEY`) are
+both present (Decision [2026-10-29-0001]); the producer token alone still
+only prepares the envelope. When a conductor token is present, the loop applies one
+`noemi:*` label and removes the other `noemi:*` labels. An opened PR is
+`noemi:review`.
 
 ### Stage D — PR red-team
 
 Reuse the existing fleet reviewer (`scripts/review-pr.js` /
 `noemi-reviewer-bot[bot]`). Do not add a second Gemini reviewer. Label
 `noemi:review`. Humans still own approval and merge.
-`coding-loop/stage-d.js` only delegates once a PR URL exists.
+`coding-loop/stage-d.js` records the handoff once a PR URL exists. It does not
+call the reviewer. The target repository's installed review workflow is
+Stage D.
 
 Pickup is the reusable workflow `.github/workflows/coding-loop.yml` and
 `templates/ci/coding-loop-caller.yml`. Budget is fail-closed
@@ -224,7 +247,18 @@ reviewer and passes `--live-critic`. Pass `--scan` to run `coding-loop/scan.js`
 on the fetched body, or `--scan-status` for a precomputed result. Omitting
 both classifies the issue as REFUSED (fail closed).
 
-On `develop`, Cross-Model PR Review is **required to complete** and remains
+Robot and model credentials follow the reviewer vault/direct split (Decision
+[2026-11-05-0001]). Both `INFISICAL_PROJECT_ID` and `INFISICAL_IDENTITY_ID`
+select vault mode: GitHub OIDC, then a named read of `AGENT_GH_TOKEN`,
+`AI_GW_API_TOKEN`, `AI_GW_API_KEY`, and `XAI_API_KEY` from Infisical
+environment `dev` at path `/`. Neither variable selects direct mode, which
+keeps the Actions secrets passed by name. Setting only one fails the job.
+Vault mode does not fall back to those Actions secrets. A producer token is
+checked with `GET /user` and the job stops before `coding-loop/run.js` unless
+the login is `noemi-agent`. Conductor credentials and `NOEMI_CLIENT_REGISTRY`
+stay named secrets. The workflow does not export the vault folder.
+
+On `develop`, AI Review (advisory) is **required to complete** and remains
 advisory on the verdict (Decision [2026-08-17-0001]). A GitHub outage that
 fails the comment POST is not a review. The runner retries transient GitHub
 errors (429 / 5xx) via `scripts/resilience_helpers.js` until the post
@@ -238,7 +272,10 @@ Every GitHub call in this loop — conductor comments and labels, producer
 PR open, Stage D review post — uses the same contract as
 `scripts/review-pr.js`:
 
-- Retry **only** transient statuses: 429 and 5xx.
+- Retry **only** transient statuses: 429 and 5xx, and a rate-limit 403.
+- Retry a write (POST, PUT, PATCH, DELETE) on 5xx only when the call is
+  idempotent; a 5xx after a write that succeeded must not post twice
+  (Decision [2026-10-27-0003]). Honour `Retry-After` up to 60 seconds.
 - Do **not** retry deterministic 4xx (401, 403, 404, 422).
 - Use `scripts/resilience_helpers.js` (`withRetry`) or the host’s equivalent.
 - An exhausted retry budget is a **connection failure**, not a product
@@ -266,7 +303,8 @@ PR to that file, not a host-framework deploy.
 
 | Stage | Family | Host today |
 |---|---|---|
-| triage / plan | Fable 5 Max | Heuristic in `coding-loop/`; live Fable in Claude Code via Orchestrator `model` |
+| triage | Fable 5 Max | Heuristic in `coding-loop/`; live Fable in Claude Code via Orchestrator `model` |
+| plan | Gemini Argon (`google/gemini-4-argon`) | Draft is heuristic in `coding-loop/`; revisions use the plan pin through `critic.revisePlanLive` |
 | code | Grok latest, effort xHigh | CLI `XAI_API_KEY` (`writer.js`); interactive `/grok-build:delegate` |
 | redteam | Gemini Pro | `critic.js` / fleet `review-pr.js` |
 | bulk | Gemini Flash (highest 3.x) or Sonnet 5 | Claude Code Orchestrator; **not** fleet PR review |
@@ -303,6 +341,53 @@ committed tenant is `tenants/internal.json`: `source=newpush-pool`,
 `plan=internal`, no repo deny. BYO keys, monthly plans, and on-demand
 metering are schema fields, not implemented product.
 
+### Client entitlement
+
+Client orgs share the NewPush pool tenant; there is no tenant file per client
+and clients bring no API keys (Decision [2026-10-22-0005]). An org that is not
+on the tenant's `orgs` list is entitled only when all of these hold:
+
+1. **Installed.** The conductor App is installed on the repo and not suspended
+   (`GET /repos/{owner}/{repo}/installation` with the App JWT). The client's
+   org owner controls scope by choosing "Only select repositories".
+2. **Registered.** `NOEMI_CLIENT_REGISTRY` (JSON from the vault, shaped by
+   [`docs/client-registry.schema.json`](../client-registry.schema.json)) has an
+   `active` row for the installation's **account ID**. The App must be public
+   to be installed on client orgs, so anyone can install it; the registry is
+   NewPush's side of the grant. Rows key on the numeric account ID because
+   logins can be renamed and re-registered. Optional `repos` narrows the row.
+3. **Requested by a writer.** `--requested-by` names a user whose permission
+   on the repo is write, maintain or admin. Since Decision [2026-10-27-0001]
+   this applies to tenant orgs too. This is the bar Copilot, Claude
+   Code GitHub Actions and Devin use, and it stops outsiders on public client
+   repos from spending the pool.
+
+Each failure refuses with its own reason: `app-not-installed`,
+`installation-suspended`, `unregistered-client`, `client-suspended`,
+`trigger-unverified`, `trigger-not-writer`, and `entitlement-unverified` when
+a lookup fails (fail closed). `--plan-in` re-checks all three, so an
+uninstall or suspension between planning and implementing stops the run.
+
+**Azure DevOps** (Decision [2026-10-27-0006]) has no App installation. A
+client org is entitled when its Entra tenant (read from the org) is named by
+an `azure-devops` registry row, the conductor service principal can read the
+org (it was added with Basic access), and the org's `instanceId` matches the
+row's `account_id`. A 401 or 403 means the principal is not in the org
+(`app-not-installed`). The requester must be a member of the project's
+requester group (`ADO_REQUESTER_GROUP`, or the row's `requester_group`),
+because no least-privileged API answers whether another identity can write
+to a repository. When the author is the requester (`--requested-by-author`), every
+editor of the title or body must also pass the requester check, because a
+Stakeholder can edit a member's work item. Pipeline YAML can live at any
+path, so besides the carve-out union (which adds `**/*azure-pipelines*.y?ml`
+and `.vsts-ci.yml` at any depth) the provider refuses the YAML files the
+repository's build definitions name and the templates they include.
+
+The registry is never committed: this repository is public and the list says
+who NewPush's clients are. Industry comparison and the remaining work
+(App-identity PRs on client orgs, uninstall webhooks, per-client caps, CI
+approval gate): [`github-bot-entitlement-patterns.md`](github-bot-entitlement-patterns.md).
+
 ## Cost and safety (required before org-wide pickup)
 
 - Cap `concurrent_jobs` and `daily_usd` on day one. Fable 5 Max on every
@@ -318,7 +403,7 @@ metering are schema fields, not implemented product.
 ## Out of scope for this spec
 
 - Stripe, invoices, customer self-serve key UI
-- Provisioning the `noemi-conductor` GitHub App
+- Re-provisioning the `noemi-conductor` GitHub App (installed; Decision [2026-09-26-0001])
 - Auto-merge of coding PRs
 - A second Gemini reviewer beside `noemi-reviewer-bot`
 - Acting on issues in customer orgs we do not operate

@@ -142,8 +142,8 @@ test('template infrastructure is grouped under templates/context and the root no
     const claudeTemplate = read('templates/context/CLAUDE.template.md');
 
     assert.match(templatesReadme, /generated context templates/i);
-    assert.match(geminiTemplate, /<!-- GLOBAL_MANDATES_START -->/);
-    assert.match(claudeTemplate, /templates\/context\/\{GEMINI,CLAUDE\}\.template\.md/);
+    assert.equal(geminiTemplate, '@AGENTS.md\n');
+    assert.equal(claudeTemplate, '@AGENTS.md\n');
     assert.ok(!fs.existsSync(path.join(repoRoot, 'GEMINI.template.md')));
     assert.ok(!fs.existsSync(path.join(repoRoot, 'CLAUDE.template.md')));
     assert.ok(!fs.existsSync(path.join(repoRoot, 'n8n')));
@@ -369,7 +369,7 @@ test('RFP responder workflow uses the current Google Gemini node path', () => {
 
     assert.ok(geminiNode, 'Expected Analyze Request (Gemini) node to exist');
     assert.equal(geminiNode.type, '@n8n/n8n-nodes-langchain.googleGemini');
-    assert.match(workflowText, /models\/gemini-3\.6-flash/);
+    assert.match(workflowText, /models\/gemini-3\.8-flash/);
     assert.match(workflowText, /REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID/);
     assert.doesNotMatch(workflowText, /@n8n\/n8n-nodes-langchain\.chainLlm/);
 });

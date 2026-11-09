@@ -1,10 +1,10 @@
 # Project NoéMI: Phase 0 Security & Secret Management
 
-**Framework:** Gartner AI TRiSM (Security) | **Pedagogy:** Creation Diligence
+**Framework:** AI TRiSM (Gartner®, Inc.) — security dimension | **Pedagogy:** Creation Diligence
 
 ## Overview
 
-Project NoeMI uses a **Fetch-on-Demand** security model:
+Project NoéMI uses a **Fetch-on-Demand** security model:
 
 1. **Storage (The Vault):** secrets live only in a SecretOps platform
 2. **Access (The Injector):** the client or runtime receives secrets at launch time through a wrapper such as `infisical run` or `op run`
@@ -28,16 +28,16 @@ You do **not** need machine identities for your first harmless local task.
 
 ## The Two Recommended SecretOps Paths
 
-Project NoeMI supports both of these beginner-friendly injector patterns:
+Project NoéMI supports both of these beginner-friendly injector patterns:
 
 - **Infisical:** open-source SecretOps with `infisical run`
 - **1Password CLI:** mature vault-backed wrapper with `op run`
 
 Choose one for a given workflow and standardize on it within the team.
 
-### Why These Two Paths Fit NoeMI
+### Why These Two Paths Fit NoéMI
 
-- they inject secrets into process memory at runtime
+- they inject secrets into process memory at runtime, scoped to a folder or manifest per task
 - they support secure local builder habits
 - they avoid plaintext `.env` files
 - they map cleanly to the Phase 0 rules in [`../../AGENTS.md`](../../AGENTS.md)
@@ -58,27 +58,52 @@ op signin
 
 ## Step 2: Launch The Local Client Securely
 
-When the task needs credentials, wrap the client launch instead of creating a local secret file.
+When the task needs credentials, wrap the client launch instead of creating a local secret file, and inject only the secrets that one task needs.
 
-### Infisical examples
+The default is **task-scoped**: each workflow gets its own vault folder (or its own machine identity) that holds only that workflow's secrets, and the client is launched against that folder alone. Launching an agent against a whole environment hands it, and everything it starts, every secret in that environment.
 
-```bash
-infisical run --env=dev -- gemini
-infisical run --env=dev -- claude
-infisical run --env=dev -- codex
-infisical run --env=dev -- grok
-```
+### Infisical example (task-scoped)
 
-### 1Password examples
+Keep each workflow's secrets in its own folder, for example `/workflows/inbox-triage`, and launch the client against that path only:
 
 ```bash
-op run --env-file=.env.template -- gemini
-op run --env-file=.env.template -- claude
-op run --env-file=.env.template -- codex
-op run --env-file=.env.template -- grok
+infisical run --env=dev --path=/workflows/inbox-triage -- gemini
+infisical run --env=dev --path=/workflows/inbox-triage -- claude
+infisical run --env=dev --path=/workflows/inbox-triage -- codex
+infisical run --env=dev --path=/workflows/inbox-triage -- grok
 ```
 
-Unlike a plaintext `.env`, `.env.template` in this repo is only a vault-reference manifest.
+For a runtime that is not a person's workstation, use a machine identity whose access is limited to that folder (see [Configuring Machine Identity With Infisical](#configuring-machine-identity-with-infisical)).
+
+### 1Password example (task-scoped)
+
+Give each workflow its own reference manifest that lists only the secrets it needs, by name:
+
+```bash
+# workflows/inbox-triage.env.template: vault references only, never values
+# MAIL_API_TOKEN=op://Inbox Triage/mail-api/credential
+
+op run --env-file=workflows/inbox-triage.env.template -- gemini
+op run --env-file=workflows/inbox-triage.env.template -- claude
+op run --env-file=workflows/inbox-triage.env.template -- codex
+op run --env-file=workflows/inbox-triage.env.template -- grok
+```
+
+Keep the workflow's items in a vault that holds only that workflow's secrets. Unlike a plaintext `.env`, a `.env.template` is only a vault-reference manifest. The repository's root `.env.template` is the full inventory of names, not the manifest to launch an agent with.
+
+### What the agent's children see
+
+Secrets injected with `infisical run` or `op run` become environment variables of the client process, and every process it starts inherits them: MCP servers, shell commands, package scripts and plugins. Any of that code can read them. So:
+
+- inject the minimum set of secrets, named one by one, for the one task;
+- start only the MCP servers and tools the task needs, from pinned versions;
+- end the session when the task ends, so the secrets are not left in a long-running process.
+
+Fetch-on-Demand keeps secrets out of files, Git and chat. It does not protect a secret from code running inside the agent's process; scoping and short sessions limit what such code can reach.
+
+### Agent configuration files are code
+
+Files such as `opencode.json`, `.mcp.json`, `.cursor/mcp.json` and `.claude/settings.json` decide which servers and commands an agent runs. Review them like code, and keep keys out of them: they reference an environment variable injected from the vault, using the client's own reference syntax, and never hold a key value. If you find a key in one, move it to the vault and revoke the original.
 
 ## Step 3: Build Secure Muscle Memory
 
@@ -87,27 +112,25 @@ The first useful rule for beginners is:
 - repo-only, read-only tasks can start without secrets
 - the moment a task touches external systems, wrap the launch with `infisical run` or `op run`
 
-That is how NoeMI keeps the transition from experimentation to business work secure without making beginners memorize infrastructure patterns on day one.
+That is how NoéMI keeps the transition from experimentation to business work secure without making beginners memorize infrastructure patterns on day one.
 
 ## Suggested Local Aliases
 
-Once a builder chooses one secret path, create aliases so the secure path becomes the normal path:
+Once a builder chooses one secret path, create one alias per task, so the scoped launch becomes the normal path. Name the alias after the task, not after the client:
 
 ```bash
-alias safe-gemini='infisical run --env=dev -- gemini'
-alias safe-claude='infisical run --env=dev -- claude'
-alias safe-codex='infisical run --env=dev -- codex'
-alias safe-grok='infisical run --env=dev -- grok'
+alias triage-gemini='infisical run --env=dev --path=/workflows/inbox-triage -- gemini'
+alias triage-claude='infisical run --env=dev --path=/workflows/inbox-triage -- claude'
 ```
 
 or:
 
 ```bash
-alias safe-gemini='op run --env-file=.env.template -- gemini'
-alias safe-claude='op run --env-file=.env.template -- claude'
-alias safe-codex='op run --env-file=.env.template -- codex'
-alias safe-grok='op run --env-file=.env.template -- grok'
+alias triage-gemini='op run --env-file=workflows/inbox-triage.env.template -- gemini'
+alias triage-claude='op run --env-file=workflows/inbox-triage.env.template -- claude'
 ```
+
+Avoid one alias that injects a whole environment into every session.
 
 For the client-by-client comparison and the role of Google's Antigravity, Claude Code app, and Codex app on top of these CLI habits, see:
 
@@ -157,13 +180,13 @@ User:
 Correct action:
 
 ```bash
-infisical run --env=dev -- python script.py
+infisical run --env=dev --path=/workflows/db-report -- python script.py
 ```
 
 or:
 
 ```bash
-op run --env-file=.env.template -- python script.py
+op run --env-file=workflows/db-report.env.template -- python script.py
 ```
 
 ## Advanced Path: Accelerators And Headless Runtimes
@@ -181,7 +204,7 @@ That is where the architecture becomes different:
 1. Log in to the Infisical dashboard.
 2. Navigate to **Access Control > Machine Identities**.
 3. Create an identity such as `noemi-agent-crew`.
-4. Grant read-only access only to the specific environment needed for the runtime.
+4. Grant read-only access only to the specific environment and secret folder (for example `/workflows/inbox-triage`) the runtime needs.
 
 Generate an `INFISICAL_TOKEN` for that machine identity and inject it into the remote environment rather than a human session.
 
@@ -233,6 +256,6 @@ For 1Password-based local verification, the practical equivalent is confirming t
 
 The beginner breakthrough is simple but important:
 
-if the secret was never pasted into chat and never written to a local file, the model has much less chance to leak it.
+if the secret was never pasted into chat and never written to a local file, the model has much less chance to leak it. Fetch-on-Demand does not make a compromised tool safe, though: anything running in the agent's process can read what was injected, so inject only what the task needs.
 
-That is why Phase 0 matters so early in NoeMI. The team learns secure habits before the first business-facing workflow becomes powerful enough to do damage.
+That is why Phase 0 matters so early in NoéMI. The team builds secure habits before the first business-facing workflow becomes powerful enough to do damage.

@@ -5,6 +5,8 @@ const path = require('path');
 
 const {
     detectCarveOut,
+    limitDiffForPrompt,
+    MAX_DIFF_FILE_CHARS,
     validateFindings,
     gateVerdict,
     recommend,
@@ -12,8 +14,10 @@ const {
     buildRemediationPrompt,
     renderComment,
     loadSentinelFromDisk,
+    loadComplianceFromDisk,
     SENTINEL_REPO,
     SENTINEL_PATH,
+    COMPLIANCE_PATH,
     SEVERITIES,
     BLOCKING_SEVERITIES,
     GATES,
@@ -27,16 +31,38 @@ const {
 // model returns. The model is untrusted input; anything the review's integrity
 // depends on is enforced in code, and that is what is covered here.
 
+test('limitDiffForPrompt keeps a small file and omits an oversized one', () => {
+    const small = 'diff --git a/README.md b/README.md\n+hello\n';
+    const huge = `diff --git a/services/noemi-knowledge-mcp/src/corpus.generated.json b/services/noemi-knowledge-mcp/src/corpus.generated.json\n${'x'.repeat(MAX_DIFF_FILE_CHARS)}\n`;
+    const out = limitDiffForPrompt(`${small}${huge}`);
+    assert.match(out, /\+hello/);
+    assert.match(out, /Omitted from the model prompt/);
+    assert.match(out, /corpus\.generated\.json/);
+    assert.equal(out.includes('x'.repeat(80)), false);
+    assert.equal(limitDiffForPrompt(''), '');
+});
+
 test('carve-out: governance-critical paths are detected', () => {
     const files = ['README.md', '.github/CODEOWNERS', 'scripts/foo.js'];
     assert.deepEqual(detectCarveOut(files), ['.github/CODEOWNERS']);
 });
 
-test('carve-out: the merge gate and both governance docs are covered', () => {
+test('carve-out: merge gate, governance docs, and review behavior are covered', () => {
     for (const f of [
         '.github/workflows/require-develop-source.yml',
+        '.github/workflows/ai-review.yml',
+        '.github/workflows/calibration-watch.yml',
         'docs/MACHINE_IDENTITY.md',
         'docs/AI_REVIEW_GOVERNANCE.md',
+        'scripts/review-pr.js',
+        'scripts/calibration-watch.js',
+        'agents/coding/sentinel/core.md',
+        'agents/coding/sentinel/compliance.md',
+        'agents/engineering/pr-reviewer.md',
+        'scripts/review-override.js',
+        'scripts/override-calibration.js',
+        '.github/workflows/override-calibration.yml',
+        'docs/AI_REVIEW_OVERRIDE.md',
     ]) {
         assert.deepEqual(detectCarveOut([f]), [f], `${f} must be carved out`);
     }
@@ -106,11 +132,12 @@ test('recommendation: a clean review reports no findings', () => {
     );
 });
 
-test('gate order is premise, framing, code', () => {
+test('gate order is premise, framing, code, then compliance', () => {
     // Order is structural: reviewing code before premise lends false legitimacy
-    // to work the reviewer is recommending against.
-    assert.deepEqual(GATES.map((g) => g.id), ['premise', 'framing', 'code']);
-    assert.deepEqual(GATES.map((g) => g.dimension), ['Delegation', 'Description', 'Diligence']);
+    // to work the reviewer is recommending against. Compliance is last, and
+    // following it is the organization's choice.
+    assert.deepEqual(GATES.map((g) => g.id), ['premise', 'framing', 'code', 'compliance']);
+    assert.deepEqual(GATES.map((g) => g.dimension), ['Delegation', 'Description', 'Diligence', 'Discernment']);
 });
 
 test('prompt: reviewed content is framed as data and injection is reportable', () => {
@@ -140,6 +167,43 @@ test('prompt: Sentinel spec from project-noemi/agents is injected as review crit
     assert.match(p, /Trust Nothing: Verify everything/);
     assert.match(p, /you review; you do not patch/);
     assert.doesNotMatch(p, /other-org\/other-repo.*sentinel/i);
+});
+
+test('prompt: compliance guidance is injected only on the compliance gate', () => {
+    const complianceGate = GATES.find((g) => g.id === 'compliance');
+    const p = buildGatePrompt(complianceGate, {
+        title: 'T', body: '', files: [], diff: '', repo: 'o/r', pr: '1',
+        complianceGuidance: '# Compliance guidance\nDo not put personal data into a prompt.',
+    });
+    assert.match(p, /<compliance_guidance>/);
+    assert.match(p, /Do not invent legal conclusions/);
+    assert.match(p, /Do not put personal data into a prompt/);
+    const codePrompt = buildGatePrompt(GATES[2], {
+        title: 'T', body: '', files: [], diff: '', repo: 'o/r', pr: '1',
+        complianceGuidance: '# Compliance guidance\nDo not put personal data into a prompt.',
+    });
+    assert.doesNotMatch(codePrompt, /<compliance_guidance>/);
+    assert.match(codePrompt, /Do not apply the compliance guidance on this gate/);
+});
+
+test('prompt: a compliance gate with no file returns no findings', () => {
+    const complianceGate = GATES.find((g) => g.id === 'compliance');
+    const p = buildGatePrompt(complianceGate, {
+        title: 'T', body: 'B', files: ['a.js'], diff: 'diff', repo: 'o/r', pr: '1',
+    });
+    assert.match(p, /No compliance file was loaded/);
+    assert.doesNotMatch(p, /<compliance_guidance>/);
+});
+
+test('compliance guidance loads from the Sentinel directory and is not a persona', () => {
+    const text = loadComplianceFromDisk();
+    assert.equal(COMPLIANCE_PATH, 'agents/coding/sentinel/compliance.md');
+    assert.match(text, /# Compliance guidance/);
+    assert.match(text, /GDPR|General Data Protection Regulation/);
+    assert.match(text, /2024\/1689/);
+    assert.match(text, /report it on the compliance gate/);
+    assert.doesNotMatch(text, /premise gate/);
+    assert.doesNotMatch(text, /## Role/);
 });
 
 test('prompt: a malicious diff is embedded as data, not interpolated as instruction', () => {
@@ -221,7 +285,7 @@ test('remediation prompt: prioritises blocking findings over cosmetic ones', () 
 test('comment: records the model, since a verdict depends on what produced it', () => {
     const c = renderComment({
         model: 'models/gemini-x-pro', reviewed_at: '2026-08-03T00:00:00Z', pr: 'o/r#1',
-        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: 'pass' } },
+        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: 'pass' }, compliance: { verdict: 'pass' } },
         findings: [], recommendation: 'no-findings', remediation_prompt: null,
     });
     assert.match(c, /models\/gemini-x-pro/);
@@ -235,11 +299,12 @@ test('comment: skipped gates are reported as skipped, not as passed', () => {
             premise: { verdict: 'fail' },
             framing: { verdict: 'skipped' },
             code: { verdict: 'skipped' },
+            compliance: { verdict: 'skipped' },
         },
         findings: [{ gate: 'premise', severity: 'critical', file: 'x', line: null, claim: 'unnecessary', evidence: 'e' }],
         recommendation: 'escalate', remediation_prompt: null,
     });
-    assert.match(c, /Gates not run: framing, code/);
+    assert.match(c, /Gates not run: framing, code, compliance/);
     assert.match(c, /skipped, not passed|skipped, not\s+passed/);
     assert.match(c, /Premise gate failed/);
 });
@@ -247,7 +312,7 @@ test('comment: skipped gates are reported as skipped, not as passed', () => {
 test('comment: a coerced severity is surfaced, not hidden', () => {
     const c = renderComment({
         model: 'm', reviewed_at: 'now', pr: 'o/r#1',
-        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: 'fail' } },
+        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: 'fail' }, compliance: { verdict: 'skipped' } },
         findings: [{ gate: 'code', severity: 'high', file: 'a.js', line: 1, claim: 'c', evidence: '', severity_coerced_from: 'blocker' }],
         recommendation: 'request-changes', remediation_prompt: null,
     });
@@ -258,10 +323,25 @@ test('comment: a coerced severity is surfaced, not hidden', () => {
 test('comment: states plainly that the review does not approve or block', () => {
     const c = renderComment({
         model: 'm', reviewed_at: 'now', pr: 'o/r#1',
-        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: 'pass' } },
+        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: 'pass' }, compliance: { verdict: 'pass' } },
         findings: [], recommendation: 'no-findings', remediation_prompt: null,
     });
     assert.match(c, /does not approve, merge, or block/);
+});
+
+test('comment: a compliance-only failure says the merge needs no calibration entry', () => {
+    const c = renderComment({
+        model: 'm', reviewed_at: 'now', pr: 'o/r#1',
+        gates: {
+            premise: { verdict: 'pass' },
+            framing: { verdict: 'pass' },
+            code: { verdict: 'pass' },
+            compliance: { verdict: 'fail' },
+        },
+        findings: [{ gate: 'compliance', severity: 'high', file: 'a.js', line: 1, claim: 'personal data in the prompt', evidence: 'e' }],
+        recommendation: 'request-changes', remediation_prompt: null,
+    });
+    assert.match(c, /does not require a calibration entry/);
 });
 
 // --- model resolution ------------------------------------------------------
@@ -286,12 +366,13 @@ test('selection: Pro is elevated when a stable Pro exists in the newest generati
 });
 
 test('selection: prefer_pro_tier falls back to an older stable Pro and reports the cost', () => {
-    const live = ['gemini-3.6-flash', 'gemini-2.5-pro']
+    const live = ['gemini-3.8-flash', 'gemini-2.5-pro']
         .map((n) => `publishers/google/models/${n}`);
     const { chosen, tradeoff } = selectModel(live, { floor: 'flash', preferPro: true });
     assert.equal(chosen.name, 'gemini-2.5-pro');
-    assert.match(tradeoff, /prefer_pro_tier selected gemini-2\.5-pro \(gen 2\.5\)/);
-    assert.match(tradeoff, /gemini-3\.6-flash \(gen 3\.6\)/);
+    // Decision [2026-10-06-0001]: generation now uses numeric major.minor (2.5 -> 2.05, 3.8 -> 3.08)
+    assert.match(tradeoff, /prefer_pro_tier selected gemini-2\.5-pro \(gen 2\.05\)/);
+    assert.match(tradeoff, /gemini-3\.8-flash \(gen 3\.08\)/);
 });
 
 test('pin: empty and auto restore discovery', () => {
@@ -377,20 +458,93 @@ test('classify: non-text modalities are rejected outright', () => {
     // Found only by ranking the live catalogue: image/tts/embedding variants
     // still contain "pro" or "flash", so a tier rank would select them to
     // review code. 18 of 25 published Gemini models are wrong for this job.
+    // Decision [2026-10-06-0001]: also exclude live/transcribe/translate.
     for (const n of [
         'gemini-3-pro-image', 'gemini-2.5-pro-tts', 'gemini-embedding-001',
         'gemini-live-2.5-flash-native-audio', 'gemini-robotics-er-2-preview-info',
         'gemini-2.5-computer-use-preview-10-2025', 'gemini-omni-flash-preview',
-        'gemini-3.1-flash-image',
+        'gemini-3.1-flash-image', 'gemini-3.8-live', 'gemini-3.8-flash-transcribe',
+        'gemini-3.8-flash-translate',
     ]) {
         assert.equal(classify(`publishers/google/models/${n}`), null, `${n} must be rejected`);
     }
 });
 
 test('classify: legitimate text models survive the modality filter', () => {
-    for (const n of ['gemini-3.6-flash', 'gemini-2.5-pro', 'gemini-3.5-flash-lite']) {
+    for (const n of ['gemini-3.8-flash', 'gemini-2.5-pro', 'gemini-3.5-flash-lite']) {
         assert.ok(classify(`publishers/google/models/${n}`), `${n} must be kept`);
     }
+});
+
+test('classify: version comparison is numeric (Decision [2026-10-06-0001])', () => {
+    // parseFloat ranked 3.10 below 3.8; numeric major.minor fixes this
+    const v38 = classify('models/gemini-3.8-flash');
+    const v310 = classify('models/gemini-3.10-flash');
+    assert.ok(v310.generation > v38.generation, '3.10 must rank above 3.8');
+    assert.equal(v38.generation, 3.08);
+    assert.equal(v310.generation, 3.10);
+});
+
+test('meetsFloor: >= semantics for backward compatibility (Decision [2026-10-06-0001])', () => {
+    // Pro review selection uses >= so preferPro can fall back across generations
+    const flash = classify('models/gemini-3.8-flash');
+    const pro = classify('models/gemini-3.1-pro');
+    assert.ok(meetsFloor(flash, 'flash'), 'flash model meets flash floor');
+    assert.ok(meetsFloor(pro, 'flash'), 'pro model meets flash floor with >=');
+    assert.ok(meetsFloor(pro, 'pro'), 'pro model meets pro floor');
+    assert.ok(!meetsFloor(flash, 'pro'), 'flash model does not meet pro floor');
+});
+
+test('resolveFlash: only selects flash tier, not pro (Decision [2026-10-06-0001])', () => {
+    // Flash-specific resolution filters to exact tier to prevent silent upgrade
+    const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = [
+        'models/gemini-3.8-flash',
+        'models/gemini-3.10-pro', // Higher generation Pro should be ignored
+    ];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, 'models/gemini-3.8-flash');
+});
+
+test('classify: tier detection requires explicit marker (Decision [2026-10-06-0001])', () => {
+    // Models without "flash" or "pro" in the name return null
+    const noTier = classify('models/gemini-3.8');
+    assert.equal(noTier, null, 'model without tier marker must be rejected');
+});
+
+test('resolveFlash: selects highest stable flash', () => {
+    const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = [
+        'models/gemini-2.5-flash',
+        'models/gemini-3.6-flash',
+        'models/gemini-3.8-flash',
+        'models/gemini-3.10-flash',
+        'models/gemini-3.8-flash-preview',
+        'models/gemini-3.1-pro',
+    ];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, 'models/gemini-3.10-flash');
+    assert.equal(result.tier, 'flash');
+    assert.equal(result.generation, 3.10);
+});
+
+test('resolveFlash: prefers stable over preview', () => {
+    const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = [
+        'models/gemini-3.8-flash',
+        'models/gemini-3.10-flash-preview',
+    ];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, 'models/gemini-3.8-flash');
+});
+
+test('resolveFlash: falls back to pinned baseline when no flash in catalogue', () => {
+    const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = ['models/gemini-3.1-pro', 'models/gemini-2.5-pro'];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, 'models/gemini-3.8-flash');
+    assert.ok(result.fallback, 'fallback reason must be present');
+    assert.match(result.fallback, /no flash models/);
 });
 
 test('selection: an image model never wins even when it is the newest Pro', () => {
@@ -405,7 +559,7 @@ test('model ranking: non-Gemini models are ignored', () => {
 });
 
 test('default review floor is pro — a flash-only catalogue is refused', () => {
-    const live = ['gemini-3.6-flash', 'gemini-3.5-flash']
+    const live = ['gemini-3.8-flash', 'gemini-3.5-flash']
         .map((n) => `publishers/google/models/${n}`);
     assert.equal(selectModel(live).chosen, null);
     assert.ok(selectModel(live, { floor: 'flash' }).chosen);
@@ -423,7 +577,7 @@ test('Sentinel spec loads from this tooling tree, not the reviewed repo', () => 
 });
 
 test('model floor: a flash model does not satisfy a pro floor', () => {
-    const flash = classify('models/gemini-3.6-flash');
+    const flash = classify('models/gemini-3.8-flash');
     const pro = classify('models/gemini-2.5-pro');
     assert.equal(meetsFloor(pro, 'pro'), true);
     assert.equal(meetsFloor(flash, 'pro'), false);
@@ -596,6 +750,14 @@ test('reviewer credential preference: app token shadows PATs, distinct name', ()
     assert.ok(appIdx < patIdx, 'app token must be consulted before any PAT');
 });
 
+test('workflow: reviewer checkout is the pinned tooling repo, never the PR head', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'ai-review.yml'), 'utf8');
+    assert.match(yml, /never the PR head/);
+    assert.match(yml, /repository: project-noemi\/agents/);
+    assert.match(yml, /ref: \$\{\{ inputs\.tooling-ref \|\| 'main' \}\}/);
+    assert.doesNotMatch(yml, /ref: \$\{\{ github\.event\.pull_request\.head/);
+});
+
 test('workflow: review discovers the highest Pro preview (no hard pin)', () => {
     const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
     assert.match(yml, /GEMINI_REVIEW_MODEL: \$\{\{ vars\.GEMINI_REVIEW_MODEL \|\| 'auto' \}\}/);
@@ -609,6 +771,45 @@ test('workflow: App ID is resolved from Infisical when the Actions variable is e
     assert.match(yml, /infisical secrets get REVIEWER_APP_ID/);
     assert.match(yml, /steps\.appid\.outputs\.present/);
     assert.ok(yml.includes('app-id: ${{ env.REVIEWER_APP_ID }}'));
+});
+
+test('workflow: fork notice warns and does not fail the check suite', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
+    assert.match(yml, /Warn on missing configuration/);
+    assert.match(yml, /::warning title=AI review unavailable \(fork PR\)::/);
+    assert.doesNotMatch(yml, /Fail on missing configuration/);
+    const warnStep = yml.slice(yml.indexOf('Warn on missing configuration'));
+    const nextJob = warnStep.indexOf('\n  advisory:');
+    const body = nextJob === -1 ? warnStep : warnStep.slice(0, nextJob);
+    assert.doesNotMatch(body, /exit 1/, 'fork-notice must not fail the check');
+});
+
+test('workflow: privileged fork review re-runs while ai-review remains, without cancelling itself', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
+    assert.match(yml, /types: \[labeled, synchronize, reopened\]/);
+    assert.match(
+        yml,
+        /github\.event_name == 'pull_request_target' && github\.event\.action == 'labeled' && github\.event\.label\.name == 'ai-review'/,
+    );
+    assert.match(
+        yml,
+        /contains\(github\.event\.pull_request\.labels\.\*\.name, 'ai-review'\)/,
+    );
+    assert.doesNotMatch(yml, /labels\/ai-review/, 'must not delete the trust-signal label');
+    assert.match(
+        yml,
+        /group: ai-review-\$\{\{ github\.repository \}\}.*github\.event_name \}\}/,
+        'concurrency must isolate pull_request from pull_request_target',
+    );
+});
+
+test('fleet caller: pull_request_target is label-gated, not unconstrained', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', 'templates/ci/ai-review-caller.yml'), 'utf8');
+    const target = yml.slice(yml.indexOf('pull_request_target:'));
+    const typesLine = target.match(/types: \[[^\]]+\]/)[0];
+    assert.equal(typesLine, 'types: [labeled, synchronize, reopened]');
+    assert.match(yml, /github\.event\.label\.name == 'ai-review'/);
+    assert.match(yml, /contains\(github\.event\.pull_request\.labels\.\*\.name, 'ai-review'\)/);
 });
 
 test('retry predicate: classification is structural, never message-derived', () => {
@@ -824,5 +1025,347 @@ test('callGemini: HTTP 503 is retried; a later JSON body is parsed', async () =>
     } finally {
         if (prev === undefined) delete process.env.GEMINI_RETRY_BASE_MS;
         else process.env.GEMINI_RETRY_BASE_MS = prev;
+    }
+});
+// --- gateway route (Decision [2026-10-22-0001]) ----------------------------
+
+test('review route: gateway key reads no Google credential; no key falls back to ADC', async () => {
+    const {
+        resolveReviewRoute, reviewAuthLabel, reviewBackendLabel,
+    } = require('../scripts/review-pr.js');
+    let tokenCalls = 0;
+    const tokenImpl = async () => { tokenCalls += 1; return 'ya29'; };
+    const gw = await resolveReviewRoute({ env: { AI_GW_API_TOKEN: 'gw-test', GCP_ACCESS_TOKEN: 'ya29' }, tokenImpl });
+    assert.equal(gw.mode, 'gateway');
+    assert.equal(gw.token, null);
+    assert.equal(tokenCalls, 0);
+    assert.equal(gw.config.stages.review.model, 'google/gemini-3.1-pro-preview');
+    assert.equal(reviewBackendLabel(gw), 'gateway');
+    assert.equal(reviewAuthLabel(gw), 'AI_GW_API_TOKEN');
+
+    const dry = await resolveReviewRoute({ env: { AI_GW_API_TOKEN: 'gw-test' }, dryRun: true, tokenImpl });
+    assert.equal(dry.mode, 'dry-run');
+    assert.equal(reviewBackendLabel(dry), 'dry-run');
+
+    await withEnv({ GEMINI_BACKEND: 'generativelanguage' }, async () => {
+        const native = await resolveReviewRoute({ env: {}, tokenImpl });
+        assert.equal(native.mode, 'native');
+        assert.equal(native.token, 'ya29');
+        assert.equal(tokenCalls, 1);
+    });
+});
+
+test('review gateway: workflow default GEMINI_REVIEW_MODEL=auto takes the gateway pin', () => {
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw', GEMINI_REVIEW_MODEL: 'auto' });
+    assert.equal(config.stages.review.model, 'google/gemini-3.1-pro-preview');
+});
+
+test('review gateway: a pin missing from the key model list is null (main halts)', async () => {
+    const { confirmGatewayPin } = require('../scripts/review-pr.js');
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw-test' });
+    const listing = (ids) => async (url) => {
+        assert.equal(url, 'https://ai-gw.newpush.com/v1/models');
+        return { ok: true, status: 200, json: async () => ({ data: ids.map((id) => ({ id })) }) };
+    };
+    assert.equal(
+        await confirmGatewayPin(config, listing(['google/gemini-3.1-pro-preview', 'xai/grok-4.6'])),
+        'google/gemini-3.1-pro-preview',
+    );
+    assert.equal(await confirmGatewayPin(config, listing(['google/gemini-3.8-flash'])), null);
+    assert.equal(
+        await confirmGatewayPin(config, listing(['google/*'])),
+        'google/gemini-3.1-pro-preview',
+        'a provider wildcard route serves the pin',
+    );
+});
+
+test('review gateway: --model sets the pin; only an explicit pin may halt', () => {
+    const { gatewayReviewPin } = require('../scripts/review-pr.js');
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw' });
+    assert.deepEqual(gatewayReviewPin(config, 'gemini-x-pro'), { model: 'google/gemini-x-pro', explicit: true });
+    assert.deepEqual(gatewayReviewPin(config, 'auto'), { model: 'google/gemini-3.1-pro-preview', explicit: false });
+    assert.deepEqual(gatewayReviewPin(config, ''), { model: 'google/gemini-3.1-pro-preview', explicit: false });
+    const pinned = loadModelConfig({ AI_GW_API_TOKEN: 'gw', GEMINI_REVIEW_MODEL: 'gemini-y' });
+    assert.deepEqual(gatewayReviewPin(pinned, ''), { model: 'google/gemini-y', explicit: true });
+});
+
+test('review gateway: an unparseable gate reply is not retried, as on Vertex', async () => {
+    const { callGatewayGate } = require('../scripts/review-pr.js');
+    const prev = process.env.GEMINI_RETRY_BASE_MS;
+    process.env.GEMINI_RETRY_BASE_MS = '1';
+    let calls = 0;
+    try {
+        await assert.rejects(
+            () => callGatewayGate('google/x', 'p', { openaiBase: 'https://ai-gw.newpush.com/v1', apiKey: 'gw-test' }, async () => {
+                calls += 1;
+                return { ok: true, status: 200, json: async () => ({ choices: [{ finish_reason: 'length', message: { content: 'I think' } }] }) };
+            }),
+            (err) => err.code === 'unparseable-json',
+        );
+        assert.equal(calls, 1);
+    } finally {
+        if (prev === undefined) delete process.env.GEMINI_RETRY_BASE_MS;
+        else process.env.GEMINI_RETRY_BASE_MS = prev;
+    }
+});
+
+test('review gateway: a gate reply renders the same comment shape as Vertex', async () => {
+    const { callGatewayGate, validateFindings, gateVerdict } = require('../scripts/review-pr.js');
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw-test' });
+    const seen = [];
+    const fetchImpl = async (url, opts) => {
+        seen.push({ url, body: JSON.parse(opts.body) });
+        return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+                choices: [{
+                    finish_reason: 'stop',
+                    message: {
+                        content: '{"findings":[{"severity":"high","file":"a.js","line":3,"claim":"unchecked input","evidence":"e"}],"rationale":"r"}',
+                        reasoning_content: '{"findings":[]}',
+                    },
+                }],
+            }),
+        };
+    };
+    const reply = await callGatewayGate('google/gemini-3.1-pro-preview', 'gate prompt', config.gateway, fetchImpl);
+    assert.equal(seen[0].url, 'https://ai-gw.newpush.com/v1/chat/completions');
+    assert.equal(seen[0].body.model, 'google/gemini-3.1-pro-preview');
+    assert.deepEqual(seen[0].body.response_format, { type: 'json_object' });
+    const findings = validateFindings(reply.findings, 'code');
+    const comment = renderComment({
+        model: 'google/gemini-3.1-pro-preview', reviewed_at: 'now', pr: 'o/r#1',
+        gates: { premise: { verdict: 'pass' }, framing: { verdict: 'pass' }, code: { verdict: gateVerdict(findings).verdict }, compliance: { verdict: 'skipped' } },
+        findings, recommendation: 'request-changes', remediation_prompt: null,
+    });
+    assert.match(comment, /google\/gemini-3\.1-pro-preview/);
+    assert.match(comment, /unchecked input/);
+});
+
+test('review gateway: 403 is not retried; 503 is', async () => {
+    const { callGatewayGate } = require('../scripts/review-pr.js');
+    const gateway = { openaiBase: 'https://ai-gw.newpush.com/v1', apiKey: 'gw-test' };
+    const prev = process.env.GEMINI_RETRY_BASE_MS;
+    process.env.GEMINI_RETRY_BASE_MS = '1';
+    try {
+        let calls = 0;
+        await assert.rejects(
+            () => callGatewayGate('google/x', 'p', gateway, async () => {
+                calls += 1;
+                return { ok: false, status: 403, text: async () => '{"error":{"type":"team_model_access_denied"}}' };
+            }),
+            (err) => err.code === 'budget-or-forbidden',
+        );
+        assert.equal(calls, 1);
+        calls = 0;
+        const out = await callGatewayGate('google/x', 'p', gateway, async () => {
+            calls += 1;
+            if (calls === 1) return { ok: false, status: 503, text: async () => 'busy' };
+            return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: '{"findings":[],"rationale":"ok"}' } }] }) };
+        });
+        assert.deepEqual(out, { findings: [], rationale: 'ok' });
+        assert.equal(calls, 2);
+    } finally {
+        if (prev === undefined) delete process.env.GEMINI_RETRY_BASE_MS;
+        else process.env.GEMINI_RETRY_BASE_MS = prev;
+    }
+});
+
+test('normalizeGateReply: an array reply keeps every element\'s findings', () => {
+    const { normalizeGateReply } = require('../scripts/review-pr.js');
+    const object = { findings: [], rationale: 'ok' };
+    assert.equal(normalizeGateReply(object), object);
+    assert.deepEqual(normalizeGateReply([object]), { findings: [], rationale: 'ok' });
+    const split = normalizeGateReply([
+        { findings: [], rationale: 'premise holds' },
+        { findings: [{ severity: 'high', claim: 'second element' }], rationale: 'but this' },
+    ]);
+    assert.deepEqual(split.findings, [{ severity: 'high', claim: 'second element' }]);
+    assert.equal(split.rationale, 'premise holds\n\nbut this');
+    assert.equal(gateVerdict(validateFindings(split.findings, 'code')).verdict, 'fail');
+});
+
+test('normalizeGateReply: anything but an object or an array of objects is refused', () => {
+    const { normalizeGateReply } = require('../scripts/review-pr.js');
+    for (const bad of [null, [], ['text'], [{ findings: [] }, 'text'], [{ findings: 'none' }], 'x', 3]) {
+        assert.equal(normalizeGateReply(bad), null, JSON.stringify(bad));
+    }
+});
+
+test('review gateway: a gate reply wrapped in an array is reviewed, not refused', async () => {
+    const { callGatewayGate } = require('../scripts/review-pr.js');
+    const gateway = { openaiBase: 'https://ai-gw.newpush.com/v1', apiKey: 'gw-test' };
+    // The shape Gemini 3.1 Pro returned on newpush/identity#1 (2026-10-25).
+    const content = '[ { "findings": [], "rationale": "docs only" }, '
+        + '{ "findings": [{"severity":"medium","file":"README.md","line":2,"claim":"c","evidence":"e"}], "rationale": "nit" } ]';
+    const reply = await callGatewayGate('google/x', 'p', gateway, async () => ({
+        ok: true, status: 200, json: async () => ({ choices: [{ finish_reason: 'stop', message: { content } }] }),
+    }));
+    assert.equal(reply.findings.length, 1);
+    assert.equal(reply.findings[0].file, 'README.md');
+});
+
+test('review gateway: an array that is not gate objects is still unparseable', async () => {
+    const { callGatewayGate } = require('../scripts/review-pr.js');
+    const gateway = { openaiBase: 'https://ai-gw.newpush.com/v1', apiKey: 'gw-test' };
+    await assert.rejects(
+        () => callGatewayGate('google/x', 'p', gateway, async () => ({
+            ok: true, status: 200, json: async () => ({ choices: [{ finish_reason: 'stop', message: { content: '["looks fine"]' } }] }),
+        })),
+        (err) => err.code === 'unparseable-json',
+    );
+});
+
+test('callGemini: an array reply keeps its findings instead of passing in silence', async () => {
+    const { callGemini } = require('../scripts/review-pr.js');
+    const cfg = { backend: 'generativelanguage', project: '', location: 'global' };
+    const vertexReply = (text) => async () => ({
+        ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }),
+    });
+    const reply = await callGemini('models/x', 'p', 'tok', cfg, vertexReply(
+        '[{"findings":[{"severity":"critical","claim":"secret in diff"}],"rationale":"r"}]',
+    ));
+    assert.equal(gateVerdict(validateFindings(reply.findings, 'code')).verdict, 'fail');
+    await assert.rejects(
+        () => callGemini('models/x', 'p', 'tok', cfg, vertexReply('[1, 2]')),
+        /unparseable JSON/,
+    );
+});
+
+test('carve-out: the model route and chat client are governance files', () => {
+    assert.deepEqual(detectCarveOut(['scripts/model-config.js', 'scripts/model-chat.js']), [
+        'scripts/model-config.js', 'scripts/model-chat.js',
+    ]);
+});
+
+test('workflow: model route — only Infisical is required; WIF runs on the vertex route only', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
+    const advisory = yml.slice(yml.indexOf('\n  advisory:'));
+    // A gateway-only organization has no GCP variables: they are not "missing".
+    const configStep = advisory.slice(advisory.indexOf('Check reviewer configuration'), advisory.indexOf('Install Infisical CLI'));
+    assert.doesNotMatch(configStep, /missing\+=\(GCP_/);
+    const fork = yml.slice(yml.indexOf('\n  fork-notice:'), yml.indexOf('\n  advisory:'));
+    assert.doesNotMatch(fork, /missing\+=\(GCP_/);
+    // The route is decided after Infisical login and before any Google credential.
+    const order = ['Authenticate to Infisical via OIDC', 'Resolve model route', 'Authenticate to Google Cloud']
+        .map((name) => advisory.indexOf(name));
+    assert.ok(order.every((i) => i > -1) && order[0] < order[1] && order[1] < order[2], 'login → route → GCP');
+    assert.match(advisory, /id: gcpauth\n\s+if: steps\.route\.outputs\.route == 'vertex'/);
+    assert.match(advisory, /AI_REVIEW_ROUTE \|\| 'auto'/);
+    // Presence only: the gateway key is never read into the route step.
+    const route = advisory.slice(advisory.indexOf('Resolve model route'), advisory.indexOf('Authenticate to Google Cloud'));
+    assert.match(route, /bash -c '\[\[ -n "\$\{AI_GW_API_TOKEN:-\}\$\{AI_GW_API_KEY:-\}" \]\]'/);
+    assert.doesNotMatch(route, /secrets get AI_GW/);
+    // PR YAML + main's scripts: an older reviewer cannot use the gateway, so auto stays on vertex.
+    assert.match(route, /\[\[ -f scripts\/model-config\.js \]\]/);
+    assert.match(route, /\$gateway" == true && "\$supports" == true \]\]; then route=gateway/);
+    // Forcing vertex hides the gateway key from review-pr.js, which would otherwise prefer it.
+    assert.match(advisory, /strip=\(env -u AI_GW_API_TOKEN -u AI_GW_API_KEY\)/);
+    assert.match(advisory, /"\$\{strip\[@\]\}" node scripts\/review-pr\.js/);
+});
+
+test('workflow: credentials come from Infisical when configured, else from named Actions secrets', () => {
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github/workflows/ai-review.yml'), 'utf8');
+    const advisory = yml.slice(yml.indexOf('\n  advisory:'));
+    // Vault mode wins when both variables exist; one without the other is an error.
+    assert.match(advisory, /echo "mode=vault"/);
+    assert.match(advisory, /echo "mode=direct"/);
+    assert.match(advisory, /Half-configured vault/);
+    // Infisical runs only in vault mode.
+    assert.match(advisory, /name: Install Infisical CLI\n\s+if: steps\.config\.outputs\.mode == 'vault'/);
+    assert.match(advisory, /name: Authenticate to Infisical via OIDC\n\s+if: steps\.config\.outputs\.mode == 'vault'/);
+    // Direct mode: secrets declared for workflow_call, presence checked as a boolean.
+    assert.match(yml, /secrets:\n\s+AI_GW_API_TOKEN:\n[\s\S]*?required: false/);
+    assert.match(advisory, /DIRECT_GATEWAY: \$\{\{ secrets\.AI_GW_API_TOKEN != '' \}\}/);
+    // An in-repo branch runs the privileged job without Infisical variables; a fork does not.
+    assert.match(yml, /vars\.INFISICAL_PROJECT_ID != '' \|\| github\.event\.pull_request\.head\.repo\.full_name == github\.repository/);
+    // Without a reviewer App in direct mode, github-actions[bot] posts.
+    assert.match(advisory, /steps\.apptoken\.outputs\.token == '' && steps\.config\.outputs\.mode == 'direct' && github\.token/);
+    // Direct-mode values never stay in the environment of the vault branch.
+    assert.match(advisory, /unset DIRECT_GATEWAY_KEY FALLBACK_GH_TOKEN/);
+    const caller = fs.readFileSync(path.join(__dirname, '..', 'templates/ci/ai-review-caller.yml'), 'utf8');
+    assert.match(caller, /AI_GW_API_TOKEN: \$\{\{ secrets\.AI_GW_API_TOKEN \}\}/);
+    assert.match(caller, /REVIEWER_APP_PRIVATE_KEY: \$\{\{ secrets\.REVIEWER_APP_PRIVATE_KEY \}\}/);
+    assert.doesNotMatch(caller.replace(/#.*$/gm, ''), /secrets: inherit/);
+});
+
+// A POST is not retried by github-client on 5xx, so the runner itself makes
+// the fleet comment survive one 502 without ever posting it twice.
+test('postOnce: a 5xx whose comment landed is success; one that did not is retried; 4xx is not', async () => {
+    const { postOnce } = require('../scripts/review-pr.js');
+    const marker = '<!-- noemi-review-post:test -->';
+    const err = (status) => Object.assign(new Error(`GitHub POST → ${status}`), { status });
+    const noSleep = async () => {};
+
+    // Landed despite the 502: one POST, no duplicate.
+    let posts = 0;
+    const landed = await postOnce({
+        marker,
+        sleep: noSleep,
+        post: async () => { posts += 1; throw err(502); },
+        list: async () => [{ id: 1, body: 'older review' }, { id: 2, body: `review\n\n${marker}` }],
+    });
+    assert.equal(landed.id, 2);
+    assert.equal(posts, 1);
+
+    // Did not land: retried, and the second POST's result is returned.
+    posts = 0;
+    const retried = await postOnce({
+        marker,
+        sleep: noSleep,
+        post: async () => { posts += 1; if (posts === 1) throw new TypeError('fetch failed'); return { id: 3 }; },
+        list: async () => [{ id: 1, body: 'older review' }],
+    });
+    assert.deepEqual(retried, { id: 3 });
+    assert.equal(posts, 2);
+
+    // Never lands: at most 4 POSTs, then the error.
+    posts = 0;
+    await assert.rejects(() => postOnce({
+        marker, sleep: noSleep, post: async () => { posts += 1; throw err(503); }, list: async () => [],
+    }), (e) => e.status === 503);
+    assert.equal(posts, 4);
+
+    // A definite rejection, or a failed lookup, is not retried (no duplicate risk taken).
+    posts = 0;
+    await assert.rejects(() => postOnce({
+        marker, sleep: noSleep, post: async () => { posts += 1; throw err(422); }, list: async () => [],
+    }), (e) => e.status === 422);
+    await assert.rejects(() => postOnce({
+        marker, sleep: noSleep, post: async () => { posts += 1; throw err(502); }, list: async () => { throw err(502); },
+    }), (e) => e.status === 502);
+    assert.equal(posts, 2);
+});
+
+test('postPrComment: the posted body carries the marker the lookup searches for', async () => {
+    const { postPrComment } = require('../scripts/review-pr.js');
+    const realFetch = global.fetch;
+    const realBase = process.env.GITHUB_RETRY_BASE_MS;
+    process.env.GITHUB_RETRY_BASE_MS = '1';
+    const calls = [];
+    let postedBody = '';
+    global.fetch = async (url, opts) => {
+        calls.push({ url, method: opts.method });
+        if (opts.method === 'POST') {
+            postedBody = JSON.parse(opts.body).body;
+            return { ok: false, status: 502, headers: { get: () => null }, text: async () => 'bad gateway' };
+        }
+        return { ok: true, status: 200, headers: { get: () => null }, json: async () => [{ id: 9, body: postedBody }] };
+    };
+    try {
+        const out = await postPrComment('o/r', 5, 't', '### review');
+        assert.equal(out.id, 9);
+        assert.match(postedBody, /^### review\n\n<!-- noemi-review-post:[0-9a-f-]{36} -->$/);
+        assert.deepEqual(calls.map((c) => c.method), ['POST', 'GET']);
+        assert.match(calls[1].url, /\/repos\/o\/r\/issues\/5\/comments\?since=/);
+    } finally {
+        global.fetch = realFetch;
+        if (realBase === undefined) delete process.env.GITHUB_RETRY_BASE_MS;
+        else process.env.GITHUB_RETRY_BASE_MS = realBase;
     }
 });

@@ -5,9 +5,16 @@
 # never change. Deployed by scripts/deploy-ai-review.sh; documented in
 # docs/examples/cross-model-review-setup.md (Fleet deployment).
 #
-# Requires only organization-level Actions VARIABLES (no secrets in this repo):
-#   GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT, GOOGLE_CLOUD_PROJECT,
-#   INFISICAL_PROJECT_ID, INFISICAL_IDENTITY_ID
+# Credentials, one of (Decision [2026-10-22-0004]):
+#   vault  — organization VARIABLES INFISICAL_PROJECT_ID, INFISICAL_IDENTITY_ID;
+#            the vault holds AI_GW_API_TOKEN and the reviewer App key. Nothing
+#            is stored in GitHub. Wins when configured.
+#   direct — organization SECRETS AI_GW_API_TOKEN and REVIEWER_APP_PRIVATE_KEY
+#            plus the REVIEWER_APP_ID variable, passed below. Without the App,
+#            comments come from github-actions[bot].
+# Model route: the NewPush AI gateway when AI_GW_API_TOKEN exists; otherwise
+# direct Vertex, which needs GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT,
+# GOOGLE_CLOUD_PROJECT. AI_REVIEW_ROUTE (auto | gateway | vertex) forces one.
 #
 # The review is ADVISORY: it posts findings as a comment and never approves,
 # merges, or blocks. Do not add it to required status checks.
@@ -16,14 +23,30 @@ name: AI Review (advisory)
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  pull_request_target:
+    # Labeled: first trust signal. Synchronize/reopened: re-run while the
+    # ai-review label remains. Do not add `opened` — that would be unconstrained
+    # pull_request_target on every fork PR. The job `if` is the second gate.
+    types: [labeled, synchronize, reopened]
 
 jobs:
   review:
+    # Caller-side gate: workflow_call always runs the reusable advisory job, so
+    # this `if` is what keeps unlabeled fork PRs from privileged review.
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name == 'ai-review') ||
+      (github.event_name == 'pull_request_target' && github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'ai-review'))
     # Pinned to @main: the release train promotes develop to main daily after
     # review, so the fleet consumes only human-reviewed reviewer code. A
     # @develop pin would let any merge to develop change review behavior
     # fleet-wide with no gate.
     uses: project-noemi/agents/.github/workflows/ai-review.yml@main
+    # Only these two, by name, and only used in direct mode. Never
+    # `secrets: inherit`: the reviewer gets no other secret of this repository.
+    secrets:
+      AI_GW_API_TOKEN: ${{ secrets.AI_GW_API_TOKEN }}
+      REVIEWER_APP_PRIVATE_KEY: ${{ secrets.REVIEWER_APP_PRIVATE_KEY }}
     permissions:
       contents: read
       pull-requests: write

@@ -112,6 +112,11 @@ Confirm it worked without printing the credential:
 node scripts/gcp-token.js        # expect: ADC token obtained via gcloud-adc
 ```
 
+`gcloud auth login` (user login) is **not** ADC. `gcloud auth list` can show an
+active account while `gcloud auth application-default print-access-token`
+still fails. Live `--live-critic` on a laptop uses the application-default
+credential only.
+
 This credential expires and needs re-running periodically. When it lapses, the
 tooling tells you exactly that rather than failing obscurely.
 
@@ -221,14 +226,23 @@ Settings → Secrets and variables → Actions → **Variables** tab. None is a
 secret, and the tab matters: Secrets are masked and write-only, which makes
 non-secrets harder to audit.
 
+Only the two Infisical variables are always required. The model route is
+decided per run (Decision [2026-10-22-0003]): when the Infisical project holds
+`AI_GW_API_TOKEN`, the gates go to the NewPush AI gateway and no GCP variable is
+needed. Without that key, the review calls Vertex directly and needs the GCP
+variables. `AI_REVIEW_ROUTE` (`auto`, `gateway`, `vertex`; default `auto`)
+forces one route; `vertex` hides the gateway key from the review, so the direct
+path stays usable.
+
 | Variable | Value |
 |---|---|
-| `GCP_WIF_PROVIDER` | `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github-provider` |
-| `GCP_SERVICE_ACCOUNT` | `noemi-reviewer@project-noemi.iam.gserviceaccount.com` |
-| `GOOGLE_CLOUD_PROJECT` | `project-noemi` |
-| `GOOGLE_CLOUD_LOCATION` | `us-central1` |
-| `INFISICAL_PROJECT_ID` | your Infisical workspace ID |
-| `INFISICAL_IDENTITY_ID` | your Infisical machine identity ID |
+| `INFISICAL_PROJECT_ID` | your Infisical workspace ID (required) |
+| `INFISICAL_IDENTITY_ID` | your Infisical machine identity ID (required) |
+| `AI_REVIEW_ROUTE` | optional: `auto` (default), `gateway`, or `vertex` |
+| `GCP_WIF_PROVIDER` | vertex route only: `projects/<PROJECT_NUMBER>/locations/global/workloadIdentityPools/github/providers/github-provider` |
+| `GCP_SERVICE_ACCOUNT` | vertex route only: `noemi-reviewer@project-noemi.iam.gserviceaccount.com` |
+| `GOOGLE_CLOUD_PROJECT` | vertex route only: `project-noemi` |
+| `GOOGLE_CLOUD_LOCATION` | vertex route only: `us-central1` |
 
 ⚠️ `GCP_WIF_PROVIDER` takes the project **number**, not the project ID. Using the
 ID fails with a message that does not mention which field is wrong.
@@ -428,7 +442,16 @@ copying them into GitHub repository secrets — but then every secret lives in t
 places and must be rotated in both. People forget the second one.
 
 Instead, GitHub proves its identity to Infisical and receives temporary access.
-**No secret is stored in GitHub at all.**
+**No secret is stored in GitHub at all.** This is vault mode, and it wins
+whenever `INFISICAL_PROJECT_ID` and `INFISICAL_IDENTITY_ID` are set.
+
+**Direct mode (no Infisical).** An organization without a vault can store two
+Actions secrets instead: `AI_GW_API_TOKEN` (its NewPush AI gateway key) and
+`REVIEWER_APP_PRIVATE_KEY` with the `REVIEWER_APP_ID` variable (its own
+reviewer App). The caller template passes exactly these two by name, never
+`secrets: inherit`. Without a reviewer App, comments are posted with the
+workflow's `GITHUB_TOKEN` as `github-actions[bot]`. Both secrets live in GitHub
+and must be rotated there (Decision [2026-10-22-0004]).
 
 ## Create an Infisical machine identity
 
@@ -508,7 +531,7 @@ If nothing meets the minimum capability level, it **fails instead of quietly
 using a weaker model**. A shallow review that looks like a thorough one is worse
 than no review, because you would trust it.
 
-> This does **not** change the `gemini-3.6-flash` pin elsewhere in the
+> This does **not** change the `gemini-3.8-flash` pin elsewhere in the
 > repository. That pin exists so smoke tests behave identically every run.
 > Reproducibility is right for tests and wrong for review.
 
@@ -523,36 +546,37 @@ malicious fork PRs from exfiltrating secrets via workflow code.
 When a fork PR arrives, the AI review workflow:
 
 1. Detects missing configuration variables
-2. **Fails visibly** with an error explaining the fork limitation
-3. Posts no green check that could be mistaken for a completed review
+2. **Warns** on "AI Review (fork notice)" and **succeeds** that check (it is
+   not required; a red X here made mergeable PRs look blocked)
+3. Leaves the required **"AI Review (advisory)"** check pending until a
+   maintainer adds the `ai-review` label
 
 ### Automatic trigger via label (preferred)
 
-The **preferred path** for fork PRs: add the `ai-review` label after reviewing
-the code. This triggers the advisory review in a privileged context:
+The **preferred path** for fork PRs: add the `ai-review` label **once** after
+reviewing the code. Later pushes re-run the advisory while the label remains.
 
 1. Fork PR arrives
-2. Automatic review fails visibly (GitHub withholds variables from fork PRs)
+2. Fork-notice warns (GitHub withholds variables from fork `pull_request`)
 3. **You review the code**
-4. **You add the 'ai-review' label** (trust signal)
+4. **You add the 'ai-review' label once** (trust signal)
 5. Label addition triggers the advisory review in base-repo context
 6. Advisory runs with access to credentials and posts findings
+7. Contributor pushes a fix → advisory re-runs; you re-approve if you already had
 
 **Why label-gated instead of approval-gated?** GitHub withholds secrets and
 variables from `pull_request_review` events on fork PRs ([GitHub docs](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#using-secrets-in-a-workflow)),
 so an approval cannot auto-trigger a privileged review. The label gate uses
-`pull_request_target: [labeled]` which **does** have access to credentials, and
-is safe because label addition is maintainer-only and the workflow never checks
-out PR code.
+`pull_request_target` (`labeled`, then `synchronize`/`reopened` while the
+label remains) which **does** have access to credentials, and is safe because
+label addition is maintainer-only and the workflow never checks out PR code.
 
 **What happens after the advisory runs:**
 
 - **No blocking findings:** Label remains, PR proceeds normally
-- **Blocking findings (critical/high):** The workflow **removes the `ai-review` label**
-  as a signal. Review the advisory comment posted by @noemi-reviewer-bot, then
-  either request changes or **re-add the label** after the contributor addresses
-  findings (or if you accept them). This ensures findings are seen without making
-  the advisory a required check (phase 1 is advisory-only).
+- **Blocking findings (critical/high):** Approvals are dismissed. The
+  `ai-review` **label stays** so the next push re-runs advisory. Review the
+  comment posted by @noemi-reviewer-bot, then request changes or re-approve.
 - **Advisory halts or fails:** Label remains (a halt/error is not a verdict)
 
 ### Manual trigger (when needed)
@@ -607,7 +631,10 @@ reviewer starting at the diff approves that every time, because at the diff leve
 it looks like good work.
 
 Premise failures always come to a human. "This should not be merged at all" is
-too consequential and too debatable for automation.
+too consequential and too debatable for automation. When the person agrees, the
+playbook is to comment and close, not to ask for another revision of the same
+idea (`docs/AI_REVIEW_GOVERNANCE.md`, "When the human agrees the change should
+not exist").
 
 ### Gate 2 — Framing: *does the description match the change?*
 
@@ -617,6 +644,16 @@ Are risks disclosed?
 ### Gate 3 — Code: *is it correct and safe?*
 
 Only now: correctness, security, tests, maintainability.
+
+### Overriding a failed gate
+
+If a human has accepted a premise, framing, or code finding, an allowlisted
+actor can post `/override layer=<1-4> rule=<rule-id> sha=<head-sha> reason="<why>" [one-off]` and
+re-run the review so the later gates still get evaluated. The gate shows as
+OVERRIDDEN, never as passed, and a new push makes the override stale. The
+allowlist (`NOEMI_REVIEW_OVERRIDE_ACTORS`) starts empty. Overrides happen only
+at the owner's direction via the Dep 12 PR Watch Bot; the coding bot never
+overrides its own work. Details: `docs/AI_REVIEW_OVERRIDE.md`.
 
 ## What you do with the findings
 
@@ -680,9 +717,10 @@ need no configuration of their own (Org Settings → Secrets and variables →
 Actions → Variables, or `gh variable set NAME --org ORG --visibility all`,
 which requires `admin:org` scope):
 
-`GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, `GOOGLE_CLOUD_PROJECT`,
 `INFISICAL_PROJECT_ID`, `INFISICAL_IDENTITY_ID` — same values as the
-repository-level ones documented above. (`GOOGLE_CLOUD_LOCATION` defaults to
+repository-level ones documented above. With `AI_GW_API_TOKEN` in that
+Infisical project, that is all the model route needs. For the direct Vertex
+route also set `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`, `GOOGLE_CLOUD_PROJECT`. (`GOOGLE_CLOUD_LOCATION` defaults to
 `global` and can be omitted.) Optional: `GEMINI_REVIEW_MODEL` (`auto` discovers
 the highest Pro preview, else a stable Pro; set an explicit id to pin) and
 `REVIEWER_APP_ID`.

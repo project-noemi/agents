@@ -230,7 +230,7 @@ Per Decisions [2026-07-03-0001] and [2026-07-07-0002] in `docs/DECISION_LOG.md`,
 Per the Product Owner directive of 2026-08-03 (Decision [2026-08-03-0002], Requirement §7; canonical runbook `docs/MACHINE_IDENTITY.md`), agent-initiated PRs MUST be authored by the `noemi-agent` machine identity — never with a human's credentials, which would make the PR unreviewable by that human (GitHub blocks author self-approval):
 
 - Where `gh` and a vault CLI are available, open PRs via `bash scripts/agent-gh.sh pr create ...`.
-- In containerized or remote sessions without `gh`, use `node scripts/agent-pr.js` (resolves `AGENT_GH_TOKEN` from process memory and speaks to the REST API directly).
+- In containerized or remote sessions without `gh`, use `node scripts/agent-pr.js` (resolves `AGENT_GH_TOKEN` from process memory and speaks to the REST API directly). Cross-org producer calls use `AGENT_GH_TOKEN_CLASSIC` only when `AGENT_GH_USE_CLASSIC=1` (no fallback).
 - Both paths verify the token against `AGENT_GH_EXPECTED_LOGIN` and refuse to act as any other account. If no machine-identity token resolves, STOP and surface the gap to the human — never fall back to opening the PR with human credentials.
 - Approving remains a human-only act. Merging remains a human-only act for `noemi-agent` / `noemi-reviewer`. The sole sanctioned exception is `noemi-release-bot` auto-merging `develop → main` promotion PRs opened by `.github/workflows/release.yml` (Decision [2026-08-14-0002], `docs/MACHINE_IDENTITY.md`).
 
@@ -260,3 +260,15 @@ Rationale: your merges previously happened by admin bypass with zero approvals
 and no review verdict consulted — the Admin Override Watch flags every such
 event. The gate converts your finish into a governed one: passing review +
 green checks + a human approval.
+
+### Graphite stacked PRs
+
+1. Detecting a stack: PR descriptions mention "Stack:" or "Base PR", or sequential PRs are based on each other's branches.
+2. Never merge a child PR into its parent branch. The merge target is always `develop`. Never change a PR's base by hand.
+3. Merge from the bottom up into `develop`, in one Graphite stack merge or through the Graphite merge queue.
+4. If an upper PR is ready first, leave it open until everything below it has landed.
+5. After anything lands on `develop`, run `gt sync`, `gt restack`, then `gt submit --stack`.
+6. To fix a lower PR, use `gt modify` on that branch, then `gt restack` and `gt submit --stack`. Force-pushing is expected on stacked branches. Do not use "merge develop in, no rebase, no force-push" on stacked branches; that rule applies only to non-stacked branches.
+7. Keep stacks to 3–5 PRs of about 500 changed lines each. Split larger plans into several short stacks.
+8. Ship-together notes must say "Ship together with #N. Merge from the bottom up into develop", never "Merge with #N".
+9. Run the AI reviewer once per revision (or on demand), not on every push.

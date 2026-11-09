@@ -54,6 +54,7 @@ Use when all of the following are true:
 - baseline metrics exist or can be captured immediately
 - leadership sponsor and process owner are engaged
 - the workforce doing the task shows baseline AI literacy and willingness, with any resistance surfaced and owned
+- AI already in use is inventoried, and every agent that can act has its own scoped identity and a named owner
 
 ### Ready With Guardrails
 
@@ -64,6 +65,7 @@ Use when the organization can run a constrained pilot, but only if the first rol
 - only one team, one document class, or one low-risk action should be in scope at first
 - measurement must be formalized before broader rollout
 - individual AI literacy or confidence is uneven, so an uplift and enablement plan must run alongside the pilot
+- unapproved AI use is known and owned, and the pilot does not depend on it
 
 ### Not Ready Yet
 
@@ -75,6 +77,7 @@ Use when the organization is still too ambiguous or unstable to expect meaningfu
 - no baseline metrics exist and no one owns measurement
 - the organization is treating experimentation as transformation
 - the workforce doing the task is broadly resistant or has low AI literacy, and no uplift plan exists to close the gap
+- agents act on personal or shared credentials with no inventory or owner (critical gap A10.3)
 
 ## 3. Overall Recommendation
 

@@ -1,0 +1,23 @@
+# Loop-owned Grok home for headless runs (Decision [2026-09-27-0001]).
+#
+# allow_managed_hooks_only: hooks outside managed policy are skipped at
+# dispatch: plugin hooks (including the ones Grok discovers from the user's
+# ~/.claude/plugins in any GROK_HOME), project hooks, this home's own hooks/
+# directory ($GROK_HOME/hooks) and config.toml hooks, and the Claude / Cursor
+# compatibility imports. Only fleet-enforced hooks still run: root-owned
+# /etc/grok/*.toml, a console-signed requirements.toml, or hooks an ACP client
+# registers in-session (none here: the bridge runs grok -p). This home
+# therefore runs no hooks of its own; that is the point.
+#
+# fail_closed: without it grok 1.0.41 removes an unsigned requirements.toml
+# from the home at session start, so the pin would not survive the first run.
+# With it the file persists and `grok inspect` lists the pin under
+# "Enforced by policy". Verify that line after the first launch.
+#
+# allow_managed_hooks_only is a tighten-only policy pin: no lower config layer
+# can release it. fail_closed is a plain boolean. This unsigned file is the
+# loop's own, so editing or deleting it releases both. Never place it in
+# ~/.grok: it would bind the interactive TUI as well. Point GROK_HOME at the
+# directory that contains this file instead.
+allow_managed_hooks_only = true
+fail_closed = true

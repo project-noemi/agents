@@ -21,6 +21,7 @@
 - Never force-push upstream changes over local work.
 - Both `upstream/develop` and `upstream/main` should be merged (they may contain different commits).
 - **Overrides are surfaced, not silent.** Any file where an upstream edit collided with a local customization (and our version was kept) is listed in the PR body so a reviewer can confirm we didn't drop an upstream fix we actually wanted.
+- **Organization rules live in configuration layers, not in `AGENTS.md`.** `org/<org>/AGENTS.md` layers listed in `AGENTS.layers` are never shipped upstream, so syncs do not touch them. After a sync, re-run `npm run generate` so `CLAUDE.md`/`GEMINI.md` import the current layer stack. See [configuration-layers.md](configuration-layers.md).
 
 ---
 
@@ -102,6 +103,30 @@ NOEMI_LOCAL_BRANCH=develop \
 | `NOEMI_UPSTREAM_REMOTE` | `upstream`                                   | Name of the upstream git remote |
 | `NOEMI_UPSTREAM_URL`    | `https://github.com/project-noemi/agents.git`| Upstream repository URL  |
 | `NOEMI_LOCAL_BRANCH`    | `develop`                                    | PR base branch in your fork |
+
+---
+
+## GitHub Packages on a private clone
+
+This repository's Gmail executive-assistant workflow publishes a container to GHCR (`ghcr.io/<owner>/gmail-executive-assistant`). On `project-noemi` that image is a **public** reference artifact. On your private `{org}/{org}-agents` copy the same workflow still runs, and the package it creates is **your** org's.
+
+GitHub's default is a **private** package. Private packages stay private until an org admin both:
+
+1. enables **Public** under the org's **Settings → Packages → Package creation**, and
+2. opens that package's **Package settings → Danger Zone → Change visibility → Public** and types the package name.
+
+Step 2 cannot be undone. REST and GraphQL cannot change Container registry visibility; the UI is the only switch. The workflow never flips visibility.
+
+For private agentic work:
+
+- Leave org **Package creation → Public** unchecked. Members can still create **private** packages.
+- Treat an anonymous `docker manifest inspect ghcr.io/<your-org>/gmail-executive-assistant:latest` that **succeeds** as a leak: anyone can pull the image.
+- The publish workflow **fails** on a non-`project-noemi` owner when that anonymous inspect succeeds, so a sync from upstream cannot quietly make your image world-pullable.
+- On `project-noemi` only, the same anonymous inspect is required to succeed (Decision [2026-10-05-0003]).
+
+If you need a public image in your own org, turn Public creation on, change that one package in the UI, and accept that GitHub will not let it go private again. Leave every other package private.
+
+Decision [2026-10-05-0005]. README pointer: [GitHub Packages on a private clone](../README.md#github-packages-on-a-private-clone).
 
 ---
 

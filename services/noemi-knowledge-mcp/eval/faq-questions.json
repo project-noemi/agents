@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "contract": "Each question must surface source in the top search hits, and those hits must contain mustMention.",
+  "mcp": "https://mcp.noemi.newpush.com/mcp",
+  "questions": [
+    {
+      "id": "what-is-noemi",
+      "question": "What is Project NoéMI?",
+      "query": "What is Project NoéMI",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["open agent framework", "40-hour accelerator"]
+    },
+    {
+      "id": "three-pillars",
+      "question": "What are the three pillars?",
+      "query": "Security First Then Speed Architecture Over Tools Replacement Trap",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Security First, Then Speed", "Architecture Over Tools", "Replacement Trap"]
+    },
+    {
+      "id": "phase-0",
+      "question": "What is Phase 0 security?",
+      "query": "Phase 0 security baseline before agents",
+      "source": "docs/PHASE_ZERO_SECURITY_BASELINE.md",
+      "mustMention": ["Phase 0 Security Baseline"]
+    },
+    {
+      "id": "four-ds",
+      "question": "What are the four Ds of AI fluency?",
+      "query": "four Ds of AI fluency delegation description discernment diligence",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["DELEGATION", "DESCRIPTION", "DISCERNMENT", "DILIGENCE"]
+    },
+    {
+      "id": "methodology",
+      "question": "How is the 4D Framework applied in the methodology?",
+      "query": "4D Framework institutional orchestration Montessori Prepared Digital Environment",
+      "source": "docs/METHODOLOGY.md",
+      "mustMention": ["Montessori", "Prepared Digital Environment"]
+    },
+    {
+      "id": "producer-reviewer",
+      "question": "What is producer–reviewer separation?",
+      "query": "producer reviewer separation",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Producer", "Reviewer"]
+    },
+    {
+      "id": "shadow-ai",
+      "question": "What is Shadow AI?",
+      "query": "Shadow AI",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Shadow AI"]
+    },
+    {
+      "id": "equilibrium",
+      "question": "What is the 1:50 Equilibrium?",
+      "query": "1:50 Equilibrium",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["1:50", "Equilibrium"]
+    },
+    {
+      "id": "governance",
+      "question": "How are agents governed before deployment?",
+      "query": "AI TRiSM alignment governance",
+      "source": "docs/GOVERNANCE.md",
+      "mustMention": ["AI TRiSM"]
+    },
+    {
+      "id": "refusal",
+      "question": "What is the Refusal Principle?",
+      "query": "refusal principle",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Refusal Principle"]
+    },
+    {
+      "id": "feynman",
+      "question": "What is the Feynman Requirement?",
+      "query": "Feynman requirement",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Feynman"]
+    },
+    {
+      "id": "governed-loop",
+      "question": "What is the governed-loop skill?",
+      "query": "governed loop skill",
+      "source": "skills-dist/governed-loop/SKILL.md",
+      "mustMention": ["governed-loop"]
+    },
+    {
+      "id": "is-noemi-a-course",
+      "question": "Is NoéMI a training course?",
+      "query": "hands-on workshop series prompt engineering course",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["workshop"]
+    },
+    {
+      "id": "get-started-safely",
+      "question": "How do I get started safely?",
+      "query": "how do I get started safely",
+      "source": "docs/examples/zero-to-first-agent.md",
+      "mustMention": ["read-only"]
+    },
+    {
+      "id": "team-builds-first",
+      "question": "What does my team build first?",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "query": "first agents administrative overhead desks",
+      "mustMention": ["administrative"]
+    },
+    {
+      "id": "shadow-ai-blocking",
+      "question": "We already block public AI websites. Is our Shadow AI problem solved?",
+      "query": "block public AI websites Shadow AI solved",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Shadow AI", "Phase 0"]
+    },
+    {
+      "id": "shadow-ai-saas-features",
+      "question": "Our approved SaaS vendors keep adding AI features. Is that Shadow AI?",
+      "query": "approved SaaS vendors adding AI features Shadow AI",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["SaaS", "vendor"]
+    },
+    {
+      "id": "shadow-agent",
+      "question": "What is the difference between a shadow chatbot and a shadow agent?",
+      "query": "shadow chatbot shadow agent difference reach agency",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["agent", "identity"]
+    },
+    {
+      "id": "shadow-ai-connectors",
+      "question": "Our people connect AI tools to email, files and the CRM. What should we check?",
+      "query": "AI tools connectors email files CRM permissions check",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["permissions", "Phase 0"]
+    },
+    {
+      "id": "shadow-ai-noemi",
+      "question": "How does NoéMI help us find and govern Shadow AI without banning AI?",
+      "query": "NoéMI find govern Shadow AI without banning Phase 0 inventory",
+      "source": "docs/PROJECT_REFERENCE.md",
+      "mustMention": ["Phase 0", "Shadow AI"]
+    }
+  ]
+}

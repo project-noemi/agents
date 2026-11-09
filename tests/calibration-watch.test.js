@@ -2,7 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-    parseReviewVerdict, latestVerdict, buildCalibrationRow, alreadyLogged,
+    parseReviewVerdict, latestVerdict, buildCalibrationRow, alreadyLogged, requiresCalibration,
+    isRepoNotFound, tokenAfterRepoProbe, verifyTokenLogin, adoptClassicToken,
 } = require('../scripts/calibration-watch.js');
 
 // Real comment shapes from renderComment() in scripts/review-pr.js.
@@ -45,6 +46,19 @@ test('a failing review parses with gate, model, and the finding claim', () => {
     assert.deepEqual(v.gates, ['premise']);
     assert.match(v.model, /gemini-3\.7-flash/);
     assert.match(v.claim, /43 files/);
+});
+
+test('a compliance-only failure is visible and does not require calibration', () => {
+    const body = FAILING
+        .replace('| premise | Delegation | ❌ fail |', '| premise | Delegation | ✅ pass |')
+        .replace('| framing | Description | ⏭️ skipped |', '| framing | Description | ✅ pass |')
+        .replace('| code | Diligence | ⏭️ skipped |', '| code | Diligence | ✅ pass |\n| compliance | Discernment | ❌ fail |')
+        .replace('_premise_', '_compliance_');
+    const v = parseReviewVerdict(body);
+    assert.ok(v && v.failing);
+    assert.deepEqual(v.gates, ['compliance']);
+    assert.equal(requiresCalibration(v), false);
+    assert.equal(requiresCalibration(parseReviewVerdict(FAILING)), true);
 });
 
 test('a passing review parses as non-failing; a halt is not a verdict at all', () => {
@@ -102,4 +116,154 @@ test('recursion guard: entry branches are exempt from generating entries', () =>
     const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'calibration-watch.js'), 'utf8');
     assert.match(src, /startsWith\('calibration\/'\)/, 'guard must key on the entry branch prefix');
     assert.match(src, /`calibration\/pr-\$\{prNumber\}`/, 'entry branches must carry that prefix');
+});
+
+test('a visible repo keeps the fine-grained token; a 404 falls back to classic', () => {
+    assert.equal(tokenAfterRepoProbe({ visible: true, hasClassic: true }), 'keep');
+    assert.equal(tokenAfterRepoProbe({ visible: true, hasClassic: false }), 'keep');
+    assert.equal(tokenAfterRepoProbe({ visible: false, hasClassic: true }), 'classic');
+    assert.equal(tokenAfterRepoProbe({ visible: false, hasClassic: false }), 'fail');
+});
+
+test('only an HTTP 404 counts as the repo being hidden from this token', () => {
+    const notFound = Object.assign(new Error('Command failed'), { stderr: 'gh: Not Found (HTTP 404)\n' });
+    assert.equal(isRepoNotFound(notFound), true);
+    const forbidden = Object.assign(new Error('Command failed'), { stderr: 'gh: Resource not accessible by integration (HTTP 403)\n' });
+    assert.equal(isRepoNotFound(forbidden), false);
+});
+
+test('identity verification: the expected agent login is accepted', () => {
+    const result = verifyTokenLogin('noemi-agent', 'noemi-agent');
+    assert.equal(result.allowed, true);
+    assert.equal(result.reason, '');
+});
+
+test('identity verification: a non-expected login is refused', () => {
+    const result = verifyTokenLogin('some-other-user', 'noemi-agent');
+    assert.equal(result.allowed, false);
+    assert.match(result.reason, /some-other-user/);
+    assert.match(result.reason, /expected noemi-agent/);
+    assert.match(result.reason, /Refusing to open a pull request/);
+});
+
+test('identity verification: defaults to noemi-agent when expected is empty', () => {
+    const goodResult = verifyTokenLogin('noemi-agent', '');
+    assert.equal(goodResult.allowed, true);
+    const badResult = verifyTokenLogin('wrong-user', '');
+    assert.equal(badResult.allowed, false);
+});
+
+test('identity verification: handles whitespace and empty values', () => {
+    assert.equal(verifyTokenLogin('  noemi-agent  ', 'noemi-agent').allowed, true);
+    assert.equal(verifyTokenLogin('', 'noemi-agent').allowed, false);
+});
+
+function hiddenRepo() {
+    const err = new Error('Command failed: gh api repos/owner/repo');
+    err.stderr = 'gh: Not Found (HTTP 404)\n';
+    return err;
+}
+
+/** Each call consumes one scripted gh response. An Error is thrown. */
+function scriptedGh(responses) {
+    const calls = [];
+    const gh = (args) => {
+        calls.push(args.join(' '));
+        if (responses.length === 0) throw new Error(`unexpected gh call: ${args.join(' ')}`);
+        const next = responses.shift();
+        if (next instanceof Error) throw next;
+        return next;
+    };
+    return { gh, calls };
+}
+
+test('adoptClassicToken keeps the fine-grained token when the repo is visible', () => {
+    const { gh, calls } = scriptedGh(['42\n']);
+    const env = { GH_TOKEN: 'fine', AGENT_GH_TOKEN_CLASSIC: 'classic' };
+    const result = adoptClassicToken('project-noemi/agents', {
+        gh, env, exit: () => { throw new Error('exit'); }, write: () => {},
+    });
+    assert.equal(result, 'fine-grained');
+    assert.equal(env.GH_TOKEN, 'fine');
+    assert.equal(calls.length, 1);
+});
+
+test('adoptClassicToken adopts classic only after verifyTokenLogin accepts the login', () => {
+    const { gh, calls } = scriptedGh([hiddenRepo(), 'noemi-agent\n', '99\n']);
+    const env = { GH_TOKEN: 'fine', AGENT_GH_TOKEN_CLASSIC: 'classic' };
+    const logs = [];
+    const result = adoptClassicToken('newpush/newpush-agents', {
+        gh, env, exit: () => { throw new Error('exit'); }, write: (msg) => logs.push(msg),
+    });
+    assert.equal(result, 'classic');
+    assert.equal(env.GH_TOKEN, 'classic');
+    assert.ok(calls.some((call) => call.includes('api user')));
+    assert.match(logs.join(''), /using AGENT_GH_TOKEN_CLASSIC as noemi-agent/);
+});
+
+test('adoptClassicToken refuses a non-agent login and does not continue', () => {
+    const { gh, calls } = scriptedGh([hiddenRepo(), 'WSwarm\n', '99\n']);
+    const env = { GH_TOKEN: 'fine', AGENT_GH_TOKEN_CLASSIC: 'classic', AGENT_GH_EXPECTED_LOGIN: 'noemi-agent' };
+    const exits = [];
+    const logs = [];
+    const result = adoptClassicToken('newpush/newpush-agents', {
+        gh, env, exit: (code) => exits.push(code), write: (msg) => logs.push(msg),
+    });
+    assert.deepEqual(exits, [2]);
+    assert.equal(result, undefined);
+    assert.equal(calls.length, 2, 'a refused login must not probe the repo again');
+    assert.match(logs.join(''), /WSwarm/);
+    assert.match(logs.join(''), /Refusing to open a pull request/);
+});
+
+test('workflow wiring: the run step passes both producer tokens into the watch', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const yml = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'calibration-watch.yml'), 'utf8');
+    const executable = yml.split('\n').filter((line) => !/^\s*#/.test(line)).join('\n');
+    assert.match(executable, /infisical run --projectId="\$INFISICAL_PROJECT_ID" --env=dev --/);
+    assert.match(executable, /GH_TOKEN="\$AGENT_GH_TOKEN"/);
+    assert.match(executable, /AGENT_GH_TOKEN_CLASSIC="\$AGENT_GH_TOKEN_CLASSIC"/);
+    assert.match(executable, /node scripts\/calibration-watch\.js/);
+});
+
+test('generated row must not contain "approve" or "merge" as instructions', () => {
+    const row = buildCalibrationRow({
+        date: '2026-10-06', prNumber: 999,
+        verdict: { gates: ['premise'], model: 'gemini-3.6-flash', claim: 'test finding' },
+    });
+    // The row should not instruct the user to approve or merge
+    assert.doesNotMatch(row, /\bapprove\b/i, 'generated row must not contain "approve"');
+    assert.doesNotMatch(row, /\bmerge\b/i, 'generated row must not contain "merge"');
+});
+
+test('PR body must not contain "approve" or "merge" as instructions', () => {
+    // Extract the body template from the script
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'calibration-watch.js'), 'utf8');
+    // Find the body array construction (between "const body = [" and "].join")
+    const bodyMatch = src.match(/const body = \[([\s\S]*?)\]\.join\(/);
+    assert.ok(bodyMatch, 'PR body template should exist in script');
+    const bodyTemplate = bodyMatch[1];
+    // Check for approval/merge instructions (case-insensitive)
+    // Allow the word "merged" in past tense (describing what happened)
+    // but not "merge" as an instruction or "approve"/"approving"
+    assert.doesNotMatch(bodyTemplate, /\bapprove\b/i, 'PR body template must not contain "approve"');
+    assert.doesNotMatch(bodyTemplate, /\bapproving\b/i, 'PR body template must not contain "approving"');
+    // "merged" in past tense is OK (it describes the event), but not "merge" as a command
+    assert.doesNotMatch(bodyTemplate, /\bmerge\b(?!d)/i, 'PR body template must not contain "merge" as an instruction');
+});
+
+test('PR title must not contain "approve" or "merge" as instructions', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'calibration-watch.js'), 'utf8');
+    // Find the title in the gh pr create call
+    const titleMatch = src.match(/--title',\s*[`'"](.*?)[`'"]/);
+    assert.ok(titleMatch, 'PR title template should exist in script');
+    const titleTemplate = titleMatch[1];
+    // "merged" in past tense is OK, but not "merge" as a command or "approve"
+    assert.doesNotMatch(titleTemplate, /\bapprove\b/i, 'PR title must not contain "approve"');
+    assert.doesNotMatch(titleTemplate, /\bmerge\b(?!d)/i, 'PR title must not contain "merge" as an instruction');
 });

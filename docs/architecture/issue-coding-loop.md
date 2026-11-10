@@ -253,7 +253,12 @@ select vault mode: GitHub OIDC, then a named read of `AGENT_GH_TOKEN`,
 `AI_GW_API_TOKEN`, `AI_GW_API_KEY`, and `XAI_API_KEY` from Infisical
 environment `dev` at path `/`. Neither variable selects direct mode, which
 keeps the Actions secrets passed by name. Setting only one fails the job.
-Vault mode does not fall back to those Actions secrets. A producer token is
+Vault mode does not fall back to those Actions secrets. A caller whose
+repository lies outside the producer's home organization sets the Actions
+variable `AGENT_GH_USE_CLASSIC=true`; both modes then read the producer token
+under the name `AGENT_GH_TOKEN_CLASSIC` (from Infisical in vault mode, from the
+declared secret in direct mode) and never fall back to `AGENT_GH_TOKEN`
+(Decision [2026-11-10-0001]). A producer token is
 checked with `GET /user` and the job stops before `coding-loop/run.js` unless
 the login is `noemi-agent`. Conductor credentials and `NOEMI_CLIENT_REGISTRY`
 stay named secrets. The workflow does not export the vault folder.

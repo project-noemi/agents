@@ -181,14 +181,20 @@ test('coding-loop workflow fetches named vault secrets and checks noemi-agent be
   assert.match(workflow, /echo "::add-mask::\$access"/);
   assert.match(workflow, /echo "::add-mask::\$raw"/);
   assert.match(workflow, /AGENT_GH_TOKEN=""\n\s+AI_GW_API_TOKEN=""\n\s+AI_GW_API_KEY=""\n\s+XAI_API_KEY=""/);
-  assert.match(workflow, /GH_TOKEN="\$AGENT_GH_TOKEN" gh api user --jq \.login/);
+  assert.match(workflow, /node coding-loop\/actions-credentials\.js --producer-name/);
+  assert.match(workflow, /GH_TOKEN="\$producer_token" gh api user --jq \.login/);
+  assert.match(workflow, /AGENT_GH_USE_CLASSIC: \$\{\{ vars\.AGENT_GH_USE_CLASSIC \}\}/);
+  assert.match(workflow, /AGENT_GH_TOKEN_CLASSIC: \$\{\{ secrets\.AGENT_GH_TOKEN_CLASSIC \}\}/);
+  assert.match(workflow, /AGENT_GH_TOKEN\|AGENT_GH_TOKEN_CLASSIC\|AI_GW_API_TOKEN\|AI_GW_API_KEY\|XAI_API_KEY\) ;;/);
+  assert.match(workflow, /XAI_API_KEY=""\n\s+AGENT_GH_TOKEN_CLASSIC=""/);
   assert.match(workflow, /unset access/);
   assert.match(workflow, /unset INFISICAL_TOKEN/);
   assert.doesNotMatch(workflow, /^\s*secrets:\s*inherit\s*$/m);
   assert.doesNotMatch(workflow, /GITHUB_ENV/);
   assert.doesNotMatch(workflow, /infisical export/);
   assert.doesNotMatch(workflow, /^\s*infisical run\b/m);
-  assert.doesNotMatch(workflow, /AGENT_GH_TOKEN_CLASSIC/);
+  assert.doesNotMatch(workflow, /AGENT_GH_TOKEN_CLASSIC:-\$AGENT_GH_TOKEN|AGENT_GH_TOKEN:-\$AGENT_GH_TOKEN_CLASSIC/);
+  assert.doesNotMatch(workflow, /echo "\$producer_token"/);
   assert.doesNotMatch(workflow, /echo "\$raw"/);
   assert.doesNotMatch(workflow, /echo "\$access"/);
   assert.doesNotMatch(workflow, /echo "\$JWT"/);
@@ -198,4 +204,49 @@ test('coding-loop workflow fetches named vault secrets and checks noemi-agent be
   assert.ok(assertAt > 0 && runAt > assertAt, 'producer login is checked before the loop runs');
   assert.match(caller, /vault mode/i);
   assert.doesNotMatch(caller, /^\s*secrets:\s*inherit\s*$/m);
+});
+
+test('AGENT_GH_USE_CLASSIC selects the classic producer secret in both modes and never falls back', () => {
+  const classic = { AGENT_GH_USE_CLASSIC: 'true' };
+  assert.equal(creds.producerSecretName({}), 'AGENT_GH_TOKEN');
+  assert.equal(creds.producerSecretName(classic), 'AGENT_GH_TOKEN_CLASSIC');
+  assert.deepEqual(creds.secretNamesFor({}), [...creds.SECRET_NAMES]);
+  assert.deepEqual(creds.secretNamesFor(classic), ['AGENT_GH_TOKEN_CLASSIC', 'AI_GW_API_TOKEN', 'AI_GW_API_KEY', 'XAI_API_KEY']);
+
+  const argv = creds.secretGetArgv({ name: 'AGENT_GH_TOKEN_CLASSIC', projectId: 'abc', cli: 'current', env: classic });
+  assert.equal(argv.includes('AGENT_GH_TOKEN_CLASSIC'), true);
+  assert.equal(argv.includes('--env=dev'), true);
+  assert.throws(() => creds.secretGetArgv({ name: 'AGENT_GH_TOKEN', projectId: 'abc', cli: 'current', env: classic }), (err) => err.code === 'secret-not-allowlisted');
+
+  const vault = creds.credentialsForRun({
+    mode: 'vault',
+    direct: { AGENT_GH_TOKEN: 'direct-fine', AGENT_GH_TOKEN_CLASSIC: 'direct-classic' },
+    vault: { AGENT_GH_TOKEN: 'vault-fine', AGENT_GH_TOKEN_CLASSIC: 'vault-classic' },
+    env: classic,
+  });
+  assert.deepEqual(vault, {
+    AGENT_GH_TOKEN_CLASSIC: 'vault-classic',
+    AI_GW_API_TOKEN: '',
+    AI_GW_API_KEY: '',
+    XAI_API_KEY: '',
+  });
+  const direct = creds.credentialsForRun({
+    mode: 'direct',
+    direct: { AGENT_GH_TOKEN: 'direct-fine', AGENT_GH_TOKEN_CLASSIC: 'direct-classic' },
+    vault: {},
+    env: classic,
+  });
+  assert.equal(direct.AGENT_GH_TOKEN_CLASSIC, 'direct-classic');
+  assert.equal(Object.prototype.hasOwnProperty.call(direct, 'AGENT_GH_TOKEN'), false);
+
+  const names = runMain(['--secret-names'], classic);
+  assert.equal(names.code, 0);
+  assert.deepEqual(names.stdout.trim().split('\n'), ['AGENT_GH_TOKEN_CLASSIC', 'AI_GW_API_TOKEN', 'AI_GW_API_KEY', 'XAI_API_KEY']);
+  assert.equal(runMain(['--producer-name'], classic).stdout, 'AGENT_GH_TOKEN_CLASSIC\n');
+  assert.equal(runMain(['--producer-name'], {}).stdout, 'AGENT_GH_TOKEN\n');
+  const refused = runMain(['--secret-argv', 'AGENT_GH_TOKEN'], { ...classic, INFISICAL_PROJECT_ID: 'project-id' });
+  assert.equal(refused.code, 1);
+
+  assert.match(caller, /AGENT_GH_TOKEN_CLASSIC: \$\{\{ secrets\.AGENT_GH_TOKEN_CLASSIC \}\}/);
+  assert.match(caller, /AGENT_GH_USE_CLASSIC/);
 });

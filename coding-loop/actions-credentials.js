@@ -8,11 +8,16 @@
  * caller already passes by name. A producer token is refused unless GitHub
  * reports the login `noemi-agent`.
  *
+ * The Actions variable AGENT_GH_USE_CLASSIC (Decision [2026-11-10-0001])
+ * selects the classic cross-organization producer token under the name
+ * AGENT_GH_TOKEN_CLASSIC in both modes; the choice never falls back.
+ *
  * This module never logs a secret value. Callers must not put one in an
  * error path.
  */
 
 const fs = require('fs');
+const { wantsClassic } = require('../scripts/agent-token.js');
 
 const SECRET_NAMES = Object.freeze([
   'AGENT_GH_TOKEN',
@@ -20,6 +25,23 @@ const SECRET_NAMES = Object.freeze([
   'AI_GW_API_KEY',
   'XAI_API_KEY',
 ]);
+
+const CLASSIC_PRODUCER_SECRET_NAME = 'AGENT_GH_TOKEN_CLASSIC';
+
+/**
+ * The producer secret name for this run: AGENT_GH_TOKEN for the home
+ * organization, AGENT_GH_TOKEN_CLASSIC when the caller sets
+ * AGENT_GH_USE_CLASSIC for a target outside it (scripts/agent-token.js applies
+ * the same switch inside run.js). Never both, never a fallback.
+ */
+function producerSecretName(env = process.env) {
+  return wantsClassic(env) ? CLASSIC_PRODUCER_SECRET_NAME : SECRET_NAMES[0];
+}
+
+/** The names this run may read: the producer name for the run, then the model keys. */
+function secretNamesFor(env = process.env) {
+  return [producerSecretName(env), ...SECRET_NAMES.slice(1)];
+}
 
 const NOT_FOUND_MARKER = '*not found*';
 const EXPECTED_PRODUCER_LOGIN = 'noemi-agent';
@@ -52,8 +74,8 @@ function assertOidcAudience(audience) {
   return value;
 }
 
-function assertSecretName(name) {
-  if (!SECRET_NAMES.includes(name)) {
+function assertSecretName(name, env = process.env) {
+  if (!secretNamesFor(env).includes(name)) {
     throw fail('Refusing to read a secret outside the coding-loop allowlist.', 'secret-not-allowlisted');
   }
 }
@@ -73,8 +95,10 @@ function assertProjectId(projectId) {
  * reviewer workflows when the installed CLI has no `secrets-manager` verb.
  * Neither form omits the name, and neither is `export` or `run`.
  */
-function secretGetArgv({ name, projectId, cli }) {
-  assertSecretName(name);
+function secretGetArgv({
+  name, projectId, cli, env = process.env,
+}) {
+  assertSecretName(name, env);
   const project = assertProjectId(projectId);
   const tail = [
     '--plain',
@@ -116,10 +140,13 @@ function assertProducerLogin(login) {
 }
 
 /**
- * The four names the loop may see. Vault mode does not fall back to the
- * direct values. Keys outside the allowlist are dropped.
+ * The four names the loop may see for this run (secretNamesFor). Vault mode
+ * does not fall back to the direct values, and the producer name not selected
+ * by AGENT_GH_USE_CLASSIC is dropped like any other key outside the allowlist.
  */
-function credentialsForRun({ mode, direct, vault }) {
+function credentialsForRun({
+  mode, direct, vault, env = process.env,
+}) {
   let source;
   switch (mode) {
     case 'direct':
@@ -132,7 +159,7 @@ function credentialsForRun({ mode, direct, vault }) {
       throw fail('Credential mode must be direct or vault.', 'bad-mode');
   }
   const out = {};
-  for (const name of SECRET_NAMES) {
+  for (const name of secretNamesFor(env)) {
     const raw = Object.prototype.hasOwnProperty.call(source, name) && source[name] != null
       ? String(source[name])
       : '';
@@ -162,7 +189,11 @@ function main(argv, env = process.env, io = { stdout: process.stdout, stderr: pr
       return 0;
     }
     if (command === '--secret-names') {
-      io.stdout.write(`${SECRET_NAMES.join('\n')}\n`);
+      io.stdout.write(`${secretNamesFor(env).join('\n')}\n`);
+      return 0;
+    }
+    if (command === '--producer-name') {
+      io.stdout.write(`${producerSecretName(env)}\n`);
       return 0;
     }
     if (command === '--secret-argv') {
@@ -171,6 +202,7 @@ function main(argv, env = process.env, io = { stdout: process.stdout, stderr: pr
         name: argv[3],
         projectId: env.INFISICAL_PROJECT_ID,
         cli,
+        env,
       });
       io.stdout.write(`${args.join('\n')}\n`);
       return 0;
@@ -198,6 +230,9 @@ if (require.main === module) {
 
 module.exports = {
   SECRET_NAMES,
+  CLASSIC_PRODUCER_SECRET_NAME,
+  producerSecretName,
+  secretNamesFor,
   NOT_FOUND_MARKER,
   EXPECTED_PRODUCER_LOGIN,
   resolveCredentialMode,

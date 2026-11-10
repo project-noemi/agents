@@ -13,6 +13,10 @@
 # Infisical with GitHub OIDC and ignores the four secrets below. Leave both
 # variables unset to keep direct mode. Conductor credentials and
 # NOEMI_CLIENT_REGISTRY stay named secrets in both modes.
+# A repository outside the producer's home organization sets the Actions variable
+# AGENT_GH_USE_CLASSIC=true: both modes then use the classic cross-organization token
+# AGENT_GH_TOKEN_CLASSIC (from the vault, or from the secret below) and never fall back
+# to AGENT_GH_TOKEN (Decision [2026-11-10-0001]).
 # Optional: vars.CODING_LOOP_LIVE_CRITIC=true plus org WIF for Gemini B′.
 # Does not approve or merge. The issue opener (or dispatcher) needs write
 # access on this repository, or the loop refuses the issue and leaves no
@@ -57,6 +61,7 @@ jobs:
       CONDUCTOR_APP_PRIVATE_KEY: ${{ secrets.CONDUCTOR_APP_PRIVATE_KEY }}
       CONDUCTOR_GH_TOKEN: ${{ secrets.CONDUCTOR_GH_TOKEN }}
       AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+      AGENT_GH_TOKEN_CLASSIC: ${{ secrets.AGENT_GH_TOKEN_CLASSIC }}
       AI_GW_API_TOKEN: ${{ secrets.AI_GW_API_TOKEN }}
       AI_GW_API_KEY: ${{ secrets.AI_GW_API_KEY }}
       XAI_API_KEY: ${{ secrets.XAI_API_KEY }}

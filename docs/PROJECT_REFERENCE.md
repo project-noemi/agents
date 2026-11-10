@@ -931,7 +931,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`skills-dist/`](../skills-dist/) | Published Agent Skills copies (`SKILL.md` + `references/mandates.md`) |
 | [`value-lenses/`](../value-lenses/) | Success-criteria overlays (how to judge outcomes) |
 | [`operating-profiles/`](../operating-profiles/) | Localized operating profiles (tone and cadence, not translation) |
-| [`services/noemi-knowledge-mcp/`](../services/noemi-knowledge-mcp/) | Queryable public doctrine MCP (Bible, governance, methodology, Phase 0, skills-dist) |
+| [`services/noemi-knowledge-mcp/`](../services/noemi-knowledge-mcp/) | Queryable public doctrine MCP (Bible, governance, methodology, Phase 0, Guardian tamper-resistance and PromptShield / PIIGuard rules, skills-dist) |
 | [`docs/examples/`](examples/) | Example implementations (Docker sandbox, RFP Responder, Video Automation) |
 | [`docs/contributing/ui-style-guide.md`](contributing/ui-style-guide.md) | Contributor default for UI added to tools in this repo |
 | [`examples/rotary-club-operations/`](../examples/rotary-club-operations/) | Rotary-only example of generic club-operations skills; Rotary is not in the core registry |

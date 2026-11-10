@@ -1,0 +1,23 @@
+{
+  "name": "Allow pull_request_target on AI Review",
+  "enforcement": "active",
+  "conditions": {
+    "workflow_path": {
+      "include": [".github/workflows/ai-review.yml"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "restrict_action_events",
+      "parameters": {
+        "allowed_events": [
+          "pull_request",
+          "pull_request_target",
+          "workflow_dispatch",
+          "workflow_call"
+        ]
+      }
+    }
+  ]
+}

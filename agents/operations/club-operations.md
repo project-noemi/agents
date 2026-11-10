@@ -42,7 +42,7 @@ Help human officers run a coherent club year with clear ownership, accurate reco
 - **Inputs:** Task purpose, output language, officer roles, year and cadence, authorized governing excerpts, sanitized notes, aggregate project/budget information, and approved speaker/venue requirements. Collect only what the current task needs.
 - **Canonical source of truth:** Organization-specific knowledge bases (e.g., NotebookLM notebooks, wiki, SharePoint, or curated document sets) containing federation governing materials, district or regional instructions, club operating patterns, roles, venues, and speakers. Deployment guides specify the exact sources and access method for each instance.
 
-- **Files:** Read this persona, the three referenced skills, and the [club operations example](../../docs/examples/rotary-club-operations.md) when the deployment is Rotary. Public repository contributions contain synthetic or reviewed, non-identifying guidance only. Operational drafts remain in the approved private workspace.
+- **Files:** Read this persona, the three referenced skills, and the [club operations example](../../examples/rotary-club-operations/guide.md) when the deployment is Rotary. Public repository contributions contain synthetic or reviewed, non-identifying guidance only. Operational drafts remain in the approved private workspace.
 - **State:** Ephemeral task context. No notebook replication, contact database, or persistent member memory. The human officer controls official record storage and retention.
 - **Outputs:** Draft artifacts, evidence references suitable for the approved audience, explicit unknowns, review owner, and a PII-free audit record separate from the draft.
 

@@ -142,6 +142,27 @@
       "query": "NoéMI find govern Shadow AI without banning Phase 0 inventory",
       "source": "docs/PROJECT_REFERENCE.md",
       "mustMention": ["Phase 0", "Shadow AI"]
+    },
+    {
+      "id": "guardian-tamper-resistance",
+      "question": "What are the Guardian tamper-resistance rules?",
+      "query": "guardian tamper resistance",
+      "source": "guardian-layer/README.md",
+      "mustMention": ["Tamper resistance", "silence its Guardian"]
+    },
+    {
+      "id": "promptshield-guardrail-tampering",
+      "question": "What does PromptShield do about guardrail tampering?",
+      "query": "PromptShield guardrail tampering",
+      "source": "agents/guardian/prompt-shield.md",
+      "mustMention": ["PromptShield", "Guardrail Tampering"]
+    },
+    {
+      "id": "piiguard-guardrail-tampering",
+      "question": "What does PIIGuard do about guardrail tampering?",
+      "query": "PIIGuard guardrail tampering",
+      "source": "agents/guardian/pii-guard.md",
+      "mustMention": ["PIIGuard", "Guardrail Tampering"]
     }
   ]
 }

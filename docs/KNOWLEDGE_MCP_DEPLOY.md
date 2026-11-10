@@ -1,6 +1,6 @@
 # Knowledge MCP deploy (`mcp.noemi.newpush.com`)
 
-The NoéMI Knowledge MCP (`services/noemi-knowledge-mcp`) is a Cloudflare Worker. Its corpus is built from this repository (the Bible, governance, methodology, the Phase 0 baseline, the public getting-started guides and `skills-dist`), so the live service is only as current as its last deploy. `.github/workflows/deploy-knowledge-mcp.yml` ("Deploy Knowledge MCP") deploys it from a published agents release.
+The NoéMI Knowledge MCP (`services/noemi-knowledge-mcp`) is a Cloudflare Worker. Its corpus is built from this repository (the Bible, governance, methodology, the Phase 0 baseline, the public getting-started guides, the Guardian tamper-resistance rules, PromptShield, PIIGuard, and `skills-dist`), so the live service is only as current as its last deploy. `.github/workflows/deploy-knowledge-mcp.yml` ("Deploy Knowledge MCP") deploys it from a published agents release.
 
 ## Release order
 

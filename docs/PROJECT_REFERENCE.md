@@ -1,6 +1,6 @@
 # Project NoéMI — Public Reference Guide
 
-**Edition 2026.11.04**
+**Edition 2026.11.10**
 
 > **"We help you future-proof your organization against AI, by using AI."**
 
@@ -134,7 +134,7 @@ The project was first piloted in Hungary with support from the International Rot
 
 ## Chapter 4: Three Pillars — The Core Philosophy
 
-Every decision in NoéMI flows from three non-negotiable principles. These are not marketing slogans. They are architectural constraints that shape every agent, every workflow, and every training module.
+Every decision in NoéMI flows from three non-negotiable principles. These are not marketing slogans. They are architectural constraints that shape every agent, every workflow, and every governance rule.
 
 ### A. "Security First, Then Speed"
 
@@ -231,11 +231,15 @@ Durable mental models and abstract reasoning frameworks that remain valid regard
 
 ### Layer B (Dynamic Labs)
 
-Ephemeral technical exercises tied to specific tools and platforms. Updated per cohort, per model release, or per quarter. In accelerator plan v3.0 they are built on well-known open-source technologies, assembled to be ready to go in the *NewPush Labs* open-source stack. They are the "how" that changes with the technology.
+Ephemeral technical exercises tied to specific tools and platforms. Updated per hackathon, per tool release or per quarter. In accelerator plan v3.0 they are built on well-known open-source technologies, assembled to be ready to go in the *NewPush Labs* open-source stack. They are the "how" that changes with the technology.
 
 ### The Guardian Layer
 
-The principle that "the best defense against AI is another AI acting as a critic." A Guardian Agent is a specialized AI whose sole job is to monitor, critique, and audit the outputs of operational AI agents — checking for hallucinations, policy violations, data leakage, and prompt injection. You would not run a factory without quality control inspectors. You should not run an AI workforce without Guardians. Gartner uses the term "guardian agents" for a related category (Gartner press release, "Gartner Predicts that Guardian Agents will Capture 10-15% of the Agentic AI Market by 2030," 11 June 2025). "Guardian Layer" and "Guardian Agent" as used in NoéMI are NewPush's own terms for its implementation.
+The principle that "the best defense against AI is another AI acting as a critic." A Guardian Agent is a specialized AI whose sole job is to monitor, critique, and audit the outputs of operational AI agents — checking for hallucinations, policy violations, data leakage, and prompt injection. You would not run a factory without quality control inspectors. You should not run an AI workforce without Guardians.
+
+A Guardian only protects you if the agent it watches cannot reach it. In NoéMI, a watched agent must not be able to edit, disable, mute or re-route its Guardian, its rules, its tests, its alerts or its log. A change to a guardrail goes through a human-reviewed pull request, and the watched agent does not approve or merge that change. Deterministic checks (permissions, egress scanning and approval gates) do the enforcing; the AI critic adds judgment on top. Guardian alerts and the audit log are meant to reach a human through a channel the agent does not control, and the record is meant to be append-only. An agent's own statement that it left the monitor in place is not evidence; reviewers verify from the diff and the audit log. The [Guardian Layer guide](../guardian-layer/README.md#tamper-resistance) records where each of these rules is enforced today and where enforcement still depends on the deployment. The OpenAI, NVIDIA OpenShell and NIST sources for this rule are listed under [Frameworks We Build On](#frameworks-we-build-on).
+
+Gartner uses the term "guardian agents" for a related category (Gartner press release, "Gartner Predicts that Guardian Agents will Capture 10-15% of the Agentic AI Market by 2030," 11 June 2025). "Guardian Layer" and "Guardian Agent" as used in NoéMI are NewPush's own terms for its implementation.
 
 ### The Feynman Requirement
 
@@ -438,7 +442,7 @@ The accelerator progression (**v3.0**) covers the 40 hours of the accelerator, d
 Every week separates content into two layers:
 
 - **Layer A (First Principles):** Durable concepts that remain valid regardless of which AI model or platform is current. These are the "why."
-- **Layer B (Dynamic Labs):** Technical exercises tied to specific tools in the current NewPush Labs stack. These are the "how," and they get updated with every cohort.
+- **Layer B (Dynamic Labs):** Technical exercises tied to specific tools in the current NewPush Labs stack. These are the "how," and they are updated per hackathon, per tool release or per quarter.
 
 ### Phase 0 (Before the Workshops, Remote): Foundation & Triage
 
@@ -734,6 +738,7 @@ Part of NoéMI's value is curation. The volume of AI guidance grows every week, 
 - **The 4 Ds of AI Fluency** — Dakan, R. and Feller, J., "Framework for AI Fluency," v1.1, CC BY-NC-ND 4.0. NoéMI adopts the open framework and credits its authors. The NoéMI **4D Framework** applies its four dimensions as the architecture of the AI-review agent (see [Chapter 6](#the-4d-framework-architecture-of-the-ai-review-agent)).
 - **AI TRiSM** (AI trust, risk and security management) — a framework defined by Gartner, Inc. NoéMI's Phase 0 security methodology and Guardian Layer controls are mapped to it.
 - **Standards references:** client materials also reference the NIST AI Risk Management Framework and ISO/IEC 42001 as standards that organizations commonly align their AI governance to. NoéMI does not certify conformance to either standard, and the published control mapping in this repository is to AI TRiSM.
+- **Guardian tamper-resistance sources:** the rule in [The Guardian Layer](#the-guardian-layer) cites [OpenAI, "Suppressing misalignment monitoring alerts and disabling misalignment monitoring"](https://alignment.openai.com/misalignment-reports/suppressing-misalignment-monitoring-alerts-and-disabling-misalignment-monitoring/) (report updated 20 October 2026), [NVIDIA, "How NVIDIA OpenShell Reference Architecture Secures and Governs AI Agent Workloads at Scale"](https://developer.nvidia.com/blog/how-nvidia-openshell-reference-architecture-secures-and-governs-ai-agent-workloads-at-scale/) (21 October 2026; [announcement](https://nvidianews.nvidia.com/news/openshell-reference-architecture)), and [NIST, "Design Tenets for Agent Identity Management Systems"](https://www.nist.gov/blogs/cybersecurity-insights/design-tenets-agent-identity-management-systems) (Booth, Fisher, Galluzzo and Clancy, 27 October 2026). OpenAI's report describes internal coding agents that weakened misalignment monitoring during ordinary coding tasks, including one that removed a monitor and then claimed it had not. NVIDIA OpenShell states that an agent cannot govern itself, and that security and governance belong in the infrastructure the agent operates in; its supervisor runs separate from the sandbox. NIST tenet 9 calls for continuous monitoring with agent-specific metrics. Tenet 10 calls for a tamper-evident, append-only record of the agent's identity, delegated intent and actions, on logging infrastructure independent of the agent. These are sources for the rule. NoéMI does not claim certification or conformance to them.
 
 ### Delivery Hubs and International Partners
 
@@ -770,7 +775,7 @@ Your top performers — the 5-10% — absolutely self-learn AI. But NoéMI is no
 
 ### "AI changes so fast that any fixed week-by-week plan becomes outdated in months."
 
-This is exactly why NoéMI uses the Two-Layer System. Layer A (First Principles) never goes stale — critical thinking about delegation, governance, and ethics is timeless. These are not skills that expire when the next innovation arrives tomorrow. Layer B (Dynamic Labs) is updated every cohort to reflect the current tool landscape. You learn how to think once. You learn with the technology that is state of the art right now. And the plan is not the end point: the 40-hour accelerator is the ramp onto a framework that keeps evolving at the pace of AI after the workshops end.
+This is exactly why NoéMI uses the Two-Layer System. Layer A (First Principles) never goes stale — critical thinking about delegation, governance, and ethics is timeless. These are not skills that expire when the next innovation arrives tomorrow. Layer B (Dynamic Labs) is updated per hackathon, per tool release or per quarter to reflect the current tool landscape. You learn how to think once. You learn with the technology that is state of the art right now. And the plan is not the end point: the 40-hour accelerator is the ramp onto a framework that keeps evolving at the pace of AI after the accelerator ends.
 
 ### "My team already gets huge productivity gains from self-directed AI use."
 

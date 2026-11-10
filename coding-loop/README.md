@@ -80,7 +80,7 @@ commit it, because it lists who your clients are. See
 | Role | Identity | Token / App | May |
 |---|---|---|---|
 | Conductor | `{company}-conductor` or `noemi-conductor` | `CONDUCTOR_GH_TOKEN` | Issues comment + labels |
-| Producer | `{company}-agent` or `noemi-agent` | `AGENT_GH_TOKEN` | Open PRs |
+| Producer | `{company}-agent` or `noemi-agent` | `AGENT_GH_TOKEN` (`AGENT_GH_TOKEN_CLASSIC` when the repository sets `AGENT_GH_USE_CLASSIC=true`, for a target outside the home organization) | Open PRs |
 | Reviewer | fleet reviewer App or `{company}-reviewer` | reviewer App / PAT | Post findings |
 
 `--post` on the Stage A runner **requires** `CONDUCTOR_GH_TOKEN`. It

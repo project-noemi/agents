@@ -20,6 +20,9 @@
 # secrets of the same names are ignored. Neither variable set keeps direct
 # mode. One of the two fails the job. A present producer token is checked
 # against GET /user and must be noemi-agent before the loop starts.
+# Actions variable AGENT_GH_USE_CLASSIC=true (Decision [2026-11-10-0001]) selects the classic
+# cross-organization producer token under the name AGENT_GH_TOKEN_CLASSIC in both modes, for a
+# caller outside the producer's home organization; there is no fallback to AGENT_GH_TOKEN.
 name: Coding Loop
 
 on:
@@ -76,6 +79,9 @@ on:
         required: false
       AGENT_GH_TOKEN:
         description: 'Producer token (opens the PR as noemi-agent). Ignored when vault mode is configured.'
+        required: false
+      AGENT_GH_TOKEN_CLASSIC:
+        description: 'Classic cross-organization producer token; read only when vars.AGENT_GH_USE_CLASSIC is true. Ignored in vault mode.'
         required: false
       AI_GW_API_TOKEN:
         description: 'NewPush AI gateway key for Stage C --open-pr (wins over XAI_API_KEY). Ignored in vault mode.'
@@ -169,6 +175,8 @@ jobs:
           CONDUCTOR_APP_ID: ${{ secrets.CONDUCTOR_APP_ID || vars.CONDUCTOR_APP_ID }}
           CONDUCTOR_APP_PRIVATE_KEY: ${{ secrets.CONDUCTOR_APP_PRIVATE_KEY }}
           AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          AGENT_GH_TOKEN_CLASSIC: ${{ secrets.AGENT_GH_TOKEN_CLASSIC }}
+          AGENT_GH_USE_CLASSIC: ${{ vars.AGENT_GH_USE_CLASSIC }}
           AI_GW_API_TOKEN: ${{ secrets.AI_GW_API_TOKEN }}
           AI_GW_API_KEY: ${{ secrets.AI_GW_API_KEY }}
           XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
@@ -250,12 +258,13 @@ jobs:
             AI_GW_API_TOKEN=""
             AI_GW_API_KEY=""
             XAI_API_KEY=""
+            AGENT_GH_TOKEN_CLASSIC=""
             unset INFISICAL_SECRET_PATH
             names=$(node coding-loop/actions-credentials.js --secret-names)
             while IFS= read -r name; do
               [[ -z "$name" ]] && continue
               case "$name" in
-                AGENT_GH_TOKEN|AI_GW_API_TOKEN|AI_GW_API_KEY|XAI_API_KEY) ;;
+                AGENT_GH_TOKEN|AGENT_GH_TOKEN_CLASSIC|AI_GW_API_TOKEN|AI_GW_API_KEY|XAI_API_KEY) ;;
                 *)
                   unset access
                   rm -rf "$vault_home"
@@ -319,12 +328,17 @@ jobs:
           if [[ -n "${REQUESTED_BY:-}" ]]; then
             extra+=(--requested-by "$REQUESTED_BY")
           fi
-          if [[ -n "${AGENT_GH_TOKEN:-}" ]]; then
+          # The producer secret for this run: AGENT_GH_TOKEN, or AGENT_GH_TOKEN_CLASSIC when the
+          # caller sets vars.AGENT_GH_USE_CLASSIC (a target outside the producer's home
+          # organization). run.js applies the same switch and never falls back.
+          producer_name=$(node coding-loop/actions-credentials.js --producer-name)
+          producer_token="${!producer_name:-}"
+          if [[ -n "$producer_token" ]]; then
             if ! command -v gh >/dev/null 2>&1; then
               echo "::error title=Producer identity::gh is required to verify the producer login before producer writes."
               exit 1
             fi
-            login=$(GH_TOKEN="$AGENT_GH_TOKEN" gh api user --jq .login)
+            login=$(GH_TOKEN="$producer_token" gh api user --jq .login)
             LOGIN_TO_ASSERT="$login" node coding-loop/actions-credentials.js --assert-login
             unset login LOGIN_TO_ASSERT
             extra+=(--implement)
@@ -332,4 +346,5 @@ jobs:
               extra+=(--open-pr)
             fi
           fi
+          unset producer_token producer_name
           node coding-loop/run.js --repo "$REPO" --issue "$ISSUE" --scan --profile "$PROFILE" "${extra[@]}"

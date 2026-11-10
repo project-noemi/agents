@@ -11,7 +11,7 @@ Use this example to help a club president turn a broad responsibility into a man
 
 This example applies the generic [Club Operations](../../agents/operations/club-operations.md) persona to Rotary club workflows. For deployment-specific knowledge sources, authentication, and local context:
 
-- **[District 1911 (Hungary) example](../../examples/rotary-district-1911/)** — demonstrates NotebookLM integration with Hungarian/English bilingual workflows
+- **[District 1911 (Hungary) example](district-1911/)** — demonstrates NotebookLM integration with Hungarian/English bilingual workflows
 - **Your organization:** Fork this repository and create a similar deployment example under `examples/` with your knowledge-source URLs, district context, and language requirements
 
 ## Use knowledge sources directly
@@ -133,7 +133,7 @@ For formal association records, the secretary determines the required attendance
 
 ## Builder: run the live persona with synthetic inputs
 
-Start with [Zero To First Agent](zero-to-first-agent.md) if you need a local client. From the repository root, install the locked development dependencies and refresh the discoverable context:
+Start with [Zero To First Agent](../../docs/examples/zero-to-first-agent.md) if you need a local client. From the repository root, install the locked development dependencies and refresh the discoverable context:
 
 ```bash
 npm ci
@@ -143,7 +143,7 @@ npm run validate
 
 The persona is indexed in `GEMINI.md` and `CLAUDE.md`; its three skills are registered in `mcp.config.json`. These are live, loadable specifications consumed by an external client, . No external-system credentials are needed for the synthetic data below; the chosen AI client still needs its normal account access.
 
-For organization-specific deployments with actual knowledge sources, see the deployment examples (e.g., [District 1911](../../examples/rotary-district-1911/)) for source URLs and authentication setup.
+For organization-specific deployments with actual knowledge sources, see the deployment examples (e.g., [District 1911](district-1911/)) for source URLs and authentication setup.
 
 Paste this prompt into your repository-aware Gemini, Claude, Codex, or Grok session:
 

@@ -1,6 +1,6 @@
 # Rotary District 1911 (Hungary) — Club Operations Example
 
-This example applies the generic [Club Operations agent](../../agents/operations/club-operations.md) to Hungarian Rotary District 1911 club workflows, demonstrating how to anchor a governed operations assistant to organization-specific knowledge sources.
+This example applies the generic [Club Operations agent](../../../agents/operations/club-operations.md) to Hungarian Rotary District 1911 club workflows, demonstrating how to anchor a governed operations assistant to organization-specific knowledge sources.
 
 ## Use case
 
@@ -29,7 +29,7 @@ If you already use Gemini/NotebookLM, open either notebook above and ask questio
 
 ### Option 2: Use the governed agent workflow
 
-For drafts with evidence trails, explicit unknowns, refusal gates, and audit records, load the [Club Operations agent](../../agents/operations/club-operations.md) in your repository-aware AI client:
+For drafts with evidence trails, explicit unknowns, refusal gates, and audit records, load the [Club Operations agent](../../../agents/operations/club-operations.md) in your repository-aware AI client:
 
 ```bash
 # From repository root
@@ -79,7 +79,7 @@ Club operations must comply with:
 
 ## What the agent will NOT do
 
-Per the [Refusal Criteria](../../agents/operations/club-operations.md#refusal-criteria):
+Per the [Refusal Criteria](../../../agents/operations/club-operations.md#refusal-criteria):
 
 - Fabricate or certify minutes, votes, quorum, approvals, or deadlines
 - Disclose private club records or member identities into public artifacts
@@ -124,10 +124,10 @@ For clubs in other districts or countries, fork this example and update:
 
 ## Related repository resources
 
-- **Generic agent:** [agents/operations/club-operations.md](../../agents/operations/club-operations.md)
-- **Rotary example guide:** [docs/examples/rotary-club-operations.md](../../docs/examples/rotary-club-operations.md)
-- **Skills:** [annual-calendar](../../skills/operations/annual-calendar.md), [meeting-minutes](../../skills/operations/meeting-minutes.md), [speaker-brief](../../skills/operations/speaker-brief.md)
-- **4D Framework:** [docs/METHODOLOGY.md](../../docs/METHODOLOGY.md)
+- **Generic agent:** [agents/operations/club-operations.md](../../../agents/operations/club-operations.md)
+- **Rotary example guide:** [guide.md](../guide.md)
+- **Skills:** [annual-calendar](../../../skills/operations/annual-calendar.md), [meeting-minutes](../../../skills/operations/meeting-minutes.md), [speaker-brief](../../../skills/operations/speaker-brief.md)
+- **4D Framework:** [docs/METHODOLOGY.md](../../../docs/METHODOLOGY.md)
 
 ---
 

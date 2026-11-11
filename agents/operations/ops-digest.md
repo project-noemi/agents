@@ -43,6 +43,16 @@ Hourly deterministic checks → report JSON → rules set severity → alert rou
 ## Audit Log
 Per run: timestamp, report hash, verdict, number of findings, output hash. No report content.
 
+```json
+{
+  "task": "ops-digest-advisory",
+  "inputs": ["report_hash", "report_timestamp"],
+  "actions": ["validate_report", "write_advisory"],
+  "risks": ["stale_or_invalid_report", "embedded_instructions_ignored"],
+  "result": "verdict=<rule-based verdict>; findings=<count>; output_hash=<hash>"
+}
+```
+
 ## External Tooling Dependencies
 Health-check scripts (cron), an alert-routing service (uptime and heartbeat monitoring), e-mail delivery. The agent cannot call any of them.
 

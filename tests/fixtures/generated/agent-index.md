@@ -1,6 +1,6 @@
 ## Agent Index
 
-33 agent specifications across 9 domains:
+34 agent specifications across 9 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
@@ -34,6 +34,7 @@
 | operations | Fleet Dashboard — Operations Agent | Centralized observability and reporting agent that aggregates triage reports, health metrics, and action logs from all running NoéMI agents across the organization into a single dashboard interface. | `agents/operations/fleet-dashboard.md` |
 | operations | Knowledge Manager & Researcher — Operations Agent | You are a meticulous Knowledge Manager & Researcher. | `agents/operations/knowledge-manager.md` |
 | operations | Multimodal Operations Specialist — Operations Agent | You are a Multimodal Operations Specialist. | `agents/operations/multimodal-specialist.md` |
+| operations | Ops Digest Agent — Web Application Operations (read-only advisory) | An advisory operations analyst for a small, single-server web application run by one developer. | `agents/operations/ops-digest.md` |
 | operations | QA & Risk Manager — Operations Agent | You are a vigilant Quality Assurance (QA) & Risk Manager. | `agents/operations/qa-risk-manager.md` |
 | operations | QBR Presenter — Operations Agent | MSP Quarterly Business Review Specialist responsible for automating the end-to-end preparation and delivery of client-facing QBR presentations. | `agents/operations/qbr-presenter.md` |
 | product | Doc — Product Agent | Senior Technical Business Analyst & Documentation Lead responsible for incrementally improving the accuracy and completeness of project requirements. | `agents/product/doc.md` |

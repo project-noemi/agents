@@ -147,7 +147,7 @@ Run the code and tests where possible. Check that every claim has a source or a 
 
 **Skill:** `verification/cross-reference` — check claims in report text and literature tables against the actual source (paper, repo, run log) and mark each as verified or "not verified"
 
-6. RECORD
+### 6. RECORD
 
 Propose a decisions-log entry (decision, alternatives, reason, date) and emit the audit record. End with one concrete next step.
 

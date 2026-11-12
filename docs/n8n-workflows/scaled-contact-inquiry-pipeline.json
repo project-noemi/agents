@@ -1,0 +1,625 @@
+{
+  "name": "Skálázott eseményvezérelt kapcsolatfelvétel (Batch + API + Hibaág)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Komplex, eseményvezérelt integráció (NoéMI 4D Accelerator)\n- **1. Kötegkezelés:** Webhook (`POST /webhook/kapcsolatfelvetel-batch`) → Köteg előkészítése → `Split Out` (1..N esemény)\n- **2. Adattisztítás és Validálás:** Mezőtisztítás + szigorú ellenőrzés (`If`) → Hiányos események elutasítva\n- **3. Külső API + Hibaág:** Külső partner API gazdagítás (`3x Retry`) + külön `Error` kimenet (`503`/timeout elkapva leállás nélkül)\n- **4. Több célállomás:** Gemini AI elemzés → párhuzamos továbbítás **CRM/Táblázat Naplóba** ÉS **Csapat Értesítésbe + Ügyfélválaszba (+ Sürgős SLA riasztás)**",
+        "height": 150,
+        "width": 2560,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -180
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000001",
+      "name": "Folyamat Áttekintés"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kapcsolatfelvetel-batch",
+        "responseMode": "onReceived",
+        "responseCode": 202,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        180
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000002",
+      "name": "Kapcsolatfelvételi Batch Webhook",
+      "webhookId": "c39e14a0-7f8a-4e22-8c11-9b34d5e6f701"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f2000001-0001-4000-8000-000000000001",
+              "name": "batch_id",
+              "value": "={{ $json.body?.batch_id || $json.batch_id || 'BATCH-' + $execution.id }}",
+              "type": "string"
+            },
+            {
+              "id": "f2000001-0001-4000-8000-000000000002",
+              "name": "esemenyek",
+              "value": "={{ Array.isArray($json.body?.esemenyek) ? $json.body.esemenyek : Array.isArray($json.body?.events) ? $json.body.events : Array.isArray($json.body) ? $json.body : [$json.body ?? $json] }}",
+              "type": "array"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        260,
+        180
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000003",
+      "name": "Köteg előkészítése"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "esemenyek",
+        "include": "selectedOtherFields",
+        "fieldsToInclude": "batch_id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        520,
+        180
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000004",
+      "name": "Események szétbontása"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const item = $input.item.json;\nconst raw = (item.esemenyek && typeof item.esemenyek === 'object') ? item.esemenyek : item;\n\nconst cleanStr = (v) => (typeof v === 'string' ? v.replace(/\\s+/g, ' ').trim() : '');\n\nconst esemeny_azonosito = cleanStr(raw.esemeny_id || raw.id) || `EVT-${$execution.id}-${$itemIndex + 1}`;\nconst batch_id = cleanStr(item.batch_id || raw.batch_id) || `BATCH-${$execution.id}`;\nconst ugyfel_nev = cleanStr(raw.nev || raw.name || raw.ugyfel_nev);\nconst ugyfel_email = cleanStr(raw.email || raw.ugyfel_email).toLowerCase();\nconst ceg = cleanStr(raw.ceg || raw.company) || 'Nincs megadva';\nconst targy = cleanStr(raw.targy || raw.subject) || 'Kapcsolatfelvételi megkeresés';\nconst uzenet = cleanStr(raw.uzenet || raw.message);\nconst forras = cleanStr(raw.forras || raw.source) || 'webhook-batch';\nconst api_szimulacio = raw.api_szimulacio === 'hiba_503' ? 'hiba_503' : 'ok';\n\nconst nyersId = Number.parseInt(raw.kulso_ugyfel_id ?? raw.user_id, 10);\nconst kulso_ugyfel_id = Number.isInteger(nyersId) && nyersId >= 1 && nyersId <= 10 ? nyersId : (($itemIndex % 10) + 1);\n\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nconst hianyzo_mezok = [];\nif (ugyfel_nev.length < 2) hianyzo_mezok.push('nev');\nif (!emailRegex.test(ugyfel_email)) hianyzo_mezok.push('ervenyes_email');\nif (uzenet.length < 5) hianyzo_mezok.push('uzenet');\n\nconst ervenyes = hianyzo_mezok.length === 0;\n\nreturn {\n  json: {\n    esemeny_azonosito,\n    batch_id,\n    ugyfel_nev,\n    ugyfel_email,\n    ceg,\n    targy,\n    uzenet,\n    forras,\n    kulso_ugyfel_id,\n    api_szimulacio,\n    ervenyes,\n    validacios_allapot: ervenyes ? 'ERVENYES' : 'ELUTASITVA',\n    hianyzo_mezok,\n    tisztitva_e: true,\n    beerkezett: new Date().toISOString()\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        180
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000005",
+      "name": "Adattisztítás és Validálás"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f2000002-0001-4000-8000-000000000001",
+              "leftValue": "={{ $json.validacios_allapot }}",
+              "rightValue": "ERVENYES",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1040,
+        180
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000006",
+      "name": "Adatok érvényesek?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f2000003-0001-4000-8000-000000000001",
+              "name": "statusz",
+              "value": "ELUTASITVA",
+              "type": "string"
+            },
+            {
+              "id": "f2000003-0001-4000-8000-000000000002",
+              "name": "esemeny_azonosito",
+              "value": "={{ $json.esemeny_azonosito }}",
+              "type": "string"
+            },
+            {
+              "id": "f2000003-0001-4000-8000-000000000003",
+              "name": "batch_id",
+              "value": "={{ $json.batch_id }}",
+              "type": "string"
+            },
+            {
+              "id": "f2000003-0001-4000-8000-000000000004",
+              "name": "hianyzo_mezok",
+              "value": "={{ $json.hianyzo_mezok }}",
+              "type": "array"
+            },
+            {
+              "id": "f2000003-0001-4000-8000-000000000005",
+              "name": "elutasitas_ok",
+              "value": "={{ 'Hiányzó vagy hibás kötelező mezők: ' + ($json.hianyzo_mezok || []).join(', ') }}",
+              "type": "string"
+            },
+            {
+              "id": "f2000003-0001-4000-8000-000000000006",
+              "name": "audit_log",
+              "value": "={{ { task: 'scaled-contact-intake-validation', inputs: [$json.batch_id, $json.esemeny_azonosito], actions: ['trimmed_fields', 'checked_required_schema', 'rejected_incomplete_event'], risks: ['incomplete_or_malformed_payload'], result: 'rejected_at_validation_gate' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1300,
+        440
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000007",
+      "name": "Elutasított esemény naplózása"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.api_szimulacio === 'hiba_503' ? 'https://httpbin.org/status/503' : 'https://jsonplaceholder.typicode.com/users/' + $json.kulso_ugyfel_id }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1300,
+        140
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000008",
+      "name": "Külső CRM API hívás",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Te egy vállalati ügyfélkapcsolati és értékesítési asszisztens vagy. Elemezd a tisztított kapcsolatfelvételi űrlap adatait és a külső CRM API-ból érkező partnerprofilt, majd készíts strukturált kategorizálást és személyre szabott magyar válaszjavaslatot.\n\nTISZTÍTOTT ESEMÉNY:\n- Azonosító: {{ $('Adattisztítás és Validálás').item.json.esemeny_azonosito }}\n- Ügyfél neve: {{ $('Adattisztítás és Validálás').item.json.ugyfel_nev }}\n- E-mail: {{ $('Adattisztítás és Validálás').item.json.ugyfel_email }}\n- Cég: {{ $('Adattisztítás és Validálás').item.json.ceg }}\n- Tárgy: {{ $('Adattisztítás és Validálás').item.json.targy }}\n- Üzenet: {{ $('Adattisztítás és Validálás').item.json.uzenet }}\n\nKÜLSŐ PARTNER API ADATOK:\n- Fiókmenedzser / Kontakt: {{ $json.name || 'Ismeretlen' }}\n- Partner szervezet: {{ $json.company?.name || 'Nincs adat' }}\n- Város: {{ $json.address?.city || 'Nincs adat' }}\n- Weboldal: {{ $json.website || 'Nincs adat' }}\n\nSZABÁLYOK:\n- \"kategoria\": pontosan egy az alábbiak közül: \"ertekesites\", \"technikai_tamogatas\", \"szamlazas\", \"egyeb\"\n- \"prioritas\": pontosan \"SURGOS\" vagy \"NORMAL\". Legyen \"SURGOS\", ha az üzenet sürgősséget, azonnali ajánlatkérést, hibát/leállást, szoros határidőt vagy nagyvállalati igényt jelez; különben \"NORMAL\".\n- \"osszefoglalo\": 1 mondatos tömör összefoglaló magyarul.\n- \"javasolt_valasz\": 2-3 mondatos, az ügyfél nevére szóló, udvarias magyar válaszüzenet.\n\nKizárólag érvényes JSON objektumot adj vissza (markdown kódblokk nélkül):\n{\n  \"kategoria\": \"ertekesites | technikai_tamogatas | szamlazas | egyeb\",\n  \"prioritas\": \"SURGOS | NORMAL\",\n  \"osszefoglalo\": \"...\",\n  \"javasolt_valasz\": \"...\"\n}"
+            }
+          ]
+        },
+        "simplify": true,
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1600,
+        60
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000009",
+      "name": "Gemini AI Elemzés",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f2000004-0001-4000-8000-000000000001",
+              "name": "hiba_statusz",
+              "value": "ELKAPOTT_HIBA_FOLYTATVA",
+              "type": "string"
+            },
+            {
+              "id": "f2000004-0001-4000-8000-000000000002",
+              "name": "batch_id",
+              "value": "={{ $json.batch_id || $('Adattisztítás és Validálás').item.json?.batch_id || 'ismeretlen' }}",
+              "type": "string"
+            },
+            {
+              "id": "f2000004-0001-4000-8000-000000000003",
+              "name": "esemeny_azonosito",
+              "value": "={{ $json.esemeny_azonosito || $('Adattisztítás és Validálás').item.json?.esemeny_azonosito || 'ismeretlen' }}",
+              "type": "string"
+            },
+            {
+              "id": "f2000004-0001-4000-8000-000000000004",
+              "name": "hiba_reszletek",
+              "value": "={{ $json.error?.message || (typeof $json.error === 'string' ? $json.error : JSON.stringify($json.error || 'Külső API nem elérhető')) }}",
+              "type": "string"
+            },
+            {
+              "id": "f2000004-0001-4000-8000-000000000005",
+              "name": "riasztas_csatorna",
+              "value": "#ops-incidens-riasztas (szimulált riasztás)",
+              "type": "string"
+            },
+            {
+              "id": "f2000004-0001-4000-8000-000000000006",
+              "name": "visszalepesi_minta",
+              "value": "retryOnFail (max 3 próba) + exponenciális backoff jitter (resilience_helpers.js)",
+              "type": "string"
+            },
+            {
+              "id": "f2000004-0001-4000-8000-000000000007",
+              "name": "audit_log",
+              "value": "={{ { task: 'scaled-contact-intake-error-branch', inputs: [$json.batch_id || 'unknown', $json.esemeny_azonosito || 'unknown'], actions: ['retried_external_call', 'isolated_error_item', 'logged_incident_alert'], risks: ['external_service_503_or_timeout'], result: 'error_caught_batch_unaffected' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1600,
+        320
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000010",
+      "name": "Hibaág: API Hiba Napló és Riasztás"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f2000005-0001-4000-8000-000000000001",
+              "name": "celallomas",
+              "value": "CRM és Táblázat Napló (Kapcsolatfelvetel_Log)",
+              "type": "string"
+            },
+            {
+              "id": "f2000005-0001-4000-8000-000000000002",
+              "name": "tabla_rekord",
+              "value": "={{ { esemeny_id: $('Adattisztítás és Validálás').item.json.esemeny_azonosito, batch_id: $('Adattisztítás és Validálás').item.json.batch_id, ugyfel_nev: $('Adattisztítás és Validálás').item.json.ugyfel_nev, ugyfel_email: $('Adattisztítás és Validálás').item.json.ugyfel_email, ceg: $('Adattisztítás és Validálás').item.json.ceg, api_partner_ceg: $('Külső CRM API hívás').item.json.company?.name || 'N/A', kategoria: JSON.parse($json.content.parts[0].text).kategoria, prioritas: JSON.parse($json.content.parts[0].text).prioritas, osszefoglalo: JSON.parse($json.content.parts[0].text).osszefoglalo, rogzitve: $now.toISO() } }}",
+              "type": "object"
+            },
+            {
+              "id": "f2000005-0001-4000-8000-000000000003",
+              "name": "audit_log",
+              "value": "={{ { task: 'scaled-contact-intake-crm-log', inputs: [$('Adattisztítás és Validálás').item.json.batch_id, $('Adattisztítás és Validálás').item.json.esemeny_azonosito], actions: ['validated_event', 'enriched_via_external_api', 'ai_triaged', 'appended_table_log'], risks: [], result: 'crm_and_table_logged' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1900,
+        -40
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000011",
+      "name": "Célállomás 1: CRM és Táblázat Napló"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f2000006-0001-4000-8000-000000000001",
+              "name": "celallomas",
+              "value": "Csapat Értesítés (#ugyfelszolgalat-es-sales) + Ügyfél Válasz",
+              "type": "string"
+            },
+            {
+              "id": "f2000006-0001-4000-8000-000000000002",
+              "name": "ai_elemzes",
+              "value": "={{ JSON.parse($json.content.parts[0].text) }}",
+              "type": "object"
+            },
+            {
+              "id": "f2000006-0001-4000-8000-000000000003",
+              "name": "ertesites_uzenet",
+              "value": "={{ '[' + JSON.parse($json.content.parts[0].text).prioritas + '] ' + $('Adattisztítás és Validálás').item.json.ugyfel_nev + ' (' + $('Adattisztítás és Validálás').item.json.ceg + ') | Partner: ' + ($('Külső CRM API hívás').item.json.company?.name || 'N/A') + ' — ' + JSON.parse($json.content.parts[0].text).osszefoglalo }}",
+              "type": "string"
+            },
+            {
+              "id": "f2000006-0001-4000-8000-000000000004",
+              "name": "automatikus_valasz",
+              "value": "={{ { cimzett: $('Adattisztítás és Validálás').item.json.ugyfel_email, targy: 'Re: ' + $('Adattisztítás és Validálás').item.json.targy, szoveg: JSON.parse($json.content.parts[0].text).javasolt_valasz, allapot: 'Elküldve (szimulált automatikus válasz)' } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1900,
+        180
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000012",
+      "name": "Célállomás 2: Értesítés és Válasz"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f2000007-0001-4000-8000-000000000001",
+              "leftValue": "={{ $json.ai_elemzes.prioritas }}",
+              "rightValue": "SURGOS",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2160,
+        180
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000013",
+      "name": "Sürgős érdeklődés?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f2000008-0001-4000-8000-000000000001",
+              "name": "celallomas",
+              "value": "Célállomás 3: Sürgős SLA Eszkalációs Riasztás (#ertekesites-surgos)",
+              "type": "string"
+            },
+            {
+              "id": "f2000008-0001-4000-8000-000000000002",
+              "name": "sla_hatarido_perc",
+              "value": 15,
+              "type": "number"
+            },
+            {
+              "id": "f2000008-0001-4000-8000-000000000003",
+              "name": "riasztas",
+              "value": "={{ $json.ertesites_uzenet }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2420,
+        80
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000014",
+      "name": "Célállomás 3: Sürgős SLA Riasztás"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f2000009-0001-4000-8000-000000000001",
+              "name": "statusz",
+              "value": "Normál feldolgozás lezárva",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2420,
+        280
+      ],
+      "id": "a2c9f110-2222-4a01-9001-000000000015",
+      "name": "Normál feldolgozás lezárva"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Kapcsolatfelvételi Batch Webhook": {
+      "main": [
+        [
+          {
+            "node": "Köteg előkészítése",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Köteg előkészítése": {
+      "main": [
+        [
+          {
+            "node": "Események szétbontása",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Események szétbontása": {
+      "main": [
+        [
+          {
+            "node": "Adattisztítás és Validálás",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adattisztítás és Validálás": {
+      "main": [
+        [
+          {
+            "node": "Adatok érvényesek?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adatok érvényesek?": {
+      "main": [
+        [
+          {
+            "node": "Külső CRM API hívás",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Elutasított esemény naplózása",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Külső CRM API hívás": {
+      "main": [
+        [
+          {
+            "node": "Gemini AI Elemzés",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Hibaág: API Hiba Napló és Riasztás",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini AI Elemzés": {
+      "main": [
+        [
+          {
+            "node": "Célállomás 1: CRM és Táblázat Napló",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Célállomás 2: Értesítés és Válasz",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Hibaág: API Hiba Napló és Riasztás",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Célállomás 2: Értesítés és Válasz": {
+      "main": [
+        [
+          {
+            "node": "Sürgős érdeklődés?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sürgős érdeklődés?": {
+      "main": [
+        [
+          {
+            "node": "Célállomás 3: Sürgős SLA Riasztás",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normál feldolgozás lezárva",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

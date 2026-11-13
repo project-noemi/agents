@@ -16,6 +16,8 @@
  *
  * PINS live only here. Gateway ids keep the provider/id form. A pin the key
  * cannot call is a failed run; no substitute is discovered on the gateway.
+ * A dated Gemini id Google has retired or scheduled to 404 is refused here
+ * before any call. Flash labs that cannot discover use gemini-flash-latest.
  *
  * The native env names (GEMINI_REVIEW_MODEL, GEMINI_CRITIC_MODEL,
  * XAI_CODE_MODEL) keep their native meaning. On the gateway a bare id gets the
@@ -23,8 +25,23 @@
  * vault value works on both routes.
  */
 
+const { isRetiredGemini } = require('./resolve-gemini-model.js');
+
 const NEWPUSH_AI_GW = 'https://ai-gw.newpush.com';
 const XAI_API = 'https://api.x.ai/v1';
+
+/** Refuse a dated Gemini id Google has retired or scheduled to 404. */
+function assertServableGemini(model) {
+  const bare = String(model || '')
+    .replace(/^publishers\/google\/models\//, '')
+    .replace(/^models\//, '')
+    .replace(/^google\//, '');
+  if (!bare.startsWith('gemini-') || !isRetiredGemini(bare)) return;
+  throw new Error(
+    `Gemini model '${bare}' is retired or scheduled to return HTTP 404. `
+    + 'Use auto so the resolver can choose, or the stable alias gemini-flash-latest.',
+  );
+}
 
 // plan: writes and revises the Stage B plan. critic: red-teams it. Two
 // different models on purpose, so the plan is not attacked by its author.
@@ -97,6 +114,7 @@ function gatewayStage(stage, env) {
   const model = !set || isAuto(set.value)
     ? GATEWAY_DEFAULTS[stage]
     : toGatewayModel(set.value, STAGE_PROVIDER[stage]);
+  assertServableGemini(model);
   return {
     provider: providerOf(model, STAGE_PROVIDER[stage]),
     model,
@@ -109,6 +127,7 @@ function nativeStage(stage, env) {
   // Native pins stay raw. writer.selectGrokModel and resolvePinnedModel own
   // catalogue matching; `auto` or empty means discover.
   const model = set && !isAuto(set.value) ? String(set.value).trim() : '';
+  assertServableGemini(model);
   const prefixed = /^(?:anthropic|xai|google|openai)\//.test(model);
   return {
     provider: prefixed ? providerOf(model, STAGE_PROVIDER[stage]) : STAGE_PROVIDER[stage],
@@ -161,6 +180,7 @@ module.exports = {
   NEWPUSH_AI_GW,
   XAI_API,
   gatewayRoot,
+  assertServableGemini,
   loadModelConfig,
   normalizeApiBase,
   providerOf,

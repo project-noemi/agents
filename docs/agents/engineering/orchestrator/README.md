@@ -33,7 +33,7 @@ Grok Build is **not** scored in the matrix above. It is a separate **peer bridge
 
 ## Issue-coding loop (interactive)
 
-Claude Code may host the loop without Mastra (Decision [2026-08-20-0008]). Fable 5 or Opus 4.8 orchestrates; Grok is triggered with `/grok-build:delegate` after `/grok-build:check` ([Grok Build ↔ Claude Code](../../../tool-usages/grok-build-claude-code.md)). Cheap steps may use Gemini Flash (highest 3.x Flash) or `sonnet-5`. Unattended pickup remains `coding-loop/run.js` + Actions.
+Claude Code may host the loop without Mastra (Decision [2026-08-20-0008]). Fable 5 or Opus 4.8 orchestrates; Grok is triggered with `/grok-build:delegate` after `/grok-build:check` ([Grok Build ↔ Claude Code](../../../tool-usages/grok-build-claude-code.md)). Cheap steps may use Gemini Flash (highest servable stable Flash, or `gemini-flash-latest`) or `sonnet-5`. Unattended pickup remains `coding-loop/run.js` + Actions.
 
 ## Delegation Mechanisms
 
@@ -82,7 +82,7 @@ Always run `/grok-build:check` (or the Codex equivalent readiness path) before r
 
 ## Scope vs. the Gemini Baseline
 
-This persona governs **interactive Claude Code orchestration only**. Reference lab workflows, examples, and smoke tests remain pinned to **Gemini 2.5 Flash** per the AI Model Baseline in the repository coding standards. The Orchestrator does not repoint pinned reference examples, and neither the Codex nor Grok bridges change that pin.
+This persona governs **interactive Claude Code orchestration only**. Reference lab workflows use the stable alias `gemini-flash-latest` or `scripts/resolve-gemini-model.js`. Do not hard-pin a dated Gemini id. The Orchestrator does not invent a different pin, and neither the Codex nor Grok bridges change that rule.
 
 ## Related Specs
 

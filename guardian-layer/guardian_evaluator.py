@@ -59,9 +59,11 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Callable, Optional
 
-# AI Model Baseline (AGENTS.md): reference workflows and smoke tests are pinned
-# to Gemini 3.8 Flash for predictable performance and cost.
-DEFAULT_MODEL = "gemini-3.8-flash"
+# Static default for this illustrative module. Node callers resolve through
+# scripts/resolve-gemini-model.js. The alias tracks the current Flash so a
+# dated SKU (gemini-3.6-flash retires 2026-11-19, gemini-3.7-flash retires
+# 2027-01-28) cannot 404 this judge. GEMINI_MODEL overrides it.
+DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
 
 # Minimum self-reported confidence the judge must assign for an APPROVED verdict.
 DEFAULT_CONFIDENCE_THRESHOLD = 0.6
@@ -418,6 +420,9 @@ class GuardianEvaluator:
                 # Missing SDK / missing key are not transient — do not retry.
                 message = str(exc).lower()
                 if "not installed" in message or "process memory" in message:
+                    raise
+                # A retired model returns 404. Retrying it cannot succeed.
+                if "404" in message or "not_found" in message or "not found" in message:
                     raise
                 if attempt == self.max_retries:
                     break

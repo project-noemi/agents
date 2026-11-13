@@ -210,7 +210,7 @@ Without Phase 0, scaling AI introduces risk faster than value.
 It is designed to work with orchestrators such as:
 
 * n8n (primary orchestration layer in the NewPush Labs stack)
-* Gemini CLI (canonical baseline pinned to Gemini 3.8 Flash)
+* Gemini CLI (Flash via `scripts/resolve-gemini-model.js`, or the stable alias `gemini-flash-latest`)
 * Claude Code
 * OpenAI Codex
 * LangChain

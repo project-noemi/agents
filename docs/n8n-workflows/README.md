@@ -1,6 +1,6 @@
 # n8n Lab Workflows
 
-These JSON files are Layer B classroom canvases (several are Hungarian-language labs). The **canonical model pin** is Google Gemini 2.5 Flash via `@n8n/n8n-nodes-langchain.googleGemini`.
+These JSON files are Layer B classroom canvases (several are Hungarian-language labs). The **canonical model id** is the stable alias `models/gemini-flash-latest` via `@n8n/n8n-nodes-langchain.googleGemini`. Do not pin a dated Gemini SKU.
 
 ## Grok variant
 
@@ -16,4 +16,4 @@ Ready-to-import Grok companions (English, same lesson as the Gemini originals):
 - [`../../n8n-templates/layer-b-labs/customer-inquiry-router-grok.json`](../../n8n-templates/layer-b-labs/customer-inquiry-router-grok.json)
 - [`../../examples/workflows/rfp-responder-grok.json`](../../examples/workflows/rfp-responder-grok.json)
 
-Do not retarget these Hungarian lab files away from Gemini. If a cohort needs Grok here, duplicate a lab and apply the four steps above. Gemini 2.5 Flash remains the repository baseline.
+Do not retarget these Hungarian lab files away from Gemini. If a cohort needs Grok here, duplicate a lab and apply the four steps above. Gemini labs use `models/gemini-flash-latest`, not a dated SKU.

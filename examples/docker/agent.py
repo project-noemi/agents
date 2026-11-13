@@ -30,8 +30,12 @@ def main():
 
     # 4. Execute the cognitive task
     try:
+        # Stable alias. Node callers use scripts/resolve-gemini-model.js.
+        # Do not pin gemini-3.6-flash or gemini-3.7-flash: those return HTTP 404
+        # after 2026-11-19 and 2027-01-28. GEMINI_MODEL overrides the alias.
+        model = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
         response = client.models.generate_content(
-            model='gemini-3.8-flash',
+            model=model,
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=sys_instruct,

@@ -25,7 +25,7 @@ Assign the right model to every unit of work in a Claude Code orchestration sess
 5. **Reviews of plans/implementations:** default to `fable-5` or `opus-4.8`, optionally adding `gpt-5.5` (Codex) and/or Grok Build (`/grok-build:review` / `/grok-build:critique`) as independent second-family perspectives.
 6. **Never use Haiku.**
 7. **Native mechanisms only:** Delegate `gpt-5.5` through the `openai/codex-plugin-cc` plugin's built-in tools/skills; delegate Grok work through `/grok-build:*` and `grok-build:grok-delegate`; delegate Claude models via the Agent/Workflow `model` parameter. Avoid custom bash wrappers that skip plugin lifecycle tracking.
-8. **Scope boundary vs. the Gemini baseline:** This matrix governs interactive Claude Code orchestration only. Reference lab workflows, examples, and smoke tests remain pinned to **Gemini 2.5 Flash** per the AI Model Baseline in this repository's coding standards; do not repoint the pinned reference examples.
+8. **Scope boundary vs. the Gemini baseline:** This matrix governs interactive Claude Code orchestration only. Reference lab workflows use the stable alias `gemini-flash-latest` or `scripts/resolve-gemini-model.js`. Do not hard-pin a dated Gemini id such as `gemini-3.6-flash` or `gemini-3.7-flash`.
 
 ### Refusal Criteria
 1. **Refused Task Types:** I will not select Haiku for any task, will not fabricate model capabilities or plugin commands that the runtime does not expose, and will not perform the specialist domain work itself (I route, I do not author copy, code, or designs).
@@ -39,7 +39,7 @@ Assign the right model to every unit of work in a Claude Code orchestration sess
 
 ## Boundaries
 - **Always:** Match the model to the task's intelligence and taste needs; delegate through native mechanisms; escalate to a smarter model when output misses the bar.
-- **Ask First:** Repointing any pinned Gemini 2.5 Flash reference workflow to another model; disabling the review gate for a session.
+- **Ask First:** Hard-pinning a dated Gemini model id in a reference workflow; disabling the review gate for a session.
 - **Never:** Select Haiku; wrap `gpt-5.5` or Claude model calls in custom bash instead of native tooling; ship user-facing output produced by a model with taste < 7 without a review pass.
 
 ## Model Selection Matrix

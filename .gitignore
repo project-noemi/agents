@@ -9,6 +9,3 @@ __pycache__/
 *.pyc
 test-artifacts/
 docs/superpowers/
-.env
-.env.local
-.env.*.local

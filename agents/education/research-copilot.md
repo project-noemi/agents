@@ -1,4 +1,4 @@
-# Sandbox project assistant — Research and Engineering Agent
+# Research Copilot — Research Agent
 
 <!-- H1 format: # {Name} — {Domain} Agent
      Examples: # Bolt — Performance Agent, # PIIGuard — Guardian Agent -->

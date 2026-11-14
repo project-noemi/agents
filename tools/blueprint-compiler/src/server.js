@@ -7,6 +7,7 @@
  *   GET    /api/providers         { providers, runtimes }
  *   POST   /api/validate          { input } -> JSON
  *   POST   /api/run               { input, prompt, provider?, runtime?, blueprintId? } -> SSE
+ *   POST   /api/arena             { blueprintId, prompt } -> SSE (Sprint 5, every provider at once)
  *   GET    /api/runs[?limit=N]    run history, newest first
  *   GET    /api/blueprints        saved blueprints (summaries)
  *   POST   /api/blueprints        { name, markdown } -> 201 saved blueprint
@@ -36,6 +37,7 @@ import {
 } from "./compile.js";
 import { loadServerConfig, RUNTIMES } from "./config.js";
 import { auditFromRequest, writeAudit } from "./audit.js";
+import { runArena } from "./arena.js";
 import { createBlueprintStore, ID } from "./store/blueprints.js";
 import { StoreError } from "./store/files.js";
 import { createRunStore, runRecordFrom } from "./store/runs.js";
@@ -370,6 +372,86 @@ export function createServer(opts = {}) {
     res.end();
   }
 
+  /**
+   * Sprint 5 Arena: one saved blueprint and one prompt, run on every provider
+   * at once (src/arena.js). A provider that fails is recorded as failed and
+   * never replaced by a fallback. The stream is SSE, like /api/run.
+   */
+  async function arena(req, res, log) {
+    const body = await readObject(req);
+    const { blueprintId, prompt } = body;
+
+    if (!(typeof blueprintId === "string" && ID.test(blueprintId))) {
+      throw new RequestError(400, "blueprintId must be a saved blueprint id.");
+    }
+
+    if (typeof prompt !== "string" || !prompt.trim() || prompt.length > MAX_PROMPT_CHARS) {
+      throw new RequestError(
+        400,
+        `prompt must be a non-empty string of at most ${MAX_PROMPT_CHARS} characters.`,
+      );
+    }
+
+    // 404 before any stream starts. The Markdown comes from the saved
+    // blueprint, never from the request.
+    const saved = await viaStore(() => blueprints.get(blueprintId));
+    const input = { kind: "text", markdown: saved.markdown };
+    log.input = input;
+
+    res.writeHead(200, {
+      "content-type": "text/event-stream; charset=utf-8",
+      "cache-control": "no-store",
+      "x-accel-buffering": "no",
+    });
+
+    res.flushHeaders();
+
+    res.on("close", () => {
+      if (!res.writableFinished) {
+        log.disconnected = true;
+      }
+    });
+
+    const send = (event) => {
+      if (!res.destroyed && res.writable) {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+    };
+
+    const events = runArena({
+      prompt,
+
+      // The engine calls this once to check the blueprint and once per
+      // provider. The check result is what the audit record describes.
+      compile: async (extra) => {
+        const checking = extra.checkOnly === true;
+
+        try {
+          const result = await load(input, extra);
+          if (checking) log.result = result;
+          return result;
+        } catch (err) {
+          if (checking) log.result = internalFailure(err);
+          throw err;
+        }
+      },
+
+      // Runs before the closing `end` event. Saving the run (and the
+      // scoreboard totals) plugs in here: the summary holds no prompt or text.
+      onComplete: (summary) => {
+        log.arena = summary;
+      },
+    });
+
+    // Drain to the end even if the client left: the providers cannot be
+    // cancelled, so finishing keeps the run complete and its audit record true.
+    for await (const event of events) {
+      send(event);
+    }
+
+    res.end();
+  }
+
   async function listRuns(req, res) {
     const raw = new URL(req.url ?? "/", "http://localhost").searchParams.get("limit");
     const limit = raw === null ? DEFAULT_RUN_LIMIT : Number(raw);
@@ -396,6 +478,7 @@ export function createServer(opts = {}) {
     }),
     route("POST", /^\/api\/validate$/, "validate", validate),
     route("POST", /^\/api\/run$/, "run", run),
+    route("POST", /^\/api\/arena$/, "arena", arena),
     route("GET", /^\/api\/runs$/, "runs.list", listRuns),
 
     route("GET", /^\/api\/blueprints$/, "blueprints.list", async (_req, res) => {

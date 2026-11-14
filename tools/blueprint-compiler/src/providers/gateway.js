@@ -12,17 +12,16 @@
  * with backoff. Once retries are exhausted, fallback.js can switch providers.
  * Timeouts are not retried. Streaming requests must not retry after emitting
  * output, because doing so could duplicate or corrupt the response.
+ *
+ * The retry loop lives here, not in scripts/resilience_helpers.js: the CLI's
+ * stderr is one audit line, so a retry must never write anything.
  */
-import { createRequire } from "node:module";
-
-const require = createRequire(import.meta.url);
-const { withRetry } = require("../../../../scripts/resilience_helpers.js");
-
 export const DEFAULT_GATEWAY = "https://ai-gw.newpush.com";
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_RETRY_BASE_MS = 1_000;
 const RETRY_MAX_DELAY_MS = 8_000;
+const JITTER = 0.25;
 
 /**
  * Bad configuration (missing key, bad URL, bad number).
@@ -141,23 +140,30 @@ function isRetryable(err) {
   return err?.name === "TypeError" && err.message === "fetch failed";
 }
 
+const sleep = (ms) =>
+  ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
+
 /**
- * Run an attempt under the shared gateway retry policy.
+ * Run an attempt under the shared gateway retry policy: 1 attempt plus up to
+ * config.maxRetries retries, with exponential backoff (base doubles each
+ * retry, capped at 8s) plus a little jitter. Writes nothing to any stream.
  *
  * @template T
  * @param {() => Promise<T>} attempt
  * @param {ReturnType<typeof loadGatewayConfig>} config
  * @returns {Promise<T>}
  */
-export function withGatewayRetry(attempt, config) {
-  return withRetry(attempt, {
-    maxRetries: config.maxRetries,
-    baseDelayMs: config.retryBaseMs,
-    maxDelayMs: RETRY_MAX_DELAY_MS,
-    retryIf: isRetryable,
-    // compile.js never logs; the CLI owns stderr for its audit record.
-    onRetry: () => {},
-  });
+export async function withGatewayRetry(attempt, config) {
+  for (let retry = 0; ; retry += 1) {
+    try {
+      return await attempt();
+    } catch (err) {
+      if (retry >= config.maxRetries || !isRetryable(err)) throw err;
+
+      const delay = Math.min(config.retryBaseMs * 2 ** retry, RETRY_MAX_DELAY_MS);
+      await sleep(delay + Math.floor(Math.random() * delay * JITTER));
+    }
+  }
 }
 
 /**

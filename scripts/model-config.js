@@ -14,18 +14,25 @@
  *             key: XAI_API_KEY to api.x.ai for the writer, application-default
  *             credentials to Vertex for Gemini (scripts/gcp-token.js).
  *
- * PINS live only here. Gateway ids keep the provider/id form. A pin the key
- * cannot call is a failed run; no substitute is discovered on the gateway.
- * A dated Gemini id Google has retired or scheduled to 404 is refused here
- * before any call. Flash labs that cannot discover use gemini-flash-latest.
+ * DEFAULTS are resolved, not pinned (Decision [2026-11-14-0001]). With no env
+ * override (or `auto`), a caller that has the gateway key's model list passes
+ * it to resolveGatewayModel(): critic and review take the highest Pro preview,
+ * else the highest stable Pro, via selectModel() in resolve-gemini-model.js
+ * (the native reviewer's rule). The writer ranks xai/* with selectGrokModel().
+ * GATEWAY_FALLBACKS apply only when the list is unavailable or has no eligible
+ * model. An explicit override is still the model: a pin the key cannot call
+ * is a failed run and nothing is substituted for it. A dated Gemini id Google
+ * has retired or scheduled to 404 is refused here before any call, and is
+ * never resolved. Flash labs that cannot discover use gemini-flash-latest.
  *
  * The native env names (GEMINI_REVIEW_MODEL, GEMINI_CRITIC_MODEL,
  * XAI_CODE_MODEL) keep their native meaning. On the gateway a bare id gets the
- * provider prefix added, and `auto` or empty takes the gateway default, so one
- * vault value works on both routes.
+ * provider prefix added, and `auto` or empty resolves from the key's model
+ * list (falling back to GATEWAY_FALLBACKS), so one vault value works on both
+ * routes.
  */
 
-const { isRetiredGemini } = require('./resolve-gemini-model.js');
+const { isRetiredGemini, selectModel } = require('./resolve-gemini-model.js');
 
 const NEWPUSH_AI_GW = 'https://ai-gw.newpush.com';
 const XAI_API = 'https://api.x.ai/v1';
@@ -45,12 +52,20 @@ function assertServableGemini(model) {
 
 // plan: writes and revises the Stage B plan. critic: red-teams it. Two
 // different models on purpose, so the plan is not attacked by its author.
-const GATEWAY_DEFAULTS = Object.freeze({
+//
+// Fallbacks, not defaults: used only when the key's model list is unavailable
+// or offers nothing eligible (see resolveGatewayModel). `plan` has no catalogue
+// rule yet: gemini-4-* ids carry no tier marker the Gemini resolver can rank,
+// so the plan writer stays on this id unless PLAN_MODEL is set.
+const GATEWAY_FALLBACKS = Object.freeze({
   code: 'xai/grok-4.6',
   plan: 'google/gemini-4-argon',
   critic: 'google/gemini-3.1-pro-preview',
   review: 'google/gemini-3.1-pro-preview',
 });
+
+/** Kept for callers that still import the old name. */
+const GATEWAY_DEFAULTS = GATEWAY_FALLBACKS;
 
 const STAGE_PROVIDER = Object.freeze({
   code: 'xai', plan: 'google', critic: 'google', review: 'google',
@@ -112,7 +127,7 @@ function providerOf(model, fallback) {
 function gatewayStage(stage, env) {
   const set = stageEnv(stage, env);
   const model = !set || isAuto(set.value)
-    ? GATEWAY_DEFAULTS[stage]
+    ? GATEWAY_FALLBACKS[stage]
     : toGatewayModel(set.value, STAGE_PROVIDER[stage]);
   assertServableGemini(model);
   return {
@@ -134,6 +149,38 @@ function nativeStage(stage, env) {
     model,
     source: set && !isAuto(set.value) ? set.source : 'discover',
   };
+}
+
+/**
+ * The gateway model for a stage, given the key's model list (`GET /v1/models`
+ * ids). Pure: the caller fetches the list.
+ *
+ * - An env override (source other than `default`) is returned unchanged.
+ * - critic / review: selectModel() with the Pro floor and Pro-preview first,
+ *   over the `google/gemini-*` ids. Retired ids are skipped by selectModel.
+ *   The critic never resolves to the plan writer's model.
+ * - code and plan are not resolved here (the writer ranks xai/* itself; plan
+ *   has no rule). They return their fallback.
+ * - No list, a wildcard-only list, or nothing eligible: the fallback, with
+ *   source `fallback`.
+ *
+ * @returns {{model: string, source: string}}
+ */
+function resolveGatewayModel(stage, config, ids) {
+  const current = config && config.stages && config.stages[stage];
+  if (!current) throw new Error(`Unknown model stage '${stage}'`);
+  if (current.source !== 'default') return { model: current.model, source: current.source };
+  if (stage !== 'critic' && stage !== 'review') return { model: current.model, source: 'fallback' };
+  const google = (Array.isArray(ids) ? ids : [])
+    .filter((id) => typeof id === 'string' && /^google\/gemini-/.test(id))
+    .map((id) => id.slice('google/'.length));
+  const { chosen } = selectModel(google, { floor: 'pro', preferPreviewPro: true });
+  const picked = chosen ? `google/${chosen.name}` : null;
+  if (!picked || (stage === 'critic' && picked === config.stages.plan.model)) {
+    return { model: current.model, source: 'fallback' };
+  }
+  assertServableGemini(picked);
+  return { model: picked, source: 'resolved' };
 }
 
 function loadModelConfig(env = process.env) {
@@ -177,6 +224,7 @@ function loadModelConfig(env = process.env) {
 
 module.exports = {
   GATEWAY_DEFAULTS,
+  GATEWAY_FALLBACKS,
   NEWPUSH_AI_GW,
   XAI_API,
   gatewayRoot,
@@ -184,5 +232,6 @@ module.exports = {
   loadModelConfig,
   normalizeApiBase,
   providerOf,
+  resolveGatewayModel,
   toGatewayModel,
 };

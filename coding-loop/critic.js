@@ -27,8 +27,8 @@ const {
   selectModel, listModels, resolvePinnedModel, backendConfig, generateUrl,
 } = require('../scripts/resolve-gemini-model.js');
 const { getAccessToken } = require('../scripts/gcp-token.js');
-const { loadModelConfig } = require('../scripts/model-config.js');
-const { chatJson } = require('../scripts/model-chat.js');
+const { loadModelConfig, resolveGatewayModel } = require('../scripts/model-config.js');
+const { chatJson, listChatModels } = require('../scripts/model-chat.js');
 const { withRetry } = require('../scripts/resilience_helpers.js');
 const { critiquePlan, buildPlanRevisionPrompt } = require('./plan.js');
 const { httpError, modelRetryOptions } = require('./http.js');
@@ -177,6 +177,27 @@ async function resolveCriticModel({ token, cfg, pin }) {
 }
 
 /**
+ * The gateway critic model. GEMINI_CRITIC_MODEL / GEMINI_REVIEW_MODEL, when set
+ * and not `auto`, is the model. Otherwise the key's model list is ranked with
+ * the reviewer's rule (Decision [2026-11-14-0001]). If the list cannot be read,
+ * the fallback id is used and the chat call reports the real failure.
+ */
+async function gatewayCriticModel(config, fetchImpl) {
+  if (config.stages.critic.source !== 'default') return config.stages.critic.model;
+  let ids = null;
+  try {
+    ids = await listChatModels({
+      apiBase: config.gateway.openaiBase,
+      apiKey: config.gateway.apiKey,
+      fetchImpl,
+    });
+  } catch {
+    ids = null;
+  }
+  return resolveGatewayModel('critic', config, ids).model;
+}
+
+/**
  * One Gemini call on whichever route the config selects. Shared by the plan
  * critic, the plan reviser (`stage: 'plan'`), and the doc critic. Never
  * retries: callers wrap it in withRetry.
@@ -185,7 +206,8 @@ async function callCriticModel(prompt, opts = {}) {
   const config = opts.config || loadModelConfig(opts.env || process.env);
   const stage = opts.stage === 'plan' ? 'plan' : 'critic';
   if (config.mode === 'gateway') {
-    const model = opts.model || config.stages[stage].model;
+    const model = opts.model
+      || (stage === 'critic' ? await gatewayCriticModel(config, opts.fetchImpl) : config.stages[stage].model);
     if (stage === 'plan' && sameModel(model, config.stages.critic.model)) {
       throw reviserRefused(
         `Plan reviser '${model}' is the red-team model; set PLAN_MODEL to a different model. Live revision refused.`,

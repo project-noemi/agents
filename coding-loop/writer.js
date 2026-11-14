@@ -11,7 +11,7 @@ const { httpError, modelRetryOptions } = require('./http.js');
 const {
   GATEWAY_DEFAULTS, NEWPUSH_AI_GW, XAI_API, loadModelConfig, normalizeApiBase,
 } = require('../scripts/model-config.js');
-const { chatJson } = require('../scripts/model-chat.js');
+const { chatJson, listChatModels } = require('../scripts/model-chat.js');
 
 const NEWPUSH_AI_GW_V1 = `${NEWPUSH_AI_GW}/v1`;
 const DEFAULT_GW_GROK_MODEL = GATEWAY_DEFAULTS.code;
@@ -37,6 +37,7 @@ function resolveWriterAuth(env = process.env) {
       apiBase: config.gateway.openaiBase,
       source: config.gateway.source,
       pinDefault: config.stages.code.model,
+      pinSource: config.stages.code.source,
       mode: 'gateway',
     };
   }
@@ -54,6 +55,16 @@ function resolveWriterAuth(env = process.env) {
   );
   err.status = 400;
   throw err;
+}
+
+async function gatewayWriterModel(auth, env, fetchImpl) {
+  if (auth.pinSource !== 'default') return auth.pinDefault;
+  try {
+    const ids = await listChatModels({ apiBase: auth.apiBase, apiKey: auth.apiKey, fetchImpl });
+    return selectGrokModel(ids.filter((id) => String(id).startsWith('xai/'))).id;
+  } catch {
+    return auth.pinDefault;
+  }
 }
 
 function assertWriterKey(env = process.env) {
@@ -380,9 +391,12 @@ async function draftChanges({
     ? () => callModel({ issue, plan })
     : async () => {
       const auth = resolveWriterAuth(env);
-      // Gateway: the pin is the model. No catalogue pick, no substitute.
+      // Gateway: an XAI_CODE_MODEL pin is the model (no substitute). Without
+      // one, the key's xai/* models are ranked like the native catalogue
+      // (Decision [2026-11-14-0001]); the fallback id is used only when the
+      // list cannot be read or has no Grok model.
       const modelId = auth.mode === 'gateway'
-        ? auth.pinDefault
+        ? await gatewayWriterModel(auth, env, fetchImpl)
         : selectGrokModel(
           await listGrokModels({ apiKey: auth.apiKey, apiBase: auth.apiBase, fetchImpl }),
           { pin: env.XAI_CODE_MODEL || '' },

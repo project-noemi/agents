@@ -19,13 +19,16 @@
  *
  * Trust boundary:
  *   - Gateway keys stay in this process's environment.
- *   - NOEMI_HTTP_ALLOWED_HOSTS is required at startup.
+ *   - NOEMI_HTTP_ALLOWED_HOSTS and NOEMI_STUDIO_TOKEN are required at startup.
+ *   - Every route except GET /api/health needs `Authorization: Bearer <token>`;
+ *     anything else is a 401 before routing (so unknown paths are 401, not 404).
  *   - JSON bodies are size-capped.
  *   - The Host header is restricted to allowed hosts.
  *   - One audit record is written per request.
  *   - Saved blueprints and run history live in one folder (NOEMI_STUDIO_DATA_DIR).
  *     File names come from server-made ids, never from browser input.
  */
+import { createHash, timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import {
@@ -46,6 +49,17 @@ const INPUT_KINDS = ["text", "url", "registry"];
 const STORE_STATUS = { NOT_FOUND: 404, INVALID: 400, TOO_LARGE: 413, LIMIT: 409 };
 const DEFAULT_RUN_LIMIT = 100;
 const MAX_RUN_LIMIT = 500;
+// Liveness only; it reveals nothing about agents, runs or configuration.
+const PUBLIC_ROUTES = new Set(["health"]);
+
+// Compare fixed-length digests so neither content nor length leaks through timing.
+const digest = (value) => createHash("sha256").update(value, "utf8").digest();
+
+/** True when the request carries `Authorization: Bearer <token>` matching `expected`. */
+function hasValidBearer(req, expected) {
+  const match = /^Bearer[ ]+(\S+)[ ]*$/i.exec(req.headers.authorization ?? "");
+  return Boolean(match) && timingSafeEqual(digest(match[1]), expected);
+}
 
 class RequestError extends Error {
   constructor(status, message) {
@@ -155,6 +169,8 @@ async function viaStore(fn) {
 export function createServer(opts = {}) {
   const config = loadServerConfig(opts.env ?? process.env);
   const audit = opts.audit ?? process.stderr;
+  // Keep only the digest; the raw token is not held past startup.
+  const tokenDigest = digest(config.token);
 
   const blueprints = createBlueprintStore({
     dir: config.dataDir,
@@ -474,12 +490,18 @@ export function createServer(opts = {}) {
 
         res.writeHead(204, {
           "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE",
-          "access-control-allow-headers": "content-type",
+          "access-control-allow-headers": "authorization, content-type",
           "access-control-max-age": "600",
         });
 
         res.end();
         return;
+      }
+
+      // Before the 404 check, so an unauthenticated caller cannot map routes.
+      if (!(found && PUBLIC_ROUTES.has(found.route.name)) && !hasValidBearer(req, tokenDigest)) {
+        res.setHeader("www-authenticate", 'Bearer realm="noemi-studio"');
+        throw new RequestError(401, "Missing or invalid bearer token.");
       }
 
       if (!found) {

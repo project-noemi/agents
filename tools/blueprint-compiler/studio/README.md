@@ -80,6 +80,13 @@ stay on the server, which runs under `infisical run` / `op run`; nothing in the
 browser needs or receives them. If the server loads URLs, it must set
 `NOEMI_HTTP_ALLOWED_HOSTS` first.
 
+The server requires a bearer token, `NOEMI_STUDIO_TOKEN` (a secret). Run **both**
+the server and `npm run dev` under `infisical run` / `op run` so both see it: the
+Vite proxy adds `Authorization: Bearer …` to every `/api` request on the Node side,
+so the token is never in the bundle or page JS. Never expose it as a `VITE_*`
+variable, which Vite would ship to the browser. Without it, every call except
+`/api/health` returns 401 "Missing or invalid bearer token."
+
 
 
 
@@ -108,7 +115,7 @@ cmd
 set NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com
 npm run studio
 
-It prints Studio server listening on http://127.0.0.1:8787. It refuses to start without NOEMI_HTTP_ALLOWED_HOSTS, which is deliberate.
+It prints Studio server listening on http://127.0.0.1:8787. It refuses to start without NOEMI_HTTP_ALLOWED_HOSTS or NOEMI_STUDIO_TOKEN, which is deliberate. NOEMI_STUDIO_TOKEN is a secret: do not set it by hand in the shell; start each terminal's command under the vault, e.g. `infisical run --env=dev -- npm run studio` and `infisical run --env=dev -- npm run dev`.
 
 Terminal 2, the website, from tools/blueprint-compiler/studio/:
 

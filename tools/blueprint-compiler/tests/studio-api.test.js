@@ -19,12 +19,16 @@ const clean = {
   AI_GW_API_KEY: undefined, AI_GW_BASE_URL: undefined, AI_GW_MAX_RETRIES: undefined,
 };
 const ID = /^[a-f0-9]{24}$/;
+// Obviously fake, low-entropy test token (not a secret; keeps secret scanners quiet).
+const STUDIO_TOKEN = "t".repeat(40);
+const fetch = (url, init = {}) =>
+  globalThis.fetch(url, { ...init, headers: { authorization: `Bearer ${STUDIO_TOKEN}`, ...init.headers } });
 
 async function withStudio(extra, fn) {
   const dataDir = await mkdtemp(join(tmpdir(), "studio-api-"));
   const lines = [];
   const server = createServer({
-    env: { NOEMI_HTTP_ALLOWED_HOSTS: "127.0.0.1", NOEMI_STUDIO_DATA_DIR: dataDir, ...extra },
+    env: { NOEMI_HTTP_ALLOWED_HOSTS: "127.0.0.1", NOEMI_STUDIO_TOKEN: STUDIO_TOKEN, NOEMI_STUDIO_DATA_DIR: dataDir, ...extra },
     repoRoot: fixtures,
     audit: { write: (s) => lines.push(s) },
   });
@@ -137,7 +141,7 @@ test("blueprints: the configured limit is a 409", () =>
 
 test("server: refuses to start with a bad store limit", () => {
   for (const extra of [{ NOEMI_STUDIO_MAX_BLUEPRINTS: "0" }, { NOEMI_STUDIO_MAX_RUNS: "many" }]) {
-    assert.throws(() => createServer({ env: { NOEMI_HTTP_ALLOWED_HOSTS: "example.com", ...extra } }), { code: "SERVER_CONFIG" });
+    assert.throws(() => createServer({ env: { NOEMI_HTTP_ALLOWED_HOSTS: "example.com", NOEMI_STUDIO_TOKEN: STUDIO_TOKEN, ...extra } }), { code: "SERVER_CONFIG" });
   }
 });
 

@@ -15,6 +15,11 @@ const architect = readFileSync(join(fixtures, "architect.core.md"), "utf8");
 const broken = readFileSync(join(fixtures, "broken.missing-refusal.md"), "utf8");
 
 const CANARY = "sk-test-canary-7f3a";
+// Obviously fake, low-entropy test token (not a secret; keeps secret scanners quiet).
+const STUDIO_TOKEN = "t".repeat(40);
+// Every request in this file is authenticated unless it calls globalThis.fetch.
+const fetch = (url, init = {}) =>
+  globalThis.fetch(url, { ...init, headers: { authorization: `Bearer ${STUDIO_TOKEN}`, ...init.headers } });
 // Model selection is per request here; keep the host's own settings out of it.
 const clean = {
   NOEMI_PREFERRED_PROVIDER: undefined, NOEMI_FALLBACK_PROVIDERS: undefined, NOEMI_RUNTIME: undefined,
@@ -47,7 +52,7 @@ async function withStudio(env, fn) {
   // Run history is written on every /api/run: keep it out of the real data folder.
   const dataDir = await mkdtemp(join(tmpdir(), "studio-data-"));
   const server = createServer({
-    env: { NOEMI_HTTP_ALLOWED_HOSTS: "127.0.0.1", NOEMI_STUDIO_DATA_DIR: dataDir, ...env },
+    env: { NOEMI_HTTP_ALLOWED_HOSTS: "127.0.0.1", NOEMI_STUDIO_TOKEN: STUDIO_TOKEN, NOEMI_STUDIO_DATA_DIR: dataDir, ...env },
     repoRoot: fixtures,
     audit: { write: (s) => lines.push(s) },
   });
@@ -81,7 +86,7 @@ test("server: refuses to start without NOEMI_HTTP_ALLOWED_HOSTS", () => {
 });
 
 test("server: refuses to start with a bad port, body cap, or origin", () => {
-  const base = { NOEMI_HTTP_ALLOWED_HOSTS: "example.com" };
+  const base = { NOEMI_HTTP_ALLOWED_HOSTS: "example.com", NOEMI_STUDIO_TOKEN: STUDIO_TOKEN };
   for (const extra of [{ NOEMI_STUDIO_PORT: "80a" }, { NOEMI_STUDIO_MAX_BODY_BYTES: "0" }, { NOEMI_STUDIO_ORIGIN: "not a url" }]) {
     assert.throws(() => createServer({ env: { ...base, ...extra } }), { code: "SERVER_CONFIG" });
   }
@@ -311,7 +316,50 @@ test("server: CORS headers and preflight only for NOEMI_STUDIO_ORIGIN", async ()
     const pre = await fetch(`${base}/api/run`, { method: "OPTIONS", headers: { origin: "http://localhost:5173" } });
     assert.equal(pre.status, 204);
     assert.equal(pre.headers.get("access-control-allow-origin"), "http://localhost:5173");
-    const other = await fetch(`${base}/api/run`, { method: "OPTIONS", headers: { origin: "https://evil.example" } });
-    assert.equal(other.status, 404);
+    assert.match(pre.headers.get("access-control-allow-headers"), /\bauthorization\b/);
+    const other = await globalThis.fetch(`${base}/api/run`, { method: "OPTIONS", headers: { origin: "https://evil.example" } });
+    assert.equal(other.status, 401);
+  }));
+});
+test("server: refuses to start without a strong NOEMI_STUDIO_TOKEN, and never echoes it", () => {
+  const short = "s".repeat(31);
+  for (const value of [undefined, "", short, `${"t".repeat(20)} ${"t".repeat(20)}`]) {
+    assert.throws(
+      () => createServer({ env: { NOEMI_HTTP_ALLOWED_HOSTS: "example.com", NOEMI_STUDIO_TOKEN: value } }),
+      (err) => err.code === "SERVER_CONFIG" && /NOEMI_STUDIO_TOKEN/.test(err.message) && !err.message.includes(short),
+    );
+  }
+});
+
+test("server: every route but health needs the bearer token; failures are 401 and audited without it", async () => {
+  await withEnv(clean, () => withStudio({}, async ({ base, audit, rawAudit }) => {
+    const raw = (path, init = {}) => globalThis.fetch(`${base}${path}`, init);
+    assert.equal((await raw("/api/health")).status, 200);
+
+    const wrong = "w".repeat(40);
+    const attempts = [
+      raw("/api/providers"),
+      raw("/api/runs"),
+      raw("/api/blueprints"),
+      raw("/api/blueprints/0123456789abcdef01234567", { method: "DELETE" }),
+      raw("/api/run", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }),
+      raw("/api/providers", { headers: { authorization: `Bearer ${wrong}` } }),
+      raw("/api/providers", { headers: { authorization: `Basic ${STUDIO_TOKEN}` } }),
+      raw("/api/providers", { headers: { authorization: `Bearer ${STUDIO_TOKEN}x` } }),
+      raw("/api/providers", { headers: { authorization: "Bearer" } }),
+      raw("/api/no-such-route"), // 401, not 404: no route mapping without a token
+    ];
+    for (const res of await Promise.all(attempts)) {
+      assert.equal(res.status, 401);
+      assert.match(res.headers.get("www-authenticate"), /^Bearer /);
+      assert.deepEqual(await res.json(), { ok: false, message: "Missing or invalid bearer token." });
+    }
+
+    const ok = await raw("/api/providers", { headers: { authorization: `bearer ${STUDIO_TOKEN}` } });
+    assert.equal(ok.status, 200, "the scheme is case-insensitive");
+
+    const records = audit().filter((r) => r.result === "rejected:401");
+    assert.equal(records.length, attempts.length);
+    assert.ok(!rawAudit().includes(STUDIO_TOKEN) && !rawAudit().includes(wrong), "tokens never reach the audit log");
   }));
 });

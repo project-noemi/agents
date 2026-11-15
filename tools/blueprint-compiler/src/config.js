@@ -79,6 +79,8 @@ const DEFAULT_STUDIO_MAX_BODY_BYTES = 512 * 1024;
 const DEFAULT_DATA_DIR = resolve(fileURLToPath(new URL("../data", import.meta.url)));
 const DEFAULT_MAX_BLUEPRINTS = 200;
 const DEFAULT_MAX_RUNS = 500;
+// 32 printable characters is ~190 bits from `openssl rand -base64 32`.
+const MIN_STUDIO_TOKEN_CHARS = 32;
 
 function serverError(message) {
   const err = new Error(message);
@@ -119,6 +121,19 @@ export function loadServerConfig(env = process.env) {
   } catch (err) {
     throw serverError(err.message);
   }
+  // Shared bearer token every non-health route requires (AGENTS.md, Management
+  // API Security). It is a secret: inject it with `infisical run` / `op run`.
+  // Fail closed, like the allowlist above, and never echo the value.
+  const token = env.NOEMI_STUDIO_TOKEN ?? "";
+  if (!token) {
+    throw serverError("NOEMI_STUDIO_TOKEN must be set before the Studio server starts.");
+  }
+  if (token.length < MIN_STUDIO_TOKEN_CHARS || !/^[\x21-\x7e]+$/.test(token)) {
+    throw serverError(
+      `NOEMI_STUDIO_TOKEN must be at least ${MIN_STUDIO_TOKEN_CHARS} printable characters with no spaces.`,
+    );
+  }
+
   const dataOverride = env.NOEMI_STUDIO_DATA_DIR?.trim();
 
   // Optional single CORS origin, for a Studio served from somewhere other than
@@ -141,6 +156,7 @@ export function loadServerConfig(env = process.env) {
     maxBlueprints,
     maxRuns,
     origin,
+    token,
     loader,
   };
 }

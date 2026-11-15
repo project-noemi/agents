@@ -60,6 +60,7 @@ op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.co
 | `NOEMI_STUDIO_PORT` | Studio server port (the Studio dev proxy expects `8787`) | `8787` |
 | `NOEMI_STUDIO_MAX_BODY_BYTES` | Request body cap for the Studio server | `524288` |
 | `NOEMI_STUDIO_ORIGIN` | Single CORS origin allowed to call the Studio server. Unset means same-origin only (the Vite proxy) | none |
+| `NOEMI_STUDIO_TOKEN` | **Secret.** Shared bearer token for the Studio server: every route except `GET /api/health` needs `Authorization: Bearer <token>`, and anything else gets a 401. Required: the server refuses to start without one of at least 32 printable characters (e.g. `openssl rand -base64 32`, stored in Infisical / 1Password). The Studio dev proxy reads the same variable and adds the header, so the browser never holds it | none (required) |
 | `NOEMI_REPO_ROOT` | Root that `skills/` and `mcp-protocols/` resolve against. Use an absolute path; a relative one resolves against the current directory. Not a secret | this clone's root |
 
 A 401 from the gateway means the virtual key is missing or invalid; a 403 means

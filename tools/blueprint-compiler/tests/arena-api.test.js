@@ -16,6 +16,11 @@ const architect = readFileSync(join(fixtures, "architect.core.md"), "utf8");
 const broken = readFileSync(join(fixtures, "broken.missing-refusal.md"), "utf8");
 const CANARY = "sk-arena-canary-91c4";
 const ID = /^[a-f0-9]{24}$/;
+// Obviously fake, low-entropy test token (not a secret; keeps secret scanners quiet).
+const STUDIO_TOKEN = "t".repeat(40);
+// Every request in this file is authenticated unless it calls globalThis.fetch.
+const fetch = (url, init = {}) =>
+  globalThis.fetch(url, { ...init, headers: { authorization: `Bearer ${STUDIO_TOKEN}`, ...init.headers } });
 const clean = {
   NOEMI_PREFERRED_PROVIDER: undefined, NOEMI_FALLBACK_PROVIDERS: undefined, NOEMI_RUNTIME: undefined,
   AI_GW_API_KEY: undefined, AI_GW_BASE_URL: undefined, AI_GW_MAX_RETRIES: undefined,
@@ -35,7 +40,7 @@ async function withStudio(fn) {
   const dataDir = await mkdtemp(join(tmpdir(), "arena-api-"));
   const lines = [];
   const server = createServer({
-    env: { NOEMI_HTTP_ALLOWED_HOSTS: "127.0.0.1", NOEMI_STUDIO_DATA_DIR: dataDir },
+    env: { NOEMI_HTTP_ALLOWED_HOSTS: "127.0.0.1", NOEMI_STUDIO_TOKEN: STUDIO_TOKEN, NOEMI_STUDIO_DATA_DIR: dataDir },
     repoRoot: fixtures,
     audit: { write: (s) => lines.push(s) },
   });
@@ -191,3 +196,12 @@ test("arena: malformed requests are refused before any stream starts", () =>
     assert.equal(wrongType.status, 415);
     assert.equal((await fetch(`${base}/api/arena`)).status, 404, "POST only");
   }));
+test("arena: /api/arena and the scoreboard need the bearer token", async () => {
+  await withStudio(async ({ base }) => {
+    const arena = await globalThis.fetch(`${base}/api/arena`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: "{}",
+    });
+    assert.equal(arena.status, 401);
+    assert.equal((await globalThis.fetch(`${base}/api/arena/scoreboard`)).status, 401);
+  });
+});

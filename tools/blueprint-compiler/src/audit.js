@@ -74,8 +74,13 @@ export function describeInput(input) {
  * messages: loader messages repeat the full URL, and provider messages can
  * echo gateway text. Prompts, Markdown, model output, client addresses and
  * headers are never inputs.
+ *
+ * An Arena request that ran carries `req.arena`, the engine's summary
+ * ({ results: [{ provider, ok, errorCodes? }] }). Its record lists one
+ * `run:<provider>` or `failed:<provider>` action per provider, in order.
  * @param {{ route: string, input?: object, provider?: string, runtime?: string,
- *   rejected?: { status: number, reason: string }, disconnected?: boolean }} req
+ *   rejected?: { status: number, reason: string }, disconnected?: boolean,
+ *   arena?: { results: { provider: string, ok: boolean, errorCodes?: string[] }[] } }} req
  * @param {object} [r] compile or check result; absent for rejected requests and plain GETs
  */
 export function auditFromRequest(req, r) {
@@ -91,6 +96,28 @@ export function auditFromRequest(req, r) {
     return auditRecord({ task, inputs, risks: [req.rejected.reason], result: `rejected:${req.rejected.status}` });
   }
   if (!r) return auditRecord({ task, inputs, actions: [route], result: "ok" });
+
+  if (route === "arena" && r.ok && req.arena) {
+    const results = req.arena.results ?? [];
+    const failed = results.filter((x) => !x.ok);
+    const codes = failed.flatMap((x) => x.errorCodes ?? []);
+    return auditRecord({
+      task,
+      inputs,
+      actions: [
+        "parse",
+        "validate",
+        "resolve",
+        ...results.map((x) => (x.ok ? `run:${x.provider}` : `failed:${x.provider}`)),
+      ],
+      risks: [...failed.flatMap((x) => (x.errorCodes ?? []).map((c) => `${x.provider}: ${c}`)), ...gone],
+      result: !failed.length
+        ? "ok"
+        : failed.length === results.length
+          ? `error:${codes.join(",")}`
+          : `partial:${codes.join(",")}`,
+    });
+  }
 
   if (r.ok) {
     const fell = r.run?.fallbacks ?? [];

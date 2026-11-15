@@ -93,6 +93,8 @@ export async function checkSource(markdown, source, opts = {}) {
  *
  * onStart fires after validation/resolution and before the provider chain.
  * onToken receives each text chunk as it arrives.
+ * opts.fallbacks, when given, replaces the configured fallback chain. The
+ * Arena passes [] so a failed provider is recorded, never replaced.
  */
 export async function compileSource(markdown, source, opts = {}) {
   const checked = await checkSource(markdown, source, opts);
@@ -100,7 +102,7 @@ export async function compileSource(markdown, source, opts = {}) {
 
   const { ir, resolved } = checked;
   const preferred = opts.provider ?? ir.modelPolicy.preferred ?? "mock";
-  const fallbacks = ir.modelPolicy.fallbacks ?? [];
+  const fallbacks = opts.fallbacks ?? ir.modelPolicy.fallbacks ?? [];
 
   const runtime = opts.runtime || loadRuntime();
   if (!RUNTIMES.includes(runtime)) {

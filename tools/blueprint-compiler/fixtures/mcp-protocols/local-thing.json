@@ -1,0 +1,1 @@
+{ "name": "local-thing", "description": "Resolver fixture proving MCP ids fall back to .json when no .md exists." }

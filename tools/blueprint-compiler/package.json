@@ -1,0 +1,22 @@
+{
+  "name": "@noemi/blueprint-compiler",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sprint 1 starter: parse and validate NoéMI Markdown personas, run a mock provider.",
+  "license": "FSL-1.1-Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "blueprint-compiler": "./src/cli.js"
+  },
+  "scripts": {
+    "compile": "node src/cli.js",
+    "studio": "node src/server.js",
+    "test": "node --import ./tests/helpers/setup.js --test --test-concurrency=1 tests/*.test.js"
+  },
+  "dependencies": {
+    "@mastra/core": "^1.79.0"
+  }
+}

@@ -1,6 +1,6 @@
 # Grok Bot: Autonomous Operations And Skills
 
-> **Draft.** This is a starting point for review and expansion. It describes operating practices and skill design, not a measured result and not a deployment-specific runbook.
+> This guide describes operating practices and skill design. It is not a measured result and not a deployment-specific runbook.
 
 This guide bridges the existing Grok Bot deployment material with the agent-native implementation guides. Use it after a bot or swarm exists, when the goal is more reliable, more autonomous work in a consistent environment. Autonomy here means the bot can complete a well-scoped path with less back-and-forth, not that approval gates disappear.
 
@@ -231,8 +231,6 @@ These are outlines only, mapped to functions in the [organization chart guide](g
 - **Verification:** A second person or bot can follow the skill on sample inputs and reach the same done bar.
 - **Ties to:** this template, [docs/skills/README.md](../skills/README.md), [swarm playbook](grok-bot-swarm-deploy-agent.md) §3.
 
-## What This Draft Does Not Cover
+## What This Guide Does Not Cover
 
-This draft does not add a Grok Bot configuration reference or an operations runbook. It does not change the deploy playbook, the organization chart, or any identity register. It invents no product metrics. Those remain gaps or follow-up work.
-
-_This is a draft implementation guide. Expand with deployment-specific done bars, worked examples, and any skills the organization decides to adopt._
+This guide does not add a Grok Bot configuration reference or an operations runbook. It does not change the deploy playbook, the organization chart, or any identity register. It invents no product metrics. Deployment-specific done bars and domain skills belong in the organization's own copy of this library.

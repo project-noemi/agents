@@ -2,7 +2,7 @@
 
 Agents amplify whatever patterns a codebase already has. A workaround left in one file becomes the template for the next ten. A gardener is a role, held by a person, an agent, or both, that keeps the paved path clear: it finds repeated mistakes, turns them into durable controls, and removes the patterns agents should not copy.
 
-The garden analogy comes from Lauren Tan's (@poteto) talk ["All Code Is Slop (Except Mine)"](https://ai.engineer/code/2026/talks/lauren-tan) (AI Engineer CODE 2026): as code arrives continuously from many agents, the constraints in the codebase are the foundation new code grows around, and weeds left in place spread. This guide turns that into a governed routine.
+The garden analogy comes from the AI Engineer CODE 2026 talk "All Code Is Slop (Except Mine)": as code arrives continuously from many agents, the constraints in the codebase are the foundation new code grows around, and weeds left in place spread. This guide turns that into a governed routine.
 
 ## What a Gardener Does
 

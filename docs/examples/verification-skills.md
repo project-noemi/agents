@@ -2,7 +2,7 @@
 
 A verification skill teaches an agent how to prove its own work, so "done" means evidence was observed rather than that a step was started. It is the inner loop that makes parallel agent work safe: you can only hand more tasks to agents once you trust how they check them.
 
-This guide adapts the emphasis on runtime and formal verification from Lauren Tan's (@poteto) talk ["All Code Is Slop (Except Mine)"](https://ai.engineer/code/2026/talks/lauren-tan) (AI Engineer CODE 2026) and maps it onto the skill format this repository already uses.
+This guide adapts the emphasis on runtime and formal verification from the AI Engineer CODE 2026 talk "All Code Is Slop (Except Mine)" and maps it onto the skill format this repository already uses.
 
 ## What Makes a Verification Skill Good
 

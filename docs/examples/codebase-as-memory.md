@@ -2,7 +2,7 @@
 
 An agent's largest input is the repository it works in. It copies what it finds there, including workarounds and deprecated patterns. So when you correct an agent, the most durable place to record the correction is the codebase itself, not another sentence in a prompt.
 
-This guide adapts that idea from Lauren Tan's (@poteto) talk ["All Code Is Slop (Except Mine)"](https://ai.engineer/code/2026/talks/lauren-tan) (AI Engineer CODE 2026) and shows where this repository already applies it. Use it when the same review finding, chat correction, or incident has happened more than once.
+This guide adapts that idea from the AI Engineer CODE 2026 talk "All Code Is Slop (Except Mine)" and shows where this repository already applies it. Use it when the same review finding, chat correction, or incident has happened more than once.
 
 ## The Correction Hierarchy
 

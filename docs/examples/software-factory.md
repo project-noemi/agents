@@ -2,7 +2,7 @@
 
 A software factory is the step after one person working with one agent: several specialized, long-lived agents each own one part of the work, routines start that work on a schedule or an event, and verification and review gates keep quality steady as volume rises. A kitchen brigade is a useful picture: each station has one job, a written recipe, and a pass where every plate is checked before it leaves.
 
-The talk this guide draws on, Lauren Tan's (@poteto) ["All Code Is Slop (Except Mine)"](https://ai.engineer/code/2026/talks/lauren-tan) (AI Engineer CODE 2026), puts the order plainly: improve the code agents learn from, make constraints executable, give agents a strong way to test behaviour, and only then expand the automation that runs them repeatedly. This guide follows that order.
+The talk this guide draws on, "All Code Is Slop (Except Mine)" (AI Engineer CODE 2026), puts the order plainly: improve the code agents learn from, make constraints executable, give agents a strong way to test behaviour, and only then expand the automation that runs them repeatedly. This guide follows that order.
 
 ## Order of Construction
 

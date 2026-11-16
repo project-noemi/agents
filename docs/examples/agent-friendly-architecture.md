@@ -2,7 +2,7 @@
 
 An agent starts each task with little context. It finds its way by reading the tree, searching for similar code, and copying what it finds. A repository is agent-friendly when that behaviour leads to the right answer: the shortest path through the code is also the correct one.
 
-This guide adapts ideas from Lauren Tan's (@poteto) talk ["All Code Is Slop (Except Mine)"](https://ai.engineer/code/2026/talks/lauren-tan) (AI Engineer CODE 2026), where good API design and architecture are the first layer of an agent's environment, ahead of lint, verification, and prose rules. It uses this repository as the worked example.
+This guide adapts ideas from the AI Engineer CODE 2026 talk "All Code Is Slop (Except Mine)", where good API design and architecture are the first layer of an agent's environment, ahead of lint, verification, and prose rules. It uses this repository as the worked example.
 
 ## Principles
 

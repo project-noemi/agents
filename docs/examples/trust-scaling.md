@@ -2,7 +2,7 @@
 
 Trust in an agent should rise only as fast as the evidence for it. This guide describes how to widen what an agent may do on its own, one verified path at a time, without removing the human decisions that governance requires.
 
-The framing "trust first, then parallel" comes from Lauren Tan's (@poteto) talk ["All Code Is Slop (Except Mine)"](https://ai.engineer/code/2026/talks/lauren-tan) (AI Engineer CODE 2026): invest in the agent's environment until you can trust its output, and only then increase volume. This repository's AI review rollout is a worked example of the same idea.
+The framing "trust first, then parallel" comes from the AI Engineer CODE 2026 talk "All Code Is Slop (Except Mine)": invest in the agent's environment until you can trust its output, and only then increase volume. This repository's AI review rollout is a worked example of the same idea.
 
 ## The Pattern
 

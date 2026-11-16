@@ -9,6 +9,8 @@ import test from "node:test";
 import { createServer } from "../src/server.js";
 import { withEnv } from "./helpers/fake-network.js";
 
+const rawFetch = (...args) => globalThis.fetch(...args);
+
 // Offline: loopback only, and every server gets its own temp data folder.
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const fixtures = join(pkg, "fixtures");

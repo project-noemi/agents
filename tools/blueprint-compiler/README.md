@@ -60,6 +60,11 @@ op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.co
 | `NOEMI_STUDIO_PORT` | Studio server port (the Studio dev proxy expects `8787`) | `8787` |
 | `NOEMI_STUDIO_MAX_BODY_BYTES` | Request body cap for the Studio server | `524288` |
 | `NOEMI_STUDIO_ORIGIN` | Single CORS origin allowed to call the Studio server. Unset means same-origin only (the Vite proxy) | none |
+| `NOEMI_STUDIO_DATA_DIR` | The one folder for saved blueprints and run history. Created on first use, git-ignored | `data/` in this package |
+| `NOEMI_STUDIO_MAX_BLUEPRINTS` | Most blueprints that can be saved | `200` |
+| `NOEMI_STUDIO_MAX_RUNS` | Run-history rows kept, oldest dropped first | `500` |
+| `NOEMI_STUDIO_RATE_LIMIT` | Studio server requests allowed per minute | `120` |
+| `NOEMI_STUDIO_RUN_RATE_LIMIT` | Studio runs allowed per minute | `20` |
 | `NOEMI_STUDIO_TOKEN` | **Secret.** Shared bearer token for the Studio server: every route except `GET /api/health` needs `Authorization: Bearer <token>`, and anything else gets a 401. Required: the server refuses to start without one of at least 32 printable characters (e.g. `openssl rand -base64 32`, stored in Infisical / 1Password). The Studio dev proxy reads the same variable and adds the header, so the browser never holds it | none (required) |
 | `NOEMI_REPO_ROOT` | Root that `skills/` and `mcp-protocols/` resolve against. Use an absolute path; a relative one resolves against the current directory. Not a secret | this clone's root |
 
@@ -166,9 +171,15 @@ assumption** (the public repo addressed by release tag); it lives in one functio
 `studio/src/api/types.ts`.
 
 ```bash
-NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com npm run studio
-# live providers: infisical run --env=dev -- env NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com npm run studio
+# Offline: print a throwaway token, then export it. This one shell runs both
+# processes, so they share it.
+openssl rand -hex 32
+export NOEMI_STUDIO_TOKEN=<the value printed above>
+NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com npm run studio &
 cd studio && VITE_STUDIO_BACKEND=http npm run dev
+
+# Live providers: run each command under your secrets manager instead.
+# infisical run --env=dev -- env NOEMI_HTTP_ALLOWED_HOSTS=raw.githubusercontent.com npm run studio
 ```
 
 | Route | Body | Response |
@@ -176,11 +187,22 @@ cd studio && VITE_STUDIO_BACKEND=http npm run dev
 | `GET /api/health` | | `{ ok: true }` |
 | `GET /api/providers` | | `{ providers, runtimes }`, names only |
 | `POST /api/validate` | `{ input }` | `{ ok, ir, resolved }` or `{ ok: false, stage, errors }`; no provider runs |
-| `POST /api/run` | `{ input, prompt?, provider?, runtime? }` | `text/event-stream`: `start`, `token`, `done`, or one `error` |
+| `POST /api/run` | `{ input, prompt?, provider?, runtime?, blueprintId? }` | `text/event-stream`: `start`, `token`, `done`, or one `error` |
+| `GET /api/runs[?limit=N]` | | Run history, newest first (1 to 500, default 100) |
+| `GET /api/blueprints` | | Saved blueprints: `[{ id, name, updatedAt }]` |
+| `POST /api/blueprints` | `{ name, markdown }` | 201 with the saved blueprint |
+| `GET /api/blueprints/:id` | | `{ id, name, markdown, createdAt, updatedAt }` |
+| `PUT /api/blueprints/:id` | `{ name, markdown }` | The updated blueprint |
+| `PATCH /api/blueprints/:id` | `{ name }` | Rename; the Markdown is kept |
+| `DELETE /api/blueprints/:id` | | 204 |
 
 `input` is `{ kind: "text", markdown }`, `{ kind: "url", url }` or
-`{ kind: "registry", ref }`. There is no file kind. Providers do not stream yet,
-so `token` carries the whole output in one event.
+`{ kind: "registry", ref }`. There is no file kind. `blueprintId` is optional: a
+saved blueprint's id, so the history row can show its current name.
+
+Output arrives as `token` events as the provider produces it. A provider can fail
+over to the next one only until its first token: after that the run ends with
+`error`, because a second provider's text would be appended to a partial answer.
 
 - **Allowlist first.** The server refuses to start unless `NOEMI_HTTP_ALLOWED_HOSTS`
   lists at least one host. The registry's host must be on it too.
@@ -192,7 +214,25 @@ so `token` carries the whole output in one event.
   error codes rather than messages.
 - Bodies must be `application/json` and fit under the size cap. The `Host` header
   must be loopback, the bound host or the CORS origin's host, which blocks DNS rebinding.
-- Saving blueprints (`/api/blueprints`) is not implemented yet and returns 404.
+- **Storage.** Saved blueprints and run history live in one folder
+  (`NOEMI_STUDIO_DATA_DIR`). Each blueprint is `<id>.json`, where the id is 24
+  server-made hex characters. The display name is stored inside the file and never
+  used as a file name, so a name like `../../x` is only text. Any other id is a 404
+  before a file is touched. Links in the folder are ignored, and writes are atomic.
+- **Run history.** `/api/run` adds one row to `runs.jsonl`: provider, runtime, model,
+  duration, tokens, outcome (`ok`, `fallback`, `error`) and error codes. It never
+  stores the prompt, persona text, output or error messages. History is best
+  effort: an unwritable folder does not fail a run. `data/` is plain local files, so
+  back it up or point `NOEMI_STUDIO_DATA_DIR` somewhere that is.
+- **Token.** The server refuses to start without `NOEMI_STUDIO_TOKEN`. Every route
+  but `/api/health` returns 401 without `Authorization: Bearer <token>`. The Vite
+  proxy adds the header on the server side, so the browser never holds the token.
+  This is a shared token, not user login; Casdoor is still the long-term answer
+  (AGENTS.md, Management API Security). Inject it like any other secret, and do not
+  write it to a file.
+- **Rate limits.** Requests over `NOEMI_STUDIO_RATE_LIMIT` or runs over
+  `NOEMI_STUDIO_RUN_RATE_LIMIT` in a minute get 429 with `Retry-After`. The counts are
+  for the whole server and hold no client data. `/api/health` is not limited.
 
 ## Skill and MCP resolution
 
@@ -258,21 +298,6 @@ this clone's real `skills/`. The CLI tests clear the variable and cover the defa
 - [AGENTS.md](AGENTS.md) — secrets, loop, and package contract
 - [GIT-WORKFLOW.md](GIT-WORKFLOW.md) — branch map, staying up to date, and opening PRs
 
-
-
-1. Environment table rows (after NOEMI_STUDIO_ORIGIN)
-
-| NOEMI_STUDIO_DATA_DIR | The one folder for saved blueprints and run history. Created on first use, git-ignored | data/ in this package | | NOEMI_STUDIO_MAX_BLUEPRINTS | Most blueprints that can be saved | 200 | | NOEMI_STUDIO_MAX_RUNS | Run-history rows kept, oldest dropped first | 500 |
-
-2. Studio route table rows (after POST /api/run)
-
-| GET /api/runs[?limit=N] | | run history, newest first (1 to 500, default 100) | | GET /api/blueprints | | saved blueprints: [{ id, name, updatedAt }] | | POST /api/blueprints | { name, markdown } | 201 with the saved blueprint | | GET /api/blueprints/:id | | { id, name, markdown, createdAt, updatedAt } | | PUT /api/blueprints/:id | { name, markdown } | the updated blueprint | | PATCH /api/blueprints/:id | { name } | rename; the Markdown is kept | | DELETE /api/blueprints/:id | | 204 |
-
-/api/run also accepts an optional blueprintId (a saved blueprint's id) so the history row can show the blueprint's current name.
-
-3. Replace the bullet "Saving blueprints (/api/blueprints) is not implemented yet and returns 404."
-Saved blueprints and run history live in one folder (NOEMI_STUDIO_DATA_DIR). Each blueprint is <id>.json, where the id is 24 server-made hex characters. The display name is stored inside the file and never used as a file name, so a name like ../../x is only text. An id that is not 24 lowercase hex characters is a 404 before any file is touched. Links in the folder are ignored. Writes are atomic. /api/run adds one row to runs.jsonl: provider, runtime, model, duration, tokens, outcome (ok, fallback, error) and error codes. It never stores the prompt, the persona text, the output or error messages. History is best effort: an unwritable folder does not fail a run. data/ is plain local files: back it up, or point NOEMI_STUDIO_DATA_DIR somewhere that is.
-
 ### Cost, Arena history, spending cap and throttle
 
 **Cost.** Every answer's `usage.costUsd` is worked out from a price table: USD per million tokens, keyed by model id (a `vendor/` prefix is ignored). The table is `DEFAULT_PRICES` in `src/config.js`, and `NOEMI_PRICE_TABLE` (JSON, `{"<model id>":{"inputPerMTok":0.3,"outputPerMTok":2.5}}`) replaces entries without a code change. It ships with the mock (free) and the two default live models, `gemini-3.8-flash` ($0.75 in / $3.75 out) and `grok-4.6` ($2 in / $6 out); if you set `GEMINI_MODEL` or `XAI_MODEL` to something else, add that model. Rates are one flat figure per model (no cached-input discount, no higher xAI rate above 200K-token prompts), and Gemini 3.8 Flash's introductory price doubles on 2027-01-01. A live model with no entry costs 0 on the scoreboard, and is refused while a spending cap is set.
@@ -282,7 +307,3 @@ Saved blueprints and run history live in one folder (NOEMI_STUDIO_DATA_DIR). Eac
 **Daily spending cap.** `NOEMI_DAILY_SPEND_CAP_USD` (unset = no cap). Cost from `/api/run` and `/api/arena` is added to `spend.json` in the data folder; once today's total reaches the cap, both routes answer 429 until the day changes. The day is a calendar day in `NOEMI_SPEND_TIMEZONE` (an IANA name such as `America/Denver`; default `UTC`). The cap is checked before a run starts and the cost added after it ends, so a run, or several at once, can end slightly over it. A damaged `spend.json` makes these routes fail (500) rather than count as zero.
 
 **Throttle.** `/api/run` and `/api/arena` allow `NOEMI_THROTTLE_MAX_REQUESTS` requests (default 30, `0` = off) per `NOEMI_THROTTLE_WINDOW_MS` (default 60000) across the whole server, because Studio has one shared token and no per-user key. Over the limit: 429 with `Retry-After`. The count is in memory and resets when the server restarts.
-
-4. package .gitignore
-
-Add data/ (done in the .gitignore in this folder).

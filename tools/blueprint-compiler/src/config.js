@@ -157,6 +157,9 @@ const DEFAULT_THROTTLE_MAX = 30;
 const DEFAULT_THROTTLE_WINDOW_MS = 60_000;
 // 32 printable characters is ~190 bits from `openssl rand -base64 32`.
 const MIN_STUDIO_TOKEN_CHARS = 32;
+const DEFAULT_RATE_LIMIT = 120;
+// Runs spend gateway budget, so they get a much smaller share.
+const DEFAULT_RUN_RATE_LIMIT = 20;
 
 function serverError(message) {
   const err = new Error(message);
@@ -191,9 +194,13 @@ export function loadServerConfig(env = process.env) {
 
   let maxBlueprints;
   let maxRuns;
+  let rateLimit;
+  let runRateLimit;
   try {
     maxBlueprints = loaderInt(env, "NOEMI_STUDIO_MAX_BLUEPRINTS", DEFAULT_MAX_BLUEPRINTS);
     maxRuns = loaderInt(env, "NOEMI_STUDIO_MAX_RUNS", DEFAULT_MAX_RUNS);
+    rateLimit = loaderInt(env, "NOEMI_STUDIO_RATE_LIMIT", DEFAULT_RATE_LIMIT);
+    runRateLimit = loaderInt(env, "NOEMI_STUDIO_RUN_RATE_LIMIT", DEFAULT_RUN_RATE_LIMIT);
   } catch (err) {
     throw serverError(err.message);
   }
@@ -268,6 +275,8 @@ export function loadServerConfig(env = process.env) {
     dailyCapUsd,
     spendTimeZone,
     throttle: throttleMax > 0 ? { max: throttleMax, windowMs: throttleWindowMs } : null,
+    rateLimit,
+    runRateLimit,
     origin,
     token,
     loader,

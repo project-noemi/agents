@@ -21,6 +21,8 @@
  * @param {Function} [options.delayFor] - Optional (err, attempt) => ms. A finite,
  *   non-negative return replaces the exponential delay for that attempt (e.g. a
  *   server's Retry-After). Anything else keeps the default schedule.
+ * @param {Function} [options.onRetry] - ({ attempt, maxRetries, delay, err }) => void.
+ *   Default logs to console.warn; pass a no-op when stderr is reserved (e.g. JSON audit output).
  * @returns {Promise<*>}
  */
 async function withRetry(fn, options = {}) {
@@ -31,6 +33,8 @@ async function withRetry(fn, options = {}) {
     jitterFactor = 0.2,
     retryIf = () => true,
     delayFor,
+    onRetry = ({ attempt, maxRetries: max, delay, err }) =>
+      console.warn(`[resilience] Attempt ${attempt}/${max} failed: ${err.message}. Retrying in ${delay}ms...`),
   } = options;
 
   let lastError;
@@ -48,7 +52,7 @@ async function withRetry(fn, options = {}) {
       const delay = Number.isFinite(custom) && custom >= 0
         ? Math.round(custom)
         : Math.round(exponentialDelay + jitter);
-      console.warn(`[resilience] Attempt ${attempt + 1}/${maxRetries} failed: ${err.message}. Retrying in ${delay}ms...`);
+      onRetry({ attempt: attempt + 1, maxRetries, delay, err });
       await sleep(delay);
     }
   }

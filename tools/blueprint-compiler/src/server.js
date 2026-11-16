@@ -25,6 +25,9 @@
  *   - NOEMI_HTTP_ALLOWED_HOSTS and NOEMI_STUDIO_TOKEN are required at startup.
  *   - Every route except GET /api/health needs `Authorization: Bearer <token>`;
  *     anything else is a 401 before routing (so unknown paths are 401, not 404).
+ *     The Vite proxy adds it, so a browser never holds it.
+ *   - Requests are rate limited per minute (NOEMI_STUDIO_RATE_LIMIT), with a
+ *     smaller limit for runs and Arena runs (NOEMI_STUDIO_RUN_RATE_LIMIT).
  *   - JSON bodies are size-capped.
  *   - The Host header is restricted to allowed hosts.
  *   - One audit record is written per request.
@@ -46,6 +49,7 @@ import {
 import { loadServerConfig, RUNTIMES } from "./config.js";
 import { auditFromRequest, writeAudit } from "./audit.js";
 import { runArena } from "./arena.js";
+import { createRateLimiter } from "./rate-limit.js";
 import { createBlueprintStore, ID } from "./store/blueprints.js";
 import { StoreError } from "./store/files.js";
 import { arenaRecordFrom, createArenaStore } from "./store/arena.js";
@@ -583,6 +587,9 @@ export function createServer(opts = {}) {
     }),
   ];
 
+  const takeRequest = createRateLimiter(config.rateLimit);
+  const takeRun = createRateLimiter(config.runRateLimit);
+
   function match(method, path) {
     for (const r of routes) {
       if (r.method !== method) continue;
@@ -635,6 +642,17 @@ export function createServer(opts = {}) {
       if (!(found && PUBLIC_ROUTES.has(found.route.name)) && !hasValidBearer(req, tokenDigest)) {
         res.setHeader("www-authenticate", 'Bearer realm="noemi-studio"');
         throw new RequestError(401, "Missing or invalid bearer token.");
+      }
+
+      // Health is exempt: it reveals nothing and spends nothing.
+      if (!(found && PUBLIC_ROUTES.has(found.route.name))) {
+        const spends = found && THROTTLED_ROUTES.has(found.route.name);
+        const retryAfter = takeRequest() || (spends ? takeRun() : 0);
+
+        if (retryAfter) {
+          res.setHeader("retry-after", String(retryAfter));
+          throw new RequestError(429, "Too many requests. Try again shortly.");
+        }
       }
 
       if (!found) {

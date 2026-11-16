@@ -6,8 +6,11 @@ import http from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { createRateLimiter } from "../src/rate-limit.js";
 import { createServer } from "../src/server.js";
 import { withEnv } from "./helpers/fake-network.js";
+
+const rawFetch = (...args) => globalThis.fetch(...args);
 
 const pkg = join(dirname(fileURLToPath(import.meta.url)), "..");
 const fixtures = join(pkg, "fixtures");
@@ -192,7 +195,7 @@ test("server: a registry on a host outside the allowlist is refused", async () =
 
 test("server: run streams start, token, done with the mock provider", async () => {
   await withEnv(clean, () => withStudio({}, async ({ base, audit, rawAudit }) => {
-    const prompt = "summarize the private notes of Jane Example";
+    const prompt = "summarize the confidential prompt marker";
     const { events } = await runEvents(base, {
       input: { kind: "text", markdown: architect }, prompt, provider: "mock", runtime: "direct",
     });
@@ -205,7 +208,7 @@ test("server: run streams start, token, done with the mock provider", async () =
 
     const streamedOutput = tokenEvents.map((event) => event.text).join("");
     assert.match(streamedOutput, /^\[mock\] compiled coding\/architect/);
-    assert.match(streamedOutput, /Jane Example/);
+    assert.match(streamedOutput, /confidential prompt marker/);
 
     assert.equal(events.at(-1).type, "done");
     assert.equal(events.at(-1).provider, "mock");
@@ -215,7 +218,7 @@ test("server: run streams start, token, done with the mock provider", async () =
     assert.equal(record.task, "studio:run:coding/architect");
     assert.deepEqual(record.inputs, [`text:${Buffer.byteLength(architect)}B`, "mock", "direct"]);
     assert.deepEqual(record.actions, ["parse", "validate", "resolve", "run:mock"]);
-    assert.ok(!rawAudit().includes("Jane"), "the prompt never reaches the audit record");
+    assert.ok(!rawAudit().includes("confidential"), "the prompt never reaches the audit record");
     assert.ok(!rawAudit().includes("Senior Developer"), "the persona text never reaches the audit record");
   }));
 });
@@ -280,7 +283,7 @@ test("server: rejects malformed requests before compiling", async () => {
       [() => fetch(`${base}/api/validate`, { ...json, headers: { "content-type": "text/plain" }, body: "{}" }), 415],
       [() => fetch(`${base}/api/validate`, { ...json, body: "{" }), 400],
       [() => fetch(`${base}/api/blueprints/not-an-id`), 404],
-      [() => fetch(`${base}/api/secret-path-jane`), 404],
+      [() => fetch(`${base}/api/secret-path-marker`), 404],
     ];
     for (const [send, status] of cases) {
       const res = await send();
@@ -292,7 +295,7 @@ test("server: rejects malformed requests before compiling", async () => {
     const records = audit();
     assert.equal(records.length, cases.length, "every request is audited");
     assert.ok(records.every((r) => r.result.startsWith("rejected:")));
-    assert.ok(!JSON.stringify(records).includes("jane"), "unknown paths are not logged");
+    assert.ok(!JSON.stringify(records).includes("secret-path-marker"), "unknown paths are not logged");
   }));
 });
 
@@ -362,4 +365,45 @@ test("server: every route but health needs the bearer token; failures are 401 an
     assert.equal(records.length, attempts.length);
     assert.ok(!rawAudit().includes(STUDIO_TOKEN) && !rawAudit().includes(wrong), "tokens never reach the audit log");
   }));
+});
+
+test("server: run and request limits answer 429 with Retry-After", async () => {
+  await withEnv(clean, () => withStudio({ NOEMI_STUDIO_RUN_RATE_LIMIT: "2" }, async ({ base, audit }) => {
+    const run = () => post(base, "/api/run", { input: { kind: "text", markdown: architect }, provider: "mock" });
+    for (const expected of [200, 200, 429]) {
+      const res = await run();
+      assert.equal(res.status, expected);
+      if (expected === 429) assert.ok(Number(res.headers.get("retry-after")) > 0);
+      await res.text();
+    }
+    assert.equal((await fetch(`${base}/api/providers`)).status, 200, "other routes keep working");
+    assert.equal(audit().at(-2).result, "rejected:429");
+  }));
+
+  await withEnv(clean, () => withStudio({ NOEMI_STUDIO_RATE_LIMIT: "2" }, async ({ base }) => {
+    const statuses = [];
+    for (let i = 0; i < 3; i += 1) statuses.push((await fetch(`${base}/api/providers`)).status);
+    assert.deepEqual(statuses, [200, 200, 429]);
+    assert.equal((await rawFetch(`${base}/api/health`)).status, 200, "health is not limited");
+  }));
+});
+
+test("server: rate limits must be whole numbers of at least 1", () => {
+  for (const name of ["NOEMI_STUDIO_RATE_LIMIT", "NOEMI_STUDIO_RUN_RATE_LIMIT"]) {
+    assert.throws(
+      () => createServer({ env: { NOEMI_HTTP_ALLOWED_HOSTS: "example.com", NOEMI_STUDIO_TOKEN: STUDIO_TOKEN, [name]: "0" } }),
+      { code: "SERVER_CONFIG" },
+    );
+  }
+});
+
+test("rate limiter: refuses over the limit and resets with the window", () => {
+  let now = 1_000;
+  const take = createRateLimiter(2, () => now);
+  assert.equal(take(), 0);
+  assert.equal(take(), 0);
+  now += 10_000;
+  assert.equal(take(), 50);
+  now += 50_000;
+  assert.equal(take(), 0);
 });

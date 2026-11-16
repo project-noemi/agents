@@ -21,6 +21,7 @@ const cap = (v, n = 80) => {
   return s.length > n ? `${s.slice(0, n - 3)}...` : s;
 };
 const count = (n) => (Number.isFinite(n) && n > 0 ? Math.round(n) : 0);
+const money = (n) => (Number.isFinite(n) && n > 0 ? n : 0);
 
 /**
  * Pure: build one history record from a finished /api/run.
@@ -49,6 +50,7 @@ export function runRecordFrom({
     ...(run?.model ? { model: cap(run.model) } : {}),
     inputTokens: count(usage.inputTokens),
     outputTokens: count(usage.outputTokens),
+    costUsd: money(usage.costUsd),
     outcome: !result.ok ? "error" : fallbacks.length ? "fallback" : "ok",
     ...(result.ok
       ? {}

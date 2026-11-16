@@ -5,7 +5,9 @@ import { resolveBlueprint } from "./resolve.js";
 import {
   loadLoaderConfig,
   loadModelPolicy,
+  loadPriceTable,
   loadResolverConfig,
+  modelKey,
   loadRuntime,
   RUNTIMES,
 } from "./config.js";
@@ -25,6 +27,7 @@ import {
 } from "./providers/xai.js";
 import { runMastra, loadMastraConfig } from "./runtime/mastra.js";
 import { loadGatewayConfig } from "./providers/gateway.js";
+import { costUsd } from "./pricing.js";
 import {
   isFallbackError,
   providerOrder,
@@ -95,6 +98,9 @@ export async function checkSource(markdown, source, opts = {}) {
  * onToken receives each text chunk as it arrives.
  * opts.fallbacks, when given, replaces the configured fallback chain. The
  * Arena passes [] so a failed provider is recorded, never replaced.
+ * The answer's usage.costUsd is worked out from the price table (config.js).
+ * opts.requirePrice refuses to start when a live provider's model has no price,
+ * so a spending cap is never counting free runs by mistake.
  */
 export async function compileSource(markdown, source, opts = {}) {
   const checked = await checkSource(markdown, source, opts);
@@ -119,6 +125,17 @@ export async function compileSource(markdown, source, opts = {}) {
           path: "runtime",
         },
       ],
+    };
+  }
+
+  let prices;
+  try {
+    prices = loadPriceTable();
+  } catch (err) {
+    return {
+      ok: false,
+      stage: "provider",
+      errors: [{ code: err.code, message: err.message, path: "prices" }],
     };
   }
 
@@ -167,6 +184,14 @@ export async function compileSource(markdown, source, opts = {}) {
     const live = LIVE[name];
     if (!live) return;
 
+    if (opts.requirePrice && !prices.has(modelKey(live.modelId()))) {
+      const err = new Error(
+        `No price for model "${modelKey(live.modelId()).slice(0, 60)}". Add it to NOEMI_PRICE_TABLE before using a spending cap.`,
+      );
+      err.code = "PROVIDER_CONFIG";
+      throw err;
+    }
+
     if (runtime === "mastra") {
       loadMastraConfig(live);
     } else {
@@ -204,6 +229,9 @@ export async function compileSource(markdown, source, opts = {}) {
         }),
     });
 
+    // Whoever answered is who is priced; providers themselves report 0.
+    const cost = costUsd({ model: run.model, ...run.usage }, prices);
+
     return {
       ok: true,
       ir,
@@ -211,6 +239,7 @@ export async function compileSource(markdown, source, opts = {}) {
       run: {
         ...run,
         runtime: run.runtime ?? "direct",
+        usage: { ...run.usage, ...(cost === null ? {} : { costUsd: cost }) },
         fallbacks: fallbacksUsed,
       },
     };

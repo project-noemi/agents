@@ -9,6 +9,8 @@
  *   POST   /api/run               { input, prompt, provider?, runtime?, blueprintId? } -> SSE
  *   POST   /api/arena             { blueprintId, prompt } -> SSE (Sprint 5, every provider at once)
  *   GET    /api/runs[?limit=N]    run history, newest first
+ *   GET    /api/arena/runs[?limit=N]   saved Arena runs, newest first
+ *   GET    /api/arena/scoreboard  one row per provider, totalled over the saved Arena runs
  *   GET    /api/blueprints        saved blueprints (summaries)
  *   POST   /api/blueprints        { name, markdown } -> 201 saved blueprint
  *   GET    /api/blueprints/:id    one saved blueprint
@@ -26,6 +28,9 @@
  *   - JSON bodies are size-capped.
  *   - The Host header is restricted to allowed hosts.
  *   - One audit record is written per request.
+ *   - /api/run and /api/arena are throttled (NOEMI_THROTTLE_*): 429 + Retry-After.
+ *   - With NOEMI_DAILY_SPEND_CAP_USD set, they are refused (429) once today's
+ *     spend reaches the cap. Prices come from the price table in config.js.
  *   - Saved blueprints and run history live in one folder (NOEMI_STUDIO_DATA_DIR).
  *     File names come from server-made ids, never from browser input.
  */
@@ -43,7 +48,10 @@ import { auditFromRequest, writeAudit } from "./audit.js";
 import { runArena } from "./arena.js";
 import { createBlueprintStore, ID } from "./store/blueprints.js";
 import { StoreError } from "./store/files.js";
+import { arenaRecordFrom, createArenaStore } from "./store/arena.js";
 import { createRunStore, runRecordFrom } from "./store/runs.js";
+import { createSpendLedger } from "./store/spend.js";
+import { createThrottle } from "./throttle.js";
 
 const MAX_PROMPT_CHARS = 16_000;
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
@@ -53,6 +61,8 @@ const DEFAULT_RUN_LIMIT = 100;
 const MAX_RUN_LIMIT = 500;
 // Liveness only; it reveals nothing about agents, runs or configuration.
 const PUBLIC_ROUTES = new Set(["health"]);
+// The routes that call a model, and so cost money.
+const THROTTLED_ROUTES = new Set(["run", "arena"]);
 
 // Compare fixed-length digests so neither content nor length leaks through timing.
 const digest = (value) => createHash("sha256").update(value, "utf8").digest();
@@ -67,6 +77,12 @@ class RequestError extends Error {
   constructor(status, message) {
     super(message);
     this.status = status;
+  }
+}
+
+class SpendCapError extends RequestError {
+  constructor() {
+    super(429, "The daily spending cap has been reached. Runs resume when the day changes.");
   }
 }
 
@@ -180,6 +196,9 @@ export function createServer(opts = {}) {
     maxItems: config.maxBlueprints,
   });
   const runs = createRunStore({ dir: config.dataDir, maxRuns: config.maxRuns });
+  const arenaRuns = createArenaStore({ dir: config.dataDir, maxRuns: config.maxArenaRuns });
+  const spend = createSpendLedger({ dir: config.dataDir, timeZone: config.spendTimeZone });
+  const throttle = config.throttle ? createThrottle(config.throttle) : null;
 
   const allowedHostnames = new Set([
     ...LOOPBACK,
@@ -192,6 +211,8 @@ export function createServer(opts = {}) {
 
   const compileOpts = {
     loader: config.loader,
+    // With a cap, a model that has no price would count as free: refuse it instead.
+    ...(config.dailyCapUsd !== null ? { requirePrice: true } : {}),
     ...(opts.repoRoot ? { repoRoot: opts.repoRoot } : {}),
   };
 
@@ -217,6 +238,22 @@ export function createServer(opts = {}) {
     }
 
     return body;
+  }
+
+  /** Throws a 429 once today's spend has reached the cap. No-op without a cap. */
+  async function checkSpendCap() {
+    if (config.dailyCapUsd !== null && (await spend.spentToday()) >= config.dailyCapUsd) {
+      throw new SpendCapError();
+    }
+  }
+
+  /** Best effort, like run history: a ledger that cannot be written never fails a finished run. */
+  async function recordSpend(usd) {
+    try {
+      await spend.add(usd);
+    } catch {
+      // Intentionally ignored; see above.
+    }
   }
 
   async function validate(req, res, log) {
@@ -278,6 +315,8 @@ export function createServer(opts = {}) {
 
     log.provider = provider;
     log.runtime = runtime;
+
+    await checkSpendCap();
 
     res.writeHead(200, {
       "content-type": "text/event-stream; charset=utf-8",
@@ -349,6 +388,8 @@ export function createServer(opts = {}) {
       // Intentionally ignored; see above.
     }
 
+    if (result.ok) await recordSpend(result.run.usage?.costUsd);
+
     if (result.ok) {
       const {
         provider: answeredBy,
@@ -414,6 +455,8 @@ export function createServer(opts = {}) {
     const input = { kind: "text", markdown: saved.markdown };
     log.input = input;
 
+    await checkSpendCap();
+
     res.writeHead(200, {
       "content-type": "text/event-stream; charset=utf-8",
       "cache-control": "no-store",
@@ -452,10 +495,13 @@ export function createServer(opts = {}) {
         }
       },
 
-      // Runs before the closing `end` event. Saving the run (and the
-      // scoreboard totals) plugs in here: the summary holds no prompt or text.
-      onComplete: (summary) => {
+      // Runs before the closing `end` event, so a client that reads the
+      // scoreboard on `end` sees this run. The summary holds no prompt or text.
+      // Saving is best effort; the spend is recorded either way.
+      onComplete: async (summary) => {
         log.arena = summary;
+        await recordSpend(summary.results.reduce((sum, r) => sum + (r.costUsd || 0), 0));
+        await arenaRuns.append(arenaRecordFrom(summary, blueprintId));
       },
     });
 
@@ -468,7 +514,7 @@ export function createServer(opts = {}) {
     res.end();
   }
 
-  async function listRuns(req, res) {
+  const listFrom = (store) => async (req, res) => {
     const raw = new URL(req.url ?? "/", "http://localhost").searchParams.get("limit");
     const limit = raw === null ? DEFAULT_RUN_LIMIT : Number(raw);
 
@@ -479,8 +525,8 @@ export function createServer(opts = {}) {
       );
     }
 
-    sendJson(res, 200, await runs.list(limit));
-  }
+    sendJson(res, 200, await store.list(limit));
+  };
 
   const route = (method, pattern, name, handler) => ({ method, pattern, name, handler });
   const BP = /^\/api\/blueprints\/([^/]+)$/;
@@ -495,7 +541,11 @@ export function createServer(opts = {}) {
     route("POST", /^\/api\/validate$/, "validate", validate),
     route("POST", /^\/api\/run$/, "run", run),
     route("POST", /^\/api\/arena$/, "arena", arena),
-    route("GET", /^\/api\/runs$/, "runs.list", listRuns),
+    route("GET", /^\/api\/runs$/, "runs.list", listFrom(runs)),
+    route("GET", /^\/api\/arena\/runs$/, "arena.runs", listFrom(arenaRuns)),
+    route("GET", /^\/api\/arena\/scoreboard$/, "arena.scoreboard", async (_req, res) => {
+      sendJson(res, 200, await arenaRuns.scoreboard());
+    }),
 
     route("GET", /^\/api\/blueprints$/, "blueprints.list", async (_req, res) => {
       sendJson(res, 200, await viaStore(() => blueprints.list()));
@@ -589,6 +639,14 @@ export function createServer(opts = {}) {
 
       if (!found) {
         throw new RequestError(404, "Not found.");
+      }
+
+      if (throttle && THROTTLED_ROUTES.has(found.route.name)) {
+        const taken = throttle.take();
+        if (!taken.ok) {
+          res.setHeader("retry-after", String(Math.ceil(taken.retryAfterMs / 1000)));
+          throw new RequestError(429, "Too many requests. Wait a moment and try again.");
+        }
       }
 
       await found.route.handler(req, res, log, found.params);

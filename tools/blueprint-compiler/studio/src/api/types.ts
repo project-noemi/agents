@@ -112,6 +112,7 @@ export type RunRecord = {
   model?: string
   inputTokens: number
   outputTokens: number
+  costUsd?: number
   outcome: RunOutcome
   stage?: Stage
   errorCodes?: string[]

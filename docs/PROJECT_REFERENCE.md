@@ -926,6 +926,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/tool-usages/grok-bot-swarm-deploy-agent.md`](tool-usages/grok-bot-swarm-deploy-agent.md) | Deploy a hosted Grok Bot swarm that covers company operations (existing or new org chart; bots, humans, or both) |
 | [`docs/tool-usages/grok-bot-org-board-guide.md`](tool-usages/grok-bot-org-board-guide.md) | Completeness chart of company functions a Grok Bot swarm must cover, blending with an existing org or forming a new one |
 | [`docs/tool-usages/grok-bot-autonomous-operations.md`](tool-usages/grok-bot-autonomous-operations.md) | Grok Bot autonomous operations: done bars, fresh-read reporting, identity separation, and skill outlines with stop rules |
+| [`docs/tool-usages/paperclip-control-plane.md`](tool-usages/paperclip-control-plane.md) | Self-host Paperclip as the org-board control plane for multi-provider agents, with domain knowledge still in this repo |
 | [`docs/examples/build-your-coding-loop.md`](examples/build-your-coding-loop.md) | Coder quick start: deploy an issue → PR loop on your `{company}-agents` copy |
 | [`docs/examples/agent-friendly-architecture.md`](examples/agent-friendly-architecture.md) | Repository structure where the shortest path for an agent is the correct one |
 | [`docs/examples/codebase-as-memory.md`](examples/codebase-as-memory.md) | Correction hierarchy: turn repeated agent mistakes into structure, checks, and verification before prose rules |

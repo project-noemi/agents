@@ -177,10 +177,10 @@ model list halts. The default pin missing, or a gateway error during a gate,
 fails the run; it is never a halt, because a halt passes the required check. The
 floor and preview flags apply only to Vertex discovery.
 
-**This does not change the `models/gemini-3.8-flash` pin in `CLAUDE.md`.** That
-pin governs reference workflows, lab examples, and smoke tests, where
-determinism and predictable cost are the point. Review has the opposite
-objective and therefore its own policy.
+**Flash labs do not pin a dated SKU.** Reference workflows use
+`models/gemini-flash-latest` or `resolveFlash()` in
+`scripts/resolve-gemini-model.js`. Review has the opposite objective: it
+refuses Flash and discovers a Pro model, so it keeps its own policy.
 
 Ranking is tier first (`pro` > `flash` > `flash-lite`), then generation, then a
 bonus for reasoning/thinking variants.

@@ -531,9 +531,9 @@ If nothing meets the minimum capability level, it **fails instead of quietly
 using a weaker model**. A shallow review that looks like a thorough one is worse
 than no review, because you would trust it.
 
-> This does **not** change the `gemini-3.8-flash` pin elsewhere in the
-> repository. That pin exists so smoke tests behave identically every run.
-> Reproducibility is right for tests and wrong for review.
+> This does **not** pin Flash labs to a dated SKU. Those use
+> `models/gemini-flash-latest`, or `resolveFlash()` when they can list the
+> catalogue. Review refuses Flash and discovers a Pro model.
 
 ---
 

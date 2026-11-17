@@ -925,7 +925,14 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/architecture/grok-bot-architecture.md`](architecture/grok-bot-architecture.md) | Grok Bot architecture: hosted bots, shared persistent box, per-bot desktops, persistence, and monitoring |
 | [`docs/tool-usages/grok-bot-swarm-deploy-agent.md`](tool-usages/grok-bot-swarm-deploy-agent.md) | Deploy a hosted Grok Bot swarm that covers company operations (existing or new org chart; bots, humans, or both) |
 | [`docs/tool-usages/grok-bot-org-board-guide.md`](tool-usages/grok-bot-org-board-guide.md) | Completeness chart of company functions a Grok Bot swarm must cover, blending with an existing org or forming a new one |
+| [`docs/tool-usages/grok-bot-autonomous-operations.md`](tool-usages/grok-bot-autonomous-operations.md) | Grok Bot autonomous operations: done bars, fresh-read reporting, identity separation, and skill outlines with stop rules |
 | [`docs/examples/build-your-coding-loop.md`](examples/build-your-coding-loop.md) | Coder quick start: deploy an issue → PR loop on your `{company}-agents` copy |
+| [`docs/examples/agent-friendly-architecture.md`](examples/agent-friendly-architecture.md) | Repository structure where the shortest path for an agent is the correct one |
+| [`docs/examples/codebase-as-memory.md`](examples/codebase-as-memory.md) | Correction hierarchy: turn repeated agent mistakes into structure, checks, and verification before prose rules |
+| [`docs/examples/verification-skills.md`](examples/verification-skills.md) | Writing evidence-based, CLI-first verification skills with a written done bar |
+| [`docs/examples/software-factory.md`](examples/software-factory.md) | Specialized agents, recurring triggers, and review gates for high-volume agent work |
+| [`docs/examples/trust-scaling.md`](examples/trust-scaling.md) | Widening agent autonomy one verified path at a time, gated on recorded evidence |
+| [`docs/governance/agent-gardeners.md`](governance/agent-gardeners.md) | Gardener routines that find repeated anti-patterns and replace them with durable controls |
 | [`coding-loop/`](../coding-loop/) | In-repo Coding Loop runtime (Stages A–D: intake, plan, critic, writer, review) |
 | [`skills/`](../skills/) | Reusable skills (source of truth) |
 | [`skills-dist/`](../skills-dist/) | Published Agent Skills copies (`SKILL.md` + `references/mandates.md`) |

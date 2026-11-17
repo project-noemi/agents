@@ -37,7 +37,7 @@
       "provider": "google",
       "family": "gemini-flash",
       "selection": "highest-preview-then-stable",
-      "$comment": "Cheap mechanical work. Discover the highest 3.x Flash (3.7 when listed, else 3.6). Alternate: Anthropic sonnet-5 via Claude Code. Never use Flash for fleet PR review (floor remains Pro).",
+      "$comment": "Cheap mechanical work. Discover the highest stable Flash that Google still serves via scripts/resolve-gemini-model.js resolveFlash(). Skip retired SKUs (gemini-2.5-flash, gemini-3.6-flash, gemini-3.7-flash). Static fallback alias: gemini-flash-latest. Alternate: Anthropic sonnet-5 via Claude Code. Never use Flash for fleet PR review (floor remains Pro).",
       "alternate": {
         "provider": "anthropic",
         "family": "sonnet-5",

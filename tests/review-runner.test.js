@@ -346,32 +346,34 @@ test('comment: a compliance-only failure says the merge needs no calibration ent
 
 // --- model resolution ------------------------------------------------------
 
-test('selection: newest stable generation wins, per the owner rule', () => {
-    // Real published names. Every 3.x Pro is preview-only, so a tier-dominant
-    // rule would select gemini-2.5-pro — a full generation behind.
+test('selection: newest stable generation wins, and retiring Flash SKUs are skipped', () => {
+    // 2.5 is already retired. 3.6 Flash retires 2026-11-19 and 3.7 Flash
+    // retires 2027-01-28, so discovery must not select them while they are
+    // still listed. 3.8 is the newest servable stable Flash in this catalogue.
     const live = [
         'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-3.5-flash',
-        'gemini-3.6-flash', 'gemini-3.1-pro-preview',
+        'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash',
+        'gemini-3.1-pro-preview',
     ].map((n) => `publishers/google/models/${n}`);
     const { chosen, tradeoff } = selectModel(live, { floor: 'flash' });
-    assert.equal(chosen.name, 'gemini-3.6-flash');
+    assert.equal(chosen.name, 'gemini-3.8-flash');
     assert.equal(tradeoff, null, 'no trade-off when the toggle is off');
 });
 
 test('selection: Pro is elevated when a stable Pro exists in the newest generation', () => {
-    const live = ['gemini-3.6-flash', 'gemini-3.6-pro', 'gemini-2.5-pro']
+    const live = ['gemini-3.5-flash', 'gemini-3.5-pro', 'gemini-3.4-pro']
         .map((n) => `publishers/google/models/${n}`);
     const { chosen } = selectModel(live, { floor: 'flash' });
-    assert.equal(chosen.name, 'gemini-3.6-pro', 'tier orders within a generation');
+    assert.equal(chosen.name, 'gemini-3.5-pro', 'tier orders within a generation');
 });
 
 test('selection: prefer_pro_tier falls back to an older stable Pro and reports the cost', () => {
-    const live = ['gemini-3.8-flash', 'gemini-2.5-pro']
+    const live = ['gemini-3.8-flash', 'gemini-3.5-pro']
         .map((n) => `publishers/google/models/${n}`);
     const { chosen, tradeoff } = selectModel(live, { floor: 'flash', preferPro: true });
-    assert.equal(chosen.name, 'gemini-2.5-pro');
-    // Decision [2026-10-06-0001]: generation now uses numeric major.minor (2.5 -> 2.05, 3.8 -> 3.08)
-    assert.match(tradeoff, /prefer_pro_tier selected gemini-2\.5-pro \(gen 2\.05\)/);
+    assert.equal(chosen.name, 'gemini-3.5-pro');
+    // Decision [2026-10-06-0001]: generation now uses numeric major.minor (3.5 -> 3.05, 3.8 -> 3.08)
+    assert.match(tradeoff, /prefer_pro_tier selected gemini-3\.5-pro \(gen 3\.05\)/);
     assert.match(tradeoff, /gemini-3\.8-flash \(gen 3\.08\)/);
 });
 
@@ -422,19 +424,26 @@ test('selection: prefer_preview_pro beats a newer stable Pro', () => {
 });
 
 test('selection: prefer_preview_pro falls back to stable Pro when none are preview', () => {
-    const live = ['gemini-2.5-pro', 'gemini-3.6-flash']
+    const live = ['gemini-3.5-pro', 'gemini-3.8-flash']
         .map((n) => `publishers/google/models/${n}`);
     const { chosen, tradeoff } = selectModel(live, { floor: 'pro', preferPreviewPro: true });
-    assert.equal(chosen.name, 'gemini-2.5-pro');
+    assert.equal(chosen.name, 'gemini-3.5-pro');
     assert.match(tradeoff, /no Pro preview/);
-    assert.match(tradeoff, /gemini-2\.5-pro/);
+    assert.match(tradeoff, /gemini-3\.5-pro/);
+});
+
+test('selection: prefer_preview_pro does not select a retired stable Pro', () => {
+    const live = ['gemini-2.5-pro', 'gemini-3.6-flash']
+        .map((n) => `publishers/google/models/${n}`);
+    const { chosen } = selectModel(live, { floor: 'pro', preferPreviewPro: true });
+    assert.equal(chosen, null);
 });
 
 test('selection: prefer_preview_pro does not treat a Flash preview as a Pro preview', () => {
-    const live = ['gemini-3.8-flash-preview', 'gemini-2.5-pro']
+    const live = ['gemini-3.8-flash-preview', 'gemini-3.5-pro']
         .map((n) => `publishers/google/models/${n}`);
     const { chosen } = selectModel(live, { floor: 'pro', preferPreviewPro: true });
-    assert.equal(chosen.name, 'gemini-2.5-pro');
+    assert.equal(chosen.name, 'gemini-3.5-pro');
 });
 
 test('selection: prefer_pro_tier plus previews reaches the newest Pro', () => {
@@ -445,12 +454,41 @@ test('selection: prefer_pro_tier plus previews reaches the newest Pro', () => {
 });
 
 test('selection: previews stay excluded unless explicitly allowed', () => {
-    const live = ['gemini-9.9-pro-preview', 'gemini-2.5-pro']
+    const live = ['gemini-9.9-pro-preview', 'gemini-3.5-pro']
         .map((n) => `publishers/google/models/${n}`);
-    assert.equal(selectModel(live, { floor: 'flash' }).chosen.name, 'gemini-2.5-pro');
+    assert.equal(selectModel(live, { floor: 'flash' }).chosen.name, 'gemini-3.5-pro');
     assert.equal(
         selectModel(live, { floor: 'flash', allowPreview: true }).chosen.name,
         'gemini-9.9-pro-preview',
+    );
+});
+
+test('model config refuses a retired Gemini pin on both routes', () => {
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    assert.throws(
+        () => loadModelConfig({ AI_GW_API_TOKEN: 'gw-test', GEMINI_REVIEW_MODEL: 'gemini-3.6-flash' }),
+        /gemini-3\.6-flash/,
+    );
+    assert.throws(
+        () => loadModelConfig({ GEMINI_CRITIC_MODEL: 'models/gemini-3.7-flash' }),
+        /gemini-3\.7-flash/,
+    );
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw-test' });
+    assert.equal(config.stages.review.model, 'google/gemini-3.1-pro-preview');
+});
+
+test('pin: a retired Gemini id fails closed even when still listed', () => {
+    assert.throws(
+        () => resolvePinnedModel('gemini-3.6-flash', ['publishers/google/models/gemini-3.6-flash']),
+        /HTTP 404/,
+    );
+    assert.throws(
+        () => resolvePinnedModel('models/gemini-3.7-flash', ['models/gemini-3.7-flash']),
+        /gemini-3\.7-flash/,
+    );
+    assert.throws(
+        () => resolvePinnedModel('gemini-2.5-flash', ['models/gemini-2.5-flash']),
+        /gemini-2\.5-flash/,
     );
 });
 
@@ -538,19 +576,33 @@ test('resolveFlash: prefers stable over preview', () => {
     assert.equal(result.model, 'models/gemini-3.8-flash');
 });
 
-test('resolveFlash: falls back to pinned baseline when no flash in catalogue', () => {
+test('resolveFlash: falls back to the stable alias when no servable flash is listed', () => {
+    const { resolveFlash, FLASH_ALIAS_ID } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = ['models/gemini-3.1-pro', 'models/gemini-3.6-flash', 'models/gemini-3.7-flash'];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, FLASH_ALIAS_ID);
+    assert.equal(result.model, 'models/gemini-flash-latest');
+    assert.ok(result.fallback, 'fallback reason must be present');
+    assert.match(result.fallback, /no servable flash models/);
+});
+
+test('resolveFlash: skips retiring Flash SKUs and keeps a newer stable Flash', () => {
     const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
-    const catalogue = ['models/gemini-3.1-pro', 'models/gemini-2.5-pro'];
+    const catalogue = [
+        'models/gemini-3.6-flash',
+        'models/gemini-3.7-flash',
+        'models/gemini-3.5-flash',
+        'models/gemini-3.8-flash',
+    ];
     const result = resolveFlash(catalogue);
     assert.equal(result.model, 'models/gemini-3.8-flash');
-    assert.ok(result.fallback, 'fallback reason must be present');
-    assert.match(result.fallback, /no flash models/);
+    assert.equal(result.fallback, undefined);
 });
 
 test('selection: an image model never wins even when it is the newest Pro', () => {
-    const live = ['gemini-3-pro-image', 'gemini-2.5-flash']
+    const live = ['gemini-3-pro-image', 'gemini-3.5-flash']
         .map((n) => `publishers/google/models/${n}`);
-    assert.equal(selectModel(live, { floor: 'flash' }).chosen.name, 'gemini-2.5-flash');
+    assert.equal(selectModel(live, { floor: 'flash' }).chosen.name, 'gemini-3.5-flash');
 });
 
 test('model ranking: non-Gemini models are ignored', () => {

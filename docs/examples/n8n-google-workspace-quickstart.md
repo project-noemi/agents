@@ -57,7 +57,7 @@ This example uses:
 - `n8n-nodes-base.googleDocs`
 - `n8n-nodes-base.gmail`
 
-Want Grok instead of Gemini? Import [`../../examples/workflows/rfp-responder-grok.json`](../../examples/workflows/rfp-responder-grok.json). That file uses Basic LLM Chain + `@n8n/n8n-nodes-langchain.lmChatXAiGrok` (n8n has no standalone Grok root node). Gemini 2.5 Flash remains the repository baseline.
+Want Grok instead of Gemini? Import [`../../examples/workflows/rfp-responder-grok.json`](../../examples/workflows/rfp-responder-grok.json). That file uses Basic LLM Chain + `@n8n/n8n-nodes-langchain.lmChatXAiGrok` (n8n has no standalone Grok root node). The Gemini lab uses the stable alias `gemini-flash-latest`.
 
 ## Step 2: Replace the Placeholder Credentials
 

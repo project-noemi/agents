@@ -48,10 +48,13 @@ function resolveProfile(name) {
 }
 
 function pathAllowedByProfile(filePath, profile) {
-  const { normalizeRepoPath, isCarvedOut } = require('./writer.js');
+  const { normalizeRepoPath, isCarvedOut, isSafeRepoPath } = require('./paths.js');
   const resolved = typeof profile === 'string' || profile == null
     ? resolveProfile(profile)
     : profile;
+  // The raw spelling must already be a plain repo path; normalising first
+  // would let `a/../.github/workflows/x.yml` or `%2e%2e/` through.
+  if (!isSafeRepoPath(filePath)) return false;
   const normalized = normalizeRepoPath(filePath);
   if (!normalized || normalized.includes('..') || normalized.startsWith('/')) return false;
   if (isCarvedOut(normalized)) return false;

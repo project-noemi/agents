@@ -142,8 +142,8 @@ test('template infrastructure is grouped under templates/context and the root no
     const claudeTemplate = read('templates/context/CLAUDE.template.md');
 
     assert.match(templatesReadme, /generated context templates/i);
-    assert.match(geminiTemplate, /<!-- GLOBAL_MANDATES_START -->/);
-    assert.match(claudeTemplate, /templates\/context\/\{GEMINI,CLAUDE\}\.template\.md/);
+    assert.equal(geminiTemplate, '@AGENTS.md\n');
+    assert.equal(claudeTemplate, '@AGENTS.md\n');
     assert.ok(!fs.existsSync(path.join(repoRoot, 'GEMINI.template.md')));
     assert.ok(!fs.existsSync(path.join(repoRoot, 'CLAUDE.template.md')));
     assert.ok(!fs.existsSync(path.join(repoRoot, 'n8n')));
@@ -369,9 +369,26 @@ test('RFP responder workflow uses the current Google Gemini node path', () => {
 
     assert.ok(geminiNode, 'Expected Analyze Request (Gemini) node to exist');
     assert.equal(geminiNode.type, '@n8n/n8n-nodes-langchain.googleGemini');
-    assert.match(workflowText, /models\/gemini-3\.6-flash/);
+    assert.match(workflowText, /models\/gemini-flash-latest/);
     assert.match(workflowText, /REPLACE_WITH_YOUR_GEMINI_API_CREDENTIAL_ID/);
     assert.doesNotMatch(workflowText, /@n8n\/n8n-nodes-langchain\.chainLlm/);
+});
+
+test('Gemini reference workflows use the stable flash alias, not a dated SKU', () => {
+    const files = [
+        'examples/workflows/rfp-responder.json',
+        'n8n-templates/layer-b-labs/customer-inquiry-router.json',
+        'docs/n8n-workflows/ai-email-triage.json',
+        'docs/n8n-workflows/lab-2-1-json-structuring-validation.json',
+        'docs/n8n-workflows/lab-2-2-iterative-workflow-automation.json',
+        'docs/n8n-workflows/scaled-contact-inquiry-pipeline.json',
+    ];
+    for (const file of files) {
+        const text = read(file);
+        assert.match(text, /models\/gemini-flash-latest/, `${file} must use the stable alias`);
+        assert.doesNotMatch(text, /gemini-3\.[678]-flash/, `${file} still pins a dated Flash SKU`);
+        assert.doesNotMatch(text, /gemini-2\.5-flash/, `${file} still pins retired 2.5 Flash`);
+    }
 });
 
 test('Grok companion n8n workflows use the official xAI chat-model path', () => {

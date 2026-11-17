@@ -107,6 +107,20 @@ Areas 1 through 8 measure whether the organization is ready. This area measures 
 - uplift need: the literacy and confidence gap that training must close before the pilot
 - breadth: readiness is checked across the workforce doing the task, not inferred from the sponsor alone
 
+### 10. AI Already in Use and Agent Permissions
+
+Area 9 asks whether people are ready. This area asks whether the organization knows what AI is already running, whose access it uses, and what it can change. Most organizations already have AI in use that nobody approved: personal chatbot accounts, AI features a vendor switched on inside an approved SaaS tool, coding assistants on personal keys, and assistants or automations connected to email, files or the CRM. A pilot built next to ungoverned AI inherits its risk. Sort what you find by what it can reach and what it can do on its own: a tool that only drafts text is a data question; an agent that can send, change or delete is an access question.
+
+- discovery: an inventory exists of AI tools, accounts and features in use, including personal accounts used for work
+- AI inside existing SaaS: AI features in core SaaS tenants are known, reviewed and deliberately on or off; a vendor's new AI feature or AI subprocessor triggers a short review
+- agents and connectors: assistants, agents, automations and tool connections (including MCP servers) that can act are listed with what they can read and change
+- identity: each agent or automation runs on its own scoped identity with a named human owner, not on an employee's personal login or a shared key
+- data handling: approved AI tools have known retention, training and data-location settings, and the Refusal Principle is applied to them
+- policy and training: staff know which AI tools are approved, how to request a new one, and how to report one they find; requests are answered quickly enough that people do not route around them
+- monitoring and review: new AI use, new high-impact permission grants and unusual automated activity are noticed; agents are reviewed on a schedule and switched off when their owner leaves or the need ends
+
+This is where NoéMI's governed pilot path pays off twice: it gives people a sanctioned way to get the benefit they were already seeking, and it lets the organization close the risky cases without banning AI.
+
 ## Why This Assessment Matters
 
 The AI readiness assessment goes beyond whether the technology works. It determines whether the organization is positioned to get real business value from it.

@@ -6,7 +6,7 @@ This guide covers the official Claude Code marketplace plugin:
 
 - **Upstream:** [xai-org/grok-build-plugin-cc](https://github.com/xai-org/grok-build-plugin-cc)
 - **Plugin id:** `grok-build@xai-grok-build`
-- **Version documented:** `0.2.x` (plugin metadata; re-check upstream after upgrades)
+- **Version documented:** `0.2.1` (plugin metadata; re-check [upstream](https://github.com/xai-org/grok-build-plugin-cc) after upgrades)
 
 ## What It Is
 
@@ -60,9 +60,11 @@ Use it when you want a **different model family** to challenge Claude's work, no
 
 | Surface | Default write policy |
 |---------|----------------------|
-| Bridge `run` CLI | **Read-only** (`--permission-mode plan` + `--sandbox read-only`) unless `--write` is passed |
-| `/grok-build:review` and `/grok-build:critique` | Always review-only (no fixes, no patches) |
-| `/grok-build:delegate` / `grok-build:grok-delegate` | **Write-capable by policy** (adds `--write`) unless the user asks for read-only / diagnosis-only |
+| Bridge `run` CLI | **Read-only sandbox** (`--sandbox read-only` + `--always-approve`) unless `--write` is passed |
+| `/grok-build:review` and `/grok-build:critique` | Always review-only (no fixes, no patches). Safety is the read-only sandbox, not an interactive Approve click |
+| `/grok-build:delegate` / `grok-build:grok-delegate` | **Write-capable by policy** (adds `--write`, no sandbox) unless the user asks for read-only / diagnosis-only |
+
+Headless runs have no human to click Approve. Upstream 0.2.1 therefore auto-approves tool calls and relies on `--sandbox read-only` for the read-only paths (see [xai-org/grok-build-plugin-cc#12](https://github.com/xai-org/grok-build-plugin-cc/issues/12)).
 
 Direct bridge calls stay conservative. The delegate path is intentionally more powerful so Grok can implement fixes.
 
@@ -75,7 +77,11 @@ Direct bridge calls stay conservative. The delegate path is intentionally more p
 | Authenticated Grok session | `grok models` succeeds |
 | Claude Code with plugin support | `/plugin` works in the session |
 
-**Phase 0 reminder:** do not put Grok API keys or session tokens in the repository. Authenticate through the Grok CLI login flow. If a downstream tool needs secrets, wrap launches with `op run` / `infisical run` as in [`secure-secret-management.md`](secure-secret-management.md).
+**Phase 0 reminder:** do not put Grok API keys or session tokens in the repository. Prefer interactive `grok` login so `grok models` succeeds. If you need an `XAI_API_KEY` for headless or CI, inject it with `op run` / `infisical run` ([`secure-secret-management.md`](secure-secret-management.md)). Project NoéMI can issue a **starter xAI API key from USD 1** — inquire at [noemi.newpush.com](https://noemi.newpush.com). Do not paste the key into chat.
+
+## Paste this into Claude Code
+
+If you want Claude to ask the right questions and install the plugin for you, copy the fence in [`../examples/grok-claude-plugin-prompt.md`](../examples/grok-claude-plugin-prompt.md) into a new Claude Code session.
 
 ## Install
 
@@ -120,6 +126,31 @@ If the check fails:
 - Complete interactive login via `grok`, then re-run `/grok-build:check`.
 - Only after check passes, use review / critique / delegate.
 
+**Hook sources are part of readiness.** `check` verifies Node, the CLI, and auth; it does not verify that the run is isolated from hooks that wait for a person. Before any bridge run (review, critique, or delegate; all three launch `grok -p` headlessly), also run the repository gate against the loop-owned home:
+
+```bash
+npm run check:headless -- --grok-home "$GROK_HOME"
+```
+
+Add `--claude-settings <file>` or `--claude-bare` only when the loop also launches a headless `claude -p`; a bridge run from the interactive host session has no headless Claude side, so the gate runs on Grok alone. It exits 1 when `GROK_HOME` is the interactive default `~/.grok`, when the `allow_managed_hooks_only` pin is missing from both policy files, when `fail_closed` is missing (so the pin would not survive the first run), or when the `--claude-settings` file still carries hooks, is missing, is invalid JSON, or is not a JSON object. Exit 2 is a usage error and exit 3 a read fault on a policy file. Nothing invokes it automatically yet; run it by hand and treat any non-zero exit as a stop. See [Headless Profile](#headless-profile).
+
+## Headless Profile
+
+A bridge run has no person at the terminal, but the `grok` it launches inherits the interactive user's profile: plugins (Grok discovers Claude plugins from `~/.claude/plugins` in any `GROK_HOME`), `~/.grok/hooks`, and, by default, the hooks in `~/.claude/settings.json` and `~/.cursor/hooks.json` through Grok's compatibility scan. A desktop tool's "keep working until I answer" hook then fires at the end of Grok's turn and waits. Grok holds a blocking `Stop` gate for 600 s by default (a hook's own timeout can raise it), the bridge only watches process exit, and the run shows `running` with a three-line log long after the work is done. Decision [2026-09-27-0001].
+
+The fix is a loop-owned profile with a policy pin, not "disable all hooks" (see the [runtime contract, section 10](orchestrator-runtime-contract.md#10-headless-execution-control) for why):
+
+1. Copy [`templates/headless-agent-home/grok/`](../../templates/headless-agent-home/grok/) to a loop-owned directory and export `GROK_HOME` to it. Its `requirements.toml` pins `allow_managed_hooks_only = true` and sets `fail_closed = true` so grok 1.0.41 does not remove the unsigned file at session start; its `config.toml` switches the Claude and Cursor imports off. Under the pin the home runs no hooks of its own: only fleet-enforced hooks (root-owned `/etc/grok` files, a console-signed requirements file) still dispatch.
+2. For `/grok-build:delegate` the export is a manual step today: set `GROK_HOME` in the shell before starting the interactive `claude` session. The bridge passes only the environment it inherits; nothing in the plugin or this repository sets it.
+3. Give the home an identity: sign in once inside it (`GROK_HOME=... grok login --device-code`), or inject `XAI_API_KEY` with `infisical run` / `op run`. Never copy auth files between homes.
+4. After the first launch, `grok inspect` with that home must list the pin under **Enforced by policy** ("Hooks outside managed policy disabled" with the path of the requirements file). Discovered plugin hooks still appear in its Hooks list without a marker, and the Claude and Cursor imports show only under Harness Compatibility as `hooks OFF (config)`; all are skipped at dispatch.
+5. Run `npm run check:headless -- --grok-home "$GROK_HOME"` before dispatch and treat any non-zero exit as a stop (see [Readiness Check](#readiness-check)); add `--claude-settings <file>` or `--claude-bare` only when the loop also launches a headless `claude -p`.
+6. For the Claude Code side of the loop use `--bare`, or `--settings templates/headless-agent-home/claude/settings.headless.json` when plugins and `CLAUDE.md` are still needed. Both also disable repository `.claude/settings.json` hooks; no loop-owned Claude hook exists today.
+
+The pin is tighten-only: no lower config layer can release it (`fail_closed` is a plain boolean, not a pin), but the unsigned file is the loop's own, and editing or removing it does. Never place that file in `~/.grok`: it would bind the interactive TUI as well.
+
+What the bridge (upstream `0.2.1`) still lacks: detecting completion from Grok's turn-complete event or session transcript instead of process exit, and an idle watchdog that ends a silent run as `stalled` rather than leaving it `running`. Raised upstream as [xai-org/grok-build-plugin-cc#45](https://github.com/xai-org/grok-build-plugin-cc/issues/45), next to the existing exit-tracking reports (#30, #40, #3). Until then, a run that is finished but not exited is recovered by reading `$GROK_HOME/sessions/<url-encoded cwd>/<threadId>/updates.jsonl` (the conversation log; `chat_history.jsonl` beside it holds the raw model messages; the `threadId` is the Grok session id shown by `/grok-build:runs`) and then `/grok-build:stop <run-id>`.
+
 ## Command Reference
 
 All commands are namespaced under `/grok-build:`.
@@ -152,10 +183,10 @@ Probe Node + Grok CLI availability and authentication.
 | `--model <model>` | Optional Grok model override |
 | `--effort low\|medium\|high` | Optional reasoning effort |
 
-Under the hood (conceptually):
+Under the hood (conceptually, plugin `0.2.1`):
 
 ```bash
-grok -p <prompt> --agent explore --permission-mode plan --sandbox read-only --cwd <ws> --output-format plain
+grok -p <prompt> --agent explore --always-approve --sandbox read-only --cwd <ws> --output-format plain
 ```
 
 **Constraints:**
@@ -196,7 +227,7 @@ Hand investigation or implementation to Grok via the `grok-build:grok-delegate` 
 | Flag | Purpose |
 |------|---------|
 | `--wait` / `--background` | Claude-side execution control (prefer bridge `--background` for long work) |
-| `--resume` | Continue the last stored Grok session (`grok -r <id>`) |
+| `--resume` / `--resume-last` | Continue the last stored Grok session (`grok -r <id>`) |
 | `--fresh` | Force a new Grok thread |
 | `--model` / `--effort` | Runtime selection only; not part of the task text |
 
@@ -320,6 +351,7 @@ Intelligence still beats cost for anything that ships. Use Grok when you want a 
 4. **Native mechanisms only** — use `/grok-build:*` and the `grok-build:grok-delegate` subagent; avoid hand-rolled `grok -p ...` wrappers that skip PID tracking and stop.
 5. **Background for long work** — so `/grok-build:stop` can kill both process trees.
 6. **Secrets** — never log Grok credentials, vault values, or PII into run output summaries.
+7. **Headless profile** — every bridge run (review, critique, delegate) uses the loop-owned `GROK_HOME` (exported before the Claude session starts) and passes `npm run check:headless -- --grok-home "$GROK_HOME"` first; add `--claude-settings <file>` or `--claude-bare` only when the loop also launches a headless `claude -p`. Never the interactive `~/.grok` ([Headless Profile](#headless-profile)).
 
 ### Relationship to the Orchestrator persona
 
@@ -341,6 +373,9 @@ Both are peer bridges. Prefer the one that is installed, authenticated, and matc
 | `CLAUDE_PLUGIN_DATA` | Plugin data root; state under `.../state` |
 | `CLAUDE_ENV_FILE` | Host env file for session hooks |
 | `CLAUDE_PROJECT_DIR` | Project directory from the host |
+| `GROK_HOME` | Grok config home. Point it at a loop-owned copy of `templates/headless-agent-home/grok/` for headless runs; the bridge inherits it, nothing sets it |
+| `GROK_MANAGED_CONFIG` | Observed with grok 1.0.41, undocumented: `false` also stops the removal of unsigned policy files at session start. The gate does not accept it as a substitute for `fail_closed = true` |
+| `NOEMI_HEADLESS` | Contract, not yet wired: a launcher exports `1` before it starts a headless CLI, and loop-owned hooks exit at once when it is set ([contract section 10](orchestrator-runtime-contract.md#10-headless-execution-control)). Nothing sets or reads it today |
 
 State fallback when `CLAUDE_PLUGIN_DATA` is unset: `$TMPDIR/grok-cc-runs`.
 
@@ -355,10 +390,11 @@ State fallback when `CLAUDE_PLUGIN_DATA` is unset: `$TMPDIR/grok-cc-runs`.
 ## Weaknesses And Failure Modes
 
 - Requires a working local `grok` install and auth; silent unavailability is a common first failure  
+- Inherits the interactive profile unless `GROK_HOME` is redirected; an interactive hook stalls a finished run for 600 s per turn at Grok's default gate timeout and the bridge cannot tell ([Headless Profile](#headless-profile))  
 - Teams can confuse Claude background tasks with bridge background workers — prefer bridge `--background` for stop ownership  
 - Direct `node …/grok-bridge.mjs run` is read-only by default; forgetting `--write` (or the delegate path) yields plan-only behavior  
 - Review and critique intentionally refuse to fix; users may misread that as “the bridge cannot edit”  
-- Not a replacement for Phase 0 SecretOps or for pinned Gemini 2.5 Flash reference workflows in this repository  
+- Not a replacement for Phase 0 SecretOps or for pinned Gemini 3.6 Flash reference workflows in this repository  
 
 ## Troubleshooting
 
@@ -366,10 +402,13 @@ State fallback when `CLAUDE_PLUGIN_DATA` is unset: `$TMPDIR/grok-cc-runs`.
 |---------|-------------|
 | Plugin commands missing | `/plugin install grok-build@xai-grok-build` then `/reload-plugins` |
 | Check fails on `grok` | Install CLI; set `GROK_BINARY` if not on PATH |
-| Check fails on auth | Interactive `grok` login; confirm `grok models` |
+| Check fails on auth | Interactive `grok` login; confirm `grok models`. Need an API key? xAI console, or a Project NoéMI starter key from USD 1 ([noemi.newpush.com](https://noemi.newpush.com)); inject with `infisical run` / `op run`, never paste into chat |
 | Background run with no output | `/grok-build:runs` then `/grok-build:show <run-id>` |
 | Run will not die | `/grok-build:stop <run-id>` (kills agent + bridge trees) |
 | Delegate seems stuck | Ensure you used the subagent path, not a recursive skill/command re-entry |
+| Run stays `running` after Grok finished; log ends at `Running grok`; `show` says no run | An interactive hook is holding the `Stop` gate. Read the result from `$GROK_HOME/sessions/<url-encoded cwd>/<threadId>/updates.jsonl`, `/grok-build:stop <run-id>`, then run under a loop-owned `GROK_HOME` ([Headless Profile](#headless-profile)) |
+| `npm run check:headless` exits non-zero | 1: `GROK_HOME` is `~/.grok`, the pin or `fail_closed` is missing, or the `--claude-settings` file carries hooks, is missing, is invalid JSON, or is not a JSON object. 2: usage error. 3: a policy file could not be read. Fix the profile, do not disable the check |
+| Pin was there yesterday, gone today | grok 1.0.41 removes an unsigned `requirements.toml` at session start unless it sets `fail_closed = true`; re-copy the template and verify with `grok inspect` |
 | Want Grok outside Claude | `/grok-build:import` then `grok -r <id>` |
 
 ## Scope vs. Repository Baselines
@@ -378,10 +417,11 @@ State fallback when `CLAUDE_PLUGIN_DATA` is unset: `$TMPDIR/grok-cc-runs`.
 |---------|---------------------|
 | Interactive Claude Code co-work | Claude host models + optional Grok / Codex bridges |
 | Orchestrator routing matrix | Claude models + Codex (`gpt-5.5`) when that plugin is present; Grok as peer bridge for review/rescue |
-| Pinned lab / example / smoke workflows in this repo | Remain on **Gemini 2.5 Flash** per coding standards — the Grok bridge does not repoint them |
+| Pinned lab / example / smoke workflows in this repo | Remain on **Gemini 3.6 Flash** per coding standards — the Grok bridge does not repoint them |
 
 ## Recommended Next Docs
 
+- [`../examples/grok-claude-plugin-prompt.md`](../examples/grok-claude-plugin-prompt.md) — copy-paste prompt for Claude to install the plugin  
 - [`claude-code-local-workspace.md`](claude-code-local-workspace.md) — Claude Code as a local agentic workspace  
 - [`openai-codex-local-workspace.md`](openai-codex-local-workspace.md) — peer bridge pattern for OpenAI Codex  
 - [`agentic-local-workspaces.md`](agentic-local-workspaces.md) — Gemini / Claude / Codex taxonomy  
@@ -391,7 +431,7 @@ State fallback when `CLAUDE_PLUGIN_DATA` is unset: `$TMPDIR/grok-cc-runs`.
 
 ## Official References
 
-- [Grok Build ↔ Claude Code Bridge (upstream)](https://github.com/xai-org/grok-build-plugin-cc)  
+- [Grok Build ↔ Claude Code Bridge (upstream, 0.2.1)](https://github.com/xai-org/grok-build-plugin-cc)  
 - [xAI / Grok Build](https://x.ai)  
 - [Claude Code overview](https://docs.anthropic.com/en/docs/claude-code/overview)  
 - Agent persona: [`agents/engineering/orchestrator.md`](../../agents/engineering/orchestrator.md)  

@@ -77,12 +77,25 @@ These mirror the Individual Adoption Readiness area of the full assessment. Answ
 15. Sensitive data that must never go into an AI tool has been identified.
     `Ready | Partial | Not yet`
 
+## Part 6 — AI Already In Use
+
+Most organizations already use AI somewhere. These questions are not a test; they show where to look first.
+
+16. We know which AI tools and features people use for work today, including personal accounts and AI built into the software we already pay for.
+    `Ready | Partial | Not yet`
+
+17. Any AI assistant or automation that can send, change or delete things runs on its own account with a named owner, not on someone's personal login.
+    `Ready | Partial | Not yet`
+
+18. Staff know which AI tools are approved and how to ask for a new one, and asking is quick.
+    `Ready | Partial | Not yet`
+
 ## Reading Your Result
 
 Count your answers. This is a rough signal, not a verdict:
 
 - **Mostly Ready** — you are likely a strong candidate. The full assessment can move quickly and focus on designing the pilot.
 - **A mix of Ready and Partial** — you are probably ready to start, but the assessment should concentrate on your `Partial` and `Not yet` areas first.
-- **Several Not yet, especially in Parts 1, 3, or 5** — worth closing a few basics before the full engagement. Any `Not yet` in Part 5 (safety basics) should be looked at early regardless of the rest.
+- **Several Not yet, especially in Parts 1, 3, or 5** — worth closing a few basics before the full engagement. Any `Not yet` in Part 5 (safety basics) should be looked at early regardless of the rest. A `Not yet` on question 17 should be looked at early, like Part 5: in the full assessment it is a critical gap that pauses the pilot until it is fixed.
 
 Bring this completed sheet to the first session. It tells the assessor where to spend time and where not to.

@@ -340,7 +340,7 @@ test('collectState wires the REST payload into the draft guard (the production p
     const respond = (body) => ({ ok: true, status: 200, json: async () => body, text: async () => '' });
     const withPr = (pr) => async (url) => {
         if (url.includes('/check-runs')) {
-            return respond({ check_runs: [{ name: 'Cross-Model PR Review', status: 'completed', conclusion: 'success' }] });
+            return respond({ check_runs: [{ name: 'AI Review (advisory)', status: 'completed', conclusion: 'success' }] });
         }
         if (url.includes('/comments')) return respond([]);
         return respond(pr);

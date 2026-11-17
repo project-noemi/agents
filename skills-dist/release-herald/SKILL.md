@@ -1,6 +1,6 @@
 ---
 name: release-herald
-description: "Turn a **week of changes** (the commits and date-versioned `YYYY.MM.DD` releases from the past week) into a user-facing **currency digest**: a set of feature highlights written in benefit language, the week's governance provenance, and a matching LinkedIn/social post."
+description: "Turn a **week of changes** (the commits and date-versioned `YYYY.MM.DD` releases from the past week) into a user-facing **currency digest**: a set of feature highlights written in benefit language, the week's governance provenance, and a matching LinkedIn/social post. Use when the task matches this skill's Purpose and Inputs."
 license: FSL-1.1-Apache-2.0
 metadata:
   author: project-noemi
@@ -22,32 +22,8 @@ metadata:
 
 ## Global Mandates
 
-These repository-wide mandates travel with the skill and bind regardless of
-the host agent's own context:
-
-### 🔐 Secrets & Configuration
-
-This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical or 1Password) and are never written to disk or hardcoded in source code.
-
-#### Mandatory Security Rules
-
-- NEVER ask the user for secrets in the chat interface.
-
-
-- NEVER hardcode actual secret values in any files, `.env` files, or logs.
-
-
-- ALWAYS use an Environment Injection CLI (`infisical run` or `op run`) to resolve credentials at runtime.
-
-### 🛡 Error Handling and Resilience
-
-To ensure reliability and stability, agents and toolkit components must implement robust error handling patterns.
-
-#### Mandatory Directives
-- **Graceful Degradation**: If an MCP tool or external API fails, the agent must explain the error clearly and attempt alternative strategies if available, rather than silently failing.
-- **Exponential Backoff**: Implement exponential backoff retry logic for transient network errors or rate-limiting (429) responses. Use `scripts/resilience_helpers.js` as the canonical Node.js reference implementation.
-- **Standardized Logging**: All technical errors must be logged to `stderr` to allow the orchestrator to capture and report execution failures accurately. Agent observability should leverage the `logging-mcp` protocol for unified access to Loki/Grafana and n8n webhook backends.
-- **Internal Tool & Service Audit Logs**: All Node.js-based tools in `tools/` and reference services in `examples/` that perform automated ingestion, routing, or state mutation must emit a structured JSON Audit Log to `stderr` for every significant operational event, following the same lightweight shape as agent personas.
+Before executing this skill, read [references/mandates.md](references/mandates.md).
+Those SecretOps and error-handling rules bind regardless of the host agent's context.
 
 ## Purpose
 Turn a **week of changes** (the commits and date-versioned `YYYY.MM.DD` releases from the past week) into a user-facing **currency digest**: a set of feature highlights written in benefit language, the week's governance provenance, and a matching LinkedIn/social post. This skill is the **weekly, curated communication layer**, deliberately **decoupled from tagging**: the framework mints a dated version (`YYYY.MM.DD`) whenever real user-facing change lands — possibly several times a week — but social communication is drawn together **once a week** so followers get one coherent digest instead of a per-tag firehose. Release Herald standardizes the "week's changes in → currency digest out" transformation so release communication reads consistently regardless of which team or agent triggered it, and so the **human-approval gate before anything is published** is always applied the same way. This skill is **draft-only**: it never posts. See `docs/RELEASE_PROCESS.md` for the date-based (`YYYY.MM.DD`) model, the content-gated promotion behind each tag, and the green/amber/red currency signal this digest speaks to.
@@ -60,20 +36,20 @@ Turn a **week of changes** (the commits and date-versioned `YYYY.MM.DD` releases
 - **channel** — Target channel for the social draft: `linkedin`, `x`, `slack`, or `blog`. Controls length, tone, and formatting of the social post.
 - **audience** — Who the highlights are for: `client_buyer`, `msp_mssp`, or `builder_accelerator`. Selects which benefits to foreground.
 - **product_context** — Optional short description of the product/framework the week's changes belong to, so prose can name it correctly.
-- **governance_provenance** — Optional list of the authority behind the week's changes (e.g., academic research, analyst-firm guidance such as Gartner AI TRiSM, MSP field input). Grounds the digest's currency claim; used only when present in the source or explicitly supplied — never invented.
+- **governance_provenance** — Optional list of the authority behind the week's changes (e.g., academic research, published frameworks the change aligns with (e.g., AI TRiSM, a framework defined by Gartner®, Inc.), MSP field input). Grounds the digest's currency claim; used only when present in the source or explicitly supplied — never invented.
 
 ## Procedure
 1. **Parse the source** — Normalize the week's `changelog` or `commit_range` into a flat list of change entries. For a commit range, read Conventional Commit subjects and group them by `type` (`feat`, `fix`, `docs`, `chore`, `ci`, `test`, `refactor`).
 2. **Filter to substance, not volume** — Drop entries that do not affect a consumer of the framework: `chore`, `ci`, `test`, `build`, internal `refactor`, dependency bumps with no behavior change, and repo-plumbing commits. Keep the change that carries currency substance — new guardrails, deprecated patterns, and new capabilities (`feat` and user-visible `fix`); keep `docs` only when the documentation is itself the deliverable. Judge the week on substance, never on lines of code or commit count. Record how many entries were dropped and why (this becomes audit evidence, not published output).
 3. **Rewrite in benefit language** — For each retained entry, translate the engineering description into an outcome the reader cares about: what they can now do, what stopped hurting, what got safer or more current. Lead with the benefit, not the mechanism. Never invent capabilities that are not in the source.
-4. **Attach governance provenance** — Where `governance_provenance` is supplied or present in the source, name the authority behind the week's changes (academia, analyst firms, MSP field input) so the currency claim is grounded. Never fabricate provenance; omit it if absent.
+4. **Attach governance provenance** — Where `governance_provenance` is supplied or present in the source, name the published source behind the week's changes (academic research, a published framework the change aligns with, MSP field input) so the currency claim is grounded. Never fabricate provenance; omit it if absent. Never describe a framework citation as guidance, advice, or endorsement from its publisher.
 5. **Rank and select highlights** — Order highlights by relevance to the selected `audience`; cap at the top 3–5 so the message stays scannable. Fold minor fixes into a single "also improved" line rather than listing each. When several dated releases landed in the week, curate across all of them into one digest — do not emit one post per tag.
 6. **Draft the social post** — Compose one post sized and toned for `channel` (LinkedIn: 2–4 short paragraphs, professional, one call-to-action; X: single punchy paragraph under the platform limit; Slack: Block-Kit-friendly with a short bullet list; blog: a lead paragraph plus the highlight list). Reference the week (`release_ref`) and `product_context`, framing it as a currency/freshness update. Include a placeholder for the release link rather than fabricating a URL.
 7. **Package as drafts for human approval** — Return the highlights, the governance provenance, and the social post clearly marked as DRAFTS with a `needs_human_approval` flag. Do not deliver to any channel — a human reviews, approves, and only then posts.
 
 ## Outputs
 - **highlights** — Ordered list of user-facing highlights for the cycle, each in benefit language with a short supporting line.
-- **governance_provenance** — The authority behind the cycle (academia, analyst firms, MSP field input), when supplied or present in the source; grounds the currency claim.
+- **governance_provenance** — The published source behind the cycle (academic research, a published framework the change aligns with, MSP field input), when supplied or present in the source; grounds the currency claim. A citation is attribution, not guidance from the publisher.
 - **social_post** — A single channel-formatted draft post, marked `DRAFT`.
 - **filtered_out** — Count and categories of entries dropped as non-user-facing (audit evidence, not for publication).
 
@@ -89,7 +65,7 @@ Turn a **week of changes** (the commits and date-versioned `YYYY.MM.DD` releases
       "detail": "Versions are now plain calendar dates (2026.08.04): subtract two dates to see exactly how far behind you are, and every tag means a real user-facing change actually shipped that day."
     }
   ],
-  "governance_provenance": ["Gartner AI TRiSM guidance", "academic research", "MSP field input"],
+  "governance_provenance": ["alignment with the AI TRiSM framework (Gartner, Inc.)", "academic research", "MSP field input"],
   "social_post": {
     "status": "DRAFT",
     "channel": "linkedin",
@@ -137,7 +113,7 @@ Turn a **week of changes** (the commits and date-versioned `YYYY.MM.DD` releases
 ## Examples
 
 ### Example 1
-- **Inputs:** `commit_range = 2026.07.31..2026.08.04` (the week's changes, spanning several dated releases), `channel = linkedin`, `audience = builder_accelerator`, `governance_provenance = ["Gartner AI TRiSM guidance", "MSP field input"]`
+- **Inputs:** `commit_range = 2026.07.31..2026.08.04` (the week's changes, spanning several dated releases), `channel = linkedin`, `audience = builder_accelerator`, `governance_provenance = ["alignment with the AI TRiSM framework (Gartner, Inc.)", "MSP field input"]`
 - **Behavior:** Groups the week's commits by Conventional Commit type, drops the `chore(release)`, `ci`, and `test` entries, curates the `feat` entries across all of the week's dated releases into two benefit-led highlights (new guardrails / new capabilities) — one digest, not one post per tag — attaches the supplied governance provenance, and drafts a LinkedIn post framing the week as a currency update with a `<release-link>` placeholder.
 - **Output:** 2 highlights + provenance line + 1 DRAFT LinkedIn post marked `needs_human_approval`; `filtered_out` records 5 dropped entries.
 

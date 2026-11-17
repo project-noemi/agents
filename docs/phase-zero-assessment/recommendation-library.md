@@ -145,3 +145,14 @@ The remediation text is a starting point, not final copy. Every item still needs
 | Low confidence or fear of exposure | Provide safe practice space and clear expectations that no one is being tested | 31-60 |
 | Unspoken resistance or fear of replacement | Surface concerns openly; state the role-uplift intent, not headcount reduction | 0-30 |
 | Ungoverned Shadow AI already in use | Redirect existing informal usage into the governed pilot path | 31-60 |
+
+### AI Already in Use and Agent Permissions
+
+| Common failure mode | Standard remediation | Window |
+|---------------------|----------------------|--------|
+| No inventory of AI tools, accounts and features | Build an AI inventory from sign-in, expense and network evidence; confirm with team leads | 0-30 |
+| AI features on by default in core SaaS tenants | Review AI settings per tenant; turn off or restrict what was not chosen; make new AI features and AI subprocessors a review trigger | 0-30 |
+| Agents or automations acting on personal or shared credentials | Move each to its own scoped identity with a named owner; remove the shared credential | 0-30 |
+| Broad connector grants (full mailbox, whole file store) | Require administrator approval for high-impact scopes; narrow or revoke existing grants | 31-60 |
+| No approved alternative, so staff use personal tools | Offer an approved AI tool for the common use cases and a fast request path | 31-60 |
+| No monitoring or review of agents | Alert on new AI apps and high-impact grants; set a review date and owner-based retirement for every agent | 61-90 |

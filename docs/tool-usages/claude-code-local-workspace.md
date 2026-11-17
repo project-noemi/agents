@@ -94,7 +94,19 @@ Claude Code can stay the host workspace while a second model family challenges o
 | OpenAI Codex | `openai/codex-plugin-cc` | gpt-class bulk work, Codex review gate, rescue loops |
 
 Operator guide for Grok: [`grok-build-claude-code.md`](grok-build-claude-code.md).  
+Copy-paste install prompt: [`../examples/grok-claude-plugin-prompt.md`](../examples/grok-claude-plugin-prompt.md).  
 Routing policy: [`../agents/engineering/orchestrator/README.md`](../agents/engineering/orchestrator/README.md).
+
+## Headless Runs
+
+`claude -p` inherits the same user-level hooks, plugins, and MCP servers as the interactive session. A hook that waits for a person (a dictation tool, a notifier, a "keep working until I answer" helper) stalls a headless run at the end of every turn. Decision [2026-09-27-0001]:
+
+- `claude --bare -p ...` for scripts: skips hooks, plugins, MCP servers, and CLAUDE.md discovery.
+- `claude --settings templates/headless-agent-home/claude/settings.headless.json -p ...` when the run still needs plugins and CLAUDE.md; `disableAllHooks` takes precedence over user, project, and local settings for that invocation.
+- Neither mode runs the repository's `.claude/settings.json` hooks. Neither this repository nor the platform ships a loop-owned Claude hook today; how one would be delivered to a headless run is an open design point to verify against the Claude Code documentation for the version in use.
+- Verify before dispatch with `npm run check:headless -- --claude-settings <file>` or `--claude-bare`, together with the Grok home flags. Nothing invokes the gate automatically yet.
+
+The Grok side of the same rule is in [`grok-build-claude-code.md`](grok-build-claude-code.md#headless-profile); the contract is [`orchestrator-runtime-contract.md`](orchestrator-runtime-contract.md#10-headless-execution-control).
 
 ## Recommended Next Docs
 

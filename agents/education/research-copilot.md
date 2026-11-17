@@ -88,4 +88,4 @@ Exclude secrets, credentials, and unnecessary sensitive source content. Focus on
 - **Web Search MCP** (`mcp-protocols/web-search.md`) — external research and fact verification from verified sources.
 - **Google Docs MCP** (`mcp-protocols/google-docs.md`) — accessing and synthesizing internal documentation and reports.
 - **Document processing tools** — extracting text from PDFs, meeting transcripts, and other unstructured formats for synthesis.
-- **1Password CLI / Infisical** — runtime credential injection for MCP API access.
+- **1Password CLI / Infisical** — Fetch-on-Demand. Inject API keys at runtime with `infisical run` or `op run`. Never write keys into config files, code, logs, or the repository.

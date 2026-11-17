@@ -150,7 +150,7 @@ const EXPECTED_PROTECTION = {
     enforce_admins: false,
     required_approving_review_count: 1,
     require_code_owner_reviews: true,
-    contexts: ['Audit, Generate, and Fast Tests', 'Cross-Model PR Review'],
+    contexts: ['Audit, Generate, and Fast Tests', 'AI Review (advisory)'],
   },
 };
 

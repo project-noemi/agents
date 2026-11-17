@@ -90,7 +90,8 @@
  *   2 configuration or API error
  *   3 halted BY DESIGN: carve-out, no model met the floor, or an explicit
  *     pin is not callable (not in the Vertex catalogue, or not in the gateway
- *     key's model list). The DEFAULT gateway pin missing is exit 2, and so is
+ *     key's model list). An unpinned gateway model the key cannot serve
+ *     (resolved, or the fallback) is exit 2, and so is
  *     a gateway error during a gate: a broken setup or an outage must fail
  *     the check, never pass it as a halt.
  *
@@ -113,7 +114,7 @@ const {
   selectModel, listModels, resolvePinnedModel, backendConfig, generateUrl,
 } = require('./resolve-gemini-model.js');
 const { getAccessToken, tokenSource } = require('./gcp-token.js');
-const { loadModelConfig, toGatewayModel } = require('./model-config.js');
+const { loadModelConfig, resolveGatewayModel, toGatewayModel } = require('./model-config.js');
 const { chatJson, listChatModels } = require('./model-chat.js');
 const http = require('node:http');
 const https = require('node:https');
@@ -919,12 +920,35 @@ function gatewayReviewPin(config, cliModel) {
  * (`google/*`) or `*` counts. Returns the model, or null.
  */
 async function confirmGatewayPin(config, fetchImpl, model = config.stages.review.model) {
-  const ids = await withRetry(
+  const ids = await listGatewayModels(config, fetchImpl);
+  return servedBy(ids, model);
+}
+
+function listGatewayModels(config, fetchImpl) {
+  return withRetry(
     () => listChatModels({ apiBase: config.gateway.openaiBase, apiKey: config.gateway.apiKey, fetchImpl }),
     reviewRetryOptions(),
   );
+}
+
+/** `model` when the list serves it (exact id, `provider/*`, or `*`), else null. */
+function servedBy(ids, model) {
   const provider = model.split('/')[0];
   return ids.includes(model) || ids.includes(`${provider}/*`) || ids.includes('*') ? model : null;
+}
+
+/**
+ * The gateway review model. An explicit pin (`--model` or GEMINI_REVIEW_MODEL)
+ * is the model. Otherwise the key's model list is ranked with the native
+ * reviewer's rule (Decision [2026-11-14-0001]); the fallback id applies only
+ * when nothing in the list is eligible. One model-list call either way.
+ */
+async function gatewayReviewModel(config, cliModel, fetchImpl) {
+  const pin = gatewayReviewPin(config, cliModel);
+  const ids = await listGatewayModels(config, fetchImpl);
+  if (pin.explicit) return { ...pin, source: 'pin', served: servedBy(ids, pin.model) };
+  const resolved = resolveGatewayModel('review', config, ids);
+  return { model: resolved.model, explicit: false, source: resolved.source, served: servedBy(ids, resolved.model) };
 }
 
 function reviewBackendLabel(route) {
@@ -1090,21 +1114,22 @@ async function main() {
   // --- model -------------------------------------------------------------
   let model = 'models/(dry-run)';
   if (route.mode === 'gateway') {
-    // The pin is the model; no substitute is discovered. Floor and preview
-    // flags do not apply here. An explicit pin the key cannot call is a
-    // by-design halt, as on Vertex. The DEFAULT pin missing is a broken
-    // gateway setup: exit 2, so the check fails instead of going green on a
-    // halt in every repository.
-    const pin = gatewayReviewPin(route.config, args.model);
-    const pinned = await confirmGatewayPin(route.config, undefined, pin.model);
-    if (!pinned) {
-      const reason = `gateway pin '${pin.model}' is not in the key's model list`;
+    // An explicit pin is the model; no substitute is discovered, and a pin
+    // the key cannot call is a by-design halt, as on Vertex. Without a pin the
+    // key's model list is ranked (highest Pro preview, else stable Pro). A
+    // default that the key still cannot serve is a broken gateway setup:
+    // exit 2, so the check fails instead of going green on a halt in every
+    // repository.
+    const pick = await gatewayReviewModel(route.config, args.model);
+    if (!pick.served) {
+      const reason = `gateway model '${pick.model}' is not in the key's model list`;
       process.stderr.write(`✖ ${reason}\n`);
-      if (!pin.explicit) process.exit(2);
+      if (!pick.explicit) process.exit(2);
       writeHaltMarker(reason);
       process.exit(3);
     }
-    model = pinned;
+    process.stderr.write(`gateway review model ${pick.model} (${pick.source})\n`);
+    model = pick.served;
   } else if (!args.dryRun) {
     const available = await listModels(token, cfg);
     let chosen = null;
@@ -1242,7 +1267,7 @@ module.exports = {
   parseOverrideActors, parseOverrideCommands, evaluateOverrides, runGates, isContinuedOverride,
   OVERRIDE_CONTINUE_GATES, OVERRIDE_ACTORS_VAR,
   gh, isTransientGitHubError, postOnce, postPrComment,
-  callGemini, callGatewayGate, confirmGatewayPin, gatewayReviewPin, resolveReviewRoute, reviewAuthLabel, reviewBackendLabel,
+  callGemini, callGatewayGate, confirmGatewayPin, gatewayReviewModel, gatewayReviewPin, resolveReviewRoute, reviewAuthLabel, reviewBackendLabel,
   geminiFetchTimeoutMs, geminiPost, isTransientGeminiError, wrapGeminiFetchError, formatThrown,
   buildGatePrompt, buildRemediationPrompt, renderComment,
   loadSentinelFromDisk, loadSentinelInstructions,

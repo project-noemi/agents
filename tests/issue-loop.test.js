@@ -1936,8 +1936,10 @@ function gatewayDraftedPlan() {
 
 test('chat client: 403 is budget-or-forbidden and is not retried by the loop', async () => {
   let calls = 0;
-  const fetchImpl = async () => {
-    calls += 1;
+  // Count chat calls only: the critic also reads the key's model list first
+  // (Decision [2026-11-14-0001]), and a refused list falls back to the pin.
+  const fetchImpl = async (url) => {
+    if (!String(url).endsWith('/models')) calls += 1;
     return { ok: false, status: 403, text: async () => '{"error":{"type":"key_model_access_denied","message":"gw-long-secret-key echoed"}}' };
   };
   const prior = process.env.MODEL_RETRY_BASE_MS;
@@ -2056,7 +2058,7 @@ test('critic on gateway mode does not call getAccessToken and reads the chat com
   assert.equal(tokenCalls, 0);
 });
 
-test('writer on gateway: both keys set sends to the gateway host with xai/grok-4.6 and skips /models', async () => {
+test('writer on gateway: both keys set ranks the gateway key\'s xai models and sends to the gateway host', async () => {
   const urls = [];
   const out = await draftChanges({
     issue: { title: 't', body: 'b' },
@@ -2064,14 +2066,54 @@ test('writer on gateway: both keys set sends to the gateway host with xai/grok-4
     env: { XAI_API_KEY: 'xai-test', AI_GW_API_TOKEN: 'gw-test' },
     fetchImpl: async (url, opts) => {
       urls.push({ url, model: opts && opts.body ? JSON.parse(opts.body).model : null });
+      if (String(url).endsWith('/models')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ data: ['xai/grok-4.3', 'xai/grok-4.6', 'xai/grok-build-0.1', 'google/gemini-3.1-pro-preview'].map((id) => ({ id })) }),
+        };
+      }
       return chatReply('{"summary":"ok","files":[{"path":"coding-loop/run.js","content":"x\\n"}]}');
     },
   });
   assert.equal(out.status, 'ready');
   assert.equal(out.model, 'xai/grok-4.6');
+  assert.equal(urls.length, 2);
+  assert.equal(urls[0].url, 'https://ai-gw.newpush.com/v1/models');
+  assert.equal(new URL(urls[1].url).host, 'ai-gw.newpush.com');
+  assert.equal(urls[1].model, 'xai/grok-4.6');
+});
+
+test('writer on gateway: XAI_CODE_MODEL is the model and the model list is not read', async () => {
+  const urls = [];
+  const out = await draftChanges({
+    issue: { title: 't', body: 'b' },
+    plan: { status: 'accepted', plan: 'Edit coding-loop/run.js', files: ['coding-loop/run.js'] },
+    env: { AI_GW_API_TOKEN: 'gw-test', XAI_CODE_MODEL: 'grok-4.3' },
+    fetchImpl: async (url, opts) => {
+      urls.push({ url, model: opts && opts.body ? JSON.parse(opts.body).model : null });
+      return chatReply('{"summary":"ok","files":[{"path":"coding-loop/run.js","content":"x\\n"}]}');
+    },
+  });
+  assert.equal(out.model, 'xai/grok-4.3');
   assert.equal(urls.length, 1);
-  assert.equal(new URL(urls[0].url).host, 'ai-gw.newpush.com');
-  assert.equal(urls[0].model, 'xai/grok-4.6');
+  assert.equal(urls[0].model, 'xai/grok-4.3');
+});
+
+test('writer on gateway: an unreadable model list falls back to the fallback id', async () => {
+  const urls = [];
+  const out = await draftChanges({
+    issue: { title: 't', body: 'b' },
+    plan: { status: 'accepted', plan: 'Edit coding-loop/run.js', files: ['coding-loop/run.js'] },
+    env: { AI_GW_API_TOKEN: 'gw-test' },
+    fetchImpl: async (url, opts) => {
+      urls.push({ url, model: opts && opts.body ? JSON.parse(opts.body).model : null });
+      if (String(url).endsWith('/models')) return { ok: false, status: 500, text: async () => '' };
+      return chatReply('{"summary":"ok","files":[{"path":"coding-loop/run.js","content":"x\\n"}]}');
+    },
+  });
+  assert.equal(out.model, 'xai/grok-4.6');
+  assert.equal(urls[urls.length - 1].model, 'xai/grok-4.6');
 });
 
 test('chat client: a 429 budget body is not retried end to end; a 429 rate limit is', async () => {
@@ -2082,8 +2124,8 @@ test('chat client: a 429 budget body is not retried end to end; a 429 rate limit
     await assert.rejects(
       () => critiquePlanLive(gatewayDraftedPlan(), {
         env: { AI_GW_API_TOKEN: 'gw-test' },
-        fetchImpl: async () => {
-          calls += 1;
+        fetchImpl: async (url) => {
+          if (!String(url).endsWith('/models')) calls += 1;
           return { ok: false, status: 429, text: async () => '{"error":{"type":"budget_exceeded","message":"Budget has been exceeded"}}' };
         },
       }),
@@ -2093,7 +2135,8 @@ test('chat client: a 429 budget body is not retried end to end; a 429 rate limit
     calls = 0;
     const passed = await critiquePlanLive(gatewayDraftedPlan(), {
       env: { AI_GW_API_TOKEN: 'gw-test' },
-      fetchImpl: async () => {
+      fetchImpl: async (url) => {
+        if (String(url).endsWith('/models')) return { ok: true, status: 200, json: async () => ({ data: [] }) };
         calls += 1;
         if (calls === 1) return { ok: false, status: 429, text: async () => '{"error":{"type":"rate_limit_error","message":"slow down"}}' };
         return chatReply('{"verdict":"pass","findings":[]}');

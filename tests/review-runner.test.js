@@ -1421,3 +1421,83 @@ test('postPrComment: the posted body carries the marker the lookup searches for'
         else process.env.GITHUB_RETRY_BASE_MS = realBase;
     }
 });
+
+test('gateway model resolution: an unpinned review takes the highest Pro preview the key serves', () => {
+    const { loadModelConfig, resolveGatewayModel } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw' });
+    const ids = ['xai/grok-4.6', 'google/gemini-3.8-flash', 'google/gemini-3.1-pro-preview', 'google/gemini-3.12-pro-preview', 'google/gemini-4-argon'];
+    assert.deepEqual(resolveGatewayModel('review', config, ids), { model: 'google/gemini-3.12-pro-preview', source: 'resolved' });
+    assert.deepEqual(resolveGatewayModel('critic', config, ids), { model: 'google/gemini-3.12-pro-preview', source: 'resolved' });
+});
+
+test('gateway model resolution: no Pro preview takes the highest stable Pro; Flash never qualifies', () => {
+    const { loadModelConfig, resolveGatewayModel } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw' });
+    assert.equal(resolveGatewayModel('review', config, ['google/gemini-3.1-pro', 'google/gemini-3.8-flash']).model, 'google/gemini-3.1-pro');
+    assert.deepEqual(
+        resolveGatewayModel('review', config, ['google/gemini-3.8-flash', 'google/gemini-flash-latest']),
+        { model: 'google/gemini-3.1-pro-preview', source: 'fallback' },
+    );
+});
+
+test('gateway model resolution: no list, a wildcard list, or retired ids fall back', () => {
+    const { loadModelConfig, resolveGatewayModel, GATEWAY_FALLBACKS } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw' });
+    for (const ids of [null, [], ['google/*'], ['*'], ['google/gemini-2.5-pro']]) {
+        assert.deepEqual(resolveGatewayModel('review', config, ids), { model: GATEWAY_FALLBACKS.review, source: 'fallback' });
+    }
+});
+
+test('gateway model resolution: an env override is the model, and code/plan are not resolved here', () => {
+    const { loadModelConfig, resolveGatewayModel } = require('../scripts/model-config.js');
+    const pinned = loadModelConfig({ AI_GW_API_TOKEN: 'gw', GEMINI_REVIEW_MODEL: 'gemini-y-pro' });
+    assert.deepEqual(resolveGatewayModel('review', pinned, ['google/gemini-9.9-pro-preview']), { model: 'google/gemini-y-pro', source: 'GEMINI_REVIEW_MODEL' });
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw' });
+    assert.deepEqual(resolveGatewayModel('code', config, ['xai/grok-9']), { model: 'xai/grok-4.6', source: 'fallback' });
+    assert.deepEqual(resolveGatewayModel('plan', config, ['google/gemini-9.9-pro-preview']), { model: 'google/gemini-4-argon', source: 'fallback' });
+    assert.throws(() => resolveGatewayModel('nope', config, []), /Unknown model stage/);
+});
+
+test('gateway model resolution: the critic never resolves to the plan writer', () => {
+    const { loadModelConfig, resolveGatewayModel } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw', PLAN_MODEL: 'google/gemini-3.12-pro-preview' });
+    assert.deepEqual(
+        resolveGatewayModel('critic', config, ['google/gemini-3.12-pro-preview']),
+        { model: 'google/gemini-3.1-pro-preview', source: 'fallback' },
+    );
+});
+
+test('review gateway: an unpinned review resolves from the one model-list call', async () => {
+    const { gatewayReviewModel } = require('../scripts/review-pr.js');
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    let calls = 0;
+    const listing = (ids) => async (url) => {
+        calls += 1;
+        assert.equal(url, 'https://ai-gw.newpush.com/v1/models');
+        return { ok: true, status: 200, json: async () => ({ data: ids.map((id) => ({ id })) }) };
+    };
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw', GEMINI_REVIEW_MODEL: 'auto' });
+    const pick = await gatewayReviewModel(config, 'auto', listing(['google/gemini-3.1-pro-preview', 'google/gemini-3.12-pro-preview']));
+    assert.deepEqual(pick, { model: 'google/gemini-3.12-pro-preview', explicit: false, source: 'resolved', served: 'google/gemini-3.12-pro-preview' });
+    assert.equal(calls, 1);
+    const wildcard = await gatewayReviewModel(config, '', listing(['google/*']));
+    assert.deepEqual(wildcard, { model: 'google/gemini-3.1-pro-preview', explicit: false, source: 'fallback', served: 'google/gemini-3.1-pro-preview' });
+    const explicit = await gatewayReviewModel(config, 'gemini-x-pro', listing(['google/gemini-3.12-pro-preview']));
+    assert.deepEqual(explicit, { model: 'google/gemini-x-pro', explicit: true, source: 'pin', served: null });
+});
+
+test('critic on gateway: an unpinned critic sends the resolved model', async () => {
+    const { callCriticModel } = require('../coding-loop/critic.js');
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    const sent = [];
+    const fetchImpl = async (url, opts) => {
+        if (String(url).endsWith('/models')) {
+            return { ok: true, status: 200, json: async () => ({ data: [{ id: 'google/gemini-3.12-pro-preview' }, { id: 'google/gemini-4-argon' }] }) };
+        }
+        sent.push(JSON.parse(opts.body).model);
+        return { ok: true, status: 200, json: async () => ({ choices: [{ finish_reason: 'stop', message: { content: '{"verdict":"pass","findings":[]}' } }] }) };
+    };
+    await callCriticModel('p', { config: loadModelConfig({ AI_GW_API_TOKEN: 'gw' }), fetchImpl });
+    await callCriticModel('p', { config: loadModelConfig({ AI_GW_API_TOKEN: 'gw', GEMINI_CRITIC_MODEL: 'gemini-x-pro' }), fetchImpl });
+    assert.deepEqual(sent, ['google/gemini-3.12-pro-preview', 'google/gemini-x-pro']);
+});

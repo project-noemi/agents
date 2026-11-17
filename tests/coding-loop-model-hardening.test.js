@@ -384,7 +384,11 @@ function proseFetch() {
 
 test('R5 callCriticModel: unparseable gateway JSON is a non-transient 422', async () => {
   let calls = 0;
-  const fetchImpl = async (...args) => { calls += 1; return proseFetch()(...args); };
+  // Count chat calls only; the critic reads the key's model list first.
+  const fetchImpl = async (...args) => {
+    if (!String(args[0]).endsWith('/models')) calls += 1;
+    return proseFetch()(...args);
+  };
   await assert.rejects(
     () => callCriticModel('prompt', { config: loadModelConfig({ AI_GW_API_TOKEN: 'gw-test-key-123' }), fetchImpl }),
     (err) => err.status === 422 && err.code === 'unparseable-json' && !isTransientHttpError(err),

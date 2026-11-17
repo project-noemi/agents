@@ -194,6 +194,10 @@ The strategic dead end where organizations try to use AI simply to cut headcount
 
 The NoéMI model where organizations build AI agents ("Virtual Coworkers") that handle repetitive, data-intensive tasks, while humans evolve into governors, architects, and strategic thinkers. Not fewer people — *different* people.
 
+### Organization board
+
+The chart of functions a company must cover so its operations have an owner. Each seat is a bot, a human, or both. An empty function is a gap. Two deployments staff the same chart. A hosted swarm places the bot seats on one vendor's product. A portable control plane, run by the organization in its own environment including a private cloud, seats agents from more than one provider on that chart. Specifications and skills stay in files the organization owns either way. The completeness chart is [`docs/tool-usages/grok-bot-org-board-guide.md`](tool-usages/grok-bot-org-board-guide.md). The hosted path is the [Grok Bot swarm playbook](tool-usages/grok-bot-swarm-deploy-agent.md). The portable path is the [org-board control plane](tool-usages/paperclip-control-plane.md).
+
 ### Phase 0 Security
 
 NewPush's security methodology, mapped to the AI TRiSM framework (Gartner, Inc.). Before any AI deployment, the organization's data perimeter must be established: Shadow AI audited, data classified (Public/Internal/Confidential), egress filters in place, SSO configured. "You cannot build an AI-enabled enterprise on a compromised foundation."
@@ -697,7 +701,9 @@ As one example of a vendor, Grok covers both sides of the Gem / GPT job, and a l
 
 - **Custom Agents, Projects, and hosted Skills** on grok.com are hosted persona and persistent-knowledge surfaces. The NoéMI specification in your organization's repository remains the source of truth; anything placed in a vendor surface is a disposable copy that can be regenerated from the repository or replaced by another tool.
 - **Grok Build** (`grok`) is the local TUI / headless CLI: plan mode, subagents, worktrees, MCP, repo-local skills (`/skillify`), and `grok -p` for scripts. It reads this repository's `AGENTS.md`. `CLAUDE.md` and `GEMINI.md` are `@AGENTS.md` pointers, not generated catalogs. There is no generated `GROK.md`. Published Agent Skills live in `skills-dist/`.
-- **Grok Bot** (limited tiers) is an always-on teammate on a shared cloud computer. Treat it as a mutating orchestrator, not as a tenant boundary.
+- **Grok Bot** (limited tiers) is an always-on teammate on a shared cloud computer. Treat it as a mutating orchestrator, not as a tenant boundary. The [swarm playbook](tool-usages/grok-bot-swarm-deploy-agent.md) is the hosted, single-vendor way to staff a company with these bots.
+
+Staffing the company is an organization board, not a property of one product. The completeness chart is the same for both deployments. The hosted Grok Bot swarm is one of them. The other runs a control plane the organization hosts, including in its private cloud, and seats Claude, Gemini, Grok Build, Grok Bot, and other adapters on that board. [Paperclip](tool-usages/paperclip-control-plane.md) is the worked example. The chart and the skills stay in the organization's repository when the board product changes.
 
 They are vendor surfaces, not a new model baseline, and not where your organization's AI work should live. See [`docs/tool-usages/grok-custom-agents.md`](tool-usages/grok-custom-agents.md) and [`docs/tool-usages/grok-build-local-workspace.md`](tool-usages/grok-build-local-workspace.md).
 
@@ -924,7 +930,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/tool-usages/grok-bot-getting-started.md`](tool-usages/grok-bot-getting-started.md) | Grok Bot: chat, memory, routines, skills, connectors, delegation, and approval basics |
 | [`docs/architecture/grok-bot-architecture.md`](architecture/grok-bot-architecture.md) | Grok Bot architecture: hosted bots, shared persistent box, per-bot desktops, persistence, and monitoring |
 | [`docs/tool-usages/grok-bot-swarm-deploy-agent.md`](tool-usages/grok-bot-swarm-deploy-agent.md) | Deploy a hosted Grok Bot swarm that covers company operations (existing or new org chart; bots, humans, or both) |
-| [`docs/tool-usages/grok-bot-org-board-guide.md`](tool-usages/grok-bot-org-board-guide.md) | Completeness chart of company functions a Grok Bot swarm must cover, blending with an existing org or forming a new one |
+| [`docs/tool-usages/grok-bot-org-board-guide.md`](tool-usages/grok-bot-org-board-guide.md) | Completeness chart of company functions an organization board must cover, on a hosted Grok Bot swarm or a mixed-provider control plane |
 | [`docs/tool-usages/grok-bot-autonomous-operations.md`](tool-usages/grok-bot-autonomous-operations.md) | Grok Bot autonomous operations: done bars, fresh-read reporting, identity separation, and skill outlines with stop rules |
 | [`docs/tool-usages/paperclip-control-plane.md`](tool-usages/paperclip-control-plane.md) | Portable org board for Claude, Gemini, Grok Build, Grok Bot, and other providers, run in the organization's private cloud. Alternative to the hosted Grok Bot swarm |
 | [`docs/examples/build-your-coding-loop.md`](examples/build-your-coding-loop.md) | Coder quick start: deploy an issue → PR loop on your `{company}-agents` copy |

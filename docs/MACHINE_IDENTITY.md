@@ -48,6 +48,42 @@ identities have named owners (`docs/phase-zero-assessment/weighted-assessment-sp
 | **May approve PRs?** | **No.** Approval is a human-only act |
 | **May merge PRs?** | **No.** Merge follows human approval. The sole sanctioned exception lives on `noemi-release-bot` below, not on this identity |
 
+### Producer app — `noemi-producer[bot]`
+
+Customer repositories need a producer that is neither the `noemi-agent` user
+account above nor an existing fleet App. `noemi-agent` remains the documented
+user-account producer. This App is a new producer identity: once installed, it
+opens branches and pull requests on those repositories so a human can review
+and merge. It is not a widening of `noemi-conductor` (Issues and Metadata
+only; that App must not open pull requests) or of `noemi-release-bot` (its
+merge exception is promotion-only and does not apply here).
+
+| Field | Value |
+|---|---|
+| **Identity** | `noemi-producer` GitHub App (slug `noemi-producer`; comments and authors as `noemi-producer[bot]` once installed) |
+| **App ID** | `5668287` |
+| **Public URL** | <https://github.com/apps/noemi-producer> |
+| **Homepage** | <https://noemi.newpush.com> |
+| **Status** | **Provisioned** 2026-11-08 at 14:55 Europe/Budapest. Not yet installed on customer or fleet repositories |
+| **Purpose** | Open branches and pull requests on installed customer repositories as a distinct machine identity so humans can review and merge |
+| **Named owner** | `@WSwarm` (Balazs Nagy) |
+| **App owner (GitHub)** | `project-noemi` organization (registration home, not an installation on that organization's repositories) |
+| **Credential store** | Not yet recorded |
+| **Events** | None. Webhooks off |
+| **Where it can be installed** | **Any account.** Required so a customer can install it on their organization or on selected repositories. Do not later transfer this App to enterprise-internal visibility the way `noemi-reviewer[bot]` and `noemi-release-bot` were transferred, or customers will not be able to install it |
+| **Permissions** | Contents **read and write**, Pull requests **read and write**, Metadata **read**, `codespaces_metadata` **read**, statuses **read**. No Administration, Secrets, or Workflows |
+| **Installed on** | Nowhere. Not on a customer organization, a customer repository, or a fleet organization |
+| **May approve PRs?** | **No.** Approval is a human-only act |
+| **May merge PRs?** | **No.** Merge follows human approval. The sole sanctioned machine merge exception remains on `noemi-release-bot` (promotion-only) and does not apply here |
+
+Contents write plus Pull requests write can technically merge. GitHub has no
+permission that means "open pull requests but never merge." The no-merge rule
+is therefore **runtime- and process-scoped**, like other App constraints
+GitHub cannot express as a narrower permission. It is not token-scoped.
+
+The `noemi-agent` *user account* above remains the documented user-account
+producer. Do not retire it in favor of this App.
+
 ### Reviewer identity — `noemi-reviewer`
 
 Separation of duties needs two identities, not one. `noemi-agent` produces;
@@ -349,7 +385,8 @@ members of the `developers` team, which holds `maintain` on this repository, so
 both resolve to `maintain` regardless of the direct collaborator grants recorded
 above (`push` for the producer, `pull` for the reviewer).
 
-The two GitHub **Apps** (`noemi-reviewer[bot]`, `noemi-release-bot[bot]`) are
+The GitHub **Apps** in this register (`noemi-reviewer[bot]`,
+`noemi-release-bot[bot]`, `noemi-conductor[bot]`, `noemi-producer[bot]`) are
 not users and do not inherit team membership. Their installation tokens carry
 exactly the App permissions in this register.
 

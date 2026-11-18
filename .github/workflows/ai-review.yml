@@ -45,6 +45,15 @@
 # head code (only project-noemi/agents at pinned ref), fetches diff via API only,
 # and uses tooling-repo scripts.
 #
+# GITHUB DEFAULT BLOCK (Decision [2026-11-09-0001]): public repositories block
+# pull_request_target unless an Actions event policy allowlists it for this
+# file. Evaluate mode until 2026-12-02; brownouts (2026-11-09 and 2026-11-16,
+# 16:00–18:00 UTC) already fail those runs with startup_failure and no jobs.
+# This workflow still needs pull_request_target because fork pull_request
+# withholds secrets. Apply as a repository administrator:
+#   bash scripts/setup-ai-review-event-policy.sh
+# (Settings → Actions → Policies). Do not add `opened` to pull_request_target.
+#
 # CONCURRENCY: group includes github.event_name so the unprivileged pull_request
 # fork-notice run cannot cancel the privileged pull_request_target advisory.
 #

@@ -4,7 +4,7 @@ Grok has several hosted capabilities that serve the same core purposes as ChatGP
 
 Use this guide when a cohort or client asks "does Grok have Gems / Custom GPTs?" or when you want to load a NoéMI persona onto grok.com without treating Grok as a new runtime or a new model baseline.
 
-This is a **vendor-surface mapping**. It does not add Grok as a required beginner client, does not change the dual-track AI Model Baseline (Gemini 2.5 Flash cloud + DeepSeek/Llama sovereign), and does not generate a `GROK.md`. Generated context in this repository remains `GEMINI.md` and `CLAUDE.md`.
+This is a **vendor-surface mapping**. It does not add Grok as a required beginner client, does not change the dual-track AI Model Baseline (cloud Gemini resolved by `scripts/resolve-gemini-model.js`, static alias `gemini-flash-latest`, plus DeepSeek/Llama sovereign), and does not generate a `GROK.md`. Generated context in this repository remains `GEMINI.md` and `CLAUDE.md`.
 
 ## What This Path Is
 

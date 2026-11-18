@@ -14,4 +14,4 @@ This directory contains documentation for agents specialized in knowledge manage
   - [Live persona](../../../agents/operations/after-hours-autotask-nudge.md)
 - **Club Operations**: Helps volunteer-club officers prepare plans, minutes, calendars, and speaker briefs with source verification and human decision ownership.
   - [Live persona](../../../agents/operations/club-operations.md)
-  - [Rotary deployment example](../../examples/rotary-club-operations.md)
+  - [Rotary deployment example](../../../examples/rotary-club-operations/guide.md)

@@ -38,8 +38,10 @@ import sys
 import time
 from dataclasses import dataclass
 
-# Canonical baseline model for Project NoéMI reference workflows.
-MODEL = "models/gemini-3.8-flash"
+# Stable Flash alias. Do not pin a dated SKU (gemini-3.6-flash retires
+# 2026-11-19; gemini-3.7-flash retires 2027-01-28). Node callers resolve
+# through scripts/resolve-gemini-model.js.
+MODEL = "models/gemini-flash-latest"
 
 # When True, model calls return canned responses so this sandbox spends no real
 # tokens. Flip to False only inside a disposable, budget-capped lab — never

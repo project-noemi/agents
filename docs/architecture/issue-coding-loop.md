@@ -80,9 +80,10 @@ is the session Orchestrator (`agents/engineering/orchestrator.md`). It
 (`docs/tool-usages/grok-build-claude-code.md`: `/grok-build:check` then
 `/grok-build:delegate` for Stage C write work, `/grok-build:review` for a
 second-family look). Cheap mechanical work may use the `bulk` family in
-`docs/model-routing.json` — Gemini Flash (highest 3.x Flash in the catalogue:
-3.7 when listed, else 3.6) or Sonnet 5. Flash is **not** the fleet PR-review
-model (floor remains Pro). Lab examples stay pinned to Gemini 3.6 Flash.
+`docs/model-routing.json` — Gemini Flash (highest stable Flash
+`scripts/resolve-gemini-model.js` still finds; static labs use
+`models/gemini-flash-latest`) or Sonnet 5. Flash is **not** the fleet PR-review
+model (floor remains Pro). Do not pin `gemini-3.6-flash` or `gemini-3.7-flash`.
 
 Mastra remains a *candidate* later host for a durable issue webhook. It is
 not how Fable/Opus learn to drive Grok. Classman curriculum delivery is out
@@ -247,6 +248,22 @@ reviewer and passes `--live-critic`. Pass `--scan` to run `coding-loop/scan.js`
 on the fetched body, or `--scan-status` for a precomputed result. Omitting
 both classifies the issue as REFUSED (fail closed).
 
+Robot and model credentials follow the reviewer vault/direct split (Decision
+[2026-11-05-0001]). Both `INFISICAL_PROJECT_ID` and `INFISICAL_IDENTITY_ID`
+select vault mode: GitHub OIDC, then a named read of `AGENT_GH_TOKEN`,
+`AI_GW_API_TOKEN`, `AI_GW_API_KEY`, and `XAI_API_KEY` from Infisical
+environment `dev` at path `/`. Neither variable selects direct mode, which
+keeps the Actions secrets passed by name. Setting only one fails the job.
+Vault mode does not fall back to those Actions secrets. A caller whose
+repository lies outside the producer's home organization sets the Actions
+variable `AGENT_GH_USE_CLASSIC=true`; both modes then read the producer token
+under the name `AGENT_GH_TOKEN_CLASSIC` (from Infisical in vault mode, from the
+declared secret in direct mode) and never fall back to `AGENT_GH_TOKEN`
+(Decision [2026-11-10-0001]). A producer token is
+checked with `GET /user` and the job stops before `coding-loop/run.js` unless
+the login is `noemi-agent`. Conductor credentials and `NOEMI_CLIENT_REGISTRY`
+stay named secrets. The workflow does not export the vault folder.
+
 On `develop`, AI Review (advisory) is **required to complete** and remains
 advisory on the verdict (Decision [2026-08-17-0001]). A GitHub outage that
 fails the comment POST is not a review. The runner retries transient GitHub
@@ -296,7 +313,7 @@ PR to that file, not a host-framework deploy.
 | plan | Gemini Argon (`google/gemini-4-argon`) | Draft is heuristic in `coding-loop/`; revisions use the plan pin through `critic.revisePlanLive` |
 | code | Grok latest, effort xHigh | CLI `XAI_API_KEY` (`writer.js`); interactive `/grok-build:delegate` |
 | redteam | Gemini Pro | `critic.js` / fleet `review-pr.js` |
-| bulk | Gemini Flash (highest 3.x) or Sonnet 5 | Claude Code Orchestrator; **not** fleet PR review |
+| bulk | Gemini Flash (highest servable stable, else `gemini-flash-latest`) or Sonnet 5 | Claude Code Orchestrator; **not** fleet PR review |
 
 The Gemini resolver already exists (`scripts/resolve-gemini-model.js`). The
 xAI resolver lives in `coding-loop/writer.js`. An Anthropic resolver for

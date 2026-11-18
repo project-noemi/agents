@@ -39,6 +39,12 @@
 # Per-repo behaviour: skip if archived, a fork, a `.github` meta-repo, the
 # tooling repo itself, or if .github/workflows/ai-review.yml already exists on
 # the integration branch (idempotent — safe to re-run after partial rollouts).
+#
+# After the caller is merged, a repository administrator must allow
+# pull_request_target for .github/workflows/ai-review.yml. GitHub's default
+# public-repo policy blocks that event from 2026-12-02 (brownouts already do).
+# Run:  bash scripts/setup-ai-review-event-policy.sh
+# See docs/AI_REVIEW_GOVERNANCE.md § GitHub default block of pull_request_target.
 
 set -euo pipefail
 

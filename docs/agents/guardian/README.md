@@ -10,7 +10,7 @@ Because AI output is probabilistic, an agent executing a workflow (e.g., summari
 ## Available Guardian Agents
 
 1.  **[PIIGuard](../../../agents/guardian/pii-guard.md)**: Analyzes data payloads for Personally Identifiable Information (PII) before they leave the "Phase 0" security perimeter. Capable of blocking or automatically redacting sensitive data.
-2.  **[PromptShield](../../../agents/guardian/prompt-shield.md)**: Analyzes incoming user instructions for prompt injection attacks (e.g., "Ignore previous instructions", "DAN").
+2.  **[PromptShield](../../../agents/guardian/prompt-shield.md)**: Analyzes incoming user instructions and retrieved content (email bodies, documents, web pages, tool and MCP results) for prompt injection attacks (e.g., "Ignore previous instructions", "DAN"), including instructions hidden in HTML comments or CSS-hidden text.
 
 ## Implementation Pattern (The "Airgap")
 

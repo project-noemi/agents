@@ -346,32 +346,34 @@ test('comment: a compliance-only failure says the merge needs no calibration ent
 
 // --- model resolution ------------------------------------------------------
 
-test('selection: newest stable generation wins, per the owner rule', () => {
-    // Real published names. Every 3.x Pro is preview-only, so a tier-dominant
-    // rule would select gemini-2.5-pro — a full generation behind.
+test('selection: newest stable generation wins, and retiring Flash SKUs are skipped', () => {
+    // 2.5 is already retired. 3.6 Flash retires 2026-11-19 and 3.7 Flash
+    // retires 2027-01-28, so discovery must not select them while they are
+    // still listed. 3.8 is the newest servable stable Flash in this catalogue.
     const live = [
         'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-3.5-flash',
-        'gemini-3.6-flash', 'gemini-3.1-pro-preview',
+        'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash',
+        'gemini-3.1-pro-preview',
     ].map((n) => `publishers/google/models/${n}`);
     const { chosen, tradeoff } = selectModel(live, { floor: 'flash' });
-    assert.equal(chosen.name, 'gemini-3.6-flash');
+    assert.equal(chosen.name, 'gemini-3.8-flash');
     assert.equal(tradeoff, null, 'no trade-off when the toggle is off');
 });
 
 test('selection: Pro is elevated when a stable Pro exists in the newest generation', () => {
-    const live = ['gemini-3.6-flash', 'gemini-3.6-pro', 'gemini-2.5-pro']
+    const live = ['gemini-3.5-flash', 'gemini-3.5-pro', 'gemini-3.4-pro']
         .map((n) => `publishers/google/models/${n}`);
     const { chosen } = selectModel(live, { floor: 'flash' });
-    assert.equal(chosen.name, 'gemini-3.6-pro', 'tier orders within a generation');
+    assert.equal(chosen.name, 'gemini-3.5-pro', 'tier orders within a generation');
 });
 
 test('selection: prefer_pro_tier falls back to an older stable Pro and reports the cost', () => {
-    const live = ['gemini-3.8-flash', 'gemini-2.5-pro']
+    const live = ['gemini-3.8-flash', 'gemini-3.5-pro']
         .map((n) => `publishers/google/models/${n}`);
     const { chosen, tradeoff } = selectModel(live, { floor: 'flash', preferPro: true });
-    assert.equal(chosen.name, 'gemini-2.5-pro');
-    // Decision [2026-10-06-0001]: generation now uses numeric major.minor (2.5 -> 2.05, 3.8 -> 3.08)
-    assert.match(tradeoff, /prefer_pro_tier selected gemini-2\.5-pro \(gen 2\.05\)/);
+    assert.equal(chosen.name, 'gemini-3.5-pro');
+    // Decision [2026-10-06-0001]: generation now uses numeric major.minor (3.5 -> 3.05, 3.8 -> 3.08)
+    assert.match(tradeoff, /prefer_pro_tier selected gemini-3\.5-pro \(gen 3\.05\)/);
     assert.match(tradeoff, /gemini-3\.8-flash \(gen 3\.08\)/);
 });
 
@@ -422,19 +424,26 @@ test('selection: prefer_preview_pro beats a newer stable Pro', () => {
 });
 
 test('selection: prefer_preview_pro falls back to stable Pro when none are preview', () => {
-    const live = ['gemini-2.5-pro', 'gemini-3.6-flash']
+    const live = ['gemini-3.5-pro', 'gemini-3.8-flash']
         .map((n) => `publishers/google/models/${n}`);
     const { chosen, tradeoff } = selectModel(live, { floor: 'pro', preferPreviewPro: true });
-    assert.equal(chosen.name, 'gemini-2.5-pro');
+    assert.equal(chosen.name, 'gemini-3.5-pro');
     assert.match(tradeoff, /no Pro preview/);
-    assert.match(tradeoff, /gemini-2\.5-pro/);
+    assert.match(tradeoff, /gemini-3\.5-pro/);
+});
+
+test('selection: prefer_preview_pro does not select a retired stable Pro', () => {
+    const live = ['gemini-2.5-pro', 'gemini-3.6-flash']
+        .map((n) => `publishers/google/models/${n}`);
+    const { chosen } = selectModel(live, { floor: 'pro', preferPreviewPro: true });
+    assert.equal(chosen, null);
 });
 
 test('selection: prefer_preview_pro does not treat a Flash preview as a Pro preview', () => {
-    const live = ['gemini-3.8-flash-preview', 'gemini-2.5-pro']
+    const live = ['gemini-3.8-flash-preview', 'gemini-3.5-pro']
         .map((n) => `publishers/google/models/${n}`);
     const { chosen } = selectModel(live, { floor: 'pro', preferPreviewPro: true });
-    assert.equal(chosen.name, 'gemini-2.5-pro');
+    assert.equal(chosen.name, 'gemini-3.5-pro');
 });
 
 test('selection: prefer_pro_tier plus previews reaches the newest Pro', () => {
@@ -445,12 +454,41 @@ test('selection: prefer_pro_tier plus previews reaches the newest Pro', () => {
 });
 
 test('selection: previews stay excluded unless explicitly allowed', () => {
-    const live = ['gemini-9.9-pro-preview', 'gemini-2.5-pro']
+    const live = ['gemini-9.9-pro-preview', 'gemini-3.5-pro']
         .map((n) => `publishers/google/models/${n}`);
-    assert.equal(selectModel(live, { floor: 'flash' }).chosen.name, 'gemini-2.5-pro');
+    assert.equal(selectModel(live, { floor: 'flash' }).chosen.name, 'gemini-3.5-pro');
     assert.equal(
         selectModel(live, { floor: 'flash', allowPreview: true }).chosen.name,
         'gemini-9.9-pro-preview',
+    );
+});
+
+test('model config refuses a retired Gemini pin on both routes', () => {
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    assert.throws(
+        () => loadModelConfig({ AI_GW_API_TOKEN: 'gw-test', GEMINI_REVIEW_MODEL: 'gemini-3.6-flash' }),
+        /gemini-3\.6-flash/,
+    );
+    assert.throws(
+        () => loadModelConfig({ GEMINI_CRITIC_MODEL: 'models/gemini-3.7-flash' }),
+        /gemini-3\.7-flash/,
+    );
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw-test' });
+    assert.equal(config.stages.review.model, 'google/gemini-3.1-pro-preview');
+});
+
+test('pin: a retired Gemini id fails closed even when still listed', () => {
+    assert.throws(
+        () => resolvePinnedModel('gemini-3.6-flash', ['publishers/google/models/gemini-3.6-flash']),
+        /HTTP 404/,
+    );
+    assert.throws(
+        () => resolvePinnedModel('models/gemini-3.7-flash', ['models/gemini-3.7-flash']),
+        /gemini-3\.7-flash/,
+    );
+    assert.throws(
+        () => resolvePinnedModel('gemini-2.5-flash', ['models/gemini-2.5-flash']),
+        /gemini-2\.5-flash/,
     );
 });
 
@@ -538,19 +576,33 @@ test('resolveFlash: prefers stable over preview', () => {
     assert.equal(result.model, 'models/gemini-3.8-flash');
 });
 
-test('resolveFlash: falls back to pinned baseline when no flash in catalogue', () => {
+test('resolveFlash: falls back to the stable alias when no servable flash is listed', () => {
+    const { resolveFlash, FLASH_ALIAS_ID } = require('../scripts/resolve-gemini-model.js');
+    const catalogue = ['models/gemini-3.1-pro', 'models/gemini-3.6-flash', 'models/gemini-3.7-flash'];
+    const result = resolveFlash(catalogue);
+    assert.equal(result.model, FLASH_ALIAS_ID);
+    assert.equal(result.model, 'models/gemini-flash-latest');
+    assert.ok(result.fallback, 'fallback reason must be present');
+    assert.match(result.fallback, /no servable flash models/);
+});
+
+test('resolveFlash: skips retiring Flash SKUs and keeps a newer stable Flash', () => {
     const { resolveFlash } = require('../scripts/resolve-gemini-model.js');
-    const catalogue = ['models/gemini-3.1-pro', 'models/gemini-2.5-pro'];
+    const catalogue = [
+        'models/gemini-3.6-flash',
+        'models/gemini-3.7-flash',
+        'models/gemini-3.5-flash',
+        'models/gemini-3.8-flash',
+    ];
     const result = resolveFlash(catalogue);
     assert.equal(result.model, 'models/gemini-3.8-flash');
-    assert.ok(result.fallback, 'fallback reason must be present');
-    assert.match(result.fallback, /no flash models/);
+    assert.equal(result.fallback, undefined);
 });
 
 test('selection: an image model never wins even when it is the newest Pro', () => {
-    const live = ['gemini-3-pro-image', 'gemini-2.5-flash']
+    const live = ['gemini-3-pro-image', 'gemini-3.5-flash']
         .map((n) => `publishers/google/models/${n}`);
-    assert.equal(selectModel(live, { floor: 'flash' }).chosen.name, 'gemini-2.5-flash');
+    assert.equal(selectModel(live, { floor: 'flash' }).chosen.name, 'gemini-3.5-flash');
 });
 
 test('model ranking: non-Gemini models are ignored', () => {
@@ -1368,4 +1420,84 @@ test('postPrComment: the posted body carries the marker the lookup searches for'
         if (realBase === undefined) delete process.env.GITHUB_RETRY_BASE_MS;
         else process.env.GITHUB_RETRY_BASE_MS = realBase;
     }
+});
+
+test('gateway model resolution: an unpinned review takes the highest Pro preview the key serves', () => {
+    const { loadModelConfig, resolveGatewayModel } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw' });
+    const ids = ['xai/grok-4.6', 'google/gemini-3.8-flash', 'google/gemini-3.1-pro-preview', 'google/gemini-3.12-pro-preview', 'google/gemini-4-argon'];
+    assert.deepEqual(resolveGatewayModel('review', config, ids), { model: 'google/gemini-3.12-pro-preview', source: 'resolved' });
+    assert.deepEqual(resolveGatewayModel('critic', config, ids), { model: 'google/gemini-3.12-pro-preview', source: 'resolved' });
+});
+
+test('gateway model resolution: no Pro preview takes the highest stable Pro; Flash never qualifies', () => {
+    const { loadModelConfig, resolveGatewayModel } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw' });
+    assert.equal(resolveGatewayModel('review', config, ['google/gemini-3.1-pro', 'google/gemini-3.8-flash']).model, 'google/gemini-3.1-pro');
+    assert.deepEqual(
+        resolveGatewayModel('review', config, ['google/gemini-3.8-flash', 'google/gemini-flash-latest']),
+        { model: 'google/gemini-3.1-pro-preview', source: 'fallback' },
+    );
+});
+
+test('gateway model resolution: no list, a wildcard list, or retired ids fall back', () => {
+    const { loadModelConfig, resolveGatewayModel, GATEWAY_FALLBACKS } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw' });
+    for (const ids of [null, [], ['google/*'], ['*'], ['google/gemini-2.5-pro']]) {
+        assert.deepEqual(resolveGatewayModel('review', config, ids), { model: GATEWAY_FALLBACKS.review, source: 'fallback' });
+    }
+});
+
+test('gateway model resolution: an env override is the model, and code/plan are not resolved here', () => {
+    const { loadModelConfig, resolveGatewayModel } = require('../scripts/model-config.js');
+    const pinned = loadModelConfig({ AI_GW_API_TOKEN: 'gw', GEMINI_REVIEW_MODEL: 'gemini-y-pro' });
+    assert.deepEqual(resolveGatewayModel('review', pinned, ['google/gemini-9.9-pro-preview']), { model: 'google/gemini-y-pro', source: 'GEMINI_REVIEW_MODEL' });
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw' });
+    assert.deepEqual(resolveGatewayModel('code', config, ['xai/grok-9']), { model: 'xai/grok-4.6', source: 'fallback' });
+    assert.deepEqual(resolveGatewayModel('plan', config, ['google/gemini-9.9-pro-preview']), { model: 'google/gemini-4-argon', source: 'fallback' });
+    assert.throws(() => resolveGatewayModel('nope', config, []), /Unknown model stage/);
+});
+
+test('gateway model resolution: the critic never resolves to the plan writer', () => {
+    const { loadModelConfig, resolveGatewayModel } = require('../scripts/model-config.js');
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw', PLAN_MODEL: 'google/gemini-3.12-pro-preview' });
+    assert.deepEqual(
+        resolveGatewayModel('critic', config, ['google/gemini-3.12-pro-preview']),
+        { model: 'google/gemini-3.1-pro-preview', source: 'fallback' },
+    );
+});
+
+test('review gateway: an unpinned review resolves from the one model-list call', async () => {
+    const { gatewayReviewModel } = require('../scripts/review-pr.js');
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    let calls = 0;
+    const listing = (ids) => async (url) => {
+        calls += 1;
+        assert.equal(url, 'https://ai-gw.newpush.com/v1/models');
+        return { ok: true, status: 200, json: async () => ({ data: ids.map((id) => ({ id })) }) };
+    };
+    const config = loadModelConfig({ AI_GW_API_TOKEN: 'gw', GEMINI_REVIEW_MODEL: 'auto' });
+    const pick = await gatewayReviewModel(config, 'auto', listing(['google/gemini-3.1-pro-preview', 'google/gemini-3.12-pro-preview']));
+    assert.deepEqual(pick, { model: 'google/gemini-3.12-pro-preview', explicit: false, source: 'resolved', served: 'google/gemini-3.12-pro-preview' });
+    assert.equal(calls, 1);
+    const wildcard = await gatewayReviewModel(config, '', listing(['google/*']));
+    assert.deepEqual(wildcard, { model: 'google/gemini-3.1-pro-preview', explicit: false, source: 'fallback', served: 'google/gemini-3.1-pro-preview' });
+    const explicit = await gatewayReviewModel(config, 'gemini-x-pro', listing(['google/gemini-3.12-pro-preview']));
+    assert.deepEqual(explicit, { model: 'google/gemini-x-pro', explicit: true, source: 'pin', served: null });
+});
+
+test('critic on gateway: an unpinned critic sends the resolved model', async () => {
+    const { callCriticModel } = require('../coding-loop/critic.js');
+    const { loadModelConfig } = require('../scripts/model-config.js');
+    const sent = [];
+    const fetchImpl = async (url, opts) => {
+        if (String(url).endsWith('/models')) {
+            return { ok: true, status: 200, json: async () => ({ data: [{ id: 'google/gemini-3.12-pro-preview' }, { id: 'google/gemini-4-argon' }] }) };
+        }
+        sent.push(JSON.parse(opts.body).model);
+        return { ok: true, status: 200, json: async () => ({ choices: [{ finish_reason: 'stop', message: { content: '{"verdict":"pass","findings":[]}' } }] }) };
+    };
+    await callCriticModel('p', { config: loadModelConfig({ AI_GW_API_TOKEN: 'gw' }), fetchImpl });
+    await callCriticModel('p', { config: loadModelConfig({ AI_GW_API_TOKEN: 'gw', GEMINI_CRITIC_MODEL: 'gemini-x-pro' }), fetchImpl });
+    assert.deepEqual(sent, ['google/gemini-3.12-pro-preview', 'google/gemini-x-pro']);
 });

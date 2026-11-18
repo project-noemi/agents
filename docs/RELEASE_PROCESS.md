@@ -25,6 +25,10 @@ and the commit history are the source of truth.
 
 The release job **does not rewrite `main`** (no branch write under `enforce_admins`). So the stamp is updated on `develop` during a narrative pass, using the last published tag at that time. `scripts/audit-repo.js` fails if the stamp is missing, is not a real tag, or lags the latest tag by more than 45 days (Decision [2026-09-24-0003]). Edit the Bible whenever the story drifts; do not wait for a promotion. A `docs` commit rides the next `feat`/`fix` release. Use `feat(reference):` only when the edition must be tagged before that train.
 
+## After a release: Knowledge MCP, then the website FAQ
+
+Each published release is deployed to the NoéMI Knowledge MCP (`mcp.noemi.newpush.com`) by `.github/workflows/deploy-knowledge-mcp.yml`, which rebuilds its corpus from the release. The website FAQ quotes that service, so the order is: agents release, then the Knowledge MCP deploy, then the website FAQ republish. See [KNOWLEDGE_MCP_DEPLOY.md](KNOWLEDGE_MCP_DEPLOY.md).
+
 ## Why date-based versioning (`YYYY.MM.DD`)
 
 The earlier version of this process used SemVer (`0.2.0`, `1.0.0`). For a

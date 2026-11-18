@@ -80,7 +80,7 @@ commit it, because it lists who your clients are. See
 | Role | Identity | Token / App | May |
 |---|---|---|---|
 | Conductor | `{company}-conductor` or `noemi-conductor` | `CONDUCTOR_GH_TOKEN` | Issues comment + labels |
-| Producer | `{company}-agent` or `noemi-agent` | `AGENT_GH_TOKEN` | Open PRs |
+| Producer | `{company}-agent` or `noemi-agent` | `AGENT_GH_TOKEN` (`AGENT_GH_TOKEN_CLASSIC` when the repository sets `AGENT_GH_USE_CLASSIC=true`, for a target outside the home organization) | Open PRs |
 | Reviewer | fleet reviewer App or `{company}-reviewer` | reviewer App / PAT | Post findings |
 
 `--post` on the Stage A runner **requires** `CONDUCTOR_GH_TOKEN`. It
@@ -269,9 +269,11 @@ is present (Decision [2026-10-29-0001]).
 NewPush gateway `AI_GW_API_TOKEN` / `AI_GW_API_KEY` at
 `https://ai-gw.newpush.com/v1` (override `AI_GW_BASE_URL`), which wins when set,
 **else** `XAI_API_KEY` against `https://api.x.ai/v1`. Gateway model ids are
-`provider/id`; the writer pins `xai/grok-4.6` unless `XAI_CODE_MODEL` is set
-(a bare id gets the `xai/` prefix). On the gateway the pin is the model: no
-catalogue pick and no substitute. The request sets
+`provider/id`. Unless `XAI_CODE_MODEL` is set (a bare id gets the `xai/`
+prefix), the writer ranks the gateway key's `xai/*` models with the same rule
+as the native catalogue and falls back to `xai/grok-4.6` only when the list
+cannot be read or has no Grok model (Decision [2026-11-14-0001]). An
+`XAI_CODE_MODEL` pin is the model: no substitute. The request sets
 `max_completion_tokens` (default 65536, override `XAI_MAX_TOKENS`) so thinking
 tokens are not taken from the file JSON. The NewPush gateway is LiteLLM and
 rejects that field for `grok-4.6` unless the body also sends
@@ -444,6 +446,21 @@ fleet-reviewer org **variables**: `GCP_WIF_PROVIDER`, `GCP_SERVICE_ACCOUNT`,
 workflow mints `GCP_ACCESS_TOKEN` via `google-github-actions/auth`. One-time
 pool/provider setup: [`docs/examples/cross-model-review-setup.md`](../docs/examples/cross-model-review-setup.md)
 Part 1.
+
+**Robot and model secrets in Actions** (Decision [2026-11-05-0001]): the same
+workflow reads `AGENT_GH_TOKEN`, `AI_GW_API_TOKEN`, `AI_GW_API_KEY`, and
+`XAI_API_KEY` from Infisical when both `INFISICAL_PROJECT_ID` and
+`INFISICAL_IDENTITY_ID` are set. Login is GitHub OIDC as the identity those
+variables already name (`infisical login --method=oidc-auth`), audience
+`INFISICAL_OIDC_AUDIENCE` or `infisical`. The read is one named secret at a
+time from environment `dev` at path `/`. The official Infisical GitHub Action
+injects every secret in a folder, so this workflow does not use it. Direct
+mode (both variables unset) still uses the named Actions secrets. One variable
+without the other fails the job. Before `--implement`, a present producer
+token must be the GitHub user `noemi-agent`. Conductor credentials, the client
+registry, the budget flag, and the requester check are unchanged. Callers in
+`templates/ci/coding-loop-caller.yml` pin `@main`, so they keep the previous
+workflow until a release promotes `develop`.
 
 ## Graphite stacked PRs
 

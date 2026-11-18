@@ -15,9 +15,13 @@ const outFile = path.join(serviceRoot, "src/corpus.generated.json");
 
 /**
  * Curated public corpus only (Decision [2026-09-22-0003], extended by
- * [2026-10-25-0001]). Getting-started guides are public onboarding.
+ * [2026-10-25-0001] and [2026-11-10-0003]). Getting-started guides are
+ * public onboarding. Guardian sources are the public tamper-resistance
+ * rules (#723) and the PromptShield / PIIGuard personas (#725).
  * Do NOT include MACHINE_IDENTITY / internal identity registers or other
  * admin-architecture docs — those are not public knowledge-base material.
+ * docs/agents/guardian/prompt-shield.md and pii-guard.md are symlinks to
+ * the personas listed here; do not list them again.
  */
 /** @type {{ path: string, title?: string }[]} */
 const SOURCES = [
@@ -30,6 +34,10 @@ const SOURCES = [
   { path: "docs/examples/macos-linux-kickstart.md", title: "macOS and Linux Kickstart" },
   { path: "docs/examples/windows-kickstart.md", title: "Windows Kickstart" },
   { path: "docs/examples/chromeos-kickstart.md", title: "ChromeOS Kickstart" },
+  { path: "guardian-layer/README.md", title: "Guardian Layer" },
+  { path: "docs/agents/guardian/README.md", title: "Guardian Agents" },
+  { path: "agents/guardian/prompt-shield.md", title: "PromptShield" },
+  { path: "agents/guardian/pii-guard.md", title: "PIIGuard" },
 ];
 
 function walkSkillsDist() {

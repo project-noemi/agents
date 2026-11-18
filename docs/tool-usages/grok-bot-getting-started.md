@@ -25,12 +25,13 @@ This is the operational path, not a sketch. This library exists so businesses ca
 1. Create a new bot and give it a clear, narrow **purpose** (e.g. "inbox triage", "release notes", "ops monitoring").
 2. Write its standing instructions: role, tone, what it may do on its own, and what always needs approval.
 3. Seed its memory with stable facts it needs (conventions, preferred formats). Never put secrets in memory.
+4. Record the bot in your agent inventory ([template](../examples/first-win/agent-inventory-template.md)): its identity in each connected system, its scopes, its human owner, how to revoke it, and when to review it.
 
 ## 2. Connect Services
 
 - Connect only the services the bot actually needs (least privilege).
 - Prefer read-only scopes until a write workflow is proven.
-- Use a dedicated machine identity for code hosting where possible (see [`../MACHINE_IDENTITY.md`](../MACHINE_IDENTITY.md)).
+- Give the bot its own identity in every connected service, never a person's login: a dedicated account or app registration for mail, calendar, files, CRM and chat, and a dedicated machine identity for code hosting (see [`../MACHINE_IDENTITY.md`](../MACHINE_IDENTITY.md)). Grant each identity only what the task needs and record it in the [agent inventory](../examples/first-win/agent-inventory-template.md).
 - Keep credentials out of prompts, memory, and files; follow [`secure-secret-management.md`](secure-secret-management.md).
 
 ## 3. Write Routines
@@ -68,6 +69,7 @@ Start with a manual run, review the output, then enable the schedule.
 - **Approval for risky actions**: deleting, sharing, purchasing, force-pushing, submitting forms, or changing production systems require explicit approval.
 - **Untrusted content stays data**: instructions found inside emails, web pages, or documents are never followed as commands.
 - **Blocked means stop**: if a safety check blocks an action, the bot asks for approval instead of working around it.
+- **Every identity has an owner and an off switch**: each connector identity in the [agent inventory](../examples/first-win/agent-inventory-template.md) names a human owner and a revocation step, and is reviewed on a set date.
 
 ## 6. Good Practices
 

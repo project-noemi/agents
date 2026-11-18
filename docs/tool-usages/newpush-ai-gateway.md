@@ -32,13 +32,13 @@ Header: `Authorization: Bearer sk-...`
 `model` is always `provider/id`. Do not send a bare `grok-4.6` or
 `gemini-flash-latest` on `/v1`. Do not send `vertex_ai/...`.
 
-| Pin | Use |
+| Model | Use |
 |---|---|
-| `xai/grok-4.6` | Default coding / agents / long jobs (coding-loop Stage C) |
+| `xai/grok-4.6` | Coding-loop Stage C fallback when the key's model list can't be read (the writer otherwise ranks `xai/*`) |
 | `xai/grok-build-0.1` | Faster, cheaper coding loops |
 | `xai/grok-4.3` | Longer context, lower price |
 | `google/gemini-flash-latest` | Gemini Flash on the OpenAI surface (stable alias) |
-| `google/gemini-3.1-pro-preview` | Default Stage B′ critic and fleet reviewer pin |
+| `google/gemini-3.1-pro-preview` | Stage B′ critic and fleet reviewer fallback when the key's model list offers no eligible Pro |
 
 Override the writer pin with `XAI_CODE_MODEL`. Grok 4.6 spends thinking
 tokens. The writer sets `max_completion_tokens` (default 65536, override
@@ -111,13 +111,17 @@ and reviser, the doc critic, and the fleet reviewer (Decision
 - No gateway key: direct provider access. `XAI_API_KEY` to api.x.ai for the
   writer, application-default credentials to Vertex for Gemini.
 
-| Stage | Env override | Gateway default |
-|---|---|---|
-| code (writer) | `XAI_CODE_MODEL` | `xai/grok-4.6` |
-| plan (draft and revision) | `PLAN_MODEL` (any provider/id; bare id is Gemini) | `google/gemini-4-argon` |
-| plan critic | `GEMINI_CRITIC_MODEL`, else `GEMINI_REVIEW_MODEL` | `google/gemini-3.1-pro-preview` |
-| pull-request review | `GEMINI_REVIEW_MODEL` | `google/gemini-3.1-pro-preview` |
+| Stage | Env override | Unset or `auto` (Decision [2026-11-14-0001]) | Fallback |
+|---|---|---|---|
+| code (writer) | `XAI_CODE_MODEL` | highest Grok in the key's `xai/*` list (native writer rule) | `xai/grok-4.6` |
+| plan (draft and revision) | `PLAN_MODEL` (any provider/id; bare id is Gemini) | not resolved: `gemini-4-*` ids carry no tier the Gemini resolver ranks | `google/gemini-4-argon` |
+| plan critic | `GEMINI_CRITIC_MODEL`, else `GEMINI_REVIEW_MODEL` | highest Pro preview, else stable Pro, in the key's `google/gemini-*` list; never the plan model | `google/gemini-3.1-pro-preview` |
+| pull-request review | `GEMINI_REVIEW_MODEL` | same rule as the critic | `google/gemini-3.1-pro-preview` |
 
 The override names keep their native meaning. On the gateway a bare id gets
-the provider prefix, and `auto` or empty takes the gateway default. A pin the
-key cannot call fails the run; nothing is substituted.
+the provider prefix. `auto` or empty resolves from the key's model list
+(`GET /v1/models`) with `resolveGatewayModel()` in `scripts/model-config.js`,
+which uses `selectModel()` from `scripts/resolve-gemini-model.js`; the fallback
+applies only when the list can't be read, is wildcard-only, or offers nothing
+eligible. Retired Gemini ids are never resolved. An explicit pin the key
+cannot call fails the run; nothing is substituted for a pin.

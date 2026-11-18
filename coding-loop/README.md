@@ -269,9 +269,11 @@ is present (Decision [2026-10-29-0001]).
 NewPush gateway `AI_GW_API_TOKEN` / `AI_GW_API_KEY` at
 `https://ai-gw.newpush.com/v1` (override `AI_GW_BASE_URL`), which wins when set,
 **else** `XAI_API_KEY` against `https://api.x.ai/v1`. Gateway model ids are
-`provider/id`; the writer pins `xai/grok-4.6` unless `XAI_CODE_MODEL` is set
-(a bare id gets the `xai/` prefix). On the gateway the pin is the model: no
-catalogue pick and no substitute. The request sets
+`provider/id`. Unless `XAI_CODE_MODEL` is set (a bare id gets the `xai/`
+prefix), the writer ranks the gateway key's `xai/*` models with the same rule
+as the native catalogue and falls back to `xai/grok-4.6` only when the list
+cannot be read or has no Grok model (Decision [2026-11-14-0001]). An
+`XAI_CODE_MODEL` pin is the model: no substitute. The request sets
 `max_completion_tokens` (default 65536, override `XAI_MAX_TOKENS`) so thinking
 tokens are not taken from the file JSON. The NewPush gateway is LiteLLM and
 rejects that field for `grok-4.6` unless the body also sends

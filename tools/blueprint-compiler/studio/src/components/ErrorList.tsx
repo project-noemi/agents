@@ -5,8 +5,8 @@ type Props = { stage: Stage; errors: CompileError[] }
 // Structured compiler errors, labeled with the stage that failed.
 export function ErrorList({ stage, errors }: Props) {
   return (
-    <div role="alert" className="border border-red-400 p-2">
-      <p className="font-semibold">Failed at stage: {stage}</p>
+    <div role="alert" className="alert alert-error">
+      <p className="alert-title">Failed at stage: {stage}</p>
       <ul className="list-disc pl-5">
         {errors.map((e, i) => (
           <li key={i}>

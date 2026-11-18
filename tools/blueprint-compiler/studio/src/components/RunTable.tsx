@@ -1,4 +1,6 @@
 import type { RunRecord, SavedBlueprintSummary } from '../api'
+import { Icon } from './Icon'
+import { StatusChip } from './StatusChip'
 
 type Props = {
   runs: RunRecord[]
@@ -8,15 +10,18 @@ type Props = {
 
 const duration = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`)
 
-function outcomeText(r: RunRecord): string {
+const OUTCOME_TONE = { ok: 'success', fallback: 'warning', error: 'error' } as const
+
+// The text after the outcome chip: what failed, or who it fell back from.
+function outcomeDetail(r: RunRecord): string {
   if (r.outcome === 'error') {
     const where = r.stage ? ` at ${r.stage}` : ''
-    return `error${where}: ${(r.errorCodes ?? []).join(', ') || 'unknown'}`
+    return `${where}: ${(r.errorCodes ?? []).join(', ') || 'unknown'}`
   }
   if (r.outcome === 'fallback') {
-    return `ok, fell back from ${r.fallbacks.map((f) => `${f.provider} (${f.reason})`).join(', ')}`
+    return ` from ${r.fallbacks.map((f) => `${f.provider} (${f.reason})`).join(', ')}`
   }
-  return 'ok'
+  return ''
 }
 
 // Past runs, newest first. A row shows the saved blueprint's current name when it
@@ -26,39 +31,43 @@ export function RunTable({ runs, blueprints, onRefresh }: Props) {
 
   return (
     <div className="space-y-2">
-      <button type="button" className="border px-2 py-1" onClick={onRefresh}>
+      <button type="button" className="btn btn-sm" onClick={onRefresh}>
+        <Icon name="refresh" />
         Refresh
       </button>
       {runs.length === 0 ? (
         <p>No runs yet.</p>
       ) : (
-        <table className="w-full border-collapse text-left">
+        <table className="table">
           <thead>
-            <tr className="border-b">
-              <th className="p-1">When</th>
-              <th className="p-1">Blueprint</th>
-              <th className="p-1">Provider</th>
-              <th className="p-1">Runtime</th>
-              <th className="p-1">Time</th>
-              <th className="p-1">Tokens in / out</th>
-              <th className="p-1">Outcome</th>
+            <tr>
+              <th>When</th>
+              <th>Blueprint</th>
+              <th>Provider</th>
+              <th>Runtime</th>
+              <th>Time</th>
+              <th>Tokens in / out</th>
+              <th>Outcome</th>
             </tr>
           </thead>
           <tbody>
             {runs.map((r) => (
-              <tr key={r.id} className="border-b align-top">
-                <td className="p-1">{new Date(r.at).toLocaleString()}</td>
-                <td className="p-1">{(r.blueprintId && names.get(r.blueprintId)) || r.blueprint}</td>
-                <td className="p-1">
+              <tr key={r.id} className="align-top">
+                <td>{new Date(r.at).toLocaleString()}</td>
+                <td>{(r.blueprintId && names.get(r.blueprintId)) || r.blueprint}</td>
+                <td>
                   {r.provider ?? '—'}
-                  {r.model ? <span className="block text-sm">{r.model}</span> : null}
+                  {r.model ? <span className="block text-body-sm">{r.model}</span> : null}
                 </td>
-                <td className="p-1">{r.runtime ?? '—'}</td>
-                <td className="p-1">{duration(r.durationMs)}</td>
-                <td className="p-1">
+                <td>{r.runtime ?? '—'}</td>
+                <td>{duration(r.durationMs)}</td>
+                <td>
                   {r.inputTokens} / {r.outputTokens}
                 </td>
-                <td className="p-1">{outcomeText(r)}</td>
+                <td>
+                  <StatusChip tone={OUTCOME_TONE[r.outcome]}>{r.outcome}</StatusChip>
+                  {outcomeDetail(r)}
+                </td>
               </tr>
             ))}
           </tbody>

@@ -20,8 +20,6 @@ const SOURCE_LABELS: Record<SourceKind, string> = {
   registry: 'Load from registry',
 }
 
-const field = 'block w-full border p-1'
-
 export function BlueprintForm({ form, onChange, running, busy, onValidate, onRun, onStop, onSave, onNew }: Props) {
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => onChange({ ...form, [key]: value })
   const hasSource =
@@ -31,14 +29,13 @@ export function BlueprintForm({ form, onChange, running, busy, onValidate, onRun
 
   return (
     <form
-      className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault()
         onRun()
       }}
     >
-      <fieldset className="flex flex-wrap gap-4">
-        <legend className="font-semibold">Blueprint source</legend>
+      <fieldset className="mb-2 flex flex-wrap gap-4">
+        <legend className="font-medium">Blueprint source</legend>
         {(Object.keys(SOURCE_LABELS) as SourceKind[]).map((kind) => (
           <label key={kind} className="flex items-center gap-1">
             <input
@@ -57,12 +54,12 @@ export function BlueprintForm({ form, onChange, running, busy, onValidate, onRun
         <>
           <label className="block">
             Name
-            <input className={field} value={form.name} onChange={(e) => set('name', e.target.value)} />
+            <input className="field" value={form.name} onChange={(e) => set('name', e.target.value)} />
           </label>
           <label className="block">
             Blueprint (Markdown persona)
             <textarea
-              className={`${field} h-72 font-mono text-sm`}
+              className="field h-72 font-mono text-body-sm"
               value={form.markdown}
               onChange={(e) => set('markdown', e.target.value)}
               spellCheck={false}
@@ -73,7 +70,7 @@ export function BlueprintForm({ form, onChange, running, busy, onValidate, onRun
         <label className="block">
           Persona URL (https, allowed hosts only)
           <input
-            className={field}
+            className="field"
             type="url"
             placeholder="https://"
             value={form.url}
@@ -84,7 +81,7 @@ export function BlueprintForm({ form, onChange, running, busy, onValidate, onRun
         <label className="block">
           Registry ref
           <input
-            className={field}
+            className="field"
             placeholder="domain/name@version"
             value={form.registryRef}
             onChange={(e) => set('registryRef', e.target.value)}
@@ -95,7 +92,7 @@ export function BlueprintForm({ form, onChange, running, busy, onValidate, onRun
       <div className="flex flex-wrap gap-4">
         <label>
           Provider
-          <select className={field} value={form.provider} onChange={(e) => set('provider', e.target.value as Provider)}>
+          <select className="field" value={form.provider} onChange={(e) => set('provider', e.target.value as Provider)}>
             {PROVIDERS.map((p) => (
               <option key={p}>{p}</option>
             ))}
@@ -103,7 +100,7 @@ export function BlueprintForm({ form, onChange, running, busy, onValidate, onRun
         </label>
         <label>
           Runtime
-          <select className={field} value={form.runtime} onChange={(e) => set('runtime', e.target.value as Runtime)}>
+          <select className="field" value={form.runtime} onChange={(e) => set('runtime', e.target.value as Runtime)}>
             {RUNTIMES.map((r) => (
               <option key={r}>{r}</option>
             ))}
@@ -113,31 +110,31 @@ export function BlueprintForm({ form, onChange, running, busy, onValidate, onRun
 
       <label className="block">
         Prompt
-        <textarea className={`${field} h-20`} value={form.prompt} onChange={(e) => set('prompt', e.target.value)} />
+        <textarea className="field h-20" value={form.prompt} onChange={(e) => set('prompt', e.target.value)} />
       </label>
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="border px-2 py-1" disabled={busy || running || !hasSource} onClick={onValidate}>
+        <button type="button" className="btn btn-outlined" disabled={busy || running || !hasSource} onClick={onValidate}>
           Validate
         </button>
         {running ? (
-          <button type="button" className="border px-2 py-1" onClick={onStop}>
+          <button type="button" className="btn btn-primary" onClick={onStop}>
             Stop
           </button>
         ) : (
-          <button type="submit" className="border px-2 py-1" disabled={busy || !hasSource}>
+          <button type="submit" className="btn btn-primary" disabled={busy || !hasSource}>
             Run
           </button>
         )}
         <button
           type="button"
-          className="border px-2 py-1"
+          className="btn btn-outlined"
           disabled={busy || form.sourceKind !== 'text' || !hasSource || form.name.trim() === ''}
           onClick={onSave}
         >
           {form.id ? 'Save' : 'Save as new'}
         </button>
-        <button type="button" className="border px-2 py-1" disabled={busy || running} onClick={onNew}>
+        <button type="button" className="btn btn-outlined" disabled={busy || running} onClick={onNew}>
           New
         </button>
       </div>

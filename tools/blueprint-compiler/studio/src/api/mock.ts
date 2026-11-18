@@ -1,3 +1,4 @@
+import { PROVIDERS } from './types'
 import type {
   BlueprintIR,
   BlueprintInput,
@@ -5,6 +6,7 @@ import type {
   RunRecord,
   RunRequest,
   SavedBlueprint,
+  ScoreboardRow,
   StreamEvent,
   StudioApi,
   ValidateResult,
@@ -173,6 +175,11 @@ function validateInput(input: BlueprintInput): ValidateResult {
   }
 }
 
+// Arena runs, newest first, kept in memory like the run history. One result per provider.
+type ArenaResult = { provider: string; ok: boolean; latencyMs: number; inputTokens: number; outputTokens: number; costUsd: number }
+const arenaHistory: ArenaResult[][] = []
+let nextArenaId = 1
+
 export const mockApi: StudioApi = {
   async validate(input) {
     await sleep(150)
@@ -245,5 +252,78 @@ export const mockApi: StudioApi = {
 
   async listRuns() {
     return [...history]
+  },
+
+  // Like run(), the mock only answers for the mock provider. Live providers need
+  // the server, so here they are recorded as failed, exactly as the Arena records
+  // any failed provider: no fallback.
+  async *arena(req, signal) {
+    const saved = store.get(req.blueprintId)
+    if (!saved) {
+      yield { type: 'error', stage: 'load', errors: [{ code: 'LOAD', message: 'Blueprint not found.' }] }
+      return
+    }
+    const result = validateInput({ kind: 'text', markdown: saved.markdown })
+    if (!result.ok) {
+      yield { type: 'error', stage: result.stage, errors: result.errors }
+      return
+    }
+    const id = String(nextArenaId++)
+    const results: ArenaResult[] = []
+    yield { type: 'arena', id, blueprint: result.ir.id, providers: [...PROVIDERS] }
+
+    for (const provider of PROVIDERS.filter((p) => p !== 'mock')) {
+      results.push({ provider, ok: false, latencyMs: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 })
+      yield {
+        type: 'failed',
+        provider,
+        stage: 'provider',
+        errors: [{ code: 'MOCK_BACKEND', message: 'The offline mock cannot reach live providers. Use the Studio server.' }],
+      }
+    }
+
+    yield { type: 'start', provider: 'mock', model: 'mock-hello-world' }
+    const started = Date.now()
+    const text = [`[mock] compiled ${result.ir.id}`, `title: ${result.ir.title}`, `prompt: ${req.prompt}`].join('\n')
+    for (const chunk of text.match(/\S+\s*/g) ?? []) {
+      if (signal?.aborted) return
+      await sleep(40)
+      yield { type: 'token', provider: 'mock', text: chunk }
+    }
+    const usage = { inputTokens: 0, outputTokens: 0, latencyMs: Date.now() - started, costUsd: 0 }
+    results.push({ provider: 'mock', ok: true, ...usage })
+    arenaHistory.unshift(results)
+    yield { type: 'done', provider: 'mock', model: 'mock-hello-world', usage }
+    yield { type: 'end', id }
+  },
+
+  async scoreboard() {
+    const rows = new Map<string, ScoreboardRow & { latencySum: number }>()
+    for (const r of arenaHistory.flat()) {
+      const row = rows.get(r.provider) ?? {
+        provider: r.provider,
+        runs: 0,
+        ok: 0,
+        failed: 0,
+        avgLatencyMs: null,
+        inputTokens: 0,
+        outputTokens: 0,
+        costUsd: 0,
+        latencySum: 0,
+      }
+      row.runs++
+      if (r.ok) {
+        row.ok++
+        row.latencySum += r.latencyMs
+      } else row.failed++
+      row.inputTokens += r.inputTokens
+      row.outputTokens += r.outputTokens
+      row.costUsd += r.costUsd
+      rows.set(r.provider, row)
+    }
+    return [...rows.values()].map(({ latencySum, ...row }) => ({
+      ...row,
+      avgLatencyMs: row.ok ? latencySum / row.ok : null,
+    }))
   },
 }

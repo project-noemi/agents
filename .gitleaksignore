@@ -1,0 +1,19 @@
+# Gitleaks findings reviewed and confirmed as false positives (2026-11-15).
+# Add a line here only after a human has checked the value is not a credential.
+# `<commit>:<file>:<rule>:<line>` covers history scans (`gitleaks git`);
+# `<file>:<rule>:<line>` covers working-tree scans (`gitleaks dir`).
+# A real secret is never "ignored": rotate it in the vault and remove it.
+
+# Made-up AWS-style key (sequential characters) in a test that checks
+# screenAnswer blocks credentials.
+ceadba75bcf16bbd6a0756bef80d59f2458fa6d1:tests/doc-critic.test.js:aws-access-token:87
+tests/doc-critic.test.js:aws-access-token:87
+
+# Base64 of "foobarbazqux..." in a test that checks the Azure DevOps client
+# redacts credentials from error messages.
+cb79c89bb806df771f74c28e15a61ee76948a7d1:tests/providers-azure-devops.test.js:generic-api-key:577
+tests/providers-azure-devops.test.js:generic-api-key:577
+
+# The word "auth_token" in generated documentation text (skills-dist/hmac-sign-submit).
+# The file is one line, so regenerating it may move or re-raise this finding: re-review then.
+services/noemi-knowledge-mcp/src/corpus.generated.json:generic-api-key:1

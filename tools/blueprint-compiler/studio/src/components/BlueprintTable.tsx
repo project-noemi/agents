@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { SavedBlueprintSummary } from '../api'
+import { Icon } from './Icon'
 
 type Props = {
   items: SavedBlueprintSummary[]
@@ -22,12 +23,12 @@ export function BlueprintTable({ items, selectedId, onOpen, onRename, onDelete }
   }
 
   return (
-    <table className="w-full border-collapse text-left">
+    <table className="table">
       <thead>
-        <tr className="border-b">
-          <th className="p-1">Name</th>
-          <th className="p-1">Last saved</th>
-          <th className="p-1">
+        <tr>
+          <th>Name</th>
+          <th>Last saved</th>
+          <th>
             <span className="sr-only">Actions</span>
           </th>
         </tr>
@@ -38,12 +39,12 @@ export function BlueprintTable({ items, selectedId, onOpen, onRename, onDelete }
           const draft = editing?.id === b.id ? editing : undefined
           const renaming = draft !== undefined
           return (
-            <tr key={b.id} className={b.id === selectedId ? 'border-b font-semibold' : 'border-b'}>
-              <td className="p-1">
+            <tr key={b.id} className={b.id === selectedId ? 'font-medium' : undefined}>
+              <td>
                 {draft ? (
                   <input
                     aria-label="New name"
-                    className="block w-full border p-1 font-normal"
+                    className="field mb-0 font-normal"
                     maxLength={100}
                     autoFocus
                     value={draft.name}
@@ -57,32 +58,37 @@ export function BlueprintTable({ items, selectedId, onOpen, onRename, onDelete }
                   b.name
                 )}
               </td>
-              <td className="p-1">{new Date(b.updatedAt).toLocaleString()}</td>
-              <td className="space-x-2 p-1 text-right">
+              <td>{new Date(b.updatedAt).toLocaleString()}</td>
+              <td className="text-right">
                 {renaming ? (
                   <>
-                    <button type="button" className="underline" onClick={commit}>
+                    <button type="button" className="btn btn-sm" onClick={commit}>
+                      <Icon name="check" />
                       Save name
                     </button>
-                    <button type="button" className="underline" onClick={() => setEditing(undefined)}>
+                    <button type="button" className="btn btn-sm" onClick={() => setEditing(undefined)}>
+                      <Icon name="close" />
                       Cancel
                     </button>
                   </>
                 ) : (
                   <>
-                    <button type="button" className="underline" onClick={() => onOpen(b.id)}>
+                    <button type="button" className="btn btn-sm" onClick={() => onOpen(b.id)}>
+                      <Icon name="open" />
                       Open
                     </button>
-                    <button type="button" className="underline" onClick={() => setEditing({ id: b.id, name: b.name })}>
+                    <button type="button" className="btn btn-sm" onClick={() => setEditing({ id: b.id, name: b.name })}>
+                      <Icon name="edit" />
                       Rename
                     </button>
                     <button
                       type="button"
-                      className="underline"
+                      className="btn btn-sm"
                       onClick={() => {
                         if (window.confirm(`Delete "${b.name}"?`)) onDelete(b.id)
                       }}
                     >
+                      <Icon name="delete" />
                       Delete
                     </button>
                   </>

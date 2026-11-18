@@ -13,7 +13,7 @@
 - [ ] Not part of a stack
 - [ ] Ship together with #N. Merge from the bottom up into develop.
 
-> See [docs/DEV_AGENT_PROMPT.md § Graphite stacked PRs](../docs/DEV_AGENT_PROMPT.md#graphite-stacked-prs) for full rules.
+> Native GitHub stacks only (`gh stack` or standard git plus `gh`; never Graphite or the `gt` CLI). See [docs/DEV_AGENT_PROMPT.md § Native GitHub stacked PRs](../docs/DEV_AGENT_PROMPT.md#native-github-stacked-prs) for full rules.
 
 ## Audience Impact
 

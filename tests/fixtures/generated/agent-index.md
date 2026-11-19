@@ -1,6 +1,6 @@
 ## Agent Index
 
-34 agent specifications across 9 domains:
+36 agent specifications across 10 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
@@ -12,6 +12,7 @@
 | coding | Sentinel — Security Agent | Security-focused agent who protects the codebase from vulnerabilities and security risks. | `agents/coding/sentinel/core.md` |
 | communication | MailSort — Communication Agent | MailSort is a specialized Gmail organization and labeling agent responsible for helping users design, maintain, and apply a clear, stable, and low-maintenance Gmail label taxonomy. | `agents/communication/mailsort.md` |
 | communication | Postman — Communication Agent | Professional communication assistant specializing in efficient email management and summarization. | `agents/communication/postman.md` |
+| education | Research Copilot — Education Agent | A research copilot agent for students, researchers, and anyone doing study or research work. | `agents/education/research-copilot.md` |
 | education | Student Success Coach — Education Agent | A compassionate, flexible, and strategic academic mentor specialized in supporting students from low-income or housing-unstable backgrounds. | `agents/education/student-success-coach.md` |
 | engineering | AI Architect — Engineering Agent | You are the AI Architect, the capstone persona of Project NoeMI. | `agents/engineering/ai-architect.md` |
 | engineering | Gatekeeper — Engineering Agent | Automated pull request triage agent that continuously monitors all repositories in a GitHub organization, classifies open PRs by risk level, and takes decisive action: auto-merges safe changes, flags  | `agents/engineering/gatekeeper.md` |
@@ -38,5 +39,6 @@
 | operations | QA & Risk Manager — Operations Agent | You are a vigilant Quality Assurance (QA) & Risk Manager. | `agents/operations/qa-risk-manager.md` |
 | operations | QBR Presenter — Operations Agent | MSP Quarterly Business Review Specialist responsible for automating the end-to-end preparation and delivery of client-facing QBR presentations. | `agents/operations/qbr-presenter.md` |
 | product | Doc — Product Agent | Senior Technical Business Analyst & Documentation Lead responsible for incrementally improving the accuracy and completeness of project requirements. | `agents/product/doc.md` |
+| strategy | Socratic Contrarian — Strategy Agent | A disciplined, rigorous dialectical stress-tester and strategic sparring partner. | `agents/strategy/socratic-contrarian.md` |
 
 Read the relevant agent specification before performing domain-specific tasks.

@@ -144,12 +144,101 @@ For the client-by-client comparison and the role of Google's Antigravity, Claude
 
 These are the main SecretOps patterns you may encounter as the work becomes more advanced:
 
-- **Infisical:** best open-source fit for local and self-hosted builder workflows
+- **Infisical:** best open-source fit for local and self-hosted builder workflows, and the vault this fleet uses
 - **1Password CLI:** strong local and SMB-friendly operational path
-- **Google Secret Manager / AWS Secrets Manager:** strong cloud-native path for workloads that rely on IAM and SDK-based secret retrieval rather than CLI injection
-- **Bitwarden Secrets Manager:** another strong option for teams that already standardize on Bitwarden
+- **Secret Manager** (Google Cloud): the secret store for a team whose workloads, IAM, and audit log are already in a Google Cloud project. The product name is Secret Manager.
+- **Azure Key Vault:** the secret store for a team whose workloads, directory, and audit log are already in an Azure tenant. The product name is Azure Key Vault. A vault holds secrets, keys, and certificates. This guide uses **secrets** only.
+- **AWS Secrets Manager** and **Bitwarden Secrets Manager:** other stores a team may already run. This repository does not ship a wrapper for them.
 
-The beginner path in this repo focuses on Infisical and 1Password because they most directly reinforce the Fetch-on-Demand habit.
+The beginner path in this repo stays Infisical or 1Password. A cloud project is not required for the first local win.
+
+## Choose a store
+
+Pick one store for a workflow. Do not keep the same names live in two vaults.
+
+| If this is true | Use |
+| --- | --- |
+| The workflow is this fleet, or the organization wants a vault that is not tied to one cloud | **Infisical** |
+| The people who hold the secrets already use 1Password, and agents run on workstations | **1Password** |
+| The workload, IAM, and audit log are already Google Cloud | **Secret Manager** |
+| The workload, directory, and audit log are already Azure | **Azure Key Vault** |
+
+Secret Manager stores only secrets: named, versioned blobs in a Google Cloud project. Azure Key Vault is also a key and certificate service. Using it for agent tokens does not mean putting encryption keys in that same vault. A vault used for agent secrets should contain only those secrets, so a **Key Vault Secrets User** grant cannot also read unrelated keys.
+
+| | Infisical | 1Password | Secret Manager (Google Cloud) | Azure Key Vault |
+| --- | --- | --- | --- | --- |
+| Address of one secret | project, environment, folder, name | `op://Vault/Item/field` | project, secret id, version (`latest`) | vault name, secret name, version |
+| Human sign-in | `infisical login` | `op signin` | `gcloud auth application-default login` | `az login` |
+| Machine identity | machine identity scoped to one folder | service account limited to one vault | Workload Identity Federation and `roles/secretmanager.secretAccessor` on those secrets | Microsoft Entra federated credential and **Key Vault Secrets User** on that vault |
+| Task scope | one folder | one reference manifest | one manifest of secret ids | one vault that holds only that workflow |
+| Launch | `infisical run --env=… --path=… -- cmd` | `op run --env-file=….env.template -- cmd` | `node scripts/secret-inject.js --manifest ….secrets -- cmd` | the same injector, with `kv://` references |
+
+`gcloud auth login` alone does not give Application Default Credentials. Secret Manager reads need `gcloud auth application-default login` on a workstation, or Workload Identity Federation in CI.
+
+Neither cloud ships an `infisical run` equivalent. Reading the secret from application code, or writing `gcloud` / `az` output into a dotenv file, breaks Fetch-on-Demand. `scripts/secret-inject.js` reads a manifest and places the values in the child process environment.
+
+Secret ids in Secret Manager are letters, numbers, hyphens, and underscores, and start with a letter. Key Vault secret names are letters, numbers, and hyphens. An Infisical folder path does not become a secret id. The manifest maps one environment variable to one id.
+
+### Secret Manager launch
+
+`workflows/inbox-triage.secrets` holds references only:
+
+```text
+MAIL_API_TOKEN=sm://PROJECT/inbox-triage-mail-token/latest
+```
+
+```bash
+gcloud auth application-default login
+node scripts/secret-inject.js --manifest workflows/inbox-triage.secrets -- gemini
+```
+
+### Azure Key Vault launch
+
+Use a different manifest. One launch is one cloud.
+
+```text
+MAIL_API_TOKEN=kv://inbox-triage/mail-token/latest
+```
+
+```bash
+az login
+node scripts/secret-inject.js --manifest workflows/inbox-triage.secrets -- gemini
+```
+
+## Migrate one workflow to Google Cloud or Azure
+
+Do this once per workflow. Inventory names, not values. Do not print a secret into the terminal history, a file, or a pull request.
+
+1. List the names. From Infisical, list the folder. From 1Password, list the `op://` references in the task manifest. Write the destination manifest with new resource ids. Leave values out of that file.
+2. Create the destination before copying. On Google Cloud, enable the Secret Manager API on the project the workload already uses, and turn on Cloud Audit Logs for Secret Manager. On Azure, create one Key Vault that uses Azure RBAC (not an access policy), and send diagnostic logs to Azure Monitor.
+3. Copy each value once, through the old injector, into the new store. Turn shell history off for the session (`unset HISTFILE`, or start a shell that does not record it). Pipe the variable. Do not paste it, and do not pass it as `--value` (that puts the secret in the process list).
+
+   From Infisical into Secret Manager:
+
+   ```bash
+   unset HISTFILE
+   infisical run --env=dev --path=/workflows/inbox-triage -- \
+     sh -c 'printf %s "$MAIL_API_TOKEN" | gcloud secrets create inbox-triage-mail-token --data-file=- --replication-policy=automatic --project=PROJECT'
+   ```
+
+   From Infisical into Azure Key Vault (`--file /dev/stdin`, never `--value`):
+
+   ```bash
+   unset HISTFILE
+   infisical run --env=dev --path=/workflows/inbox-triage -- \
+     sh -c 'printf %s "$MAIL_API_TOKEN" | az keyvault secret set --vault-name inbox-triage --name mail-token --file /dev/stdin'
+   ```
+
+   From 1Password, replace the `infisical run …` prefix with `op run --env-file=workflows/inbox-triage.env.template --`.
+4. Grant read on those objects only: `roles/secretmanager.secretAccessor` on the Google Cloud secrets, or **Key Vault Secrets User** on the Azure vault. Confirm with a command that checks the name is non-empty and does not print it:
+
+   ```bash
+   node scripts/secret-inject.js --manifest workflows/inbox-triage.secrets -- \
+     sh -c 'test -n "$MAIL_API_TOKEN"'
+   ```
+5. Point the workflow at the new manifest. After one successful run, revoke the old Infisical folder or the old 1Password items.
+6. Rotate every migrated secret at the service that issued it, and store the new value as a new version. A value that lived in the old store and passed through a shell is treated as exposed.
+7. Leave one store for that workflow. Delete the old names when the rotation is done.
 
 ## The Agent Contract (Prompting Guide)
 
@@ -168,7 +257,7 @@ import os
 
 db_url = os.getenv("DATABASE_URL")
 if not db_url:
-    raise ValueError("Missing DATABASE_URL. Did you execute the script with `infisical run` or `op run`?")
+    raise ValueError("Missing DATABASE_URL. Did you execute the script with `infisical run`, `op run`, or `scripts/secret-inject.js`?")
 ```
 
 ### The Execution Prompt
@@ -187,6 +276,12 @@ or:
 
 ```bash
 op run --env-file=workflows/db-report.env.template -- python script.py
+```
+
+or, for a workflow that already moved to Secret Manager or Azure Key Vault:
+
+```bash
+node scripts/secret-inject.js --manifest workflows/db-report.secrets -- python script.py
 ```
 
 ## Advanced Path: Accelerators And Headless Runtimes

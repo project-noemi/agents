@@ -11,7 +11,7 @@ Every agent (Codex, Claude Code, Gemini, Cursor, or any other) opens pull reques
 Details: [docs/MACHINE_IDENTITY.md](docs/MACHINE_IDENTITY.md) and `mcp-protocols/github.md` §6 (PR Authorship).
 
 # 🔐 Secrets & Configuration
-This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical or 1Password) and are never written to disk or hardcoded in source code. One scoped exception: an organization without a SecretOps platform may run the fleet AI reviewer in direct mode, with `AI_GW_API_TOKEN` and `REVIEWER_APP_PRIVATE_KEY` as GitHub Actions secrets passed by name to `.github/workflows/ai-review.yml`; vault mode wins whenever Infisical is configured (Decision [2026-10-22-0004]).
+This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical, 1Password, Secret Manager on Google Cloud, or Azure Key Vault) and are never written to disk or hardcoded in source code. This fleet's own vault stays Infisical (Decision [2026-11-19-0001]). One scoped exception: an organization without a SecretOps platform may run the fleet AI reviewer in direct mode, with `AI_GW_API_TOKEN` and `REVIEWER_APP_PRIVATE_KEY` as GitHub Actions secrets passed by name to `.github/workflows/ai-review.yml`; vault mode wins whenever Infisical is configured (Decision [2026-10-22-0004]).
 
 ## Mandatory Security Rules
 
@@ -21,7 +21,7 @@ This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Secu
 - NEVER hardcode actual secret values in any files, `.env` files, or logs. <!-- rule: secrets.no-hardcode -->
 
 
-- ALWAYS use an Environment Injection CLI (`infisical run` or `op run`) to resolve credentials at runtime. <!-- rule: secrets.fetch-on-demand -->
+- ALWAYS use an Environment Injection CLI (`infisical run`, `op run`, or `node scripts/secret-inject.js` for Secret Manager and Azure Key Vault) to resolve credentials at runtime. <!-- rule: secrets.fetch-on-demand -->
 
 # 🛡 Error Handling and Resilience
 To ensure reliability and stability, agents and toolkit components must implement robust error handling patterns.
@@ -33,10 +33,10 @@ To ensure reliability and stability, agents and toolkit components must implemen
 - **Internal Tool & Service Audit Logs**: All Node.js-based tools in `tools/` and reference services in `examples/` that perform automated ingestion, routing, or state mutation must emit a structured JSON Audit Log to `stderr` for every significant operational event, following the same lightweight shape as agent personas.
 
 # 🚀 Execution Patterns
-The Infisical CLI or 1Password CLI is required in the environment. All sensitive credentials (API keys, DB URLs) MUST be stored in SecretOps and resolved at runtime; never write secrets to disk or hardcode them. When you need to execute scripts, tests, or servers that require credentials, you must wrap the command using the following pattern:
+One SecretOps CLI is required in the environment: Infisical, 1Password, the Google Cloud CLI (for Secret Manager), or the Azure CLI (for Key Vault). All sensitive credentials (API keys, DB URLs) MUST be stored in SecretOps and resolved at runtime; never write secrets to disk or hardcode them. When you need to execute scripts, tests, or servers that require credentials, you must wrap the command using the following pattern:
 
 ## Standard Command Wrapper
-Use `infisical run` or `op run` to dynamically pull the specified environment and inject secrets directly into the process memory.
+Use `infisical run`, `op run`, or `node scripts/secret-inject.js` to inject secrets directly into the process memory.
 
 ## Examples:
 
@@ -47,6 +47,9 @@ Use `infisical run` or `op run` to dynamically pull the specified environment an
 - 1Password Pattern: `op run --env-file=.env.template -- <command>`
 
 
+- Secret Manager or Azure Key Vault: `node scripts/secret-inject.js --manifest workflows/<task>.secrets -- <command>`
+
+
 - Starting a Chat Session: `infisical run --env=dev -- gemini chat`
 
 # 🛠 Local Development & Authentication
@@ -55,7 +58,9 @@ When running on a local host, the system uses human SSO or Desktop App integrati
 
 - Infisical: If execution fails, ensure you are logged in via `infisical login`, and that the clone is linked to a workspace via `infisical init`. The generated `.infisical.json` is a per-clone project link (workspace ID only, no credential material) and is deliberately untracked so forks resolve their own vault (Decision [2026-08-02-0002]).
 - 1Password: If execution fails, ensure you are logged in via `op signin`.
-- **Pre-flight Checks**: Environment verification scripts (`scripts/verify-env.sh`, `scripts/verify-env.ps1`) must perform active authentication checks (e.g., `infisical whoami` or `op get user`). Missing or invalid SecretOps authentication in `docker` mode MUST be a fatal error (exit 1), while remaining a warning in `builder` mode to support local exploration.
+- Secret Manager (Google Cloud): If execution fails, ensure Application Default Credentials exist via `gcloud auth application-default login`. `gcloud auth login` alone is not ADC.
+- Azure Key Vault: If execution fails, ensure you are logged in via `az login`.
+- **Pre-flight Checks**: Environment verification scripts (`scripts/verify-env.sh`, `scripts/verify-env.ps1`) must perform active authentication checks (e.g., `infisical whoami`, `op user get --me`, `gcloud auth application-default print-access-token`, or `az account show`). Missing or invalid SecretOps authentication in `docker` mode MUST be a fatal error (exit 1), while remaining a warning in `builder` mode to support local exploration.
 
 # 📝 Coding Standards
 - **Branch Naming**: All contributor branches must follow `<type>/<area>-<slice>` format with lowercase and hyphens only (no dots, no underscores, no spaces). See [`docs/DEV_AGENT_PROMPT.md § Branch Naming`](docs/DEV_AGENT_PROMPT.md#branch-naming) for the fleet-wide canonical reference with types, rules, and examples. <!-- rule: coding.branch-naming (preference) -->

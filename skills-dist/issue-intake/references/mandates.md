@@ -5,7 +5,7 @@ the host agent's own context. Load this file before executing the skill.
 
 ## 🔐 Secrets & Configuration
 
-This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical, 1Password, Secret Manager on Google Cloud, or Azure Key Vault) and are never written to disk or hardcoded in source code. This fleet's own vault stays Infisical (Decision [2026-11-19-0001]). One scoped exception: an organization without a SecretOps platform may run the fleet AI reviewer in direct mode, with `AI_GW_API_TOKEN` and `REVIEWER_APP_PRIVATE_KEY` as GitHub Actions secrets passed by name to `.github/workflows/ai-review.yml`; vault mode wins whenever Infisical is configured (Decision [2026-10-22-0004]).
+This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform and are never written to disk or hardcoded in source code. The customer uses the store that matches the architecture they already run: Infisical, 1Password, Secret Manager on Google Cloud, or Azure Key Vault (Decision [2026-11-19-0001]). Examples in this repository call Infisical. That is one deployment, not a brand the customer must adopt. One scoped exception: an organization without a SecretOps platform may run the fleet AI reviewer in direct mode, with `AI_GW_API_TOKEN` and `REVIEWER_APP_PRIVATE_KEY` as GitHub Actions secrets passed by name to `.github/workflows/ai-review.yml`; vault mode wins whenever Infisical is configured (Decision [2026-10-22-0004]).
 
 ### Mandatory Security Rules
 

@@ -622,8 +622,7 @@ The logic is unforgiving: every AI capability you deploy without governance is a
 
 NoéMI uses a **"Fetch-on-Demand" architecture** for secrets — a principle that extends to any organization deploying AI agents:
 
-- Primary tool for this fleet: **Infisical** (open-source, self-hosted SecretOps)
-- An organization already on Google Cloud uses **Secret Manager**. An organization already on Azure uses **Azure Key Vault** (secrets, not keys or certificates). Both inject with `scripts/secret-inject.js`. See [`docs/tool-usages/secure-secret-management.md`](tool-usages/secure-secret-management.md).
+- The customer uses the secret store that matches the architecture they already run: **Infisical** when the vault must stay portable, **1Password** when that is already the company vault, **Secret Manager** on Google Cloud, or **Azure Key Vault** on Azure (secrets, not keys or certificates). The cloud stores inject with `scripts/secret-inject.js`. See [`docs/tool-usages/secure-secret-management.md`](tool-usages/secure-secret-management.md). Examples in this repository call Infisical. That example is not a brand the customer must adopt.
 - Secrets live **only** in an encrypted vault, injected into process memory at runtime via CLI
 - Never written to disk, never committed to Git, never exposed in AI context windows
 - Machine Identities (not human SSO) for headless agent environments

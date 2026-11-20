@@ -7,7 +7,7 @@
 Project NoéMI uses a **Fetch-on-Demand** security model:
 
 1. **Storage (The Vault):** secrets live only in a SecretOps platform
-2. **Access (The Injector):** the client or runtime receives secrets at launch time through a wrapper such as `infisical run` or `op run`
+2. **Access (The Injector):** the client or runtime receives secrets at launch time through a wrapper. `infisical run` and `op run` are the wrappers for Infisical and 1Password. `scripts/secret-inject.js` is the wrapper for Secret Manager (Google Cloud) and Azure Key Vault, which do not ship one.
 3. **Governance (The Guardian Layer):** secrets are never written to disk, committed to Git, or pasted into chat
 
 For the client-side readiness conversation that should happen before implementation, see [`../PHASE_ZERO_SECURITY_BASELINE.md`](../PHASE_ZERO_SECURITY_BASELINE.md) and the reusable templates in [`../phase-zero-assessment/`](../phase-zero-assessment/).
@@ -26,21 +26,22 @@ For Builders and Practitioners, the right first habit is simple:
 
 You do **not** need machine identities for your first harmless local task.
 
-## The Two Recommended SecretOps Paths
+## Supported stores follow the customer's architecture
 
-Project NoéMI supports both of these beginner-friendly injector patterns:
+NoéMI does not assign a secret-store brand. The customer uses the store that matches the infrastructure they already run. Infisical and 1Password are two of those stores, and they are the ones this repository's own examples call. They are not the list a customer must adopt.
 
-- **Infisical:** open-source SecretOps with `infisical run`
-- **1Password CLI:** mature vault-backed wrapper with `op run`
+| The organization already runs | Store | Launch |
+| --- | --- | --- |
+| No cloud account yet, or a vault that must stay portable across clouds | **Infisical** | `infisical run` |
+| 1Password for the people who hold the secrets | **1Password** | `op run` |
+| Google Cloud (workloads, IAM, audit log) | **Secret Manager** | `scripts/secret-inject.js` |
+| Microsoft Azure (workloads, directory, audit log) | **Azure Key Vault**, secrets only | `scripts/secret-inject.js` |
 
-Choose one for a given workflow and standardize on it within the team.
+Secret Manager and Azure Key Vault are first-class. A customer on those clouds starts there. They do not pass through Infisical first. Each store injects into process memory, scoped to one workflow, with no plaintext `.env` file, which is the Phase 0 rule in [`../../AGENTS.md`](../../AGENTS.md).
 
-### Why These Two Paths Fit NoéMI
+### Local workstation examples
 
-- they inject secrets into process memory at runtime, scoped to a folder or manifest per task
-- they support secure local builder habits
-- they avoid plaintext `.env` files
-- they map cleanly to the Phase 0 rules in [`../../AGENTS.md`](../../AGENTS.md)
+When the organization has not chosen a cloud, the first exercises use Infisical or 1Password. Both are workstation-friendly and need no cloud project. The steps below are those two examples. Secret Manager and Key Vault launches are in [Choose a store](#choose-a-store).
 
 ## Step 1: Authenticate Locally
 
@@ -142,15 +143,15 @@ For the client-by-client comparison and the role of Google's Antigravity, Claude
 
 ## The Tool Matrix For Project NoéMI
 
-These are the main SecretOps patterns you may encounter as the work becomes more advanced:
+These are the supported stores. Use the one that matches the architecture the organization already pays for.
 
-- **Infisical:** best open-source fit for local and self-hosted builder workflows, and the vault this fleet uses
-- **1Password CLI:** strong local and SMB-friendly operational path
-- **Secret Manager** (Google Cloud): the secret store for a team whose workloads, IAM, and audit log are already in a Google Cloud project. The product name is Secret Manager.
-- **Azure Key Vault:** the secret store for a team whose workloads, directory, and audit log are already in an Azure tenant. The product name is Azure Key Vault. A vault holds secrets, keys, and certificates. This guide uses **secrets** only.
-- **AWS Secrets Manager** and **Bitwarden Secrets Manager:** other stores a team may already run. This repository does not ship a wrapper for them.
+- **Infisical:** portable, including self-hosted. Also the store this repository's own CI examples use. That example is not a customer requirement.
+- **1Password CLI:** the store when the organization already keeps secrets in 1Password.
+- **Secret Manager** (Google Cloud): the store when the organization already runs on Google Cloud. The product name is Secret Manager.
+- **Azure Key Vault:** the store when the organization already runs on Azure. The product name is Azure Key Vault. A vault holds secrets, keys, and certificates. Agent tokens use **secrets** only, in a vault that holds only those secrets.
+- **AWS Secrets Manager** and **Bitwarden Secrets Manager:** stores an organization may already run. This change does not add a wrapper for them. A customer on AWS still must not be told to adopt Infisical in order to comply. A later wrapper can follow the same manifest shape.
 
-The beginner path in this repo stays Infisical or 1Password. A cloud project is not required for the first local win.
+A first local exercise can use Infisical or 1Password without a cloud project. A customer whose systems already run on Google Cloud or Azure uses that cloud's store from the start.
 
 ## Choose a store
 
@@ -158,7 +159,7 @@ Pick one store for a workflow. Do not keep the same names live in two vaults.
 
 | If this is true | Use |
 | --- | --- |
-| The workflow is this fleet, or the organization wants a vault that is not tied to one cloud | **Infisical** |
+| The organization has no cloud secret store yet, or it wants a vault that is not tied to one cloud | **Infisical** |
 | The people who hold the secrets already use 1Password, and agents run on workstations | **1Password** |
 | The workload, IAM, and audit log are already Google Cloud | **Secret Manager** |
 | The workload, directory, and audit log are already Azure | **Azure Key Vault** |
@@ -175,7 +176,7 @@ Secret Manager stores only secrets: named, versioned blobs in a Google Cloud pro
 
 `gcloud auth login` alone does not give Application Default Credentials. Secret Manager reads need `gcloud auth application-default login` on a workstation, or Workload Identity Federation in CI.
 
-Neither cloud ships an `infisical run` equivalent. Reading the secret from application code, or writing `gcloud` / `az` output into a dotenv file, breaks Fetch-on-Demand. `scripts/secret-inject.js` reads a manifest and places the values in the child process environment.
+Neither cloud ships an `infisical run` equivalent. That is why `scripts/secret-inject.js` is in this repository: a customer on Google Cloud or Azure has to be able to launch an agent the same way a customer on Infisical or 1Password does. Reading the secret from application code, or writing `gcloud` / `az` output into a dotenv file, breaks Fetch-on-Demand. The script reads a manifest and places the values in the child process environment.
 
 Secret ids in Secret Manager are letters, numbers, hyphens, and underscores, and start with a letter. Key Vault secret names are letters, numbers, and hyphens. An Infisical folder path does not become a secret id. The manifest maps one environment variable to one id.
 

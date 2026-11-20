@@ -2,12 +2,16 @@
 'use strict';
 
 /**
- * Fetch-on-Demand injector for Secret Manager (Google Cloud) and Azure Key Vault.
+ * Fetch-on-Demand injector for customers whose architecture is already
+ * Google Cloud or Azure.
  *
- * A manifest names environment variables and vault resources. Values are read
- * into the child process environment and never written to a file or passed as
- * arguments. One launch uses one cloud. Infisical and 1Password keep their
- * own wrappers (`infisical run`, `op run`).
+ * The framework does not pick a secret-store brand for the customer. Infisical
+ * and 1Password ship their own launch wrappers (`infisical run`, `op run`).
+ * Secret Manager and Azure Key Vault do not, so a customer on those clouds
+ * cannot meet the same rule without this script: a manifest of references in,
+ * values in the child process environment, nothing written to a file or passed
+ * as an argument. One launch uses one cloud. This repository's own CI examples
+ * use Infisical; that is one deployment, not the customer's required brand.
  */
 
 const { spawnSync } = require('child_process');

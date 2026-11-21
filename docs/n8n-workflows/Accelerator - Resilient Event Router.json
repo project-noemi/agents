@@ -1,0 +1,334 @@
+{
+  "name": "Accelerator - Resilient Event Router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "batch-events",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "038062f6-1ae1-4d7f-8248-a7b3712efc58",
+      "name": "Webhook (Batch Ingestion)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        48
+      ],
+      "webhookId": "batch-inquiry"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst result = [];\n\nfor (const item of items) {\n  let body = item.json.body || item.json;\n  \n  if (!Array.isArray(body)) {\n    body = [body];\n  }\n  \n  for (const raw of body) {\n    result.push({\n      json: {\n        eventId: raw.eventId || 'EVT-' + Math.floor(Math.random() * 100000),\n        customerEmail: (raw.customerEmail || '').trim().toLowerCase(),\n        subject: (raw.subject || '').trim(),\n        priority: (raw.priority || 'standard').trim().toLowerCase(),\n        timestamp: new Date().toISOString()\n      }\n    });\n  }\n}\n\nreturn result;"
+      },
+      "id": "76242e04-8c62-40ac-b5e0-1b21accfc428",
+      "name": "1. Adattisztítás (Sanitize)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "valid-email",
+              "leftValue": "={{ $json.customerEmail.includes('@') }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "valid-subject",
+              "leftValue": "={{ $json.subject.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "31593d6d-6a6f-4744-b994-70e47b4487fa",
+      "name": "2. Adatellenőrzés (Validation)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -112,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "reject_reason",
+              "name": "rejectStatus",
+              "value": "REJECTED: Hiányzó kötelező mezők vagy érvénytelen e-mail cím.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d99a93c1-cbe8-44a5-a8e1-ce97b3c41a03",
+      "name": "Elutasított események (Reject Log)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        144,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/posts/1",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "89e04ec7-710a-4d1b-9abe-03f590dba92b",
+      "name": "3. Külső API Hívás (Enrichment)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        144,
+        -16
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "api-error-check",
+              "leftValue": "={{ $json.error !== undefined }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e89687a4-1860-4cf1-9065-3e61cd3772d8",
+      "name": "4. API Hiba vizsgálat (Error Check)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        384,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "err_log",
+              "name": "errorResolution",
+              "value": "CRITICAL_FALLBACK: Külső API nem válaszolt. Esemény mentve újrapróbálási sorba.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5621d941-fb43-4acf-b5ee-694a01f42a07",
+      "name": "5. Hibaág (Error Branch / Fallback)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        624,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dest1",
+              "name": "databaseRecord",
+              "value": "={{ 'Audit rekord tárolva: ' + $('1. Adattisztítás (Sanitize)').item.json.eventId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5d08cbf5-6466-43d4-a110-91b7aef89169",
+      "name": "6A. Célállomás 1: Audit Napló / DB",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        624,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dest2",
+              "name": "chatNotification",
+              "value": "={{ '🚨 Teams/Slack riasztás: ' + $('1. Adattisztítás (Sanitize)').item.json.subject }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2436e016-e6d2-44a9-ab70-4dc9d215b906",
+      "name": "6B. Célállomás 2: Slack / Teams Értesítés",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        624,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"BATCH_PROCESSED\",\n  \"message\": \"Az események sikeresen feldolgozva és továbbítva a párhuzamos ágakra.\"\n}",
+        "options": {}
+      },
+      "id": "232a8a2b-987d-450f-a95f-8bb71cf47784",
+      "name": "7. HTTP 200 Válasz",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        880,
+        128
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook (Batch Ingestion)": {
+      "main": [
+        [
+          {
+            "node": "1. Adattisztítás (Sanitize)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Adattisztítás (Sanitize)": {
+      "main": [
+        [
+          {
+            "node": "2. Adatellenőrzés (Validation)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Adatellenőrzés (Validation)": {
+      "main": [
+        [
+          {
+            "node": "3. Külső API Hívás (Enrichment)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Elutasított események (Reject Log)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Külső API Hívás (Enrichment)": {
+      "main": [
+        [
+          {
+            "node": "4. API Hiba vizsgálat (Error Check)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. API Hiba vizsgálat (Error Check)": {
+      "main": [
+        [
+          {
+            "node": "5. Hibaág (Error Branch / Fallback)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "6A. Célállomás 1: Audit Napló / DB",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "6B. Célállomás 2: Slack / Teams Értesítés",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6A. Célállomás 1: Audit Napló / DB": {
+      "main": [
+        [
+          {
+            "node": "7. HTTP 200 Válasz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "be980d9e-ebc4-44a0-adf9-a59323113bef",
+  "meta": {
+    "instanceId": "b7d01d25158212b00f6e374569918d547556fcb7e4957b8adbee47d5e233d661"
+  },
+  "nodeGroups": [],
+  "id": "Kj81PGatDVhbXee2",
+  "tags": []
+}

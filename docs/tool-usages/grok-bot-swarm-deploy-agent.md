@@ -8,6 +8,8 @@ It **blends with an existing organization chart** (map each of their seats onto 
 
 See also: [`grok-bot-getting-started.md`](grok-bot-getting-started.md), [`grok-bot-org-board-guide.md`](grok-bot-org-board-guide.md), and [`../architecture/grok-bot-architecture.md`](../architecture/grok-bot-architecture.md).
 
+To staff the same chart with agents from more than one provider, and to run that board in the organization's private cloud, use the [portable org board](paperclip-control-plane.md). This playbook remains the hosted Grok Bot deployment.
+
 ## 1. The One-Step Bootstrap
 
 1. Create a first Grok Bot on the hosted product.

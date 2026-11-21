@@ -1,6 +1,6 @@
 ## Agent Index
 
-35 agent specifications across 9 domains:
+36 agent specifications across 10 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
@@ -39,5 +39,6 @@
 | operations | QA & Risk Manager — Operations Agent | You are a vigilant Quality Assurance (QA) & Risk Manager. | `agents/operations/qa-risk-manager.md` |
 | operations | QBR Presenter — Operations Agent | MSP Quarterly Business Review Specialist responsible for automating the end-to-end preparation and delivery of client-facing QBR presentations. | `agents/operations/qbr-presenter.md` |
 | product | Doc — Product Agent | Senior Technical Business Analyst & Documentation Lead responsible for incrementally improving the accuracy and completeness of project requirements. | `agents/product/doc.md` |
+| strategy | Socratic Contrarian — Strategy Agent | A disciplined, rigorous dialectical stress-tester and strategic sparring partner. | `agents/strategy/socratic-contrarian.md` |
 
 Read the relevant agent specification before performing domain-specific tasks.

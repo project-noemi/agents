@@ -1,3 +1,11 @@
+---
+use_when: choose a secret store for the architecture you already run and inject credentials at runtime
+tier: principle
+keywords: [secrets, secretops, infisical, 1password, secret manager, azure key vault, fetch on demand]
+queries:
+  - where should we store secrets
+---
+
 # Project NoéMI: Phase 0 Security & Secret Management
 
 **Framework:** AI TRiSM (Gartner®, Inc.) — security dimension | **Pedagogy:** Creation Diligence

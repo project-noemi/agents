@@ -1,3 +1,11 @@
+---
+use_when: scan a payload for personal data before it is sent outside the organization
+tier: principle
+keywords: [pii, personal data, redact, scan, privacy]
+queries:
+  - scan this payload for personal data
+---
+
 # PII Scan — Security Skill
 
 ## Purpose

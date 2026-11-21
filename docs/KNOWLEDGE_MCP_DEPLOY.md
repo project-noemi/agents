@@ -58,3 +58,9 @@ Recommended: a tag ruleset on `20*` that limits creating, updating and deleting 
 
 - The website FAQ republish (step 3 of the release order) stays a separate run in project-noemi/website.
 - DNS, the custom domain and Cloudflare rate-limiting rules are managed in Cloudflare, not by this workflow.
+
+## Publishing to `mcp.project-noemi.com`
+
+The successor service, `https://mcp.project-noemi.com` (Worker `project-noemi-knowledge-mcp`, code in `project-noemi/code` `apps/knowledge-mcp`), serves releases of this repository from R2. `.github/workflows/publish-knowledge-mcp.yml` ("Publish Knowledge MCP corpus") publishes each release tag to it and then polls `/health` until `.release` equals the tag (about 3 minutes, else the run fails). It writes to R2 only: it does not deploy the Worker or change its routes.
+
+Required secrets (names only): Environment `knowledge-mcp-production`: `CLOUDFLARE_API_TOKEN` (Workers R2 Storage: Edit and Account Settings: Read on the account that holds the `project-noemi.com` zone) and `CLOUDFLARE_ACCOUNT_ID`; plus `NOEMI_CODE_READ_TOKEN` (read-only access to `project-noemi/code`). The workflow stops at "Check secrets" with the missing names until they exist. The Cloudflare token currently in that Environment was created for the older Worker, so confirm its scope covers R2 and the right account before relying on it.

@@ -1,5 +1,11 @@
 # NoéMI Knowledge MCP (`mcp.noemi.newpush.com`)
 
+> **Superseded.** This service (Worker `noemi-knowledge-mcp`, host `mcp.noemi.newpush.com`) is
+> superseded by the NoéMI Knowledge MCP at `https://mcp.project-noemi.com` (Worker
+> `project-noemi-knowledge-mcp`, code in [project-noemi/code](https://github.com/project-noemi/code)
+> `apps/knowledge-mcp`). New clients should use `mcp.project-noemi.com`. This Worker stays up for
+> existing clients; retiring it is a separate decision and is not part of this change.
+
 Remote **Model Context Protocol** server that exposes a searchable public
 knowledge corpus for Project NoéMI (Bible, governance, methodology, Phase 0,
 the public getting-started guides, the Guardian tamper-resistance rules,

@@ -627,24 +627,13 @@ function demoteHeadings(markdown, levels = 1) {
  * Agent Skills description: what the skill does *and* when to use it
  * (agentskills.io, max 1024 characters).
  */
-function sourceUseWhen(content) {
-    if (!String(content).startsWith('---\n')) return '';
-    const end = content.indexOf('\n---\n', 4);
-    if (end === -1) return '';
-    const match = content.slice(4, end).match(/^use_when:\s*(.+)$/m);
-    return match ? match[1].trim() : '';
-}
-
 function skillDistDescription(content, sourceRelPath) {
     const purpose = firstSentences(extractSectionBody(content, 'Purpose'));
     if (!purpose) {
         throw new Error(`${sourceRelPath}: no Purpose section to derive a description from.`);
     }
     let description = purpose.trim();
-    const useWhen = sourceUseWhen(content);
-    if (useWhen) {
-        description = `${description.replace(/\.$/, '')}. Use when: ${useWhen}.`;
-    } else if (!/use when/i.test(description)) {
+    if (!/use when/i.test(description)) {
         description = `${description.replace(/\.$/, '')}. Use when the task matches this skill's Purpose and Inputs.`;
     }
     if (description.length > 1024) {

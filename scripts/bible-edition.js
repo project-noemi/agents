@@ -32,7 +32,14 @@ function parseCalVer(tag) {
 
 function extractEditionLine(markdown) {
   const lines = String(markdown).split(/\n/);
-  for (const line of lines) {
+  let i = 0;
+  if ((lines[0] || '').trim() === '---') {
+    i = 1;
+    while (i < lines.length && lines[i].trim() !== '---') i += 1;
+    i += 1;
+  }
+  for (; i < lines.length; i += 1) {
+    const line = lines[i];
     if (line.startsWith('# ')) continue;
     if (line.trim() === '') continue;
     return line;

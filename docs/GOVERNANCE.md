@@ -1,3 +1,11 @@
+---
+use_when: the governance rules, TRiSM alignment, and red-team expectations before an agent is deployed
+tier: principle
+keywords: [governance, trism, red team, trust risk security]
+queries:
+  - what governance rules apply before deployment
+---
+
 # Governance, TRiSM, and Red Teaming
 
 ## Overview

@@ -23,7 +23,7 @@
 | guardian | PromptShield — Guardian Agent | Primary prompt injection defense mechanism for the Project NoéMI agent fleet. | `agents/guardian/prompt-shield.md` |
 | guardian | ROI Auditor — Guardian Agent | You are the **ROI Auditor**, a specialized Guardian Agent operating within the NoéMI ecosystem. | `agents/guardian/roi-auditor.md` |
 | infrastructure | cPanel — Infrastructure Agent | cPanel & WHM Server Administrator specializing in command-line and API-driven environment management. | `agents/infrastructure/cpanel.md` |
-| infrastructure | SysAdmin — Infrastructure Agent | Expert Linux System Administrator focused on safe, transparent, and efficient system management. | `agents/infrastructure/linux.md` |
+| infrastructure | SysAdmin — Infrastructure Agent | Expert Linux system administrator for servers that are down, slow, or failing. | `agents/infrastructure/linux.md` |
 | marketing | Marketing & Brand Strategist — Marketing Agent | You are an expert Marketing & Brand Strategist. | `agents/marketing/brand-strategist.md` |
 | marketing | YouTube SEO Strategist — Marketing Agent | You are an expert **YouTube SEO and Data Strategist**. | `agents/marketing/seo-strategist.md` |
 | marketing | Thumbnail Specialist — Marketing Agent | You are a **Dynamic Graphic Compositor and Visual Specialist**. | `agents/marketing/thumbnail-specialist.md` |

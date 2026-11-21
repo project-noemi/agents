@@ -1,3 +1,11 @@
+---
+use_when: block or redact personal data before an agent sends a payload onward
+tier: principle
+keywords: [pii, privacy, redact, guardian, personal data]
+queries:
+  - stop personal data from leaving the agent
+---
+
 # PIIGuard — Guardian Agent
 
 ## Role

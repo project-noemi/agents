@@ -1,3 +1,12 @@
+---
+use_when: what Project NoéMI is, what the 1:50 equilibrium means, or why not to replace employees with AI
+tier: principle
+keywords: [1:50, equilibrium, replacement trap, replace employees, virtual workforce]
+queries:
+  - what is the 1:50 equilibrium
+  - why not replace employees with AI
+---
+
 # Project NoéMI — Public Reference Guide
 
 **Edition 2026.11.10**

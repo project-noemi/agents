@@ -1,3 +1,11 @@
+---
+use_when: the Transparent Source Guarantee and when a deployment may be called NoéMI Transparent
+tier: principle
+keywords: [transparent source, fair source, license, noemi transparent]
+queries:
+  - what is the transparent source guarantee
+---
+
 # The NoéMI Transparent Source Guarantee
 
 Project NoéMI is distributed as **Fair Source** software. The code is legally governed by the Functional Source License ([FSL-1.1-Apache-2.0](../LICENSE)), which allows anyone to read, use, modify, and redistribute it, with a temporary two-year restriction on offering a competing commercial NoéMI-as-a-service. Each published version automatically converts to the Apache 2.0 open-source license two years after its publication date; tagged GitHub releases are the canonical published versions for that timeline.

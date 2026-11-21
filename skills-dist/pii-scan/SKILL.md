@@ -1,6 +1,6 @@
 ---
 name: pii-scan
-description: "Scan a data payload for Personally Identifiable Information (PII) and sensitive data patterns, then classify, redact, or block the payload accordingly. Use when the task matches this skill's Purpose and Inputs."
+description: "Scan a data payload for Personally Identifiable Information (PII) and sensitive data patterns, then classify, redact, or block the payload accordingly. Use when: scan a payload for personal data before it is sent outside the organization."
 license: FSL-1.1-Apache-2.0
 metadata:
   author: project-noemi

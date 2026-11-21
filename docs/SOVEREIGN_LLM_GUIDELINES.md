@@ -1,3 +1,11 @@
+---
+use_when: run agents on local open-source models, with guardians watching the agents so one Accelerator can stay with the people
+tier: principle
+keywords: [sovereign, local model, open source, guardian, jailbreak]
+queries:
+  - how do local models stay safe
+---
+
 # Sovereign LLM Guidelines
 
 > **Status:** Architectural guidance for the "Great AI Pivot."

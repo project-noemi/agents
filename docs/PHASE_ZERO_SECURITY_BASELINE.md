@@ -1,3 +1,11 @@
+---
+use_when: baseline cybersecurity before an advanced AI project, and see what this assessment does not cover
+tier: principle
+keywords: [phase 0, security baseline, assessment scope, penetration test, certification]
+queries:
+  - what does the phase 0 assessment not cover
+---
+
 # Phase 0 Security Baseline — Client Guide Before Starting an Advanced AI Project
 
 Project NoéMI treats **Phase 0 Security** as the prerequisite for serious AI adoption. Before an organization launches copilots, agentic workflows, RAG systems, or autonomous integrations, it should first baseline its cybersecurity posture. The goal is not to become "perfect" before using AI. The goal is to understand your real risk, fix critical gaps, and establish safe operating boundaries.
@@ -262,7 +270,7 @@ If the matching process takes time and you want to move forward with the assessm
 
 The findings belong to you regardless of which provider you ultimately choose. They can be used with your internal team, with the MSP or MSSP you select, or as a standalone reference.
 
-### What This Assessment Does Not Replace
+### Scope and limits of this assessment
 
 - It is not a full penetration test.
 - It is not a formal compliance certification.

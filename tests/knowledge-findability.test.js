@@ -2,8 +2,11 @@
 
 /**
  * Issue #630: a documented query must rank the page that answers it.
- * Headings, use_when, and keywords outweigh body text. The check reads the
- * repository files NoéMi Code reads. It does not call the Knowledge MCP.
+ * Headings, use_when, and keywords outweigh body text. A page's own
+ * `queries` list is not scored: that list records what the author expects
+ * people to ask, and scoring it would make the check pass by copying the
+ * question onto the page. The check reads the repository files NoéMi Code
+ * reads. It does not call the Knowledge MCP.
  */
 
 const test = require('node:test');
@@ -64,7 +67,6 @@ function scoreFile(text, queryTokens) {
   const weighted = [
     [fields.use_when || '', 3],
     [Array.isArray(fields.keywords) ? fields.keywords.join(' ') : '', 3],
-    [Array.isArray(fields.queries) ? fields.queries.join(' ') : '', 3],
   ];
   const headings = body.split('\n').filter((line) => /^#{1,3}\s/.test(line)).join(' ');
   weighted.push([headings, 3]);
@@ -101,6 +103,10 @@ test('issue 630 queries rank the page that answers them', () => {
 });
 
 test('principle pages declare use_when and tier', () => {
+  // Issue #630 names this set as NoéMi Code's governing list. `tier: principle`
+  // is that list. pii-scan is a skill and pii-guard is a guardian; they are
+  // on the list because an agent must find them when a task touches personal
+  // data, not because the files are essays.
   const required = [
     'docs/PROJECT_REFERENCE.md',
     'docs/PHASE_ZERO_SECURITY_BASELINE.md',

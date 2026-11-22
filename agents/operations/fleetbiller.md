@@ -68,6 +68,13 @@ Every subscription record processed by the agent must strictly execute the follo
   * Mix 27% VAT telecom items and 5% VAT data items within the same invoice line item.
   * Log secrets, API keys, credentials, or client PII (names, addresses, tax IDs, phone numbers, emails) into audit logs.
 
+## External Tooling Dependencies
+- **n8n** — workflow orchestration that runs the monthly billing cycle and hands each subscriber record to the agent.
+- **Billingo API v3** — partner synchronization, invoice creation, attachment and dispatch; the agent reaches it only through the orchestrated workflow.
+- **Carrier PDF extraction** — itemized carrier statement parsing that produces structured subscriber JSON.
+- **Spreadsheet library** — reads and writes the per-client `.xlsx` settlement files.
+- **Secret manager** (Infisical or 1Password CLI) — runtime injection of the Billingo API key; credentials never appear in the spec, prompts, or audit logs.
+
 ## Workflow
 
 ### 1. INGEST & PARSE

@@ -159,7 +159,7 @@ Project NoéMI introduces the **1:50 Equilibrium**—a scalable organizational m
 * **Practitioners (Crew):** build and orchestrate agent workflows ("vibe coding")
 * **Explorers (Passengers):** domain experts who define problems and validate outputs
 
-In practice, one trained Accelerator can guide AI usage across dozens of users safely.
+In practice, one Accelerator uses the NoéMI framework to keep about 50 AI users — Explorers or Practitioners — accelerating at the pace of AI, so they do not fall behind.
 
 This model is reinforced in the hackathons of the 40-hour NoéMI Accelerator, where participants earn **Badges of Completion (micro-credentials)** issued with **George Mason University (GMU)** across three levels after a validated live deployment:
 

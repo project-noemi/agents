@@ -1,0 +1,30 @@
+[
+  {
+    "query": "what is the 1:50 equilibrium",
+    "path": "docs/PROJECT_REFERENCE.md"
+  },
+  {
+    "query": "why not replace employees with AI",
+    "path": "docs/PROJECT_REFERENCE.md"
+  },
+  {
+    "query": "linux server down",
+    "path": "agents/infrastructure/linux.md"
+  },
+  {
+    "query": "setup on a mac",
+    "path": "docs/examples/macos-linux-kickstart.md"
+  },
+  {
+    "query": "what does the phase 0 assessment not cover",
+    "path": "docs/PHASE_ZERO_SECURITY_BASELINE.md"
+  },
+  {
+    "query": "scan this payload for personal data",
+    "path": "skills/security/pii-scan.md"
+  },
+  {
+    "query": "what is the transparent source guarantee",
+    "path": "docs/TRANSPARENT_SOURCE.md"
+  }
+]

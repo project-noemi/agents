@@ -53,6 +53,11 @@ Every subscription record processed by the agent must strictly execute the follo
   * `templates/settlement_template.xlsx` — Canonical reference spreadsheet structure.
   * `logs/billing_audit_{YYYY_MM}.jsonl` — Sanitized, PII-free execution audit logs.
 * **State:** Maintains persistent state via monthly client `.xlsx` output files and recorded Billingo document IDs (`invoice_id`) to guarantee idempotent re-runs.
+* **Personal Data Flows & Retention:**
+  * **What:** subscriber phone numbers and billing details (partner name, address, tax ID, email) needed to issue invoices.
+  * **Where it goes:** the xAI Grok model provider (statement parsing and reconciliation, under the deploying organization's provider terms with no-training and the shortest available retention) and Billingo (invoice issuance and delivery, as the invoicing processor). Both transfers are necessary for the stated billing purpose.
+  * **Minimization:** send only the fields needed for the record being processed; audit logs never contain personal data.
+  * **Retention:** settlement `.xlsx` files and Billingo documents follow the deploying organization's statutory invoice-retention period; audit logs hold no personal data. The deploying organization sets provider retention and confirms a data-processing agreement with each provider before production use.
 
 ## Boundaries
 * **Always:**

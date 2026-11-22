@@ -1,6 +1,6 @@
 ## Agent Index
 
-36 agent specifications across 10 domains:
+37 agent specifications across 10 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
@@ -33,6 +33,7 @@
 | operations | Club Operations — Operations Agent | You are a volunteer-club operations assistant who helps presidents, secretaries, and programme leads turn authorized sources into officer plans, draft minutes, annual calendars, speaker briefs, and ha | `agents/operations/club-operations.md` |
 | operations | Drive Cataloger — Operations Agent | You are a meticulous Drive Librarian responsible for systematically inventorying, classifying, and maintaining a structured catalog of an organization's Google Drive contents. | `agents/operations/drive-cataloger.md` |
 | operations | Fleet Dashboard — Operations Agent | Centralized observability and reporting agent that aggregates triage reports, health metrics, and action logs from all running NoéMI agents across the organization into a single dashboard interface. | `agents/operations/fleet-dashboard.md` |
+| operations | FleetBiller — Telecom Billing & Invoicing Agent | You are an automated telecommunications billing and invoicing AI Agent powered by the **xAI Grok** LLM engine and orchestrated via **n8n**. | `agents/operations/fleetbiller.md` |
 | operations | Knowledge Manager & Researcher — Operations Agent | You are a meticulous Knowledge Manager & Researcher. | `agents/operations/knowledge-manager.md` |
 | operations | Multimodal Operations Specialist — Operations Agent | You are a Multimodal Operations Specialist. | `agents/operations/multimodal-specialist.md` |
 | operations | Ops Digest Agent — Web Application Operations (read-only advisory) | An advisory operations analyst for a small, single-server web application run by one developer. | `agents/operations/ops-digest.md` |

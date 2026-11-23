@@ -98,7 +98,7 @@ Agents must emit their JSON Audit Log to `stderr` separately from the primary us
 
 ### 5. Fetch-on-Demand Security Is Non-Negotiable
 
-- Secrets must be stored in a SecretOps platform such as Infisical or 1Password.
+- Secrets must be stored in a SecretOps platform such as Infisical, 1Password, Secret Manager (Google Cloud), or Azure Key Vault.
 - Commands that require credentials must run through `infisical run` or `op run`.
 - Code must read configuration from environment variables in process memory (`process.env`, `os.getenv()`).
 - Local `.env` parsing logic is not an approved pattern in this repository.

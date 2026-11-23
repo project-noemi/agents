@@ -1,3 +1,12 @@
+---
+use_when: what Project NoéMI is, what the 1:50 equilibrium means, or why not to replace employees with AI
+tier: principle
+keywords: [1:50, equilibrium, replacement trap, replace employees, virtual workforce]
+queries:
+  - what is the 1:50 equilibrium
+  - why not replace employees with AI
+---
+
 # Project NoéMI — Public Reference Guide
 
 **Edition 2026.11.10**
@@ -166,7 +175,7 @@ The **Replacement Trap** is the strategic dead end where organizations try to us
 
 Here is why that logic fails: if your only competitive advantage becomes "cheaper labor via AI," a competitor with a slightly better algorithm, a slightly cheaper model, or a slightly more automated pipeline puts you out of business in six months. You have not built a moat. You have built a race to the bottom.
 
-NoéMI rejects this entirely. Instead, it restructures organizations into what we call the **1:50 Equilibrium** — a model where trained human leaders govern fleets of AI agents. This creates a **Virtual Workforce**: not a smaller workforce, but a *different kind* of workforce. One where AI handles the repeatable, data-intensive, first-pass work, and humans handle the judgment, the exceptions, the creativity, and the governance.
+NoéMI rejects this entirely. Instead, it uses the **1:50 Equilibrium**: one Accelerator keeps 50 AI users — Explorers or Practitioners — accelerating with the NoéMI framework, so they keep pace with AI and do not fall behind. Those people run a **Virtual Workforce**: not a smaller workforce, but a *different kind* of workforce. One where AI handles the repeatable, data-intensive, first-pass work, and humans handle the judgment, the exceptions, the creativity, and the governance.
 
 Not fewer people. *Different* people. People who are more valuable, more strategic, and harder to replace.
 
@@ -184,7 +193,9 @@ Every system needs shared language. These are the official definitions of NoéMI
 
 ### The 1:50 Equilibrium
 
-The organizational ratio where **1 highly trained Accelerator (Pilot)** can effectively govern and stabilize the AI usage of **50 Explorers (Passengers)**. The name is inspired by Steve Jobs' 1995 observation about the 50:1 productivity ratio between great and average software engineers. In NoéMI, this ratio is not about individual talent — it is about architecture. You do not need 50 AI engineers. You need 1 Pilot and a structured system.
+One Accelerator (Pilot) keeps **50 AI users** moving at the pace of AI. Those 50 are Explorers (Passengers) or Practitioners (Crew): the people in the organization who use AI. The Accelerator uses the NoéMI framework so those people keep accelerating and do not fall behind. The name follows Steve Jobs' 1995 observation that the productivity ratio between great and average software engineers was about 50 to 1. In NoéMI the ratio is architecture, not a claim that one person is fifty times more talented. You do not need 50 AI engineers. You need 1 Accelerator and a framework the other 50 can use.
+
+The ratio counts people, not agents. Agents are the Virtual Workforce those people run. A count of agents per person does not redefine this term.
 
 ### The Replacement Trap
 
@@ -421,7 +432,7 @@ These are your builders. They take the problems Explorers define and turn them i
 - Must pass the **Feynman Requirement** (teach a core concept to Explorers and have them understand it)
 - **Badge:** "AI Governance Architect"
 - **4D Focus:** All 4 Ds + TRiSM
-- **Critical role:** In the 1:50 Equilibrium, these are the "1" who stabilize the "50"
+- **Critical role:** In the 1:50 Equilibrium, the Accelerator is the "1" who keeps the "50" AI users accelerating so they do not fall behind
 
 These are your organizational AI leaders. Not because they know the most about AI, but because they understand the full picture — security, governance, architecture, and teaching. An Accelerator's primary skill is not technical brilliance. It is the ability to make AI safe and productive for everyone else.
 
@@ -614,7 +625,7 @@ The logic is unforgiving: every AI capability you deploy without governance is a
 
 **5. The 1:50 Equilibrium (Workforce Architecture)**
 
-- Restructure into Explorers (the 50), Practitioners (the Crew), Accelerators (the 1)
+- The 1 is the Accelerator. The 50 are the AI users: Explorers and Practitioners. The Accelerator keeps those 50 people current with the framework.
 - Establish the governance hierarchy
 - Define who is accountable for what
 
@@ -622,7 +633,7 @@ The logic is unforgiving: every AI capability you deploy without governance is a
 
 NoéMI uses a **"Fetch-on-Demand" architecture** for secrets — a principle that extends to any organization deploying AI agents:
 
-- Primary tool: **Infisical** (open-source, self-hosted SecretOps)
+- The customer uses the secret store that matches the architecture they already run: **Infisical** when the vault must stay portable, **1Password** when that is already the company vault, **Secret Manager** on Google Cloud, or **Azure Key Vault** on Azure (secrets, not keys or certificates). The cloud stores inject with `scripts/secret-inject.js`. See [`docs/tool-usages/secure-secret-management.md`](tool-usages/secure-secret-management.md). Examples in this repository call Infisical. That example is not a brand the customer must adopt.
 - Secrets live **only** in an encrypted vault, injected into process memory at runtime via CLI
 - Never written to disk, never committed to Git, never exposed in AI context windows
 - Machine Identities (not human SSO) for headless agent environments

@@ -1,6 +1,14 @@
+---
+use_when: set up a macOS or Linux machine for a first local NoéMI agent
+tier: procedure
+keywords: [setup, mac, macos, linux, kickstart, install]
+queries:
+  - setup on a mac
+---
+
 # macOS / Linux Kickstart
 
-Use this guide when your main machine is macOS or Linux.
+Use this guide to set up a macOS or Linux machine for a first local agent.
 
 This is the safest beginner path if:
 

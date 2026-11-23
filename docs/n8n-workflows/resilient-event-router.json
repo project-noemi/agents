@@ -5,6 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "batch-events",
+        "authentication": "headerAuth",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -16,7 +17,13 @@
         -544,
         48
       ],
-      "webhookId": "batch-inquiry"
+      "webhookId": "batch-inquiry",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_HEADER_AUTH_CREDENTIAL_ID",
+          "name": "Webhook Header Auth"
+        }
+      }
     },
     {
       "parameters": {

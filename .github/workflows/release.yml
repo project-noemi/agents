@@ -260,8 +260,28 @@ jobs:
           FEATFIX=${FEATFIX:-0}
 
           echo "Unreleased feat/fix commits: ${FEATFIX}"
-          if [ "${FEATFIX}" -eq 0 ]; then
-            echo "Nothing to release: no unreleased user-facing (feat/fix) change on develop."
+
+          # Knowledge-corpus gate: the Knowledge MCP (https://mcp.project-noemi.com) is
+          # published from each release tag, so a commit of ANY type that changes a file
+          # the corpus serves (docs, skills, agents, protocols, templates, ...) must also
+          # produce a release; otherwise docs-only merges never reach the corpus. Paths
+          # mirror the published folders in project-noemi/code
+          # packages/knowledge-core/src/build.ts. Files the publisher excludes (for example
+          # docs/DECISION_LOG.md) can cause a release that publishes unchanged content,
+          # which publish.ts treats as a safe no-op.
+          CORPUS_PATHS=(
+            AGENTS.md README.md CONTRIBUTING.md
+            agents skills skills-dist coding-loop mcp-protocols operating-profiles
+            value-lenses templates n8n-templates examples
+            docs infrastructure/secret-ops/README.md
+          )
+          CORPUS=$(git log --no-merges --pretty=format:'%h' "${RANGE}" -- "${CORPUS_PATHS[@]}" \
+            | grep -c . || true)
+          CORPUS=${CORPUS:-0}
+          echo "Unreleased commits touching knowledge-corpus paths: ${CORPUS}"
+
+          if [ "${FEATFIX}" -eq 0 ] && [ "${CORPUS}" -eq 0 ]; then
+            echo "Nothing to release: no unreleased user-facing (feat/fix) or knowledge-corpus change on develop."
             echo "release=false" >> "$GITHUB_OUTPUT"
           else
             echo "release=true" >> "$GITHUB_OUTPUT"

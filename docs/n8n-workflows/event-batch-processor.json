@@ -5,6 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "event-batch-processor",
+        "authentication": "headerAuth",
         "options": {}
       },
       "id": "22ab2363-dd66-4682-bfe8-7eccea5bb654",
@@ -15,7 +16,13 @@
         0,
         288
       ],
-      "webhookId": "f7c26f91-a008-4906-8748-2543ce7f43ef"
+      "webhookId": "f7c26f91-a008-4906-8748-2543ce7f43ef",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_YOUR_HEADER_AUTH_CREDENTIAL_ID",
+          "name": "Webhook Header Auth"
+        }
+      }
     },
     {
       "parameters": {

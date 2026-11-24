@@ -17,12 +17,12 @@ export function StreamView({ run }: { run: RunState }) {
         ) : null}
       </p>
 
-      <pre aria-live="polite" className="min-h-24 whitespace-pre-wrap border p-2">
+      <pre aria-live="polite" className="panel min-h-24 whitespace-pre-wrap">
         {run.text}
       </pre>
 
       {run.done ? (
-        <p className="text-sm">
+        <p className="text-body-sm">
           Answered by {run.done.provider}
           {run.done.model ? ` (${run.done.model})` : ''}
           {run.done.usage
@@ -35,7 +35,11 @@ export function StreamView({ run }: { run: RunState }) {
       ) : null}
 
       {run.failure ? <ErrorList stage={run.failure.stage} errors={run.failure.errors} /> : null}
-      {run.message ? <p role="alert">{run.message}</p> : null}
+      {run.message ? (
+        <p role="alert" className="alert alert-error">
+          {run.message}
+        </p>
+      ) : null}
     </div>
   )
 }

@@ -63,9 +63,9 @@ op run --env-file=.env.template -- node src/cli.js compile fixtures/architect.co
 | `NOEMI_STUDIO_DATA_DIR` | The one folder for saved blueprints and run history. Created on first use, git-ignored | `data/` in this package |
 | `NOEMI_STUDIO_MAX_BLUEPRINTS` | Most blueprints that can be saved | `200` |
 | `NOEMI_STUDIO_MAX_RUNS` | Run-history rows kept, oldest dropped first | `500` |
-| `NOEMI_STUDIO_TOKEN` | **Secret.** Bearer token for every Studio server route but `/api/health`, at least 32 characters. Required to start | none |
 | `NOEMI_STUDIO_RATE_LIMIT` | Studio server requests allowed per minute | `120` |
 | `NOEMI_STUDIO_RUN_RATE_LIMIT` | Studio runs allowed per minute | `20` |
+| `NOEMI_STUDIO_TOKEN` | **Secret.** Shared bearer token for the Studio server: every route except `GET /api/health` needs `Authorization: Bearer <token>`, and anything else gets a 401. Required: the server refuses to start without one of at least 32 printable characters (e.g. `openssl rand -base64 32`, stored in Infisical / 1Password). The Studio dev proxy reads the same variable and adds the header, so the browser never holds it | none (required) |
 | `NOEMI_REPO_ROOT` | Root that `skills/` and `mcp-protocols/` resolve against. Use an absolute path; a relative one resolves against the current directory. Not a secret | this clone's root |
 
 A 401 from the gateway means the virtual key is missing or invalid; a 403 means
@@ -297,3 +297,13 @@ this clone's real `skills/`. The CLI tests clear the variable and cover the defa
 - [DEMO.md](DEMO.md) — offline demo script
 - [AGENTS.md](AGENTS.md) — secrets, loop, and package contract
 - [GIT-WORKFLOW.md](GIT-WORKFLOW.md) — branch map, staying up to date, and opening PRs
+
+### Cost, Arena history, spending cap and throttle
+
+**Cost.** Every answer's `usage.costUsd` is worked out from a price table: USD per million tokens, keyed by model id (a `vendor/` prefix is ignored). The table is `DEFAULT_PRICES` in `src/config.js`, and `NOEMI_PRICE_TABLE` (JSON, `{"<model id>":{"inputPerMTok":0.3,"outputPerMTok":2.5}}`) replaces entries without a code change. It ships with the mock (free) and the two default live models, `gemini-3.8-flash` ($0.75 in / $3.75 out) and `grok-4.6` ($2 in / $6 out); if you set `GEMINI_MODEL` or `XAI_MODEL` to something else, add that model. Rates are one flat figure per model (no cached-input discount, no higher xAI rate above 200K-token prompts), and Gemini 3.8 Flash's introductory price doubles on 2027-01-01. A live model with no entry costs 0 on the scoreboard, and is refused while a spending cap is set.
+
+**Arena history and scoreboard.** Each finished Arena run adds one line to `arena.jsonl` in the data folder (provider, model, latency, tokens, cost, error codes; never the prompt or any text). `GET /api/arena/runs[?limit=N]` lists them, newest first, and `GET /api/arena/scoreboard` returns one row per provider totalled over the saved runs. The newest `NOEMI_STUDIO_MAX_ARENA_RUNS` (default 500) are kept, so totals cover those. `/api/runs` rows now carry `costUsd` too.
+
+**Daily spending cap.** `NOEMI_DAILY_SPEND_CAP_USD` (unset = no cap). Cost from `/api/run` and `/api/arena` is added to `spend.json` in the data folder; once today's total reaches the cap, both routes answer 429 until the day changes. The day is a calendar day in `NOEMI_SPEND_TIMEZONE` (an IANA name such as `America/Denver`; default `UTC`). The cap is checked before a run starts and the cost added after it ends, so a run, or several at once, can end slightly over it. A damaged `spend.json` makes these routes fail (500) rather than count as zero.
+
+**Throttle.** `/api/run` and `/api/arena` allow `NOEMI_THROTTLE_MAX_REQUESTS` requests (default 30, `0` = off) per `NOEMI_THROTTLE_WINDOW_MS` (default 60000) across the whole server, because Studio has one shared token and no per-user key. Over the limit: 429 with `Retry-After`. The count is in memory and resets when the server restarts.

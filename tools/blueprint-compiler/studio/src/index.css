@@ -1,1 +1,237 @@
 @import "tailwindcss";
+/* The contributor tokens, imported from their one source so they cannot drift.
+   See docs/contributing/ui-style-guide.md. */
+@import "../../../../docs/contributing/ui-tokens.css";
+/* The guide's typeface. Bundled so the Studio needs no font CDN. */
+@import "@fontsource/roboto/latin-400.css";
+@import "@fontsource/roboto/latin-500.css";
+@import "@fontsource/roboto/latin-700.css";
+
+/* Tailwind is used for layout only. Its breakpoints follow the guide, so lg:
+   starts at 1280px, where the guide stops treating a width as mobile. */
+@theme {
+  --breakpoint-sm: 600px;
+  --breakpoint-md: 960px;
+  --breakpoint-lg: 1280px;
+  --breakpoint-xl: 1920px;
+  --breakpoint-2xl: 2560px;
+}
+
+/* Colors at the guide's opacities, built from the tokens. */
+:root {
+  --studio-text: color-mix(in srgb, var(--color-text) calc(var(--opacity-high-emphasis) * 100%), transparent);
+  --studio-text-medium: color-mix(in srgb, var(--color-text-muted) calc(var(--opacity-medium-emphasis) * 100%), transparent);
+  --studio-border: color-mix(in srgb, var(--color-border) calc(var(--border-opacity) * 100%), transparent);
+  --studio-focus: color-mix(in srgb, var(--color-primary) calc(var(--opacity-focus) * 100%), transparent);
+}
+
+@layer base {
+  html {
+    font-size: var(--font-size-root);
+  }
+
+  body {
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+    line-height: var(--line-height-body);
+    font-weight: var(--font-weight-regular);
+    background: var(--color-background);
+    color: var(--studio-text);
+  }
+
+  /* Focus: the primary color at the focus opacity, on every focusable control. */
+  :focus-visible {
+    outline: 4px solid var(--studio-focus);
+    outline-offset: 0;
+  }
+}
+
+@layer components {
+  /* ---- Type ---------------------------------------------------------- */
+  .text-page-title {
+    font-size: var(--font-size-title);
+    font-weight: var(--font-weight-regular);
+    line-height: 1.333;
+  }
+  .text-section {
+    font-size: var(--font-size-section);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.6;
+  }
+  .text-body-sm {
+    font-size: var(--font-size-body-sm);
+    line-height: 1.425;
+  }
+  .text-caption {
+    font-size: var(--font-size-caption);
+    line-height: 1.667;
+  }
+  .text-medium-emphasis {
+    color: var(--studio-text-medium);
+  }
+
+  /* ---- App bar ------------------------------------------------------- */
+  .app-bar {
+    min-height: var(--size-app-bar);
+    background: var(--color-primary);
+    color: var(--color-on-fill);
+    box-shadow: var(--shadow-2);
+  }
+  .app-bar .btn {
+    color: var(--color-on-fill);
+  }
+  .app-bar .btn[aria-current='page'] {
+    background: rgb(255 255 255 / var(--opacity-nav-active));
+  }
+
+  /* ---- Container ----------------------------------------------------- */
+  .container-studio {
+    margin-inline: auto;
+    padding-inline: var(--space-4);
+  }
+  @media (min-width: 960px) {
+    .container-studio {
+      max-width: 900px;
+    }
+  }
+  @media (min-width: 1280px) {
+    .container-studio {
+      max-width: 1200px;
+    }
+  }
+  @media (min-width: 1920px) {
+    .container-studio {
+      max-width: 1800px;
+    }
+  }
+  @media (min-width: 2560px) {
+    .container-studio {
+      max-width: 2400px;
+    }
+  }
+
+  /* ---- Cards and nested panels: flat, outlined ----------------------- */
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--studio-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+  }
+  .panel {
+    border: 1px solid var(--studio-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+  }
+
+  /* ---- Buttons ------------------------------------------------------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    min-height: var(--size-control);
+    padding: 0 var(--space-4);
+    border: 1px solid transparent;
+    border-radius: var(--radius-xl);
+    color: var(--color-primary);
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+  }
+  .btn:hover:not(:disabled) {
+    box-shadow: inset 0 0 0 100vmax color-mix(in srgb, currentColor calc(var(--opacity-hover) * 100%), transparent);
+  }
+  .btn:disabled {
+    opacity: var(--opacity-disabled);
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: var(--color-primary);
+    color: var(--color-on-fill);
+  }
+  .btn-outlined {
+    border-color: var(--color-primary);
+  }
+  /* Small table actions. */
+  .btn-sm {
+    min-height: 28px;
+    padding: 0 var(--space-2);
+    font-size: var(--font-size-caption);
+  }
+  .btn svg {
+    width: 1.25em;
+    height: 1.25em;
+    fill: currentColor;
+  }
+
+  /* ---- Form fields: outlined ----------------------------------------- */
+  .field {
+    display: block;
+    width: 100%;
+    min-height: var(--size-field);
+    margin-bottom: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--studio-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+  }
+
+  /* ---- Tables: compact, flat ----------------------------------------- */
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+  .table th {
+    font-weight: var(--font-weight-medium);
+  }
+  .table th,
+  .table td {
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--studio-border);
+  }
+
+  /* ---- Status chips -------------------------------------------------- */
+  .chip {
+    display: inline-block;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-caption);
+    line-height: 1.667;
+    color: var(--color-on-fill);
+    background: var(--color-secondary);
+  }
+  .chip-success {
+    background: var(--color-success);
+  }
+  .chip-error {
+    background: var(--color-error);
+  }
+  .chip-warning {
+    background: var(--color-warning);
+  }
+  .chip-info {
+    background: var(--color-info);
+  }
+
+  /* ---- Alerts: tonal ------------------------------------------------- */
+  .alert {
+    --alert-color: var(--color-info);
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--alert-color) calc(var(--opacity-focus) * 100%), var(--color-surface));
+    padding: var(--space-4);
+    font-size: var(--font-size-body-sm);
+    line-height: 1.425;
+  }
+  .alert-title {
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-medium);
+    line-height: var(--line-height-body);
+  }
+  .alert-error {
+    --alert-color: var(--color-error);
+  }
+  .alert-success {
+    --alert-color: var(--color-success);
+  }
+}

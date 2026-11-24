@@ -137,7 +137,7 @@ test("run record: success keeps provider, timing, tokens and outcome", () => {
   assert.deepEqual(r, {
     id: "r1", at: "2026-10-25T12:00:00.000Z", durationMs: 123, blueprintId: "a".repeat(24),
     blueprint: "coding/architect", provider: "xai", runtime: "mastra", model: "xai/grok-4.6",
-    inputTokens: 12, outputTokens: 34, outcome: "ok", fallbacks: [],
+    inputTokens: 12, outputTokens: 34, costUsd: 0, outcome: "ok", fallbacks: [],
   });
 });
 

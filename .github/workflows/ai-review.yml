@@ -12,6 +12,20 @@
 # advisory is pending/running, and cannot merge if no privileged advisory ever ran.
 # Branch protection on `develop` MUST require "AI Review (advisory)" (exact name).
 #
+# PER-GATE CHECKS: the advisory check succeeds whenever the review run
+# completes, even when a gate failed or the run halted for a human, so it
+# cannot gate a merge on the verdicts. Five more jobs report them:
+#   - "AI Review (premise)", "AI Review (framing)", "AI Review (code)",
+#     "AI Review (compliance)" — success ONLY when that gate's verdict is
+#     exactly `pass` in a completed review of this run's PR head commit
+#   - "AI Review (all gates)" — success ONLY when all four gate checks succeed
+# Fail, skipped, overridden, halt-for-human, error, timeout, cancellation, a
+# review of another commit, or no review at all is a non-success. These jobs
+# always run (`if: always()`) so they never show as skipped, which branch
+# protection would treat as passing. Under a fleet caller the names gain the
+# caller job's prefix, e.g. "review / AI Review (premise)". The decision logic
+# is scripts/review-gate-checks.js (unit-tested), not this YAML.
+#
 # FORK PR HANDLING: This workflow triggers on `pull_request`,
 # `pull_request_target` (labeled, synchronize, reopened), and `workflow_dispatch`.
 # Fork PRs receive special handling due to GitHub's security model:
@@ -186,6 +200,9 @@ jobs:
   advisory:
     name: AI Review (advisory)
     runs-on: ubuntu-latest
+    outputs:
+      # One line of JSON from scripts/review-gate-checks.js: per gate {ok, message}.
+      gate_checks: ${{ steps.gatecheck.outputs.checks }}
     # Run when:
     # 1. pull_request AND config available (in-repo branch), OR
     # 2. pull_request_target labeled with ai-review, OR
@@ -425,7 +442,8 @@ jobs:
         run: |
           export REVIEW_HALT_FILE="$RUNNER_TEMP/ai-review-halt"
           export REVIEW_FINDINGS_FILE="$RUNNER_TEMP/ai-review-findings.json"
-          rm -f "$REVIEW_HALT_FILE" "$REVIEW_FINDINGS_FILE"
+          export REVIEW_RESULT_FILE="$RUNNER_TEMP/ai-review-result.json"
+          rm -f "$REVIEW_HALT_FILE" "$REVIEW_FINDINGS_FILE" "$REVIEW_RESULT_FILE"
           # The vertex route hides the vault's gateway key from review-pr.js,
           # which would otherwise prefer it (scripts/model-config.js).
           strip=()
@@ -469,6 +487,39 @@ jobs:
 
       # Dismiss approvals when blocking findings exist. This is the merge gate:
       # PR cannot merge until someone re-approves after seeing the advisory.
+      # Per-gate decisions for the gate jobs below. Always runs, so a review
+      # that failed or halted still yields an explicit non-pass. The expected
+      # head is the commit these checks are reported for; workflow_dispatch has
+      # no PR event, so it uses the PR's current head.
+      - name: Evaluate per-gate results
+        id: gatecheck
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+          EVENT_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEW_OUTCOME: ${{ steps.review.outcome }}
+        run: |
+          expected="$EVENT_HEAD_SHA"
+          if [[ -z "$expected" && -n "$PR_NUMBER" ]]; then
+            expected=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq .head.sha 2>/dev/null || true)
+          fi
+          checks=""
+          if [[ -f scripts/review-gate-checks.js ]]; then
+            checks=$(node scripts/review-gate-checks.js \
+              --result "$RUNNER_TEMP/ai-review-result.json" \
+              --halt-file "$RUNNER_TEMP/ai-review-halt" \
+              --expected-head "$expected" \
+              --outcome "$REVIEW_OUTCOME") || checks=""
+          fi
+          if [[ -z "$checks" ]]; then
+            # Older tooling ref or an evaluation error: every gate is a non-pass.
+            checks='{}'
+            echo "::warning title=No per-gate result::Per-gate results are unavailable at this tooling ref; every per-gate check reports a non-pass."
+          fi
+          echo "checks=${checks}" >> "$GITHUB_OUTPUT"
+
       - name: Dismiss approvals if blocking findings
         if: always() && steps.review.outputs.has_blocking_findings == 'true'
         env:
@@ -504,3 +555,73 @@ jobs:
             echo "::notice title=No approvals to dismiss::No existing approvals found on this PR."
           fi
           echo "::notice title=ai-review label kept::The label stays so the next push re-runs advisory without another maintainer click."
+
+  # One check per gate. Success only on an exact `pass` for this run's head
+  # commit (see PER-GATE CHECKS above). No token permissions: the decision was
+  # made in the advisory job; this job only reports it.
+  gate:
+    name: AI Review (${{ matrix.gate }})
+    needs: advisory
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    strategy:
+      fail-fast: false
+      matrix:
+        gate: [premise, framing, code, compliance]
+    steps:
+      - name: Report gate result
+        env:
+          CHECKS: ${{ needs.advisory.outputs.gate_checks }}
+          ADVISORY_RESULT: ${{ needs.advisory.result }}
+          GATE: ${{ matrix.gate }}
+        run: |
+          checks="${CHECKS:-}"
+          [[ -n "$checks" ]] || checks='{}'
+          ok=$(jq -r --arg g "$GATE" '.[$g].ok == true' <<< "$checks" 2>/dev/null || echo false)
+          msg=$(jq -r --arg g "$GATE" '.[$g].message // empty' <<< "$checks" 2>/dev/null || true)
+          [[ -n "$msg" ]] || msg="${GATE}: no gate result (AI Review (advisory) ended as '${ADVISORY_RESULT}'), which is not a pass"
+          if [[ "$ok" == true && "$ADVISORY_RESULT" == success ]]; then
+            echo "::notice title=AI Review (${GATE})::${msg}"
+            echo "PASS - ${msg}" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ "$ok" == true ]]; then
+            msg="${GATE}: the gate passed, but AI Review (advisory) ended as '${ADVISORY_RESULT}', which is not a pass"
+          fi
+          echo "::error title=AI Review (${GATE})::${msg}"
+          echo "NOT A PASS - ${msg}" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+  # Overall result: success only when all four gate checks succeeded.
+  all-gates:
+    name: AI Review (all gates)
+    needs: [advisory, gate]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Report overall result
+        env:
+          CHECKS: ${{ needs.advisory.outputs.gate_checks }}
+          ADVISORY_RESULT: ${{ needs.advisory.result }}
+          GATE_RESULT: ${{ needs.gate.result }}
+        run: |
+          checks="${CHECKS:-}"
+          [[ -n "$checks" ]] || checks='{}'
+          ok=$(jq -r '.all.ok == true' <<< "$checks" 2>/dev/null || echo false)
+          msg=$(jq -r '.all.message // empty' <<< "$checks" 2>/dev/null || true)
+          [[ -n "$msg" ]] || msg="no gate result (AI Review (advisory) ended as '${ADVISORY_RESULT}'), which is not a pass"
+          if [[ "$ok" == true && "$ADVISORY_RESULT" == success && "$GATE_RESULT" == success ]]; then
+            echo "::notice title=AI Review (all gates)::${msg}"
+            echo "PASS - ${msg}" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ "$ok" == true ]]; then
+            msg="the gate verdicts passed, but AI Review (advisory) ended as '${ADVISORY_RESULT}' and the gate checks as '${GATE_RESULT}', which is not a pass"
+          fi
+          echo "::error title=AI Review (all gates)::${msg}"
+          echo "NOT A PASS - ${msg}" >> "$GITHUB_STEP_SUMMARY"
+          exit 1

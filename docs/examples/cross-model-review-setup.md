@@ -730,6 +730,21 @@ review logic in exactly one place:
   `.github/workflows/ai-review.yml` is itself in the carve-out: a PR editing
   the review workflow halts and goes to a human, in every repo.
 
+## Check names in a fleet repository
+
+GitHub prefixes each reusable-workflow job with the caller's job name. With
+the template's job `review`, the checks are:
+
+| Check | Meaning |
+|---|---|
+| `review / AI Review (advisory)` | The review ran. It is green even when a gate failed or the run halted for a human. |
+| `review / AI Review (fork notice)` | Informational, not a required check. |
+| `review / AI Review (premise)`, `(framing)`, `(code)`, `(compliance)` | Success only on an exact `pass` for that gate on the PR's head commit. |
+| `review / AI Review (all gates)` | Success only when all four gate checks succeeded. |
+
+To gate merges on the verdicts, require the four gate checks or `all gates`.
+Details: `docs/AI_REVIEW_GOVERNANCE.md` § Per-gate checks.
+
 ## One-time prerequisites (human)
 
 **1. Organization-level Actions variables** — set once per org so member repos

@@ -9,7 +9,9 @@ const { decideVerdict } = require('../scripts/pr-merge-gate.js');
 // verdict-first, one remediation round, arm-don't-merge, escalate otherwise.
 
 const GREEN = { pending: [], failing: [] };
-const OPEN = { prState: 'open', merged: false, reviewHalted: false, reviewCheckRunning: false, reviewCheckConcluded: 'success' };
+// The per-stage AI review gate passed for the head commit (scripts/ai-review-stage-gate.js).
+const STAGE_PASS = { state: 'pass', reason: 'AI Review (all gates) passed for this commit' };
+const OPEN = { prState: 'open', merged: false, reviewHalted: false, reviewCheckRunning: false, reviewCheckConcluded: 'success', stageGate: STAGE_PASS };
 const PASS = { failing: false, gates: [], claim: '' };
 const FAIL = { failing: true, gates: ['code'], claim: 'cache key collision' };
 
@@ -377,5 +379,67 @@ test('collectState wires the REST payload into the draft guard (the production p
     } finally {
         global.fetch = realFetch;
         if (realToken === undefined) delete process.env.AGENT_GH_TOKEN; else process.env.AGENT_GH_TOKEN = realToken;
+    }
+});
+
+// ---------------------------------------------------------------------------
+// Per-stage AI review gate (2026-11-24 audit: green CI is not a passed review)
+// ---------------------------------------------------------------------------
+
+test('a passing comment verdict does not arm auto-merge unless the per-stage gate passed', () => {
+    const base = { ...OPEN, checks: GREEN, review: PASS, remediationAttempted: false };
+    for (const state of ['pending', 'missing']) {
+        const v = decideVerdict({ ...base, stageGate: { state, reason: `stage ${state}` } });
+        assert.equal(v.verdict, 'WAIT_CHECKS', state);
+        assert.match(v.reason, /per-stage AI review gate not met/);
+    }
+    const failed = decideVerdict({ ...base, stageGate: { state: 'fail', reason: 'AI review stage checks not passing: AI Review (code)=failure' } });
+    assert.equal(failed.verdict, 'ESCALATED');
+    assert.match(failed.reason, /AI Review \(code\)=failure/);
+    // No stage result at all (a caller that did not collect it) fails closed.
+    const { stageGate, ...noGate } = base;
+    assert.equal(stageGate.state, 'pass');
+    assert.equal(decideVerdict(noGate).verdict, 'WAIT_CHECKS');
+    assert.equal(decideVerdict(base).verdict, 'ARMED_AUTOMERGE');
+});
+
+test('a reviewer halt still escalates before the stage gate is consulted', () => {
+    const v = decideVerdict({ ...OPEN, checks: GREEN, review: PASS, reviewHalted: true, remediationAttempted: false });
+    assert.equal(v.verdict, 'ESCALATED');
+    assert.match(v.reason, /halted/);
+});
+
+test('collectState judges per-stage checks with the stage gate, not as generic CI', async () => {
+    const { collectState } = require('../scripts/pr-merge-gate.js');
+    const sha = 'c'.repeat(40);
+    const actions = { slug: 'github-actions' };
+    const runs = [
+        { id: 1, name: 'AI Review (advisory)', status: 'completed', conclusion: 'success', app: actions },
+        { id: 2, name: 'AI Review (premise)', status: 'completed', conclusion: 'success', app: actions },
+        { id: 3, name: 'AI Review (framing)', status: 'completed', conclusion: 'success', app: actions },
+        { id: 4, name: 'AI Review (code)', status: 'completed', conclusion: 'failure', app: actions },
+        { id: 5, name: 'AI Review (compliance)', status: 'completed', conclusion: 'failure', app: actions },
+        { id: 6, name: 'AI Review (all gates)', status: 'completed', conclusion: 'failure', app: actions },
+        { id: 7, name: 'Audit, Generate, and Fast Tests', status: 'completed', conclusion: 'success', app: actions },
+    ];
+    const savedFetch = global.fetch;
+    const savedToken = process.env.AGENT_GH_TOKEN;
+    process.env.AGENT_GH_TOKEN = 'test-token';
+    global.fetch = async (url) => {
+        const u = String(url);
+        let body;
+        if (u.includes('/check-runs')) body = { check_runs: runs };
+        else if (u.includes('/issues/9/comments')) body = [];
+        else body = { number: 9, state: 'open', merged: false, draft: false, head: { sha }, user: { login: 'noemi-agent', id: 311935378 } };
+        return { ok: true, status: 200, json: async () => body, text: async () => '' };
+    };
+    try {
+        const { state } = await collectState('project-noemi/agents', 9, false);
+        assert.deepEqual(state.checks.failing, [], 'stage checks are not generic CI failures');
+        assert.equal(state.stageGate.state, 'fail');
+        assert.match(state.stageGate.reason, /AI Review \(code\)=failure/);
+    } finally {
+        global.fetch = savedFetch;
+        if (savedToken === undefined) delete process.env.AGENT_GH_TOKEN; else process.env.AGENT_GH_TOKEN = savedToken;
     }
 });

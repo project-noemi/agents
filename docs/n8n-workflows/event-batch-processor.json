@@ -145,7 +145,7 @@
         "dataTableId": {
           "__rl": true,
           "mode": "id",
-          "value": "DEQsBfh2Jz97iG7S",
+          "value": "REPLACE_WITH_YOUR_DATATABLE_ID",
           "cachedResultName": "event_log"
         },
         "columns": {
@@ -252,7 +252,7 @@
         "dataTableId": {
           "__rl": true,
           "mode": "id",
-          "value": "DEQsBfh2Jz97iG7S",
+          "value": "REPLACE_WITH_YOUR_DATATABLE_ID",
           "cachedResultName": "event_log"
         },
         "columns": {
@@ -338,7 +338,7 @@
         "dataTableId": {
           "__rl": true,
           "mode": "id",
-          "value": "DEQsBfh2Jz97iG7S",
+          "value": "REPLACE_WITH_YOUR_DATATABLE_ID",
           "cachedResultName": "event_log"
         },
         "columns": {
@@ -424,7 +424,7 @@
         "dataTableId": {
           "__rl": true,
           "mode": "id",
-          "value": "DEQsBfh2Jz97iG7S",
+          "value": "REPLACE_WITH_YOUR_DATATABLE_ID",
           "cachedResultName": "event_log"
         },
         "columns": {
@@ -595,14 +595,14 @@
       ]
     }
   },
-  "active": true,
+  "active": false,
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
   "versionId": "9c3bdd20-330d-4c86-800d-263494963c7f",
   "meta": {
-    "instanceId": "3dfaf0a2cdc447eac807ba7078f960ec66140c43df760fabbfc0551633d44d08"
+    "instanceId": "REPLACE_WITH_YOUR_INSTANCE_ID"
   },
   "nodeGroups": [],
   "id": "1Io1w4jdR4BjHGT8",

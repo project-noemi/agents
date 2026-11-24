@@ -23,8 +23,13 @@
 #     CLOUDFLARE_API_TOKEN    Workers R2 Storage: Edit + Account Settings: Read on the account that
 #                             holds the project-noemi.com zone (no Workers Scripts or Routes scope needed)
 #     CLOUDFLARE_ACCOUNT_ID   that account's ID
-#   Repository (or Environment) secret:
-#     NOEMI_CODE_READ_TOKEN   read-only access to project-noemi/code (contents: read)
+#     KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY
+#                             private key of the dedicated read-only GitHub App (Contents: read,
+#                             Metadata: read) installed on project-noemi/code only
+#   Environment "knowledge-mcp-production" variable (not secret):
+#     KNOWLEDGE_MCP_READER_APP_ID   that App's id
+# A 1-hour installation token is minted per run with actions/create-github-app-token, so no
+# long-lived personal access token is stored.
 name: Publish Knowledge MCP corpus
 
 on:
@@ -147,12 +152,14 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          NOEMI_CODE_READ_TOKEN: ${{ secrets.NOEMI_CODE_READ_TOKEN }}
+          KNOWLEDGE_MCP_READER_APP_ID: ${{ vars.KNOWLEDGE_MCP_READER_APP_ID }}
+          KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY: ${{ secrets.KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY }}
         run: |
           missing=""
           [ -n "${CLOUDFLARE_API_TOKEN}" ] || missing="${missing} CLOUDFLARE_API_TOKEN"
           [ -n "${CLOUDFLARE_ACCOUNT_ID}" ] || missing="${missing} CLOUDFLARE_ACCOUNT_ID"
-          [ -n "${NOEMI_CODE_READ_TOKEN}" ] || missing="${missing} NOEMI_CODE_READ_TOKEN"
+          [ -n "${KNOWLEDGE_MCP_READER_APP_ID}" ] || missing="${missing} KNOWLEDGE_MCP_READER_APP_ID (variable)"
+          [ -n "${KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY}" ] || missing="${missing} KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY"
           if [ -n "${missing}" ]; then
             echo "::error::Missing secrets:${missing}. See docs/KNOWLEDGE_MCP_DEPLOY.md."
             exit 1
@@ -176,11 +183,22 @@ jobs:
             exit 1
           fi
 
+      # Per-run installation token (1 hour) from the read-only App, limited to project-noemi/code.
+      - name: Mint read-only token for project-noemi/code
+        id: reader-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.KNOWLEDGE_MCP_READER_APP_ID }}
+          private-key: ${{ secrets.KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY }}
+          owner: project-noemi
+          repositories: code
+          permission-contents: read
+
       - name: Checkout project-noemi/code (publisher)
         uses: actions/checkout@v5
         with:
           repository: project-noemi/code
-          token: ${{ secrets.NOEMI_CODE_READ_TOKEN }}
+          token: ${{ steps.reader-token.outputs.token }}
           path: noemi-code
           persist-credentials: false
 

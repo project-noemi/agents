@@ -166,10 +166,33 @@ if command -v infisical >/dev/null 2>&1; then
         echo -e "   ⚠️  Not authenticated to Infisical. Run 'infisical login'."
     fi
 fi
+if command -v gcloud >/dev/null 2>&1; then
+    echo -e "✅ Google Cloud CLI (gcloud) is installed (Secret Manager)."
+    SECRETS_CLI=true
+    # stdout is an access token. Discard it. Do not echo it.
+    if gcloud auth application-default print-access-token >/dev/null 2>&1; then
+        echo -e "   ✅ Application Default Credentials are present."
+        SECRETS_AUTH=true
+    else
+        echo -e "   ⚠️  No Application Default Credentials. Run 'gcloud auth application-default login'."
+    fi
+fi
+if command -v az >/dev/null 2>&1; then
+    echo -e "✅ Azure CLI (az) is installed (Azure Key Vault)."
+    SECRETS_CLI=true
+    if az account show >/dev/null 2>&1; then
+        echo -e "   ✅ Authenticated to Azure."
+        SECRETS_AUTH=true
+    else
+        echo -e "   ⚠️  Not authenticated to Azure. Run 'az login'."
+    fi
+fi
 if [ "$SECRETS_CLI" = false ]; then
     echo -e "⚠️ No SecretOps CLI found. Install at least one before you connect business systems:"
     echo -e "   - 1Password CLI: https://developer.1password.com/docs/cli/get-started/"
     echo -e "   - Infisical CLI: https://infisical.com/docs/cli/overview"
+    echo -e "   - Google Cloud CLI, for Secret Manager: https://docs.cloud.google.com/sdk/docs/install"
+    echo -e "   - Azure CLI, for Key Vault: https://learn.microsoft.com/cli/azure/install-azure-cli"
     echo -e "   Local repo-only prompts can still work without secrets, but Gmail, GitHub, n8n, and Workspace flows should use Fetch-on-Demand wrappers."
 fi
 
@@ -177,7 +200,7 @@ fi
 # MUST be fatal (exit 1); it stays a warning in every other mode to support
 # local exploration.
 if [ "$MODE" = "docker" ] && [ "$SECRETS_AUTH" = false ]; then
-    echo -e "❌ docker mode requires an authenticated SecretOps CLI (infisical login / op signin). Aborting."
+    echo -e "❌ docker mode requires an authenticated SecretOps CLI (infisical login, op signin, gcloud ADC, or az login). Aborting."
     exit 1
 fi
 

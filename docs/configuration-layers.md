@@ -205,7 +205,7 @@ The baseline tags the rules compliance tracks with HTML-comment markers:
 |----|------|------|
 | `secrets.no-ask-user` | Never ask the user for secrets in chat | core |
 | `secrets.no-hardcode` | Never hardcode secret values in files, `.env` files, or logs | core |
-| `secrets.fetch-on-demand` | Resolve credentials at runtime with `infisical run` / `op run` | core |
+| `secrets.fetch-on-demand` | Resolve credentials at runtime with `infisical run`, `op run`, or `scripts/secret-inject.js` | core |
 | `refusal.principle` | The Refusal Principle | core |
 | `refusal.criteria-mandatory` | Every persona has a `### Refusal Criteria` subsection | core |
 | `coding.branch-naming` | Branch name format | preference |

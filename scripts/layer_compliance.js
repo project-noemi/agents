@@ -56,7 +56,7 @@ const HEURISTICS = [
     { rule: 'secrets.no-ask-user', pattern: new RegExp(`${PERMISSION}[^.\\n]{0,60}\\b(?:ask|prompt|request)\\b[^.\\n]{0,40}\\b(?:secrets?|passwords?|tokens?|api keys?|credentials?)\\b`, 'i') },
     { rule: 'secrets.no-ask-user', pattern: /\bpaste\b[^.\n]{0,30}\b(?:secrets?|passwords?|tokens?|api keys?|credentials?)\b/i },
     { rule: 'secrets.fetch-on-demand', pattern: new RegExp(`${PERMISSION}[^.\\n]{0,60}\\b(?:write|store|save|commit|keep)\\b[^.\\n]{0,40}(?:\\bsecrets?\\b|\\bcredentials?\\b|\\btokens?\\b|\\.env\\b)`, 'i') },
-    { rule: 'secrets.fetch-on-demand', pattern: /\b(?:skip|bypass|instead of|without)\b[^.\n]{0,30}\b(?:infisical run|op run)\b/i },
+    { rule: 'secrets.fetch-on-demand', pattern: /\b(?:skip|bypass|instead of|without)\b[^.\n]{0,40}\b(?:infisical run|op run|secret-inject\.js)\b/i },
     { rule: 'refusal.principle', pattern: /\b(?:ignore|disable|skip|bypass|remove|drop)\b[^.\n]{0,40}\brefusal\b/i }
 ];
 const NEGATION = /\b(?:not|never|no|must not|cannot|can't|don't|do not)\b/i;

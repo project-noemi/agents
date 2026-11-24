@@ -19,6 +19,11 @@ test('extractEditionLine skips the title and blank lines', () => {
   assert.equal(extractEditionLine(bible('**Edition 2026.09.23**')), '**Edition 2026.09.23**');
 });
 
+test('extractEditionLine skips leading frontmatter', () => {
+  const markdown = `---\nuse_when: what the 1:50 equilibrium means\ntier: principle\n---\n\n${bible('**Edition 2026.09.23**')}`;
+  assert.equal(extractEditionLine(markdown), '**Edition 2026.09.23**');
+});
+
 test('current Bible stamp is a published CalVer edition', () => {
   const markdown = fs.readFileSync(
     path.join(__dirname, '..', 'docs/PROJECT_REFERENCE.md'),

@@ -291,7 +291,7 @@ The two rhythms are deliberately separate:
 
 | | Cadence | What it does | Human gate |
 |---|---|---|---|
-| **Tagging / release** | Per content-bearing promotion (daily check; fires only when there's a feat/fix) | Auto-merge a `develop → main` PR, then stamp a `YYYY.MM.DD` tag + a GitHub Release (changelog as its body) on main | On develop review (upstream); green-CI gate |
+| **Tagging / release** | Per content-bearing promotion (daily check; fires when there is a feat/fix or a change to a knowledge-corpus path) | Auto-merge a `develop → main` PR, then stamp a `YYYY.MM.DD` tag + a GitHub Release (changelog as its body) on main | On develop review (upstream); green-CI gate |
 | **Digest / social** | Weekly (Monday) | Draft the week's feature highlights + LinkedIn/social post | **Yes — human approves before any post** |
 
 Why decouple them? Versions should track *reality*: mint one whenever real change
@@ -332,7 +332,7 @@ The moving parts:
 - **`.github/workflows/release.yml`** — the two jobs:
   - **`promote-and-release`** runs on a **daily `schedule:` cron** and on manual
     `workflow_dispatch` (with a `dry_run` input). It applies the **content gate**
-    (≥1 unreleased feat/fix since the last tag), checks develop's CI is
+    (≥1 unreleased feat/fix, or any commit touching a knowledge-corpus path, since the last tag), checks develop's CI is
     **green**, opens (or reuses) an **auto-merged `develop → main` PR**, and —
     once that PR merges — runs release-it **on `main`** to stamp the CalVer tag
     and publish the GitHub Release. If `main` already carries the unreleased

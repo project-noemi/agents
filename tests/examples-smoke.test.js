@@ -156,6 +156,11 @@ test('secret management guide leads beginners through a local-first choice betwe
     assert.match(guide, /Beginner Quick Path: Local First/);
     assert.match(guide, /Infisical/);
     assert.match(guide, /1Password CLI/);
+    assert.match(guide, /Secret Manager/);
+    assert.match(guide, /Azure Key Vault/);
+    assert.match(guide, /Migrate one workflow to Google Cloud or Azure/);
+    assert.doesNotMatch(guide, /Google Secret Manager/);
+    assert.doesNotMatch(guide, /Azure Secret Manager/);
     assert.match(guide, /repo-only, read-only tasks can start without secrets/i);
     assert.match(guide, /machine identities/i);
 });

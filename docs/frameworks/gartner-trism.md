@@ -1,3 +1,11 @@
+---
+use_when: how NoéMI maps its controls to the Gartner AI TRiSM framework
+tier: principle
+keywords: [gartner, trism, trust, risk, security]
+queries:
+  - how does noemi map to gartner trism
+---
+
 # AI TRiSM Alignment in Project NoéMI
 
 ## Overview

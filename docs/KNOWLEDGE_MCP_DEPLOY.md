@@ -63,4 +63,12 @@ Recommended: a tag ruleset on `20*` that limits creating, updating and deleting 
 
 The successor service, `https://mcp.project-noemi.com` (Worker `project-noemi-knowledge-mcp`, code in `project-noemi/code` `apps/knowledge-mcp`), serves releases of this repository from R2. `.github/workflows/publish-knowledge-mcp.yml` ("Publish Knowledge MCP corpus") publishes each release tag to it and then polls `/health` until `.release` equals the tag (about 3 minutes, else the run fails). It writes to R2 only: it does not deploy the Worker or change its routes.
 
-Required secrets (names only): Environment `knowledge-mcp-production`: `CLOUDFLARE_API_TOKEN` (Workers R2 Storage: Edit and Account Settings: Read on the account that holds the `project-noemi.com` zone) and `CLOUDFLARE_ACCOUNT_ID`; plus `NOEMI_CODE_READ_TOKEN` (read-only access to `project-noemi/code`). The workflow stops at "Check secrets" with the missing names until they exist. The Cloudflare token currently in that Environment was created for the older Worker, so confirm its scope covers R2 and the right account before relying on it.
+Required secrets (names only): Environment `knowledge-mcp-production`: `CLOUDFLARE_API_TOKEN` (Workers R2 Storage: Edit and Account Settings: Read on the account that holds the `project-noemi.com` zone) and `CLOUDFLARE_ACCOUNT_ID`; plus the reader GitHub App's id as Environment variable `KNOWLEDGE_MCP_READER_APP_ID` and its private key as Environment secret `KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY`. The job mints a 1-hour read-only token per run (`actions/create-github-app-token`, owner `project-noemi`, repository `code`) to check out `project-noemi/code`; no personal access token is stored. The workflow stops at "Check secrets" with the missing names until they exist. The Cloudflare token currently in that Environment was created for the older Worker, so confirm its scope covers R2 and the right account before relying on it.
+
+### One-time setup of the reader GitHub App (done by the owner, never in this repository)
+
+1. Create a GitHub App under the `project-noemi` org (for example `noemi-knowledge-mcp-reader`): no webhook, Repository permissions Contents: Read-only and Metadata: Read-only, nothing else, "Only on this account".
+2. Install it on `project-noemi/code` only.
+3. Generate a private key.
+4. Store the App id as the Environment variable `KNOWLEDGE_MCP_READER_APP_ID` and the private key as the Environment secret `KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY` in `knowledge-mcp-production`, through a secure form or the secrets owner only.
+5. Do not create a personal access token for this job; revoke one if it exists.

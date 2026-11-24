@@ -1,0 +1,5 @@
+{
+  "oauth_path": "/run/gmail/gcp-oauth.keys.json",
+  "credentials_path": "/run/gmail/credentials.json",
+  "timeout_seconds": 90
+}

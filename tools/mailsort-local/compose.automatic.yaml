@@ -1,0 +1,23 @@
+# Long-running automatic worker; --apply must be explicitly included in its command.
+services:
+  app:
+    network_mode: host
+    user: "${MAILSORT_UID:?Set MAILSORT_UID}:${MAILSORT_GID:?Set MAILSORT_GID}"
+    entrypoint: ["python", "-m", "noemi_mailsort.automatic"]
+    command: []
+    restart: unless-stopped
+    stop_grace_period: 45s
+    environment:
+      MAILSORT_STATE_DIR: /app/state
+    volumes:
+      - type: bind
+        source: ${GMAIL_MCP_DIR:?Set GMAIL_MCP_DIR to your private credential folder}
+        target: /run/gmail
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./data
+        target: /app/state
+        bind:
+          create_host_path: false

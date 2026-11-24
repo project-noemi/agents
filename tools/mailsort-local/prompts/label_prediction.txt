@@ -1,0 +1,15 @@
+## Required output
+
+Classify the supplied email independently.
+
+Return a single JSON object with exactly one field:
+
+```json
+{"predicted_labels":["Category Name"]}
+```
+
+- Use only the configured category names.
+- Include every applicable category.
+- Return an empty array `[]` when no category qualifies.
+- Do not include explanations, reasoning, Markdown, or additional fields.
+- Do not repeat the email content.

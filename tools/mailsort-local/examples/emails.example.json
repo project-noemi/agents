@@ -1,0 +1,12 @@
+[
+  {
+    "sender": "orders@shop.example",
+    "subject": "Receipt for your completed purchase",
+    "body": "Your payment of EUR 24.00 for order EXAMPLE-101 has been received. This is your purchase receipt. Your parcel has shipped and delivery is expected on Friday."
+  },
+  {
+    "sender": "editor@newsletter.example",
+    "subject": "Your weekly science newsletter",
+    "body": "This week's subscriber newsletter explains how researchers study ocean currents and includes an educational article about coral reefs. This is an informational edition with no sales offers."
+  }
+]

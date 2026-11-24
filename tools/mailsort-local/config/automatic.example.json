@@ -1,0 +1,9 @@
+{
+  "timezone": "UTC",
+  "schedule": {"type": "interval", "minutes": 60},
+  "query": "has:nouserlabels -in:sent -in:drafts",
+  "lookback_hours": 24,
+  "initial_since": null,
+  "max_messages_per_run": 5,
+  "batch_size": 5
+}

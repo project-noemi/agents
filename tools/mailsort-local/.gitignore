@@ -1,0 +1,63 @@
+# Local development instructions are not part of the public repository.
+/AGENTS.md
+/.agents/
+/.codex/
+/.aws/
+
+# Local environment settings; keep the shared example.
+.env
+.env.*
+!.env.example
+
+# Credentials and OAuth tokens.
+/secrets/
+/credentials/
+/.gmail-mcp/
+credentials.json
+gcp-oauth.keys.json
+client_secret*.json
+token.json
+tokens.json
+token.*.json
+*.credentials.json
+
+# Personal configuration; keep shared examples.
+/config/*
+!/config/*.example.toml
+!/config/*.example.yaml
+!/config/*.example.json
+
+# Only the shared fictional email example belongs in Git.
+/examples/*
+!/examples/emails.example.json
+
+# Personal reference prompts and user-supplied label catalogs.
+/prompts/ollama/
+/prompts/SHA256SUMS
+/prompts/local/
+
+# Private runtime data and generated output.
+/data/
+/logs/
+/private/
+/results/
+*.log
+
+# Downloaded models and Ollama storage.
+/models/
+/ollama-data/
+*.gguf
+*.safetensors
+
+# Python environments, build output, and tool caches.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+/build/
+/dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+/htmlcov/

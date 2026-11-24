@@ -1,0 +1,7 @@
+## Required output
+
+Classify the supplied email independently using all rules and final decision checks above. Express the result as scores rather than a selected-label array; references above to returning a category set or an empty array describe the classification decision, not the output format.
+
+Evaluate every category independently and return one numerical score between 0 and 1 for each of the configured categories, including categories you would exclude. A score is your estimated support for assigning that category, not a statistically calibrated probability. Use higher scores for stronger evidence from sender, subject, and body; use lower scores for unsupported, incidental, or ambiguous matches. Do not assign high scores based only on keyword overlap. Multiple categories may receive high scores. Do not force the scores to sum to 1. Apply the same classification criteria above without becoming more conservative or more permissive.
+
+Return exactly one JSON object with a single required `scores` object containing all configured category names as keys and their numerical scores as values. No other keys are allowed. Do not include explanations, reasoning, Markdown, or the email content.

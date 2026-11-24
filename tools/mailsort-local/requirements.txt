@@ -1,0 +1,2 @@
+# The tested stdio client API; avoid an implicit upgrade to SDK 2.x.
+mcp==1.30.0

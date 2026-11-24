@@ -20,6 +20,11 @@
 #   bash scripts/agent-gh.sh api repos/:owner/:repo/pulls
 #   bash scripts/agent-gh.sh whoami          # verify which identity resolves
 #
+# IDENTITY CHECK
+#   Every call, `whoami` included, refuses unless the token resolves to
+#   $AGENT_GH_EXPECTED_LOGIN (default noemi-agent). Set it to act as another
+#   machine identity, e.g. AGENT_GH_EXPECTED_LOGIN=noemi-reviewer.
+#
 # TOKEN RESOLUTION (first hit wins)
 #   Default (fine-grained, home repo):
 #     1. $AGENT_GH_TOKEN already in the environment (e.g. inside `infisical run`)
@@ -43,6 +48,11 @@ INFISICAL_ENVIRONMENT="${INFISICAL_ENV:-dev}"
 OP_REF="${AGENT_GH_TOKEN_REF:-op://noemi/github-agent/token}"
 CLASSIC_OP_REF="${AGENT_GH_TOKEN_CLASSIC_REF:-op://noemi/github-agent/token-classic}"
 TOKEN_SOURCE=""
+
+# Defaulted rather than left empty: an unset expected login would mean no
+# identity check at all, which silently reintroduces the failure this script
+# exists to prevent. Override it to act as a different machine identity.
+EXPECTED_LOGIN="${AGENT_GH_EXPECTED_LOGIN:-noemi-agent}"
 
 log() { printf '%s\n' "$*" >&2; }
 
@@ -167,15 +177,6 @@ if ! token=$(resolve_token); then
   exit 1
 fi
 
-# `whoami` is a local convenience verb, not a gh subcommand.
-if [[ "${1:-}" == "whoami" ]]; then
-  GH_TOKEN="$token" gh api user --jq '"\(.login) (\(.type))"'
-  if [[ -n "${TOKEN_SOURCE}" ]]; then
-    log "→ token source: ${TOKEN_SOURCE}"
-  fi
-  exit 0
-fi
-
 if [[ $# -eq 0 ]]; then
   log "✖ No gh command given. Example:"
   log "    bash scripts/agent-gh.sh pr create --base develop --title ... --body ..."
@@ -184,16 +185,28 @@ fi
 
 # Guard against the failure this script exists to prevent: if the machine
 # token silently falls back to a human account, the resulting PR would again
-# be unreviewable by that human. Fail loudly instead.
+# be unreviewable by that human. Fail loudly instead. Checked before `whoami`
+# too, so a wrong identity is reported as an error, not printed as a neutral
+# fact with exit 0.
 actor=$(GH_TOKEN="$token" gh api user --jq '.login' 2>/dev/null || true)
 if [[ -z "$actor" ]]; then
   log "✖ Machine token was rejected by GitHub (expired, revoked, or wrong scopes)."
   exit 1
 fi
-if [[ -n "${AGENT_GH_EXPECTED_LOGIN:-}" && "$actor" != "$AGENT_GH_EXPECTED_LOGIN" ]]; then
-  log "✖ Token resolves to '${actor}', expected '${AGENT_GH_EXPECTED_LOGIN}'."
+if [[ "$actor" != "$EXPECTED_LOGIN" ]]; then
+  log "✖ Token resolves to '${actor}', expected '${EXPECTED_LOGIN}'."
   log "  Refusing to act — this would author agent work under the wrong identity."
+  log "  To act as another machine identity, set AGENT_GH_EXPECTED_LOGIN."
   exit 1
+fi
+
+# `whoami` is a local convenience verb, not a gh subcommand.
+if [[ "${1:-}" == "whoami" ]]; then
+  GH_TOKEN="$token" gh api user --jq '"\(.login) (\(.type))"'
+  if [[ -n "${TOKEN_SOURCE}" ]]; then
+    log "→ token source: ${TOKEN_SOURCE}"
+  fi
+  exit 0
 fi
 
 log "→ acting as: ${actor}"

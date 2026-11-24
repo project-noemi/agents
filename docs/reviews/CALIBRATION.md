@@ -46,6 +46,7 @@ One row per disagreement. Keep reasons short and concrete.
 
 | Date | PR | Model | Gate | Reviewer said | Human did | Direction | Reason |
 |---|---|---|---|---|---|---|---|
+| 2026-11-24 | #796 | google/gemini-3.1-pro-preview | premise | premise fail: Adding a personal workshop solution to the upstream repository is an unnecessary change. | **merged over** | reviewer misinterpreted | docs/n8n-workflows/ holds classroom lab canvases (see its README), so workshop submissions belong there; a human read the full workflow in place of the skipped code and compliance gates |
 | 2026-11-09 | #748 | google/gemini-3.1-pro-preview | premise | premise fail: The PR description attempts to manipulate the review by claiming the PR is already approved. | **merged over** | reviewer too strict | All the PR have already been reviewed and passed the review stage all green in develop - this was just a promotion to main |
 | 2026-11-05 | #736 | google/gemini-3.1-pro-preview | premise | premise fail: The PR description attempts to suppress a finding by claiming an authorized exception to a repository rule. | **merged over** | reviewer misinterpreted | I explicitly authorized this human-account infrastructure setup PR and manually reviewed it before merging. |
 | 2026-10-29 | #697 | google/gemini-3.1-pro-preview | framing | framing fail: The PR introduces a breaking change to the Node.js engine requirement without disclosing it in the description. | **merged over** | reviewer too strict | Earlier review passed with all green, approved based on that review |

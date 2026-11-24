@@ -126,7 +126,11 @@ jobs:
   deploy:
     name: Worker -> mcp.noemi.newpush.com
     needs: resolve
-    if: needs.resolve.outputs.deploy == 'true'
+    # Automatic runs (release / workflow_run) deploy the old Worker only when the repository
+    # variable OLD_WORKER_AUTO_DEPLOY is 'true' (unset = off). A manual dispatch still deploys.
+    if: >-
+      needs.resolve.outputs.deploy == 'true' &&
+      (github.event_name == 'workflow_dispatch' || vars.OLD_WORKER_AUTO_DEPLOY == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:

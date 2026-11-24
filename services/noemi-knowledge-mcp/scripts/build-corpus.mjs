@@ -52,6 +52,12 @@ function walkSkillsDist() {
     }));
 }
 
+/** Drop a leading YAML front-matter block (`---` ... `---`) so it never becomes a chunk. */
+function stripFrontMatter(text) {
+  const m = text.match(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/);
+  return m ? text.slice(m[0].length) : text;
+}
+
 function chunkMarkdown(text, sourcePath, title) {
   const parts = text.split(/\n(?=#{1,3}\s)/);
   const chunks = [];
@@ -111,7 +117,7 @@ for (const src of allSources) {
     title: src.title || src.path,
     bytes: Buffer.byteLength(text),
   });
-  chunks.push(...chunkMarkdown(text, src.path, src.title || src.path));
+  chunks.push(...chunkMarkdown(stripFrontMatter(text), src.path, src.title || src.path));
 }
 
 const corpus = {

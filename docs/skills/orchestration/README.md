@@ -18,3 +18,5 @@ Orchestration skills manage the lifecycle of multi-agent tasks:
 3. Dispatch work with agent-specific instructions
 4. Validate cross-agent consistency
 5. Aggregate outputs into a unified deliverable
+
+For specialists with different tools or permissions, [Coordinator and Specialists](../../architecture/coordinator-specialists.md) describes a scoped-context variant of this pattern.

@@ -139,7 +139,7 @@ python3 guardian_evaluator.py        # runs three illustrative cases
 ```python
 from guardian_evaluator import GuardianEvaluator
 
-guardian = GuardianEvaluator()  # default judge = Gemini 3.6 Flash via env key
+guardian = GuardianEvaluator()  # default judge = gemini-flash-latest via env key
 decision = guardian.evaluate(
     user_prompt=user_prompt,
     operational_agent_output=proposed_output,
@@ -163,7 +163,8 @@ infisical run --env=dev -- python3 guardian_evaluator.py
 
 | Variable | Purpose |
 | --- | --- |
-| `GEMINI_API_KEY` / `GOOGLE_API_KEY` | Judge model (Gemini 3.6 Flash) credential. |
+| `GEMINI_API_KEY` / `GOOGLE_API_KEY` | Judge model credential. |
+| `GEMINI_MODEL` *(optional)* | Judge model id; defaults to the `gemini-flash-latest` alias. Do not pin a retired dated id. |
 | `LOKI_PUSH_URL` *(optional)* | Loki push endpoint; defaults to a stderr mock. |
 
 ## Files

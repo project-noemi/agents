@@ -27,7 +27,7 @@ Testing non-deterministic AI agents requires a fundamentally different approach 
 Security must align with the **AI TRiSM** framework (Gartner, Inc.) and the *Diligence* pillar of the 4D Framework.
 
 *   **Least Privilege MCPs:** If an agent (e.g., the Knowledge Manager) only needs to *read* Google Docs, its configured MCP server MUST NOT be granted write permissions at the API level.
-*   **Human-in-the-Loop (HITL):** Enforce hard blocks within the orchestrator for any mutating actions (e.g., sending emails, deleting files, executing SQL `UPDATE` statements, pushing code). The agent must draft the action and explicitly await human confirmation before execution.
+*   **Human-in-the-Loop (HITL):** Enforce hard blocks within the orchestrator for any mutating actions (e.g., sending emails, deleting files, executing SQL `UPDATE` statements, pushing code). The agent must draft the action and explicitly await human confirmation before execution. [Human-Approval Gates](../../guardian-layer/approval-gates.md) describes what that confirmation step must guarantee, so that what the human approved is what runs.
 *   **Prompt Injection Defense:** Design orchestrators to sanitize user inputs before passing them to the agent. Furthermore, explicitly instruct the agent within its persona file to recognize and reject instructions that attempt to override its primary Role or Rules.
 
 ## 3. Phase 0 Security & Secret Management

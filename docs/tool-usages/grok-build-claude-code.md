@@ -394,7 +394,7 @@ State fallback when `CLAUDE_PLUGIN_DATA` is unset: `$TMPDIR/grok-cc-runs`.
 - Teams can confuse Claude background tasks with bridge background workers — prefer bridge `--background` for stop ownership  
 - Direct `node …/grok-bridge.mjs run` is read-only by default; forgetting `--write` (or the delegate path) yields plan-only behavior  
 - Review and critique intentionally refuse to fix; users may misread that as “the bridge cannot edit”  
-- Not a replacement for Phase 0 SecretOps or for pinned Gemini 3.6 Flash reference workflows in this repository  
+- Not a replacement for Phase 0 SecretOps or for the Gemini Flash reference workflows in this repository  
 
 ## Troubleshooting
 
@@ -417,7 +417,7 @@ State fallback when `CLAUDE_PLUGIN_DATA` is unset: `$TMPDIR/grok-cc-runs`.
 |---------|---------------------|
 | Interactive Claude Code co-work | Claude host models + optional Grok / Codex bridges |
 | Orchestrator routing matrix | Claude models + Codex (`gpt-5.5`) when that plugin is present; Grok as peer bridge for review/rescue |
-| Pinned lab / example / smoke workflows in this repo | Remain on **Gemini 3.6 Flash** per coding standards — the Grok bridge does not repoint them |
+| Lab / example / smoke workflows in this repo | Remain on **Gemini Flash** per the AI Model Baseline (`scripts/resolve-gemini-model.js`, or the `gemini-flash-latest` alias in static files) — the Grok bridge does not repoint them |
 
 ## Recommended Next Docs
 

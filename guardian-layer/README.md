@@ -172,4 +172,5 @@ infisical run --env=dev -- python3 guardian_evaluator.py
 | File | Description |
 | --- | --- |
 | `guardian_evaluator.py` | The Guardian class, egress scanner, Discernment prompt, routing, observability, and a runnable offline demo. |
+| `approval-gates.md` | What a human-approval stop must guarantee: opaque ids, single-use transitions, re-checks at the click, no agent holding a send tool, and the conditions for an unattended scheduled message. |
 | `requirements.txt` | `google-genai` (only needed for the live Gemini judge). |

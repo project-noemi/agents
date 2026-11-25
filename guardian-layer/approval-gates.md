@@ -17,8 +17,8 @@ Every rule below protects that read. What the approver saw is what is sent, sent
 destination the card named, under the conditions the card stated. A gate that allows any of those
 to drift between the card and the send is approving something nobody read.
 
-Approval is an additional condition, never a replacement. Any other check on the action, such as a
-check on where an email's recipient came from, still runs after the click.
+Approval is an additional condition, never a replacement. Any other check on the action, such as the
+[recipient gate](../skills/security/recipient-gate.md) for email, still runs after the click.
 
 ## 1. The card carries an opaque id and nothing else
 

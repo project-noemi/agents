@@ -18,6 +18,8 @@ This guide adapts the emphasis on runtime and formal verification from the AI En
 |---|---|
 | [`skills/verification/pre-flight-check.md`](../../skills/verification/pre-flight-check.md) | Preconditions before a state-changing action; returns `READY`, `CONFIRM`, or `ABORT` with a rollback plan |
 | [`skills/verification/cross-reference.md`](../../skills/verification/cross-reference.md) | That a claimed action (PR merged, label added, file created) actually happened, checked against the source of truth |
+| [`skills/verification/complete-retrieval.md`](../../skills/verification/complete-retrieval.md) | That a negative answer ("there are none") was drawn from a retrieval that read the whole source |
+| [`scripts/unsupported-negative-check.js`](../../scripts/unsupported-negative-check.js) | That a recorded run did not assert absence while one of its tool results reported itself incomplete |
 | [`scripts/skill-utility-eval.js`](../../scripts/skill-utility-eval.js) | That a recorded run followed a skill's Ask First and Never gates, not just that the headings exist |
 | `npm run validate` | Repository audit plus the fast test suite; the gate every PR here runs |
 | [`docker-runtime-verification.md`](docker-runtime-verification.md) | That the Docker example homes actually boot on a Docker-capable host |

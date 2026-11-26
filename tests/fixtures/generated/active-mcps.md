@@ -14,6 +14,28 @@ The following MCP integrations are active. Summaries below carry each protocol's
 
 - **Protocol:** `mcp-protocols/slack.md`
 
+> Because a missed mention is silent, silence must mean only "the process is down":
+> - **Every message the agent accepts gets a visible reply**, even a refusal or a warning. A run that fails writes the failure into its placeholder message, not only into a server log.
+> - **Offer a status command that reaches no model and is not rate-limited**, so it answers when someone's quota is spent, which is when people start asking whether the agent is stuck.
+> - **Announce lifecycle in a status channel**: when the process starts, on an orderly stop, and, over Socket Mode, when the connection returns after being away for more than about a minute. Short reconnects are normal there, because Slack refreshes Socket Mode connections every few hours.
+> - **Record a heartbeat to a file**, so the next start can report the gap: "unreachable from 14:02 to 15:31, and anything asked in that window never arrived". A stopping process cannot be relied on to post its own farewell, so record whether it managed to, and let the next start say which.
+> - **Do not use the bot's presence dot as a signal.** Slack does not mark a bot as active for either Socket Mode or a Request URL.
+
+> - **Use Block Kit for notifications**, with code blocks for errors and warnings.
+> - **Text that came from outside the organization goes in `plain_text`**: a contact's name, an email body, a feed item. It cannot render links or mentions there.
+> - **Generate `mrkdwn` from escaped text, never from raw text.** Escape `&`, `<` and `>` first, then add formatting. Only text the system itself wrote for a person to read is eligible for formatting.
+> - **Escape before splitting, and split at line boundaries.** A section's text is limited to 3000 characters. Escaping enlarges text, so escaping chunks that were already split can push them over the limit, and Slack then rejects the whole message. That means an approval card that never appears. Do not split inside a bold or italic span.
+> - **In a `markdown` block, insert a zero-width space after every `<`.** Slack's mentions and links all start with `<` (`<!channel>`, `<@U…>`, `<https://…|label>`), and whether that block parses them is not documented. The space breaks every token without changing how the text reads.
+> - **Show where a labelled link goes.** Rewrite `[label](url)` as `label (url)` in anything that may quote outside text, so a disguised link is visible before anyone clicks it.
+> - **Escape the notification text too.** The `text` fallback shown in notifications is parsed separately from the blocks.
+> - **Build mentions only from values that match the user id format**, taken from configuration or the event, never from model output or message text.
+> - **Truncate long logs and stack traces.** Post a short excerpt and a link to the logging system, not the full output.
+> - **Keep identifiers out of channel text.** An approval card for a bulk send shows counts and reasons, not a list of addresses. A one-to-one card shows its single recipient, because checking it is the point of the approval.
+
+> - **Edit one message in place** rather than posting a message per step. A slow run says which step it is on, for example "Checking the calendar…", and the line disappears when the answer arrives.
+> - **Name steps from a fixed table**, one line per agent or tool. Never show arguments, results, list sizes, addresses or ids. The channel is a conversation, and the server log is where details go.
+> - **Showing a line must never fail the run.** A failed edit is logged and the run continues. Queue edits so they arrive in order and none lands on top of the final answer.
+
 ### Gmail Protocol
 
 - **Protocol:** `mcp-protocols/gmail.md`

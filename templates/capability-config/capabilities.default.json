@@ -1,0 +1,35 @@
+{
+  "$schema": "./capabilities.schema.json",
+  "agents": {
+    "reporter": true,
+    "writer": false
+  },
+  "channels": {
+    "social-network": {
+      "enabled": false,
+      "apiVersion": "2026-01"
+    },
+    "email": {
+      "enabled": false
+    }
+  },
+  "units": {
+    "unit-a": {
+      "label": "Unit A",
+      "order": 1,
+      "source": "system-of-record",
+      "channels": {
+        "social-network": { "enabled": false, "authorId": "", "maxLength": 3000 },
+        "email": { "enabled": false, "senderId": "" }
+      }
+    },
+    "unit-b": {
+      "label": "Unit B",
+      "order": 2,
+      "source": "brief",
+      "channels": {
+        "social-network": { "enabled": false, "authorId": "", "maxLength": 3000 }
+      }
+    }
+  }
+}

@@ -89,3 +89,4 @@ All of these can be tested without a model call:
 - [Dispatch & Coordinate skill](../../skills/orchestration/dispatch-coordinate.md): the shared-context procedure this document is a variant of.
 - [Video Content Manager](../../agents/marketing/video-content-manager.md): a coordinator whose sub-agents share one Project Context.
 - [Issue-Coding Loop](issue-coding-loop.md): a coordinator whose dispatches are coding and review runs.
+- [Capability Configuration That Only Subtracts](capability-configuration.md): the enabled set that the catalogue in §4 is generated from.

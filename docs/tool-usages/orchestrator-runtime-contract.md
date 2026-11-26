@@ -102,6 +102,8 @@ Examples:
 
 The persona can describe the boundary, but the orchestrator must implement the stop.
 
+[Human-Approval Gates](../../guardian-layer/approval-gates.md) describes what that stop must guarantee: an opaque id on the approval surface, a single-use transition out of `pending`, a new record for every revision, re-checks at the moment of approval, a recorded decider, and no agent holding a send or approve tool.
+
 ## 6. Failure Handling
 
 The orchestrator should implement:

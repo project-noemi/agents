@@ -3,6 +3,8 @@
 ## Purpose
 Delegate work to one or more sub-agents and aggregate their outputs into a unified result. This skill standardizes the pattern used by coordinator agents (like Video Content Manager) that decompose a task, dispatch it to specialists, monitor for cross-agent consistency, and compile the final deliverable.
 
+For teams whose specialists hold different tools or permissions, [Coordinator and Specialists](../../docs/architecture/coordinator-specialists.md) describes a variant in which each sub-agent receives a scoped prompt instead of the shared context.
+
 ## Inputs
 - **task_context** — Shared context document that all sub-agents need (e.g., project brief, source material analysis)
 - **dispatches** — List of sub-agent assignments, each with:

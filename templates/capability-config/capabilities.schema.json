@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "capabilities.schema.json",
+  "title": "Capability configuration",
+  "description": "Switches over what the code registers. Unknown keys are refused, so a typo cannot read as a new capability. A channel switched on without its required identifiers fails validation instead of reaching an approval card.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "agents": {
+      "description": "One boolean per agent the code registers. Absent means off.",
+      "type": "object",
+      "additionalProperties": { "type": "boolean" }
+    },
+    "channels": {
+      "description": "Platform-wide switches: a kill switch for every unit at once, plus facts no unit owns. Unit identifiers are not allowed here.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["enabled"],
+        "properties": {
+          "enabled": { "type": "boolean" },
+          "apiVersion": { "type": "string" }
+        }
+      }
+    },
+    "units": {
+      "description": "Business units (departments, subsidiaries, brands, clients or tenants). Each holds its own switches and identifiers; nothing is inherited from the platform level.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/unit" }
+    }
+  },
+  "$defs": {
+    "unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "order", "source", "channels"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "order": { "type": "integer", "minimum": 1 },
+        "source": {
+          "description": "One of the source kinds the code supports.",
+          "enum": ["system-of-record", "brief"]
+        },
+        "channels": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "social-network": { "$ref": "#/$defs/socialNetworkAccount" },
+            "email": { "$ref": "#/$defs/emailAccount" }
+          }
+        }
+      }
+    },
+    "socialNetworkAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "authorId": { "type": "string" },
+        "maxLength": { "type": "integer", "minimum": 1 }
+      },
+      "if": { "properties": { "enabled": { "const": true } } },
+      "then": { "properties": { "authorId": { "minLength": 1 } }, "required": ["authorId"] }
+    },
+    "emailAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "senderId": { "type": "string" }
+      },
+      "if": { "properties": { "enabled": { "const": true } } },
+      "then": { "properties": { "senderId": { "minLength": 1 } }, "required": ["senderId"] }
+    }
+  }
+}

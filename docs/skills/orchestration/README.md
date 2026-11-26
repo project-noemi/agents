@@ -9,6 +9,7 @@ Skills for coordinating work across multiple agents.
 | [Dispatch & Coordinate](../../../skills/orchestration/dispatch-coordinate.md) | Delegate tasks to sub-agents and aggregate outputs | Video Content Manager, Issue Conductor |
 | [Governed Loop](../../../skills/orchestration/governed-loop.md) | Run a mission-aligned loop with machine-checkable done-conditions, budgets, recursion guards, and escalation | Doc run, Admin Override Watch, calibration watch, PR merge gate |
 | [Issue Plan](../../../skills/orchestration/issue-plan.md) | Draft an implementation plan and red-team it until pass or cycle limit | Issue Conductor |
+| [Propose Then Confirm](../../../skills/orchestration/propose-then-confirm.md) | Turn a chat request into a prefilled form that a person reviews and creates; the agent's tool creates nothing | Chat agents that set up scheduled jobs, campaigns or tickets |
 
 ## Pattern
 

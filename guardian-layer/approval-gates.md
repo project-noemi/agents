@@ -77,7 +77,8 @@ window is read again at the click.
   compared with the current mode at the click. A disagreement **refuses** rather than choosing a side.
   Honouring the stamp would let a `live` card publish from a development machine. Honouring the
   current mode would let a card that said "rehearsal" publish for real. The only safe move is a new
-  draft, which is a new question and a new consent.
+  draft, which is a new question and a new consent. [Environment Modes](../docs/architecture/environment-modes.md)
+  describes the modes themselves and how each environment chooses them.
 
 ## 5. Send once, and report what happened
 

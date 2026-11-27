@@ -165,6 +165,31 @@ use the default `GITHUB_TOKEN`: those are tag/release refs and a plain branch
 push, none of which need the App token's `on: pull_request`-triggering property,
 so the App token's blast radius stays limited to the promotion PR.
 
+### The AI review stage gate (fail closed)
+
+Green CI does not mean the review passed. `AI Review (advisory)` is green
+whenever the review run completes, including when a gate failed or the reviewer
+halted for a human. On 2026-11-24 an audit found three promotions (#771, #783,
+#788) that merged that way. The promotion step therefore runs
+`scripts/ai-review-stage-gate.js`, read from `develop`, against the promotion
+PR's head commit before it enables auto-merge. It waits up to 10 minutes and
+passes only when `AI Review (all gates)` succeeded for that commit. If that
+check is absent, it passes only when all four per-stage checks (premise,
+framing, code, compliance) succeeded.
+
+If the gate is not met (a failed, skipped, halted, timed-out or missing stage,
+or the script itself is missing), the run:
+
+- does not merge, and disables any auto-merge armed by an earlier run
+- leaves the PR open with a comment giving the head commit and the reason
+- writes a warning to the run summary
+- stamps no release
+
+A human reviews the promotion and decides whether to merge it. When a merge
+does go ahead, it is bound to the judged commit with `--match-head-commit`.
+The same rule applies to `scripts/pr-merge-gate.js` (scheduled sessions) and to
+fleet merge paths through `templates/ci/ai-review-gated-merge.yml`.
+
 ### Where the human gate actually sits
 
 The human-approval gate in this model is **not** on the merge — develop was

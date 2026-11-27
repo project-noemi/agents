@@ -1,0 +1,91 @@
+# AI-review-gated auto-merge: fleet template.
+#
+# Use this pattern for every automatic merge path in a fleet repository
+# (Dependabot auto-merge, scheduled upstream syncs, bots that merge their own
+# pull requests). Green CI is not a passed review: "AI Review (advisory)" is
+# green even when a gate failed or the reviewer halted for a human. Before any
+# `gh pr merge`, run scripts/ai-review-stage-gate.js from project-noemi/agents.
+# It passes only when the per-stage checks for the PR's head commit say all
+# four gates passed ("AI Review (all gates)", or premise, framing, code and
+# compliance, with or without the caller prefix "review / ").
+#
+# If the gate is not met, it fails closed: no merge, any armed auto-merge is
+# disabled, the PR stays open, and a comment says why. A human decides.
+#
+# Requirements and limits:
+#   - The repository runs the AI reviewer (templates/ci/ai-review-caller.yml)
+#     at a tooling ref that reports per-stage checks (project-noemi/agents#805
+#     or later). Without them the gate reports "missing" and never merges.
+#   - A PR opened with GITHUB_TOKEN does not trigger `pull_request` workflows,
+#     so the reviewer never runs on it and the gate stays unmet. A sync job
+#     that should merge automatically must open its PR with a GitHub App token.
+#   - Dependabot-triggered runs receive Dependabot secrets only. If the reviewer
+#     cannot run on Dependabot PRs, they wait for a human. That is intended.
+#
+# For a sync script (e.g. .github/scripts/sync-from-upstream.sh), replace the
+# unconditional `gh pr merge` with the two steps below: fetch the gate, then
+# merge only on exit 0 with `--match-head-commit` set to the SHA it judged.
+#
+# No secrets are used beyond the workflow's own GITHUB_TOKEN. Pin the tooling
+# checkout to a project-noemi/agents commit on `main` that contains
+# scripts/ai-review-stage-gate.js.
+name: Dependabot auto-merge (AI review gated)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+concurrency:
+  group: gated-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gated-merge:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@v3
+
+      - name: Check out the stage gate (tooling repo, never the PR)
+        if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
+        uses: actions/checkout@v4
+        with:
+          repository: project-noemi/agents
+          ref: main # pin to a commit SHA on main that contains the script
+          path: tooling
+          sparse-checkout: scripts/ai-review-stage-gate.js
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Merge only when all four AI review stages passed
+        if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
+        working-directory: tooling/scripts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          GATE_OK=false
+          if GATE_OUT=$(node ai-review-stage-gate.js --repo "$GITHUB_REPOSITORY" --pr "$PR_NUMBER" \
+              --wait-seconds 1200 --interval-seconds 30); then
+            GATE_OK=true
+          fi
+          [[ -n "${GATE_OUT:-}" ]] || GATE_OUT='{}'
+          echo "AI review stage gate: ${GATE_OUT}"
+          GATE_SHA=$(jq -r '.sha // empty' <<< "$GATE_OUT" 2>/dev/null || true)
+          GATE_REASON=$(jq -r '.reason // "unknown"' <<< "$GATE_OUT" 2>/dev/null || echo unknown)
+          if [[ "$GATE_OK" != true || -z "$GATE_SHA" ]]; then
+            gh pr merge "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --disable-auto >/dev/null 2>&1 || true
+            gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "Automatic merge held: the AI review stage gate is not met (${GATE_REASON}). This pull request remains open for a human decision; a skipped, failed, halted or timed-out stage is not a pass." || true
+            echo "::warning title=Automatic merge held::${GATE_REASON}"
+            exit 0
+          fi
+          gh pr merge "$PR_NUMBER" --auto --squash --repo "$GITHUB_REPOSITORY" --match-head-commit "$GATE_SHA"

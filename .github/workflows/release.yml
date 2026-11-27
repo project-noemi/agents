@@ -9,7 +9,9 @@
 #      unreleased USER-FACING change since the LAST RELEASE TAG (≥1 Conventional
 #      Commit of type feat or fix in the <last-tag>..develop range). If it does,
 #      and CI on develop is green, it opens (or reuses) a `develop -> main` PULL
-#      REQUEST and lets it AUTO-MERGE once required checks pass, then runs
+#      REQUEST and lets it AUTO-MERGE once required checks pass AND the AI review
+#      stage gate passed for its head commit (all four gates `pass`; otherwise
+#      the PR is held open for a human — scripts/ai-review-stage-gate.js), then runs
 #      release-it on main to stamp a calendar-date CalVer tag (YYYY.MM.DD) + a
 #      GitHub Release whose body is the generated changelog.
 #      Promotion is PR-BASED (not a direct `git push origin main`) so `main` can
@@ -149,7 +151,9 @@ jobs:
   promote-and-release:
     name: Content-gated promote develop -> main and stamp CalVer date
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 30, not 15: the promotion now waits up to 10 minutes for the per-stage AI
+    # review of the promotion PR before the existing 10-minute merge poll.
+    timeout-minutes: 30
     # Run on the DAILY cron, or on a manual dispatch that selected "promote".
     if: >-
       (github.event_name == 'schedule' && github.event.schedule == '0 6 * * *') ||
@@ -442,6 +446,9 @@ jobs:
           # Use the App-minted token so the promotion PR triggers on: pull_request
           # required checks (a GITHUB_TOKEN-opened PR does not trigger them).
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          # The job's own token reads check runs (checks: read) for the AI review
+          # stage gate and posts the hold comment (pull-requests: write).
+          ACTIONS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
           set -euo pipefail
@@ -466,7 +473,7 @@ jobs:
           if [ -z "$PR_NUM" ]; then
             printf '%s\n\n%s\n' \
               'Automated content-gated promotion of `develop` into `main`.' \
-              "There is at least one unreleased \`feat\`/\`fix\` on develop and develop's CI is green. develop is the reviewed integration line, so no second review is required by default; this PR exists so \`main\` can stay protected against direct pushes. It auto-merges once main's required checks pass; release-it then stamps the CalVer \`YYYY.MM.DD\` tag and a GitHub Release (whose body is the generated changelog) on main — no commit is ever pushed to \`main\`. See docs/RELEASE_PROCESS.md." \
+              "There is at least one unreleased \`feat\`/\`fix\` on develop and develop's CI is green. develop is the reviewed integration line, so no second review is required by default; this PR exists so \`main\` can stay protected against direct pushes. It auto-merges once main's required checks pass and the AI review stage gate (\`AI Review (all gates)\`) passed for its head commit; if the gate is not met, it stays open for a human. release-it then stamps the CalVer \`YYYY.MM.DD\` tag and a GitHub Release (whose body is the generated changelog) on main — no commit is ever pushed to \`main\`. See docs/RELEASE_PROCESS.md." \
               > /tmp/promotion-pr-body.md
             gh pr create --repo "$GITHUB_REPOSITORY" --base main --head develop \
               --title "chore(release): promote develop into main" \
@@ -478,14 +485,56 @@ jobs:
             echo "Reusing already-open promotion PR #${PR_NUM}."
           fi
 
-          # Enable GitHub native auto-merge; fall back to an immediate merge when
-          # auto-merge is unavailable (setting off, or no required checks to wait
-          # on).
-          if gh pr merge "$PR_NUM" --repo "$GITHUB_REPOSITORY" --merge --auto; then
+          # AI REVIEW STAGE GATE (fail closed). Green CI is not a passed review:
+          # "AI Review (advisory)" is green even when a gate failed or the
+          # reviewer halted for a human (2026-11-24 audit: #771, #783, #788).
+          # The promotion merges only when the per-stage checks for the PR's head
+          # commit say all four gates passed (scripts/ai-review-stage-gate.js).
+          # The script is read from develop, the same line this workflow runs
+          # from; if it is absent, the gate is not met. Otherwise: no merge, any
+          # earlier auto-merge is disarmed, the PR stays open with a comment
+          # saying why, and nothing is stamped. A human merges it after review.
+          GATE_JS="$RUNNER_TEMP/ai-review-stage-gate.js"
+          GATE_OUT='{"state":"error","pass":false,"reason":"the stage gate script is not on develop"}'
+          GATE_OK=false
+          if git show origin/develop:scripts/ai-review-stage-gate.js > "$GATE_JS" 2>/dev/null; then
+            if GATE_OUT=$(GH_TOKEN="$ACTIONS_TOKEN" node "$GATE_JS" --repo "$GITHUB_REPOSITORY" --pr "$PR_NUM" \
+                --wait-seconds 600 --interval-seconds 30); then
+              GATE_OK=true
+            fi
+          fi
+          echo "AI review stage gate: ${GATE_OUT}"
+          GATE_SHA=$(jq -r '.sha // empty' <<< "$GATE_OUT" 2>/dev/null || true)
+          GATE_REASON=$(jq -r '.reason // "unknown"' <<< "$GATE_OUT" 2>/dev/null || echo unknown)
+          if [ "$GATE_OK" != "true" ] || [ -z "$GATE_SHA" ]; then
+            gh pr merge "$PR_NUM" --repo "$GITHUB_REPOSITORY" --disable-auto >/dev/null 2>&1 || true
+            printf '%s\n\n%s\n\n%s\n' \
+              "**Automatic promotion held: the AI review stage gate is not met.**" \
+              "Head commit: \`${GATE_SHA:-unknown}\`. Reason: ${GATE_REASON}" \
+              "This pull request was not merged and remains open. The daily release merges a promotion only when \`AI Review (all gates)\` (or all four stage checks) succeeded for the head commit; a skipped, failed, halted or timed-out stage is not a pass. A human reviewer decides whether to merge it." \
+              > /tmp/promotion-hold.md
+            GH_TOKEN="$ACTIONS_TOKEN" gh pr comment "$PR_NUM" --repo "$GITHUB_REPOSITORY" --body-file /tmp/promotion-hold.md || true
+            echo "::warning title=Promotion held (AI review stage gate)::PR #${PR_NUM}: ${GATE_REASON}"
+            {
+              echo "### Promotion held"
+              echo ""
+              echo "PR #${PR_NUM} was not merged: ${GATE_REASON}"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "NO release is stamped this run. The PR stays open for a human decision."
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "AI review stage gate passed for ${GATE_SHA}."
+
+          # Enable GitHub native auto-merge, bound to the commit the gate judged
+          # (a later push invalidates it); fall back to an immediate merge of the
+          # same commit when auto-merge is unavailable (setting off, or no
+          # required checks to wait on).
+          if gh pr merge "$PR_NUM" --repo "$GITHUB_REPOSITORY" --merge --auto --match-head-commit "$GATE_SHA"; then
             echo "Auto-merge enabled on PR #${PR_NUM} (will merge when required checks pass)."
           else
             echo "Could not enable auto-merge; attempting an immediate merge."
-            gh pr merge "$PR_NUM" --repo "$GITHUB_REPOSITORY" --merge || true
+            gh pr merge "$PR_NUM" --repo "$GITHUB_REPOSITORY" --merge --match-head-commit "$GATE_SHA" || true
           fi
 
           # Poll only to learn WHEN the merge landed (auto-merge itself is durable

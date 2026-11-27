@@ -169,6 +169,8 @@ const CARVE_OUT = [
   'agents/coding/sentinel/core.md',
   'agents/coding/sentinel/compliance.md',
   'agents/engineering/pr-reviewer.md',
+  // Decides whether an automatic merge path may merge on the AI review result.
+  'scripts/ai-review-stage-gate.js',
 ];
 
 const GATES = [

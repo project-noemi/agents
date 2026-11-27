@@ -34,8 +34,9 @@
  *                      to re-fire it — poll again
  *   REMEDIATE          review verdict failing, no remediation attempted yet:
  *                      fix per the findings (one round), push, re-run the gate
- *   ARMED_AUTOMERGE    verdict passing + checks green; auto-merge armed —
- *                      a human code-owner approval completes the merge
+ *   ARMED_AUTOMERGE    verdict passing + checks green + the per-stage AI
+ *                      review gate passed for the head commit; auto-merge
+ *                      armed — a human code-owner approval completes the merge
  *   DRAFT_HELD         terminal: the PR is a draft the machine identity did not
  *                      author, so the gate takes NO action on it — no reopen,
  *                      no remediation order, no escalation issue, no un-drafting.
@@ -57,6 +58,9 @@
 'use strict';
 
 const { latestVerdict, REVIEWER_LOGINS } = require('./calibration-watch.js');
+// Per-stage checks (premise, framing, code, compliance, all gates) are judged
+// by the shared stage gate, never by the generic green/red check scan.
+const { evaluateStageGate, isStageCheckName } = require('./ai-review-stage-gate.js');
 
 const API = 'https://api.github.com';
 const REVIEW_CHECK_NAME = 'AI Review (advisory)';
@@ -119,6 +123,10 @@ function isAgentAuthored(user) {
  *   reviewCheckConcluded: 'success' | 'failure' | null — the review run's
  *           conclusion FOR THE CURRENT HEAD SHA (null = no run exists yet)
  *   remediationAttempted: boolean
+ *   stageGate: { state: 'pass'|'fail'|'pending'|'missing', reason } — the
+ *           per-stage AI review checks for the CURRENT head SHA
+ *           (scripts/ai-review-stage-gate.js). Auto-merge is armed only on
+ *           'pass'; an absent stageGate is treated as 'missing' (fail closed).
  *
  * Verdict freshness is SHA-anchored: comments are not tied to commits, so
  * after any push an old verdict still sits on the PR while the new review
@@ -132,7 +140,7 @@ function decideVerdict(state) {
   const {
     prState, merged, checks, review, reviewHalted,
     reviewCheckRunning, reviewCheckConcluded, remediationAttempted,
-    draft, agentAuthored,
+    draft, agentAuthored, stageGate,
   } = state;
 
   // PR state precedes every heuristic. A human-closed PR looks exactly like an
@@ -225,7 +233,19 @@ function decideVerdict(state) {
     return { verdict: 'WAIT_CHECKS', reason: `pending: ${checks.pending.join(', ')}` };
   }
 
-  return { verdict: 'ARMED_AUTOMERGE', reason: 'review passing and all checks green' };
+  // The comment verdict alone no longer arms anything: the per-stage checks
+  // for this head commit must say all four gates passed. A failed stage check
+  // beside a passing comment is a contradiction a human resolves; a pending or
+  // missing one waits (and never arms).
+  const gate = stageGate || { state: 'missing', reason: 'per-stage AI review result was not collected' };
+  if (gate.state === 'fail') {
+    return { verdict: 'ESCALATED', reason: `review comment passing, but ${gate.reason}` };
+  }
+  if (gate.state !== 'pass') {
+    return { verdict: 'WAIT_CHECKS', reason: `per-stage AI review gate not met: ${gate.reason}` };
+  }
+
+  return { verdict: 'ARMED_AUTOMERGE', reason: 'review passing, all four AI review stages passed, and all checks green' };
 }
 
 /**
@@ -304,6 +324,8 @@ async function collectState(repo, prNumber, remediationAttempted) {
       else reviewCheckConcluded = run.conclusion === 'success' ? 'success' : 'failure';
       continue;
     }
+    // Judged below by evaluateStageGate, not as generic CI.
+    if (isStageCheckName(run.name)) continue;
     if (run.status !== 'completed') pending.push(run.name);
     else if (!['success', 'neutral', 'skipped'].includes(run.conclusion)) failing.push(run.name);
   }
@@ -330,6 +352,7 @@ async function collectState(repo, prNumber, remediationAttempted) {
       remediationAttempted,
       draft: Boolean(pr.draft),
       agentAuthored: isAgentAuthored(pr.user),
+      stageGate: evaluateStageGate(checkRuns),
     },
   };
 }

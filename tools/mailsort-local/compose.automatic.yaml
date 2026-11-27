@@ -1,0 +1,18 @@
+# Long-running automatic worker; --apply must be explicitly included in its command.
+# Also add one credential overlay: compose.credentials-vault.yaml or compose.credentials-files.yaml.
+services:
+  app:
+    network_mode: host
+    user: "${MAILSORT_UID:?Set MAILSORT_UID}:${MAILSORT_GID:?Set MAILSORT_GID}"
+    entrypoint: ["python", "-m", "noemi_mailsort.automatic"]
+    command: []
+    restart: unless-stopped
+    stop_grace_period: 45s
+    environment:
+      MAILSORT_STATE_DIR: /app/state
+    volumes:
+      - type: bind
+        source: ./data
+        target: /app/state
+        bind:
+          create_host_path: false

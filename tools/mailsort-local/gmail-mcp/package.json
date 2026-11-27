@@ -1,0 +1,12 @@
+{
+  "name": "noemi-mailsort-gmail-mcp",
+  "private": true,
+  "description": "Build-stage manifest for the Gmail MCP server bundled in the MailSort Local image. Install only with npm ci.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24.18.1 <25"
+  },
+  "dependencies": {
+    "@klodr/gmail-mcp": "3.0.0"
+  }
+}

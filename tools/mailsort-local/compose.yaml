@@ -1,0 +1,22 @@
+services:
+  app:
+    build: .
+    image: noemi-mailsort-agent:local
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - type: bind
+        source: ./config
+        target: /app/user-config
+        read_only: true
+        bind:
+          create_host_path: false
+      # Keep the default model-config path editable without rebuilding the image.
+      - type: bind
+        source: ./config/model.example.json
+        target: /app/config/model.example.json
+        read_only: true
+        bind:
+          create_host_path: false

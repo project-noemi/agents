@@ -1,0 +1,15 @@
+# Optional Linux override for an existing Ollama API on host localhost.
+# This changes only this application's container network, not the Ollama service.
+services:
+  app:
+    network_mode: host
+    entrypoint: ["python", "-m", "noemi_mailsort.classify"]
+    command:
+      - --model-config
+      - config/model.example.json
+      - --labels
+      - config/labels.example.json
+      - --mode
+      - labels
+      - --emails
+      - examples/emails.example.json

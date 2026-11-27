@@ -1,0 +1,19 @@
+{
+  "endpoint": "http://127.0.0.1:11434",
+  "model": "qwen3:8b",
+  "timeout_seconds": 120,
+  "keep_alive": "5m",
+  "unload_after_batch": true,
+  "body_max_characters": 1000,
+  "context_safety_tokens": 256,
+  "think": false,
+  "options": {
+    "temperature": 0,
+    "seed": 42,
+    "top_k": 1,
+    "top_p": 1,
+    "repeat_penalty": 1,
+    "num_ctx": 40960,
+    "num_predict": 512
+  }
+}

@@ -24,3 +24,22 @@ updates:
         update-types:
           - "minor"
           - "patch"
+  # Build-stage lockfile for the Gmail MCP server bundled in the MailSort Local
+  # image. That process holds the Gmail token and reads every message, so its
+  # transitive dependencies change only through these reviewable PRs.
+  - package-ecosystem: "npm"
+    directory: "/tools/mailsort-local/gmail-mcp"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+      npm-security-minor-patch:
+        applies-to: security-updates
+        update-types:
+          - "minor"
+          - "patch"

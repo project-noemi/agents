@@ -1,0 +1,129 @@
+{
+  "max_labels_per_email": 5,
+  "labels": [
+    {
+      "id": "promotions",
+      "name": "Promotions",
+      "description": "Emails primarily intended to advertise or sell products or services, including sales, discounts, special offers, promotional campaigns and marketing incentives. Do not classify normal transactional notifications as Promotions merely because they contain advertisements or promotional footers.",
+      "enabled": true,
+      "threshold": 0.5
+    },
+    {
+      "id": "newsletters",
+      "name": "Newsletters",
+      "description": "Recurring or subscription-based informational content, including news, industry updates, educational articles, technical newsletters and curated content. Do not classify predominantly sales-oriented marketing messages as Newsletters unless they also contain substantial independent informational content.",
+      "enabled": true,
+      "threshold": 0.5
+    },
+    {
+      "id": "receipts_delivery",
+      "name": "Receipts & Delivery",
+      "description": "Purchase confirmations, payment receipts, invoices for completed transactions, refunds, order updates, shipping notifications, package tracking and delivery confirmations. Exclude general marketing messages, unpaid payment reminders and booking confirmations without separate transaction evidence.",
+      "enabled": true,
+      "threshold": 0.5
+    },
+    {
+      "id": "appointments_bookings",
+      "name": "Appointments & Bookings",
+      "description": "Confirmed appointments, reservations, travel bookings, accommodation bookings, scheduled events, appointment reminders, rescheduling notices and cancellations. Exclude general invitations, advertisements for events, and scheduling discussions that do not represent an established booking or appointment.",
+      "enabled": true,
+      "threshold": 0.5
+    },
+    {
+      "id": "accounts_security",
+      "name": "Accounts & Security",
+      "description": "Account creation, verification, password reset requests, authentication notifications, login alerts, suspicious activity, account recovery and security-related account changes. Exclude general platform announcements, ordinary account marketing and unrelated policy updates.",
+      "enabled": true,
+      "threshold": 0.5
+    }
+  ],
+  "guidance": [
+    {
+      "heading": "Mandatory exceptions",
+      "intro": "Apply these before finalizing labels:",
+      "rules": [
+        {
+          "requires": [
+            "promotions"
+          ],
+          "text": "1. **Incidental marketing:** Advertisements and promotional footers in ordinary transactional notifications do not independently justify Promotions."
+        },
+        {
+          "requires": [
+            "appointments_bookings",
+            "receipts_delivery"
+          ],
+          "text": "2. **Unestablished events and transactions:** An invitation or scheduling discussion does not establish an appointment or booking. A booking confirmation alone does not establish a separate purchase transaction, and an unpaid payment reminder alone is not a receipt."
+        },
+        {
+          "requires": [
+            "accounts_security"
+          ],
+          "text": "3. **Account relevance:** General platform announcements and unrelated policy updates do not independently justify Accounts & Security."
+        }
+      ]
+    },
+    {
+      "heading": "Secondary-label verification",
+      "intro": "Evaluate the following independently; do not apply them automatically:",
+      "rules": [
+        {
+          "requires": [
+            "appointments_bookings",
+            "receipts_delivery"
+          ],
+          "text": "- A confirmed booking can receive Appointments & Bookings + Receipts & Delivery when it also contains separate transaction evidence."
+        },
+        {
+          "requires": [
+            "newsletters",
+            "promotions"
+          ],
+          "text": "- Newsletters receive Promotions additionally only when the email has a substantial commercial purpose as well as substantial independent informational content. Incidental sponsorship is insufficient."
+        },
+        {
+          "requires": [
+            "receipts_delivery",
+            "accounts_security"
+          ],
+          "text": "- A purchase or account notification receives a secondary category only when the email independently meets that category's definition."
+        }
+      ]
+    },
+    {
+      "heading": "Final decision check",
+      "intro": "Before responding, check the proposed category set:",
+      "rules": [
+        {
+          "requires": [],
+          "text": "- Is each category independently supported by the actual content?"
+        },
+        {
+          "requires": [],
+          "text": "- Is any category based only on a related word, product, or incidental reference? If so, remove it."
+        },
+        {
+          "requires": [
+            "receipts_delivery",
+            "accounts_security"
+          ],
+          "text": "- Does the email contain a real purchase receipt or a real account-security event that warrants a secondary category?"
+        },
+        {
+          "requires": [
+            "appointments_bookings",
+            "receipts_delivery",
+            "newsletters",
+            "promotions"
+          ],
+          "text": "- Have the invitation/booking, unpaid reminder/receipt, and informational newsletter/sales campaign distinctions been respected?"
+        },
+        {
+          "requires": [],
+          "text": "- Would no category actually fit? If yes, return an empty array rather than guessing."
+        }
+      ],
+      "footer": "A supported classification does not require absolute certainty, but do not invent supporting facts. An empty array means no category meets its criteria, not that the model is merely uncertain."
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+{
+  "query": "newer_than:7d has:nouserlabels -in:sent -in:drafts",
+  "max_messages": 5
+}

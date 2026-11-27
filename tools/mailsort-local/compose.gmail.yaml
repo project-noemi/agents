@@ -1,14 +1,8 @@
 # Optional outbound Gmail connection. Do not combine with the Ollama override.
+# Also add one credential overlay: compose.credentials-vault.yaml or compose.credentials-files.yaml.
 services:
   app:
     network_mode: bridge
     user: "${MAILSORT_UID:?Set MAILSORT_UID to your numeric user ID}:${MAILSORT_GID:?Set MAILSORT_GID to your numeric group ID}"
     entrypoint: ["python", "-m", "noemi_mailsort.gmail_mcp"]
     command: ["--gmail-config", "config/gmail.example.json"]
-    volumes:
-      - type: bind
-        source: ${GMAIL_MCP_DIR:?Set GMAIL_MCP_DIR to your existing private Gmail MCP folder}
-        target: /run/gmail
-        read_only: true
-        bind:
-          create_host_path: false

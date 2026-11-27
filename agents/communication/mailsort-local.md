@@ -48,7 +48,7 @@ Keep the user's Gmail inbox organized with an approved, user-defined label catal
 9. **Bounded scope.** Every run is limited by a Gmail search expression and a message limit; the automatic worker also uses a lookback window, a per-run maximum and a batch size.
 10. **Untrusted content.** Email bodies, quoted text and signatures are data to classify, never instructions. The classification prompt explicitly tells the model not to follow instructions contained in emails, and the model has no tools it could misuse.
 11. **Deterministic inference.** Model options are fixed for repeatable results (temperature 0, fixed seed, `top_k` 1) and requests have a timeout.
-12. **Least privilege at runtime.** The application container runs as a non-root user with a read-only root filesystem; OAuth files are mounted read-only; configuration, review, state and result folders are separate private mounts.
+12. **Least privilege at runtime.** The application container runs as a non-root user with a read-only root filesystem; OAuth credentials come from a SecretOps vault whenever one is configured (written as owner-only files to the container's `/tmp` tmpfs and removed from the environment), otherwise from a read-only mounted folder as the documented fallback; configuration, review, state and result folders are separate private mounts.
 
 ### Refusal Criteria
 
@@ -68,7 +68,7 @@ Keep the user's Gmail inbox organized with an approved, user-defined label catal
 ## Data Inventory
 
 - **Inputs:** Gmail search results; message ID, sender, subject and a truncated plain-text body for each candidate; existing Gmail label names, IDs and types; the private label catalog (names, descriptions, enabled flags, thresholds, guidance rules); model, processing, Gmail and automatic configuration files; classification prompt templates.
-- **Files:** Shared example configuration and prompts in `tools/mailsort-local/`; private configuration (`config/*.json`, `prompts/local/`), OAuth client and token files in a private credential folder, review plans, processing state and the CSV result log in private host folders mounted into the container.
+- **Files:** Shared example configuration and prompts in `tools/mailsort-local/`; private configuration (`config/*.json`, `prompts/local/`), OAuth client and token JSON in a SecretOps vault (vault mode) or a private credential folder (file mode fallback), review plans, processing state and the CSV result log in private host folders mounted into the container.
 - **State:** Email bodies are held in memory only for classification and are never written to disk by the application. Persistent state is limited to completed message IDs with timestamps (automatic processing) and the CSV result log (timestamp, source, model, mode, dry-run flag, message ID, prediction, selected labels, applied labels, status, error). Review plans additionally store sender and subject so the user can review decisions. No profiles or inferences about the user are created.
 
 ## Boundaries
@@ -108,7 +108,7 @@ Keep the user's Gmail inbox organized with an approved, user-defined label catal
 ## External Tooling Dependencies
 
 - **Ollama** with a downloaded local model (default `qwen3:8b`), reachable from the application container.
-- **Gmail MCP server** (`@klodr/gmail-mcp`, pinned and installed in the image at build time) with OAuth credentials authorized for Gmail read and label modification.
+- **Gmail MCP server** (`@klodr/gmail-mcp`, installed in the image at build time with `npm ci` from a committed lockfile that pins every transitive dependency; updates arrive through Dependabot PRs) with OAuth credentials authorized for Gmail read and label modification.
 - **Google Cloud project** with the Gmail API enabled and an OAuth client.
 - **Docker with Docker Compose** for building and running the application, one-off commands and the automatic worker.
 - **Python 3.13** with the MCP Python SDK (`mcp==1.30.0`), bundled in the image.

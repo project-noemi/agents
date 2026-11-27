@@ -1,15 +1,9 @@
 # Gmail reads plus an existing Ollama API on host localhost (Linux).
 # Use with compose.yaml; this command never applies labels.
+# Also add one credential overlay: compose.credentials-vault.yaml or compose.credentials-files.yaml.
 services:
   app:
     network_mode: host
     user: "${MAILSORT_UID:?Set MAILSORT_UID}:${MAILSORT_GID:?Set MAILSORT_GID}"
     entrypoint: ["python", "-m", "noemi_mailsort.dry_run"]
     command: []
-    volumes:
-      - type: bind
-        source: ${GMAIL_MCP_DIR:?Set GMAIL_MCP_DIR to your private credential folder}
-        target: /run/gmail
-        read_only: true
-        bind:
-          create_host_path: false

@@ -2,6 +2,8 @@
 **
 !Dockerfile
 !requirements.txt
+!gmail-mcp/package.json
+!gmail-mcp/package-lock.json
 !.dockerignore
 !src/noemi_mailsort/*.py
 !config/labels.example.json
@@ -24,3 +26,4 @@
 !tests/test_label_messages.py
 !tests/test_automatic.py
 !tests/test_results_csv.py
+!tests/test_vault_credentials.py

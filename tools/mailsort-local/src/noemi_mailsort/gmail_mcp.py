@@ -17,6 +17,8 @@ from typing import Any
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from noemi_mailsort import vault_credentials
+
 
 class GmailMCPError(ValueError):
     """A safe diagnostic that contains no server response or credential values."""
@@ -36,7 +38,11 @@ def load_gmail_config(path: Path) -> dict[str, Any]:
     timeout = settings["timeout_seconds"]
     if type(timeout) not in (int, float) or not 0 < timeout < math.inf:
         raise GmailMCPError("timeout_seconds must be a positive finite number")
-    return settings
+    # Vault mode wins whenever both OAuth JSON values arrive in process memory.
+    try:
+        return vault_credentials.apply(settings)
+    except vault_credentials.VaultCredentialError as error:
+        raise GmailMCPError(str(error)) from None
 
 
 def check_credentials(settings: dict[str, Any], *, require_message_labeling: bool = False) -> None:

@@ -24,12 +24,26 @@ permissions described in setup still apply.
 labels and do not archive, delete, send, or reply to mail. Required label definitions
 must already exist in Gmail; create/import them during setup.
 
-Each command uses `compose.yaml` plus **one** workflow override. Do not combine
-the dry-run, labeling, and automatic overrides in one command. The two `-f`
-arguments select the files; `run --rm -T` starts a one-off container, removes it
+Each command uses `compose.yaml`, **one** credential overlay and **one** workflow
+override. Do not combine the dry-run, labeling, and automatic overrides in one
+command. The `-f` arguments select the files; `run --rm -T` starts a one-off container, removes it
 when finished, and disables terminal allocation for plain output. The application
 image and mounted files remain. A one-off command exits when its work finishes;
 the scheduled worker uses `up -d` instead.
+
+The commands below use `compose.credentials-files.yaml`, which mounts your
+credential folder read-only. If your OAuth files live in a vault
+([setup](SETUP.md#optional-keep-the-oauth-files-in-your-vault)), replace it with
+`compose.credentials-vault.yaml` and start each command with your vault's
+command-line tool, for example:
+
+```sh
+infisical run --env=dev -- docker compose -f compose.yaml -f compose.credentials-vault.yaml -f compose.dry-run.yaml run --rm -T app
+```
+
+Always run `up` through the tool: without the values, Compose sees a changed
+configuration and recreates the worker without credentials. `stop`, `start`,
+`restart`, `ps` and `logs` reuse the existing container and do not need it.
 
 Stop a running automatic worker before manual labeling or one-off automatic
 commands, as explained under [worker management](#manage-the-worker). The worker
@@ -91,7 +105,7 @@ emails. It still makes no Gmail connection or CSV log.
 ## 2. Preview classification of real Gmail messages
 
 ```sh
-docker compose -f compose.yaml -f compose.dry-run.yaml run --rm -T app
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.dry-run.yaml run --rm -T app
 ```
 
 This searches your **real Gmail mailbox**, retrieves matching messages, calls
@@ -106,7 +120,7 @@ restricted to the inbox. If no messages match, the model is not invoked.
 For an imported catalog and confidence scores:
 
 ```sh
-docker compose -f compose.yaml -f compose.dry-run.yaml run --rm -T app --labels user-config/labels.json --mode confidence
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.dry-run.yaml run --rm -T app --labels user-config/labels.json --mode confidence
 ```
 
 This uses your private category definitions and thresholds. Resolve any
@@ -118,7 +132,7 @@ For a different manual search or limit, also select your private processing JSON
 ### Create a new plan
 
 ```sh
-docker compose -f compose.yaml -f compose.labeling.yaml run --rm -T app --plan-output /app/review/batch-001.json --mode confidence
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.labeling.yaml run --rm -T app --plan-output /app/review/batch-001.json --mode confidence
 ```
 
 This classifies the configured manual search, saves a new plan at
@@ -152,7 +166,7 @@ editing the original prediction or saved Gmail IDs does not change the selection
 ### Preview the edited decisions
 
 ```sh
-docker compose -f compose.yaml -f compose.labeling.yaml run --rm -T app --review-plan /app/review/batch-001.json
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.labeling.yaml run --rm -T app --review-plan /app/review/batch-001.json
 ```
 
 This validates the file and refreshes the Gmail name-to-ID mappings. It does not
@@ -164,7 +178,7 @@ the preview. Expect `ready: true` after changing every pending decision to
 ### Apply the reviewed plan
 
 ```sh
-docker compose -f compose.yaml -f compose.labeling.yaml run --rm -T app --review-plan /app/review/batch-001.json --apply
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.labeling.yaml run --rm -T app --review-plan /app/review/batch-001.json --apply
 ```
 
 **This changes Gmail:** it adds the approved labels to the exact message IDs in
@@ -183,7 +197,7 @@ prediction mode, so `--mode` is unnecessary for previewing/applying it.
 First preview the direct workflow:
 
 ```sh
-docker compose -f compose.yaml -f compose.labeling.yaml run --rm -T app --no-review --mode confidence
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.labeling.yaml run --rm -T app --no-review --mode confidence
 ```
 
 This classifies the manual search, automatically selects validated eligible
@@ -194,7 +208,7 @@ enable writes.
 After verifying a small reviewed write, enable direct labeling:
 
 ```sh
-docker compose -f compose.yaml -f compose.labeling.yaml run --rm -T app --no-review --mode confidence --apply
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.labeling.yaml run --rm -T app --no-review --mode confidence --apply
 ```
 
 **This changes Gmail without a per-message review pause.** It runs a **fresh**
@@ -266,7 +280,7 @@ for details.
 Validate local configuration without Gmail or model requests:
 
 ```sh
-docker compose -f compose.yaml -f compose.automatic.yaml run --rm -T app --automatic-config user-config/automatic.json --mode confidence --check-config
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.automatic.yaml run --rm -T app --automatic-config user-config/automatic.json --mode confidence --check-config
 ```
 
 Expect `configuration_valid: true` and the calculated model context allocation.
@@ -277,7 +291,7 @@ commands if applicable.
 Count matching and pending messages before spending time on inference:
 
 ```sh
-docker compose -f compose.yaml -f compose.automatic.yaml run --rm -T app --automatic-config user-config/automatic.json --mode confidence --count-only
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.automatic.yaml run --rm -T app --automatic-config user-config/automatic.json --mode confidence --count-only
 ```
 
 This searches Gmail message IDs and reads existing local completion state. It
@@ -288,7 +302,7 @@ scope before the per-run classification limit is applied.
 Run one automatic cycle immediately as a dry-run:
 
 ```sh
-docker compose -f compose.yaml -f compose.automatic.yaml run --rm -T app --automatic-config user-config/automatic.json --mode confidence --once
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.automatic.yaml run --rm -T app --automatic-config user-config/automatic.json --mode confidence --once
 ```
 
 `--once` bypasses waiting for the schedule, obeys the query/window/run limit,
@@ -298,7 +312,7 @@ or completion records. An empty pending set does not invoke the model.
 To run **one live automatic cycle** after verifying the small labeling test:
 
 ```sh
-docker compose -f compose.yaml -f compose.automatic.yaml run --rm -T app --automatic-config user-config/automatic.json --mode confidence --once --apply
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.automatic.yaml run --rm -T app --automatic-config user-config/automatic.json --mode confidence --once --apply
 ```
 
 **This adds eligible labels and saves completion records.** Unlike manual direct
@@ -332,7 +346,7 @@ the scheduled service receives at startup.
 Start the scheduled dry-run worker:
 
 ```sh
-docker compose -f compose.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml up -d app
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml up -d app
 ```
 
 The third `-f` adds your private command configuration; `up -d` creates/starts
@@ -349,7 +363,7 @@ enabling live processing.
 After a small labeling test has succeeded in Gmail, stop the worker:
 
 ```sh
-docker compose -f compose.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml stop app
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml stop app
 ```
 
 This stops the background worker and releases its processing lock, preserving
@@ -368,7 +382,7 @@ This is an extra list item, not a replacement file. It enables Gmail label
 additions and persistent completion tracking. Recreate the service to load it:
 
 ```sh
-docker compose -f compose.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml up -d --force-recreate app
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml up -d --force-recreate app
 ```
 
 **The recreated worker can change Gmail immediately** if an initial pass is
@@ -381,7 +395,7 @@ to dry-run mode, stop it, remove the `--apply` entry, and recreate it again.
 Check status:
 
 ```sh
-docker compose -f compose.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml ps --all
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml ps --all
 ```
 
 This only reads container status; `--all` includes stopped containers. `Up` means
@@ -391,7 +405,7 @@ Check logs too.
 Read recent logs:
 
 ```sh
-docker compose -f compose.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml logs --tail 100 app
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml logs --tail 100 app
 ```
 
 This prints the latest 100 log lines without starting work. Logs include
@@ -404,7 +418,7 @@ Classification progress alone does not confirm that labels were applied.
 Follow new log output:
 
 ```sh
-docker compose -f compose.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml logs -f --tail 50 app
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml logs -f --tail 50 app
 ```
 
 `-f` follows output after the latest 50 lines. Ctrl+C stops following logs and
@@ -414,7 +428,7 @@ uses your configured timezone. Logs can contain private classifications and IDs.
 To stop, use the `stop app` command above. To start the existing stopped service:
 
 ```sh
-docker compose -f compose.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml start app
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml start app
 ```
 
 This resumes the existing container and command, including its existing write
@@ -423,7 +437,7 @@ mode. It does not load changes to Compose YAML or mounts.
 After editing only mounted JSON or prompt files, restart the existing worker:
 
 ```sh
-docker compose -f compose.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml restart app
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml restart app
 ```
 
 This reloads those files at process startup and may resume writes immediately.
@@ -495,7 +509,7 @@ subjects, credentials or raw Gmail server replies.
 To show only the audit lines from the worker's logs on **Linux/macOS**:
 
 ```sh
-docker compose -f compose.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml logs --no-log-prefix app | grep '^{'
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.automatic.yaml -f private/compose.automatic.yaml logs --no-log-prefix app | grep '^{'
 ```
 
 `--no-log-prefix` removes Docker's service-name prefix, and `grep '^{'` keeps the
@@ -559,7 +573,7 @@ Follow the [prompt notes](PROMPT_NOTES.md) to prepare all three templates in
 `prompts/local/`. For a manual Gmail preview with your private catalog:
 
 ```sh
-docker compose -f compose.yaml -f compose.dry-run.yaml run --rm -T --volume ./prompts/local:/app/local-prompts:ro app --labels user-config/labels.json --mode confidence --prompt-dir /app/local-prompts
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.dry-run.yaml run --rm -T --volume ./prompts/local:/app/local-prompts:ro app --labels user-config/labels.json --mode confidence --prompt-dir /app/local-prompts
 ```
 
 This mounts the custom templates read-only (`:ro`), selects them with

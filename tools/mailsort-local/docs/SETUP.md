@@ -391,10 +391,15 @@ take precedence over `.env`; keep them consistent.
 
 | Host location | Inside the application container | Purpose |
 | --- | --- | --- |
-| Credential folder from `.env` | `/run/gmail` | OAuth client and saved account tokens; normally read-only |
+| Credential folder from `.env` | `/run/gmail` | OAuth client and saved account tokens, read-only; file mode only (see [vault mode](#optional-keep-the-oauth-files-in-your-vault)) |
 | Repository `config/` | `/app/user-config` | Private settings selected with command-line options |
 | Repository `data/` | `/app/state` | Persistent processing state and CSV results in labeling/automatic workflows |
 | Repository `private/review/` | `/app/review` | Review plans in the labeling workflow |
+
+Every Gmail command adds one credential overlay. The commands in these guides use
+`compose.credentials-files.yaml`, which mounts the credential folder above. If you
+use a SecretOps vault, switch to `compose.credentials-vault.yaml` after step 7,
+as described in [vault mode](#optional-keep-the-oauth-files-in-your-vault).
 
 The supplied Gmail JSON settings already use `/run/gmail/gcp-oauth.keys.json` and
 `/run/gmail/credentials.json`; leave those container paths unchanged. Private
@@ -474,8 +479,8 @@ of token expiration or revocation.
 Run these commands on **all platforms**:
 
 ```sh
-docker compose -f compose.yaml -f compose.gmail.yaml run --rm -T --entrypoint python app -c "from noemi_mailsort.gmail_mcp import load_gmail_config, check_credentials; from pathlib import Path; check_credentials(load_gmail_config(Path('config/gmail.example.json'))); print('Credential files are readable and valid')"
-docker compose -f compose.yaml -f compose.gmail.yaml run --rm -T app
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.gmail.yaml run --rm -T --entrypoint python app -c "from noemi_mailsort.gmail_mcp import load_gmail_config, check_credentials; from pathlib import Path; check_credentials(load_gmail_config(Path('config/gmail.example.json'))); print('Credential files are readable and valid')"
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.gmail.yaml run --rm -T app
 ```
 
 The first checks the mounted file formats and read access without displaying
@@ -489,6 +494,97 @@ folders, and Linux/WSL ownership where applicable. For `invalid_grant`, renew
 consent as described above. If tools needed for labeling are missing, check that
 the saved authorization includes `gmail.modify`.
 
+### Optional: keep the OAuth files in your vault
+
+Use this mode whenever you have a SecretOps vault: Infisical, 1Password, Secret
+Manager on Google Cloud, or Azure Key Vault. Both JSON files then live only in
+the vault. Your vault's command-line tool passes them to Docker Compose in
+process memory; the application writes them as owner-only files to the
+container's temporary in-memory `/tmp` and removes them from its environment. No
+credential folder is mounted. When both values are present, they always win over
+a mounted folder.
+
+The first Gmail authorization (step 6) still needs the local folder, because
+Google returns the token as a file. Finish step 7 first, so you know the files
+work, then move them:
+
+1. **Store each file's complete contents as one secret** in your vault:
+
+   | Secret name | Contents of |
+   | --- | --- |
+   | `GMAIL_OAUTH_KEYS_JSON` | `gcp-oauth.keys.json` |
+   | `GMAIL_CREDENTIALS_JSON` | `credentials.json` |
+
+   With Infisical, `NAME=@file` reads each value from the file, so the token
+   never appears in your shell history (older CLI versions name this command
+   `infisical secrets set`):
+
+   ```sh
+   infisical secrets-manager secrets create GMAIL_OAUTH_KEYS_JSON=@"$mailsort_credential_dir/gcp-oauth.keys.json" GMAIL_CREDENTIALS_JSON=@"$mailsort_credential_dir/credentials.json" --env=dev
+   ```
+
+   With 1Password, store both values in one item and reference them from an
+   environment template such as `private/gmail.env.template`. With Secret Manager
+   or Azure Key Vault, list them in a manifest for the repository's
+   `scripts/secret-inject.js`, such as `private/gmail.secrets`. Both files contain
+   only references, never values:
+
+   ```text
+   # private/gmail.env.template (1Password)
+   GMAIL_OAUTH_KEYS_JSON=op://Private/noemi-mailsort-gmail/oauth-keys
+   GMAIL_CREDENTIALS_JSON=op://Private/noemi-mailsort-gmail/credentials
+
+   # private/gmail.secrets (Secret Manager; use kv://VAULT/SECRET for Azure)
+   GMAIL_OAUTH_KEYS_JSON=sm://YOUR_PROJECT/gmail-oauth-keys
+   GMAIL_CREDENTIALS_JSON=sm://YOUR_PROJECT/gmail-credentials
+   ```
+
+2. **Verify vault mode.** Repeat the step 7 checks through your vault's
+   command-line tool, with the vault overlay instead of the file overlay:
+
+   ```sh
+   infisical run --env=dev -- docker compose -f compose.yaml -f compose.credentials-vault.yaml -f compose.gmail.yaml run --rm -T --entrypoint python app -c "from noemi_mailsort.gmail_mcp import load_gmail_config, check_credentials; from pathlib import Path; check_credentials(load_gmail_config(Path('config/gmail.example.json'))); print('Credential files are readable and valid')"
+   infisical run --env=dev -- docker compose -f compose.yaml -f compose.credentials-vault.yaml -f compose.gmail.yaml run --rm -T app
+   ```
+
+   For 1Password, replace `infisical run --env=dev --` with
+   `op run --env-file=private/gmail.env.template --`. For Secret Manager or Azure
+   Key Vault, replace it with
+   `node ../../scripts/secret-inject.js --manifest private/gmail.secrets --`.
+
+3. **Delete the local copies** once both checks pass:
+
+   ```sh
+   rm "$mailsort_credential_dir/credentials.json" "$mailsort_credential_dir/gcp-oauth.keys.json"
+   rmdir "$mailsort_credential_dir"
+   ```
+
+   ```powershell
+   Remove-Item -LiteralPath "$mailsortCredentialDir\credentials.json", "$mailsortCredentialDir\gcp-oauth.keys.json"
+   Remove-Item -LiteralPath $mailsortCredentialDir
+   ```
+
+   Also delete the client JSON from your downloads folder, empty the trash, and
+   remove `GMAIL_MCP_DIR` from `.env`; only the file overlay reads it. Copies in
+   older backups remain until those backups expire.
+
+4. **Use the vault form for every later command.** In this guide and the
+   [usage guide](USAGE.md), replace `-f compose.credentials-files.yaml` with
+   `-f compose.credentials-vault.yaml` and start the command with your vault's
+   command-line tool, as in step 2. If you forget the tool, the command stops
+   with an error naming the missing variables; it never falls back to a folder.
+
+Docker stores the passed values in the container's configuration, so anyone who
+can run `docker inspect` on this host can read them while the container exists.
+This matters most for the long-running automatic worker. Restrict Docker access
+to your own account. After rotating a secret, recreate the worker through your
+vault's tool (`up -d --force-recreate`); a plain restart reuses the old value.
+
+To renew consent later, create a new temporary private folder, copy the OAuth
+client into it, repeat step 6, update `GMAIL_CREDENTIALS_JSON` in the vault
+(with Infisical, `infisical secrets-manager secrets update`), verify, and delete
+the folder again.
+
 ## 8. Choose your label catalog
 
 Choose **one** route. The application matches enabled catalog names to Gmail
@@ -500,14 +596,14 @@ Promotions category does not replace a user-created `Promotions` label.
 Preview which base labels are missing, on **all platforms**:
 
 ```sh
-docker compose -f compose.yaml -f compose.gmail.yaml run --rm -T --entrypoint python app -m noemi_mailsort.create_base_labels
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.gmail.yaml run --rm -T --entrypoint python app -m noemi_mailsort.create_base_labels
 ```
 
 This lists existing or proposed labels without changing Gmail. After reviewing
 the names, explicitly create missing labels:
 
 ```sh
-docker compose -f compose.yaml -f compose.gmail.yaml run --rm -T --entrypoint python app -m noemi_mailsort.create_base_labels --apply
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.gmail.yaml run --rm -T --entrypoint python app -m noemi_mailsort.create_base_labels --apply
 ```
 
 `--apply` creates missing **label definitions in Gmail**, skips existing ones,
@@ -523,7 +619,7 @@ Create the custom user labels you want in Gmail first, if needed. Then run this
 on **all platforms**:
 
 ```sh
-docker compose -f compose.yaml -f compose.gmail.yaml run --rm -T --entrypoint python --volume ./config:/app/user-config:rw app -m noemi_mailsort.import_labels
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.gmail.yaml run --rm -T --entrypoint python --volume ./config:/app/user-config:rw app -m noemi_mailsort.import_labels
 ```
 
 This reads label metadata and creates the private host file `config/labels.json`.
@@ -544,7 +640,7 @@ filename alone does not activate it.
 Verify the edited catalog on **all platforms**:
 
 ```sh
-docker compose -f compose.yaml -f compose.gmail.yaml run --rm -T --entrypoint python app -m noemi_mailsort.prompts --labels user-config/labels.json --mode labels
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.gmail.yaml run --rm -T --entrypoint python app -m noemi_mailsort.prompts --labels user-config/labels.json --mode labels
 ```
 
 This uses the configured container user so imported private files are readable.
@@ -600,13 +696,13 @@ The model example has an additional direct mount and is an exception.
 For the **base-label catalog**, run on **all platforms**:
 
 ```sh
-docker compose -f compose.yaml -f compose.dry-run.yaml run --rm -T app
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.dry-run.yaml run --rm -T app
 ```
 
 For an **imported private catalog**, use:
 
 ```sh
-docker compose -f compose.yaml -f compose.dry-run.yaml run --rm -T app --labels user-config/labels.json
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.dry-run.yaml run --rm -T app --labels user-config/labels.json
 ```
 
 These commands retrieve the bounded Gmail search and classify matching emails
@@ -624,7 +720,7 @@ files together: they select different entrypoints and network configurations.
 Run on **all platforms**:
 
 ```sh
-docker compose -f compose.yaml -f compose.labeling.yaml run --rm -T --entrypoint python app -c "import tempfile; [tempfile.TemporaryFile(dir=p).close() for p in ['/app/state', '/app/review']]; print('Runtime folders are writable')"
+docker compose -f compose.yaml -f compose.credentials-files.yaml -f compose.labeling.yaml run --rm -T --entrypoint python app -c "import tempfile; [tempfile.TemporaryFile(dir=p).close() for p in ['/app/state', '/app/review']]; print('Runtime folders are writable')"
 ```
 
 This creates and immediately removes a temporary file in each runtime folder to

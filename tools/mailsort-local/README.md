@@ -25,7 +25,7 @@ The application runs in Linux containers. The current setup instructions target 
 - **Hardware resources:** Enough RAM and disk space for Docker, Ollama, and the selected model. GPU acceleration is optional; resource needs and processing speed depend on the model and its configuration.
 - **Gmail access:** A Gmail account, a Google Cloud project with the Gmail API enabled, and OAuth credentials authorizing Gmail MCP to read messages and apply labels.
 - **Label configuration:** A configured label catalog with descriptions and matching user-created labels in Gmail. You can use the five supplied base labels or import and customize your own Gmail labels.
-- **Private persistent storage:** Folders for OAuth credentials, personal configuration, and processing state, with appropriate container read and write permissions.
+- **Private persistent storage:** Folders for personal configuration and processing state, with appropriate container read and write permissions. Keep the OAuth credentials in a SecretOps vault (Infisical, 1Password, Secret Manager or Azure Key Vault) if you have one, or otherwise in a private read-only credential folder.
 - **Internet access:** Required for downloading dependencies and models during setup, and for accessing Gmail during operation. Classification uses the local model.
 
 Python, Node.js, and the Gmail MCP server are included in the application image; separate host installations are not required.

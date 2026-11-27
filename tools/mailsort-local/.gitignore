@@ -61,3 +61,6 @@ venv/
 .ruff_cache/
 .coverage
 /htmlcov/
+
+# Locally installed Gmail MCP dependencies; the image installs them with npm ci.
+/gmail-mcp/node_modules/

@@ -91,6 +91,17 @@ A single large model for every task is the most expensive and least efficient wa
 
 Routing a categorization decision to a 70B model is like dispatching a freight truck to deliver an envelope. By letting an 8B model decide *whether and where* heavier reasoning is needed, you reserve scarce GPU capacity for the small fraction of requests that genuinely require it. On owned hardware this directly translates into higher effective throughput per GPU-hour — the **algorithmic efficiency** pillar of the pivot.
 
+### Choose the tier by how the task fails, not only by its size
+
+Task size is one input to routing; the cost of the task's typical failure is another. The cheapest tiers fail in two ways that a short task can hide:
+
+- **Repeating retrieved values verbatim.** Asked about records it already holds, a small model can state a time, a date or a count that appears in none of them, and contradict its own rows in the same answer.
+- **Restraint under many negative rules.** Instructions that are mostly "never invent a price, a date, a link, a deadline" are followed worst by the cheapest tiers. A small model also tends to agree with a correction it cannot verify ("You are absolutely right") instead of checking it against its data.
+
+So an agent whose whole job is reporting retrieved facts, or drafting copy that goes out under the organisation's name, can belong in Tier 1 or above even when each request is short. A prompt cannot fix a model that does not follow "never invent". Choose the tier deliberately rather than inheriting a default, record why, and test it with cases aimed at these failures: a question whose answer sits in a retrieved record, and a confident correction the data contradicts.
+
+A stronger tier is better at some operations without being reliable at them, calendar arithmetic among them. Remove such operations instead of escalating for them: hand the model a lookup, as the [Date Table](../skills/verification/date-table.md) skill does for weekdays and relative dates.
+
 ### Governance interaction
 
 Hierarchical routing is bounded by the Operating Profile. The `max_token_budget_per_run` ceiling (`500000` in the sovereign profile) prevents runaway escalation through the tiers, and every routing hop is logged to `loki-unified-logging` so the path a request took — and the cost it incurred — is fully auditable. The escalation rule is conservative by design: **when a smaller model's confidence is low or the task is ambiguous, escalate to the next tier rather than guessing.** Efficiency must never be purchased at the cost of a wrong answer slipping through.

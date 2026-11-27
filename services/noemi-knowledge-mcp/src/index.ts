@@ -35,7 +35,7 @@ function createServer(env: Env) {
     "search_knowledge",
     {
       description:
-        "Ask about the NoéMI hands-on workshop series, Phase 0 security, and how to get a first safe, read-only win. Read-only, public documents only, no personal data, no sign-in required, rate-limited. Returns ranked markdown chunks.",
+        "Ask about the NoéMI agent framework, the 40-hour accelerator that ramps a team onto it, Phase 0 security, and how to get a first safe, read-only win. Read-only, public documents only, no personal data, no sign-in required, rate-limited. Returns ranked markdown chunks.",
       inputSchema: {
         query: z
           .string()

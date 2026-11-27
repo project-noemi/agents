@@ -12,6 +12,10 @@ describe("buildServerCard", () => {
     expect(card.description).toMatch(/read-only/i);
     expect(card.description).toMatch(/public documents only/i);
     expect(card.description).toMatch(/no sign-in/i);
+    expect(card.description).toMatch(/agent framework/i);
+    expect(card.description).toMatch(/40-hour accelerator/i);
+    expect(card.description).not.toMatch(/workshop series/i);
+    expect(card.websiteUrl).toBe("https://www.project-noemi.com");
     expect(card.remotes).toEqual([
       {
         type: "streamable-http",

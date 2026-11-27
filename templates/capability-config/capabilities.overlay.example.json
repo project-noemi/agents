@@ -1,0 +1,12 @@
+{
+  "channels": {
+    "social-network": { "enabled": true }
+  },
+  "units": {
+    "unit-a": {
+      "channels": {
+        "social-network": { "enabled": true, "authorId": "author-id-of-unit-a" }
+      }
+    }
+  }
+}

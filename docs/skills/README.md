@@ -17,6 +17,7 @@ Agents (who)  →  compose  →  Skills (what)  →  use  →  MCP Protocols (ho
 | [Compliance](compliance/) | Abuse Takedown | Legal/regulatory compliance workflows; copyright enforcement, abuse handling |
 | [Orchestration](orchestration/) | Dispatch & Coordinate, Issue Plan | Sub-agent delegation; issue plan plus plan red-team cycle |
 | [Operations](operations/) | Meeting Minutes, Annual Calendar, Speaker Brief | Evidence-based club records, year planning, and programme preparation |
+| [Marketing](marketing/) | Brand Image Generation | Public marketing material: images with quoted text only and the real logo |
 
 ## How Skills Work
 

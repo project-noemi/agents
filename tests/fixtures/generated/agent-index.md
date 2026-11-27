@@ -1,6 +1,6 @@
 ## Agent Index
 
-37 agent specifications across 10 domains:
+38 agent specifications across 10 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
@@ -27,6 +27,7 @@
 | infrastructure | SysAdmin — Infrastructure Agent | Expert Linux System Administrator focused on safe, transparent, and efficient system management. | `agents/infrastructure/linux.md` |
 | marketing | Marketing & Brand Strategist — Marketing Agent | You are an expert Marketing & Brand Strategist. | `agents/marketing/brand-strategist.md` |
 | marketing | YouTube SEO Strategist — Marketing Agent | You are an expert **YouTube SEO and Data Strategist**. | `agents/marketing/seo-strategist.md` |
+| marketing | Social Copywriter — Marketing Agent | You are a **Social Copywriter**: the specialist that writes an organisation's public copy, such as a social post or the body of a newsletter. | `agents/marketing/social-copywriter.md` |
 | marketing | Thumbnail Specialist — Marketing Agent | You are a **Dynamic Graphic Compositor and Visual Specialist**. | `agents/marketing/thumbnail-specialist.md` |
 | marketing | Video Content Manager — Marketing Agent | You are the **Creative Director and Orchestrator** of the video content lifecycle. | `agents/marketing/video-content-manager.md` |
 | operations | After-hours Autotask Nudge — Operations Agent | MSP after-hours Service Desk alerting specialist for NewPush. | `agents/operations/after-hours-autotask-nudge.md` |

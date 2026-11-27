@@ -330,6 +330,58 @@ advisory is still pending — GitHub blocks merge while the required "AI Review
 maintainer adds the `ai-review` label and the advisory completes. In-repo
 branches receive the advisory automatically via `pull_request`.
 
+### Per-gate checks (premise, framing, code, compliance)
+
+The advisory check succeeds whenever the review run completes, including when
+a gate failed or the run halted for a human. It shows that a review ran, not
+that it passed. To let branch protection gate on the verdicts, the workflow
+reports five more checks:
+
+| Check | Succeeds only when |
+|---|---|
+| **"AI Review (premise)"** | the premise verdict is exactly `pass` |
+| **"AI Review (framing)"** | the framing verdict is exactly `pass` |
+| **"AI Review (code)"** | the code verdict is exactly `pass` |
+| **"AI Review (compliance)"** | the compliance verdict is exactly `pass` |
+| **"AI Review (all gates)"** | all four gate checks succeeded |
+
+A gate check also requires a completed, non-dry-run review of the head commit
+that the check is reported for. **Every other state is a failure:**
+
+- `fail`, `skipped` (an earlier gate failed), `OVERRIDDEN` or a missing verdict
+- a halt for human review (carve-out, no model met the floor, pin not callable)
+- an error, a timeout or a cancelled run
+- a review of a different commit
+- no review at all (for example, a fork PR before the `ai-review` label)
+
+These jobs always run, so they never show as *skipped*: GitHub treats a skipped
+required check as passing. The decision logic is
+`scripts/review-gate-checks.js`, which is unit-tested and in the carve-out.
+`scripts/review-pr.js` writes the input for it to `REVIEW_RESULT_FILE` (the
+verdicts and the reviewed head SHA, with no findings text) only after a
+completed review.
+
+**Fleet callers:** GitHub prefixes reusable-workflow jobs with the caller's job
+name. With `templates/ci/ai-review-caller.yml` (job `review`), the checks are
+`review / AI Review (premise)` … `review / AI Review (all gates)`. Existing
+check names are unchanged (`AI Review (advisory)`, `AI Review (fork notice)`
+and their `review / …` forms), so existing required checks keep working. A
+caller pinned to an older tooling ref reports the new checks as failures
+("per-gate results are unavailable") rather than passes.
+
+**Gating on the verdicts** (for example, NewPush D1, "merge only after all
+four AI review stages pass"): require the four gate checks, or `AI Review (all
+gates)`, in addition to or instead of `AI Review (advisory)`. Changing required
+checks is a repository-settings decision for an administrator; this workflow
+does not change them. An override never turns a gate check green.
+
+**Limits:**
+
+- Checks from a `pull_request_target` or `workflow_dispatch` run are attached
+  to the commit GitHub assigns to that run, the same as the advisory check.
+- On fork PRs, the unprivileged `pull_request` run reports the gate checks as
+  failures until a maintainer-gated privileged review runs.
+
 ### Label-gated privileged review (preferred path)
 
 **Design rationale:** Three safe options exist for privileged fork PR review:

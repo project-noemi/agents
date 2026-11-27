@@ -104,6 +104,13 @@
  *   set, a by-design halt writes its reason there before exiting. CI checks the
  *   file, not the code. The distinct exit code is kept for direct (unwrapped)
  *   callers.
+ *
+ * PER-GATE RESULT
+ *   When REVIEW_RESULT_FILE is set, a completed review writes the four gate
+ *   verdicts and the reviewed head SHA there (scripts/review-gate-checks.js,
+ *   buildGateResult) after the comment is posted. Halts and errors write no
+ *   result. CI turns the file into one check per gate; anything other than an
+ *   exact `pass` for the check's head commit is a non-pass.
  */
 
 'use strict';
@@ -125,6 +132,7 @@ const { GH_API, gh, isTransientGitHubError } = require('./github-client.js');
 const {
   OVERRIDE_CONTINUE_GATES, OVERRIDE_ACTORS_VAR, parseOverrideActors, parseOverrideCommands, evaluateOverrides,
 } = require('./review-override.js');
+const { buildGateResult } = require('./review-gate-checks.js');
 const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
 
 /** Canonical Sentinel spec. Always this repo — never the repository under review. */
@@ -164,6 +172,8 @@ const CARVE_OUT = [
   // Override mode: who may override a gate, and how overrides seed calibration.
   'scripts/review-override.js',
   'scripts/override-calibration.js',
+  // Turns gate verdicts into the per-gate checks that can gate a merge.
+  'scripts/review-gate-checks.js',
   '.github/workflows/override-calibration.yml',
   'docs/AI_REVIEW_OVERRIDE.md',
   'agents/coding/sentinel/core.md',
@@ -231,6 +241,18 @@ function writeHaltMarker(reason) {
   const dest = process.env.REVIEW_HALT_FILE;
   if (!dest) return false;
   require('fs').writeFileSync(dest, `${reason}\n`);
+  return true;
+}
+
+/**
+ * Record the per-gate result where CI can see it (REVIEW_RESULT_FILE). Written
+ * only for a completed review; its absence is a non-pass for every gate.
+ * @returns {boolean} whether a file was written
+ */
+function writeGateResult({ gates, headSha, dryRun }) {
+  const dest = process.env.REVIEW_RESULT_FILE;
+  if (!dest) return false;
+  fs.writeFileSync(dest, `${JSON.stringify(buildGateResult({ gates, headSha, dryRun }))}\n`);
   return true;
 }
 
@@ -1245,6 +1267,10 @@ async function main() {
 
   process.stdout.write(`${comment}\n`);
 
+  // Per-gate result for the per-gate checks. After the comment is posted, so a
+  // failed post (exit 2) leaves no result and every gate check is a non-pass.
+  writeGateResult({ gates, headSha: pr.head?.sha, dryRun: args.dryRun });
+
   // Write a findings marker file when blocking findings exist (used by CI to
   // determine if a fork PR approval should be dismissed).
   const blockingFindings = findings.filter((f) => BLOCKING_SEVERITIES.includes(f.severity));
@@ -1263,7 +1289,7 @@ async function main() {
 }
 
 module.exports = {
-  detectCarveOut, limitDiffForPrompt, MAX_DIFF_FILE_CHARS, validateFindings, normalizeGateReply, gateVerdict, recommend, writeHaltMarker,
+  detectCarveOut, limitDiffForPrompt, MAX_DIFF_FILE_CHARS, validateFindings, normalizeGateReply, gateVerdict, recommend, writeHaltMarker, writeGateResult,
   parseOverrideActors, parseOverrideCommands, evaluateOverrides, runGates, isContinuedOverride,
   OVERRIDE_CONTINUE_GATES, OVERRIDE_ACTORS_VAR,
   gh, isTransientGitHubError, postOnce, postPrComment,

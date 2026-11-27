@@ -19,6 +19,20 @@
 # The review is ADVISORY: it posts findings as a comment and never approves,
 # merges, or blocks. Do not add it to required status checks.
 #
+# CHECK NAMES. GitHub prefixes each reusable-workflow job with this caller's
+# job name; this template's job is `review`, so the checks are:
+#   review / AI Review (advisory)     the review ran (green even when a gate
+#                                     failed or the run halted for a human)
+#   review / AI Review (fork notice)  informational only; never required
+#   review / AI Review (premise)      exact `pass` of that gate for this
+#   review / AI Review (framing)      head commit; anything else (fail,
+#   review / AI Review (code)         skipped, overridden, halt, error,
+#   review / AI Review (compliance)   timeout, cancelled) is a failure
+#   review / AI Review (all gates)    success only when all four gates passed
+# An organization that gates merges on the verdicts (e.g. NewPush D1) requires
+# the four gate checks or "all gates" — a repository-settings decision, not part
+# of this file. Renaming the `review` job changes every prefix above.
+#
 # GITHUB DEFAULT BLOCK (Decision [2026-11-09-0001]): public repositories block
 # pull_request_target unless an Actions event policy allowlists it for this
 # file. After this caller is merged, a repository administrator must run

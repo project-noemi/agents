@@ -12,3 +12,5 @@ This directory contains documentation for agents specialized in brand strategy, 
   - Spec: `agents/marketing/video-content-manager.md`
 - **Thumbnail Specialist**: Creates high-conversion video thumbnails.
   - Spec: `agents/marketing/thumbnail-specialist.md`
+- **Social Copywriter**: Drafts public copy for social posts and newsletters from supplied facts only; tool-less, and never publishes.
+  - Spec: `agents/marketing/social-copywriter.md`

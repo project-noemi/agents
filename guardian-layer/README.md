@@ -59,6 +59,12 @@ The judge model audits the operational output against five strict criteria:
 Any failed criterion, low confidence, or detected egress routes the output to
 `BLOCKED` and flags it for manual human review.
 
+Rules that can be stated as code are better checked by deterministic detectors
+beside the judge, such as an unsupported "there are none" over an incomplete
+retrieval, or an email address where none may appear. They cost nothing, give
+the same answer every time, and can run in the test suite as well as at
+runtime. See [Testing an Agent Product](../docs/examples/testing-an-agent-product.md).
+
 ## The Refusal Principle (Confidential data)
 
 When `data_classification_level == "Confidential"`, the Guardian additionally

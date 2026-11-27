@@ -1,0 +1,67 @@
+# Live agent evals (Tier B) — template.
+#
+# Copy into .github/workflows/ of an agent product. Documented in
+# docs/examples/testing-an-agent-product.md.
+#
+# These evals send real prompts to the agents and check the model's replies.
+# They cost money, need a real model key, and can vary between runs, so they
+# are NOT part of the pull request gate. Run them by hand from the Actions tab
+# (Run workflow) when checking agent quality, for example before a release or
+# after a model change. Do not add this job to required status checks.
+#
+# The pull request gate (Tier A) runs separately, with a dummy model key so an
+# accidental model call fails instead of billing.
+#
+# Credentials: MODEL_API_KEY is a repository secret here. With a vault
+# (Fetch-on-Demand), replace the env entry with the vault's CLI wrapping the
+# test command, for example `infisical run -- npm run test:evals`.
+
+name: Agent evals
+
+on:
+  workflow_dispatch:
+    inputs:
+      filter:
+        description: "Optional: run only evals whose name matches this pattern"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-evals
+  cancel-in-progress: false
+
+jobs:
+  evals:
+    name: Live agent evals
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      MODEL_API_KEY: ${{ secrets.MODEL_API_KEY }}
+      EVAL_FILTER: ${{ inputs.filter }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Refuse to run without a key
+        run: |
+          if [ -z "$MODEL_API_KEY" ]; then
+            echo "MODEL_API_KEY is not set; add it as a repository secret or switch to the vault." >&2
+            exit 1
+          fi
+
+      - name: Run agent evals
+        run: npm run test:evals -- ${EVAL_FILTER:+--test-name-pattern "$EVAL_FILTER"}

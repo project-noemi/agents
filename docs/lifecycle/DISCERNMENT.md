@@ -21,6 +21,7 @@ Testing non-deterministic AI agents requires a fundamentally different approach 
 *   **Prompt Unit Testing (LLM-as-a-Judge):** Run the agent persona through a suite of standard input prompts. Use a separate, highly configured LLM to programmatically evaluate the output, ensuring the specified Tone, Role, and Rules are strictly respected.
 *   **Integration Testing (Mock MCPs):** Spin up mock MCP servers that return static, predictable JSON responses. Verify that the agent correctly formats its tool calls, parses the mock responses accurately, and takes the appropriate subsequent actions.
 *   **Continuous Evaluation:** Periodically test production agents against a "golden dataset" of ideal interactions. This helps detect "persona drift" that can occur silently when underlying base LLM models (e.g., GPT-4, Claude 3, Gemini) receive updates from their providers.
+*   **Deterministic Detectors:** Where a failure can be stated as a rule over the recorded run, check it in code rather than with a judge model: for example, an answer that says "there are none" while a tool result in the same run was marked incomplete, or an email address in output that must not carry one. Detectors are free, fast and stable, so they run on every pull request; test each one in pairs, the same answer over passing and failing evidence. See [Testing an Agent Product](../examples/testing-an-agent-product.md).
 
 ## 2. Security Hardening
 

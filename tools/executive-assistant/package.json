@@ -17,7 +17,7 @@
     "googleapis": "^190.0.0"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^5.1.0",
+    "@vitest/coverage-v8": "^5.1.1",
     "supertest": "^7.3.2",
     "vitest": "^5.0.5"
   }

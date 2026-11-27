@@ -80,7 +80,7 @@ Emit a separate JSON audit record for each draft:
 Record the destination, the language, the number of facts and any gap noted. Do not record the copy itself or any personal data from the facts.
 
 ## External Tooling Dependencies
-- **None.** The writer is deliberately tool-less. The coordinator gathers facts from other specialists, and publishing runs in code behind a [human approval](../../guardian-layer/approval-gates.md). A test that lists every agent's tools and fails if this one holds any send, publish or lookup tool keeps it that way. How approved posts reach each network is in the [social publishing protocol](../../mcp-protocols/social-publishing.md).
+- **None.** The writer is deliberately tool-less. The coordinator gathers facts from other specialists, and publishing runs in code behind a [human approval](../../guardian-layer/approval-gates.md). A test that lists every agent's tools and fails if this one holds any send, publish or lookup tool keeps it that way. How approved posts reach each network is in the [Social Publishing](../../docs/architecture/social-publishing.md) document.
 
 ## Tool Usage
 Integration notes for the runtime that hosts this persona:

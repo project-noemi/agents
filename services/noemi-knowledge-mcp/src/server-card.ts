@@ -16,8 +16,8 @@ export function buildServerCard(env: ServerCardEnv) {
     version: env.SERVICE_VERSION || "0.1.0",
     title: "NoéMI Knowledge MCP",
     description:
-      "Ask about the NoéMI hands-on workshop series, Phase 0 security, and how to get a first safe, read-only win. Read-only, public documents only, no personal data, no sign-in required, rate-limited.",
-    websiteUrl: "https://noemi.newpush.com",
+      "Ask about the NoéMI agent framework, the 40-hour accelerator that ramps a team onto it, Phase 0 security, and how to get a first safe, read-only win. Read-only, public documents only, no personal data, no sign-in required, rate-limited.",
+    websiteUrl: "https://www.project-noemi.com",
     repository: {
       url: "https://github.com/project-noemi/agents",
       source: "github",

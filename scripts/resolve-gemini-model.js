@@ -4,10 +4,12 @@
  * review, by querying the API rather than trusting a name written into config.
  *
  * PIN VS DISCOVERY
- *   CLAUDE.md pins `models/gemini-3.6-flash` for reference workflows, lab
- *   examples, and smoke tests, where predictable cost and determinism are the
- *   point. That pin is correct there and is deliberately NOT changed by this
- *   script.
+ *   Do not hard-code a dated Gemini id. Flash callers use resolveFlash()
+ *   (highest stable Flash Google still serves). Static artifacts that cannot
+ *   list the catalogue use the stable alias `models/gemini-flash-latest`.
+ *   Dated SKUs that return HTTP 404, or are scheduled to, are refused:
+ *   gemini-2.5-flash and gemini-2.5-pro (retired 2026-10-20),
+ *   gemini-3.6-flash (2026-11-19), gemini-3.7-flash (2027-01-28).
  *
  *   Review discovers at runtime. Decision [2026-08-16-0002] selects the
  *   highest-generation **Pro preview**, and falls back to the highest
@@ -54,6 +56,30 @@ const TIER_RANK = { pro: 300, flash: 200, 'flash-lite': 100 };
 const DEFAULT_FLOOR = process.env.GEMINI_REVIEW_FLOOR || 'pro';
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
+/**
+ * Stable alias Google updates when it ships a newer Flash. Static labs use
+ * this so a retirement date does not 404 a workflow that cannot call this
+ * resolver. Runtime discovery still prefers a concrete servable id.
+ */
+const FLASH_ALIAS = 'gemini-flash-latest';
+const FLASH_ALIAS_ID = `models/${FLASH_ALIAS}`;
+
+/**
+ * Text SKUs that must not be selected. Dates are Google's published
+ * retirement dates (Cloud model-versions page, read 2026-11-13). A model
+ * still listed in the catalogue is skipped once its retirement is scheduled,
+ * so a run does not start failing on the cutoff day.
+ */
+const RETIRED_GEMINI_IDS = new Set([
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-2.5-pro',
+  'gemini-3.6-flash',
+  'gemini-3.7-flash',
+]);
+
 function parseArgs(argv) {
   const args = {
     floor: DEFAULT_FLOOR, json: false, allowPreview: false, dryRun: false,
@@ -93,13 +119,21 @@ function parseArgs(argv) {
  * Found by ranking the real published list rather than by reasoning: synthetic
  * test names had no modality suffixes, so the defect was invisible until the
  * live catalogue was ranked.
+ *
+ * Decision [2026-10-06-0001]: also exclude `live`, `transcribe`, and `translate`
+ * variants from Flash discovery — these are specialized models that should not
+ * match a generic "flash" tier request.
  */
-const NON_TEXT_MODALITY = /(?:^|-)(?:image|tts|audio|embedding|robotics|omni)|computer-use|live-|-info$/;
+const NON_TEXT_MODALITY = /(?:^|-)(?:image|tts|audio|embedding|robotics|omni)|computer-use|-live$|live-|-info$|-transcribe$|-translate$/;
 
 /**
  * Classify a model ID into ranking components. Deliberately pattern-based, not
  * an allowlist of known names — an allowlist would reintroduce the staleness
  * this script exists to avoid, silently ignoring any future generation.
+ *
+ * Decision [2026-10-06-0001]: Version comparison is now numeric (major.minor)
+ * rather than parseFloat, so 3.10 ranks above 3.8. Tier detection requires
+ * "flash" in the name for flash tier to prevent misclassifying variants.
  */
 function classify(id) {
   // Strip both shapes: `models/x` (Generative Language API) and
@@ -108,13 +142,23 @@ function classify(id) {
   if (!/^gemini-/.test(name)) return null;
   if (NON_TEXT_MODALITY.test(name)) return null;
 
-  const versionMatch = name.match(/gemini-(\d+(?:\.\d+)?)/);
-  const generation = versionMatch ? parseFloat(versionMatch[1]) : 0;
+  // Parse version as major.minor for numeric comparison
+  const versionMatch = name.match(/gemini-(\d+)(?:\.(\d+))?/);
+  let generation = 0;
+  if (versionMatch) {
+    const major = parseInt(versionMatch[1], 10);
+    const minor = versionMatch[2] ? parseInt(versionMatch[2], 10) : 0;
+    generation = major + minor / 100; // 3.8 -> 3.08, 3.10 -> 3.10
+  }
 
-  let tier = 'flash';
+  // Require explicit tier markers to avoid misclassification
+  let tier = null;
   if (/flash-lite/.test(name)) tier = 'flash-lite';
   else if (/\bpro\b|-pro/.test(name)) tier = 'pro';
-  else if (/flash/.test(name)) tier = 'flash';
+  else if (/\bflash\b/.test(name)) tier = 'flash';
+  
+  // If no tier detected, it's not a usable model
+  if (!tier) return null;
 
   const reasoning = /thinking|reasoning/.test(name);
   const preview = /preview|exp(erimental)?|-rc|latest/.test(name);
@@ -178,7 +222,8 @@ function rank(models, { allowPreview = false, preferPro = false } = {}) {
 function selectModel(models, {
   allowPreview = false, preferPro = false, preferPreviewPro = false, floor = 'pro',
 } = {}) {
-  const eligible = (opts) => rank(models, opts).filter((m) => meetsFloor(m, floor));
+  const servable = (Array.isArray(models) ? models : []).filter((id) => !isRetiredGemini(id));
+  const eligible = (opts) => rank(servable, opts).filter((m) => meetsFloor(m, floor));
 
   // Owner rule [2026-08-16-0002]: highest-generation Pro preview, else the
   // highest-generation stable Pro. Flash never qualifies under the pro floor.
@@ -216,6 +261,13 @@ function selectModel(models, {
   return { chosen, tradeoff };
 }
 
+/**
+ * Decision [2026-10-06-0001]: meetsFloor checks whether a model satisfies a
+ * minimum capability tier. For Pro review discovery (the original use case),
+ * >= semantics are preserved so preferPro can fall back across generations.
+ * For Flash-specific resolution (resolveFlash), exact tier filtering is done
+ * explicitly to prevent flash requests from returning pro models.
+ */
 function meetsFloor(model, floor) {
   const floorRank = TIER_RANK[floor];
   if (floorRank === undefined) {
@@ -234,6 +286,26 @@ function bareName(id) {
 }
 
 /**
+ * True for a retired text SKU and for its preview/experimental snapshots.
+ * A different product that merely shares a prefix (gemini-2.5-flash-image)
+ * is not retired by this list.
+ * @param {string} id
+ */
+function isRetiredGemini(id) {
+  const name = bareName(id).replace(/^google\//, '');
+  if (!name.startsWith('gemini-')) return false;
+  if (RETIRED_GEMINI_IDS.has(name)) return true;
+  for (const retired of RETIRED_GEMINI_IDS) {
+    if (
+      name.startsWith(`${retired}-preview`)
+      || name.startsWith(`${retired}-exp`)
+      || name.startsWith(`${retired}-latest`)
+    ) return true;
+  }
+  return false;
+}
+
+/**
  * Honour an explicit GEMINI_REVIEW_MODEL pin.
  *
  * Returns null for empty/`auto` (caller should discover). Throws if the pin
@@ -244,6 +316,12 @@ function bareName(id) {
 function resolvePinnedModel(pin, available) {
   if (!pin || pin === 'auto') return null;
   const want = bareName(pin);
+  if (isRetiredGemini(want)) {
+    throw new Error(
+      `GEMINI_REVIEW_MODEL '${want}' is retired or scheduled to return HTTP 404. `
+      + `Use auto, or the stable alias ${FLASH_ALIAS}.`,
+    );
+  }
   const probe = classify(`publishers/google/models/${want}`);
   if (!probe) {
     throw new Error(`GEMINI_REVIEW_MODEL '${pin}' is not a usable Gemini text model.`);
@@ -351,6 +429,50 @@ async function listModels(token, cfg = backendConfig()) {
   return out;
 }
 
+/**
+ * Decision [2026-10-06-0001]: Resolve the highest-generation stable Flash model.
+ * Prefers stable over preview, numerically compares versions (so 3.10 > 3.8),
+ * requires "flash" in the name, excludes live/transcribe/translate variants.
+ * Falls back to the stable alias gemini-flash-latest when the catalogue has
+ * no Flash Google still serves. Retired SKUs (3.6, 3.7, 2.5) are skipped
+ * even while they remain listed.
+ */
+function resolveFlash(available) {
+  const flashModels = (Array.isArray(available) ? available : [])
+    .map(classify)
+    .filter(Boolean)
+    .filter((m) => m.tier === 'flash')
+    .filter((m) => !m.preview) // Prefer stable over preview for Flash
+    .filter((m) => !isRetiredGemini(m.name));
+
+  if (flashModels.length === 0) {
+    return {
+      model: FLASH_ALIAS_ID,
+      tier: 'flash',
+      generation: null,
+      reasoning: false,
+      resolved_at: new Date().toISOString(),
+      fallback: `no servable flash models in catalogue; using stable alias ${FLASH_ALIAS}`,
+    };
+  }
+
+  // Sort by generation (descending), then by reasoning capability
+  flashModels.sort((a, b) => {
+    if (a.generation !== b.generation) return b.generation - a.generation;
+    return (b.reasoning ? 1 : 0) - (a.reasoning ? 1 : 0);
+  });
+
+  const chosen = flashModels[0];
+  return {
+    model: chosen.id,
+    tier: chosen.tier,
+    generation: chosen.generation,
+    reasoning: chosen.reasoning,
+    resolved_at: new Date().toISOString(),
+    considered: flashModels.length,
+  };
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
 
@@ -362,7 +484,8 @@ async function main() {
       'models/gemini-2.5-pro',
       'models/gemini-3.0-flash',
       'models/gemini-3.6-pro-thinking',
-      'models/gemini-3.6-flash',
+      'models/gemini-3.8-flash',
+      'models/gemini-3.10-flash',
     ];
     const ranked = rank(sample, args);
     process.stdout.write(`${JSON.stringify({ dryRun: true, ranked }, null, 2)}\n`);
@@ -434,7 +557,8 @@ async function main() {
 // without shelling out; still runs as a CLI when invoked directly.
 module.exports = {
   classify, rank, compareModels, selectModel, meetsFloor, listModels,
-  resolvePinnedModel, bareName,
+  resolvePinnedModel, bareName, resolveFlash, isRetiredGemini,
+  FLASH_ALIAS, FLASH_ALIAS_ID, RETIRED_GEMINI_IDS,
   backendConfig, generateUrl, vertexHost, TIER_RANK, NON_TEXT_MODALITY,
 };
 

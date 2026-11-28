@@ -20,10 +20,20 @@
 #   bash scripts/agent-gh.sh api repos/:owner/:repo/pulls
 #   bash scripts/agent-gh.sh whoami          # verify which identity resolves
 #
+# IDENTITY CHECK
+#   Every call, `whoami` included, refuses unless the token resolves to
+#   $AGENT_GH_EXPECTED_LOGIN (default noemi-agent). Set it to act as another
+#   machine identity, e.g. AGENT_GH_EXPECTED_LOGIN=noemi-reviewer.
+#
 # TOKEN RESOLUTION (first hit wins)
-#   1. $AGENT_GH_TOKEN already in the environment (e.g. inside `infisical run`)
-#   2. Infisical:  secret named $AGENT_GH_TOKEN_SECRET (default AGENT_GH_TOKEN)
-#   3. 1Password:  reference in $AGENT_GH_TOKEN_REF
+#   Default (fine-grained, home repo):
+#     1. $AGENT_GH_TOKEN already in the environment (e.g. inside `infisical run`)
+#     2. Infisical:  secret named $AGENT_GH_TOKEN_SECRET (default AGENT_GH_TOKEN)
+#     3. 1Password:  reference in $AGENT_GH_TOKEN_REF
+#   Classic (cross-org) when AGENT_GH_USE_CLASSIC is 1/true/yes — no fallback:
+#     1. $AGENT_GH_TOKEN_CLASSIC
+#     2. Infisical secret AGENT_GH_TOKEN_CLASSIC
+#     3. 1Password $AGENT_GH_TOKEN_CLASSIC_REF
 #
 #   The token is never written to disk, never echoed, and is passed to `gh`
 #   only through the process environment, per the repository's
@@ -36,6 +46,13 @@ set -euo pipefail
 SECRET_NAME="${AGENT_GH_TOKEN_SECRET:-AGENT_GH_TOKEN}"
 INFISICAL_ENVIRONMENT="${INFISICAL_ENV:-dev}"
 OP_REF="${AGENT_GH_TOKEN_REF:-op://noemi/github-agent/token}"
+CLASSIC_OP_REF="${AGENT_GH_TOKEN_CLASSIC_REF:-op://noemi/github-agent/token-classic}"
+TOKEN_SOURCE=""
+
+# Defaulted rather than left empty: an unset expected login would mean no
+# identity check at all, which silently reintroduces the failure this script
+# exists to prevent. Override it to act as a different machine identity.
+EXPECTED_LOGIN="${AGENT_GH_EXPECTED_LOGIN:-noemi-agent}"
 
 log() { printf '%s\n' "$*" >&2; }
 
@@ -51,8 +68,54 @@ infisical_available() {
   [[ -n "$INFISICAL_PROJECT" || -f .infisical.json ]]
 }
 
+wants_classic() {
+  local v
+  v=$(printf '%s' "${AGENT_GH_USE_CLASSIC:-}" | tr '[:upper:]' '[:lower:]')
+  [[ "$v" == "1" || "$v" == "true" || "$v" == "yes" ]]
+}
+
+resolve_classic_token() {
+  if [[ -n "${AGENT_GH_TOKEN_CLASSIC:-}" ]]; then
+    TOKEN_SOURCE=AGENT_GH_TOKEN_CLASSIC
+    printf '%s' "$AGENT_GH_TOKEN_CLASSIC"
+    return 0
+  fi
+
+  if infisical_available; then
+    local val
+    if val=$(infisical secrets get AGENT_GH_TOKEN_CLASSIC \
+               --env="$INFISICAL_ENVIRONMENT" \
+               ${INFISICAL_PROJECT:+--projectId="$INFISICAL_PROJECT"} \
+               --plain 2>/dev/null) \
+       && [[ -n "$val" ]]; then
+      TOKEN_SOURCE=AGENT_GH_TOKEN_CLASSIC
+      printf '%s' "$val"
+      return 0
+    fi
+  fi
+
+  if command -v op >/dev/null 2>&1; then
+    local val
+    if val=$(op read "$CLASSIC_OP_REF" 2>/dev/null) && [[ -n "$val" ]]; then
+      TOKEN_SOURCE=AGENT_GH_TOKEN_CLASSIC
+      printf '%s' "$val"
+      return 0
+    fi
+  fi
+
+  log "✖ AGENT_GH_USE_CLASSIC is set but AGENT_GH_TOKEN_CLASSIC is missing."
+  log "  Refusing to fall back to AGENT_GH_TOKEN."
+  return 1
+}
+
 resolve_token() {
+  if wants_classic; then
+    resolve_classic_token
+    return $?
+  fi
+
   if [[ -n "${AGENT_GH_TOKEN:-}" ]]; then
+    TOKEN_SOURCE=AGENT_GH_TOKEN
     printf '%s' "$AGENT_GH_TOKEN"
     return 0
   fi
@@ -64,6 +127,7 @@ resolve_token() {
                ${INFISICAL_PROJECT:+--projectId="$INFISICAL_PROJECT"} \
                --plain 2>/dev/null) \
        && [[ -n "$val" ]]; then
+      TOKEN_SOURCE="$SECRET_NAME"
       printf '%s' "$val"
       return 0
     fi
@@ -72,6 +136,7 @@ resolve_token() {
   if command -v op >/dev/null 2>&1; then
     local val
     if val=$(op read "$OP_REF" 2>/dev/null) && [[ -n "$val" ]]; then
+      TOKEN_SOURCE=AGENT_GH_TOKEN
       printf '%s' "$val"
       return 0
     fi
@@ -80,9 +145,21 @@ resolve_token() {
   return 1
 }
 
+if wants_classic; then
+  TOKEN_SOURCE=AGENT_GH_TOKEN_CLASSIC
+elif [[ -n "${AGENT_GH_TOKEN:-}" ]]; then
+  TOKEN_SOURCE=AGENT_GH_TOKEN
+else
+  TOKEN_SOURCE="${SECRET_NAME}"
+fi
+
 if ! token=$(resolve_token); then
   log "✖ Could not resolve the machine-identity token."
-  log "  Tried: \$AGENT_GH_TOKEN, Infisical secret '${SECRET_NAME}' (env=${INFISICAL_ENVIRONMENT}), 1Password '${OP_REF}'."
+  if wants_classic; then
+    log "  Tried: \$AGENT_GH_TOKEN_CLASSIC, Infisical secret AGENT_GH_TOKEN_CLASSIC, 1Password '${CLASSIC_OP_REF}'."
+  else
+    log "  Tried: \$AGENT_GH_TOKEN, Infisical secret '${SECRET_NAME}' (env=${INFISICAL_ENVIRONMENT}), 1Password '${OP_REF}'."
+  fi
 
   # Distinguish "no project link" from "secret missing". Conflating them sends
   # people to re-provision a credential that already exists.
@@ -100,12 +177,6 @@ if ! token=$(resolve_token); then
   exit 1
 fi
 
-# `whoami` is a local convenience verb, not a gh subcommand.
-if [[ "${1:-}" == "whoami" ]]; then
-  GH_TOKEN="$token" gh api user --jq '"\(.login) (\(.type))"'
-  exit 0
-fi
-
 if [[ $# -eq 0 ]]; then
   log "✖ No gh command given. Example:"
   log "    bash scripts/agent-gh.sh pr create --base develop --title ... --body ..."
@@ -114,17 +185,32 @@ fi
 
 # Guard against the failure this script exists to prevent: if the machine
 # token silently falls back to a human account, the resulting PR would again
-# be unreviewable by that human. Fail loudly instead.
+# be unreviewable by that human. Fail loudly instead. Checked before `whoami`
+# too, so a wrong identity is reported as an error, not printed as a neutral
+# fact with exit 0.
 actor=$(GH_TOKEN="$token" gh api user --jq '.login' 2>/dev/null || true)
 if [[ -z "$actor" ]]; then
   log "✖ Machine token was rejected by GitHub (expired, revoked, or wrong scopes)."
   exit 1
 fi
-if [[ -n "${AGENT_GH_EXPECTED_LOGIN:-}" && "$actor" != "$AGENT_GH_EXPECTED_LOGIN" ]]; then
-  log "✖ Token resolves to '${actor}', expected '${AGENT_GH_EXPECTED_LOGIN}'."
+if [[ "$actor" != "$EXPECTED_LOGIN" ]]; then
+  log "✖ Token resolves to '${actor}', expected '${EXPECTED_LOGIN}'."
   log "  Refusing to act — this would author agent work under the wrong identity."
+  log "  To act as another machine identity, set AGENT_GH_EXPECTED_LOGIN."
   exit 1
 fi
 
+# `whoami` is a local convenience verb, not a gh subcommand.
+if [[ "${1:-}" == "whoami" ]]; then
+  GH_TOKEN="$token" gh api user --jq '"\(.login) (\(.type))"'
+  if [[ -n "${TOKEN_SOURCE}" ]]; then
+    log "→ token source: ${TOKEN_SOURCE}"
+  fi
+  exit 0
+fi
+
 log "→ acting as: ${actor}"
+if [[ -n "${TOKEN_SOURCE}" ]]; then
+  log "→ token source: ${TOKEN_SOURCE}"
+fi
 GH_TOKEN="$token" exec gh "$@"

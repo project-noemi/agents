@@ -139,6 +139,20 @@ longer reported.
 Emit the per-finding disposition, the coverage delta, and the audit log. State
 plainly what remains unaddressed and why. Do not approve or merge.
 
+## Native GitHub stacked PRs
+
+Never use Graphite or the `gt` CLI. Stacked work uses standard git plus `gh`, or GitHub's native stacked pull requests (`gh stack`). The stack trunk in this repository is `develop`, not `main`. Install the official extension with `gh extension install github/gh-stack` only if you are using `gh stack`; the GitHub website and ordinary git plus `gh` also work. Agents do not merge or approve pull requests.
+
+1. Detecting a stack: the GitHub stack UI, a "Stack:" note in the PR body, or sequential PRs whose bases are each other's branches.
+2. Never merge a child PR into its parent branch. The landing target is always `develop`. Never change a PR's base by hand.
+3. Stacks land from the bottom up into `develop`, through GitHub's native stack merge or the merge queue. Do not use Graphite or a Graphite merge queue.
+4. If an upper PR is ready first, leave it open until everything below it has landed.
+5. After anything lands on `develop`, run `gh stack sync` (or rebase the remaining branches onto `develop` with standard git and update the PRs with `gh`). Then `gh stack submit` if you are using the extension. Do not run `gt sync`, `gt restack`, or `gt submit`.
+6. To fix a lower PR, commit on that branch (or use `gh stack modify`), then `gh stack sync` and `gh stack submit` if you are using the extension. Do not use `gt modify`. Do not run `git push --force`; if a rebase is needed, use `gh stack sync` or `gh stack rebase` rather than a manual force-push.
+7. Keep stacks to 3–5 PRs of about 500 changed lines each. Split larger plans into several short stacks.
+8. Ship-together notes must say "Ship together with #N. Merge from the bottom up into develop", never "Merge with #N".
+9. Run the AI reviewer once per revision (or on demand), not on every push.
+
 ## External Tooling Dependencies
 
 - **`scripts/agent-gh.sh`** — all GitHub interaction, under `noemi-agent`.

@@ -104,12 +104,14 @@ Write-Host "✅ Node.js $(node --version) meets the 24.x LTS baseline." -Foregro
 
 Write-Host "`n🔒 Checking SecretOps CLI (Fetch-on-Demand)..." -ForegroundColor Cyan
 $secretsCli = $false
+$secretsAuth = $false
 if (Get-Command op -ErrorAction SilentlyContinue) {
     Write-Host "✅ 1Password CLI (op) is installed." -ForegroundColor Green
     $secretsCli = $true
     & op user get --me >$null 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Host "   ✅ Authenticated to 1Password." -ForegroundColor Green
+        $secretsAuth = $true
     } else {
         Write-Host "   ⚠️  Not authenticated to 1Password. Run 'op signin'." -ForegroundColor Yellow
     }
@@ -120,15 +122,45 @@ if (Get-Command infisical -ErrorAction SilentlyContinue) {
     & infisical whoami >$null 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Host "   ✅ Authenticated to Infisical." -ForegroundColor Green
+        $secretsAuth = $true
     } else {
         Write-Host "   ⚠️  Not authenticated to Infisical. Run 'infisical login'." -ForegroundColor Yellow
+    }
+}
+if (Get-Command gcloud -ErrorAction SilentlyContinue) {
+    Write-Host "✅ Google Cloud CLI (gcloud) is installed (Secret Manager)." -ForegroundColor Green
+    $secretsCli = $true
+    # stdout is an access token. Discard it.
+    & gcloud auth application-default print-access-token >$null 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "   ✅ Application Default Credentials are present." -ForegroundColor Green
+        $secretsAuth = $true
+    } else {
+        Write-Host "   ⚠️  No Application Default Credentials. Run 'gcloud auth application-default login'." -ForegroundColor Yellow
+    }
+}
+if (Get-Command az -ErrorAction SilentlyContinue) {
+    Write-Host "✅ Azure CLI (az) is installed (Azure Key Vault)." -ForegroundColor Green
+    $secretsCli = $true
+    & az account show >$null 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "   ✅ Authenticated to Azure." -ForegroundColor Green
+        $secretsAuth = $true
+    } else {
+        Write-Host "   ⚠️  Not authenticated to Azure. Run 'az login'." -ForegroundColor Yellow
     }
 }
 if (-not $secretsCli) {
     Write-Host "⚠️ No SecretOps CLI found. Install at least one before you connect business systems:" -ForegroundColor Yellow
     Write-Host "   - 1Password CLI: https://developer.1password.com/docs/cli/get-started/" -ForegroundColor Yellow
     Write-Host "   - Infisical CLI: https://infisical.com/docs/cli/overview" -ForegroundColor Yellow
+    Write-Host "   - Google Cloud CLI, for Secret Manager: https://docs.cloud.google.com/sdk/docs/install" -ForegroundColor Yellow
+    Write-Host "   - Azure CLI, for Key Vault: https://learn.microsoft.com/cli/azure/install-azure-cli" -ForegroundColor Yellow
     Write-Host "   Local repo-only prompts can still work without secrets, but Gmail, GitHub, n8n, and Workspace flows should use Fetch-on-Demand wrappers." -ForegroundColor Yellow
+}
+if ($Mode -eq "docker" -and -not $secretsAuth) {
+    Write-Host "❌ docker mode requires an authenticated SecretOps CLI (infisical login, op signin, gcloud ADC, or az login). Aborting." -ForegroundColor Red
+    exit 1
 }
 
 Write-Host "`n🔑 Checking common API key env vars in the current shell..." -ForegroundColor Cyan

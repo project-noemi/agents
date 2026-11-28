@@ -1,11 +1,21 @@
+---
+use_when: the governance rules, TRiSM alignment, and red-team expectations before an agent is deployed
+tier: principle
+keywords: [governance, trism, red team, trust risk security]
+queries:
+  - what governance rules apply before deployment
+---
+
 # Governance, TRiSM, and Red Teaming
 
 ## Overview
-All agents developed within the Project NoeMI ecosystem must adhere to rigorous governance protocols before deployment. We align our security and operational standards with **Gartner AI TRiSM** (Trust, Risk and Security Management).
+All agents developed within the Project NoeMI ecosystem must adhere to rigorous governance protocols before deployment. We align our security and operational controls with **AI TRiSM** (AI trust, risk and security management), a framework defined by Gartner®, Inc.
 
 ---
 
-## 1. Gartner AI TRiSM Alignment
+## 1. AI TRiSM Alignment
+
+> Attribution: AI TRiSM (AI trust, risk and security management) is a framework defined by Gartner, Inc. Gartner® is a registered trademark and service mark of Gartner, Inc. and/or its affiliates in the U.S. and internationally.
 
 To ensure institutional-grade AI orchestration, every agent must be evaluated against the following pillars:
 
@@ -15,7 +25,7 @@ To ensure institutional-grade AI orchestration, every agent must be evaluated ag
 
 ### Risk (Compliance & Data Privacy)
 *   **Data Minimization:** Agents must only retrieve the data strictly necessary for the task (e.g., using targeted Gmail searches rather than full inbox dumps).
-*   **Secure Credentialing:** Hardcoded secrets are strictly forbidden. All MCP connections and API keys must utilize the established "Fetch-on-Demand" architecture via an approved SecretOps platform such as Infisical or 1Password.
+*   **Secure Credentialing:** Hardcoded secrets are strictly forbidden. All MCP connections and API keys must utilize the established "Fetch-on-Demand" architecture via an approved SecretOps platform such as Infisical, 1Password, Secret Manager (Google Cloud), or Azure Key Vault.
 
 ### Security (Access Control & Threat Mitigation)
 *   **Least Privilege:** MCP servers should be configured with the minimum permissions required. (e.g., An agent should not have 'Editor' access to a Google Drive folder if it only needs to 'View').

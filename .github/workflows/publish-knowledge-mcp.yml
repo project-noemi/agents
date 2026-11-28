@@ -1,0 +1,247 @@
+# Publish the NoéMI knowledge corpus to the Knowledge MCP at https://mcp.project-noemi.com
+# (Worker project-noemi-knowledge-mcp, code in project-noemi/code apps/knowledge-mcp).
+#
+# The live Worker reads releases from R2 (bucket noemi-knowledge) and re-reads the manifest about
+# once a minute, so a new corpus goes live WITHOUT a Worker deploy. This workflow therefore only
+# runs `scripts/publish.ts --remote` at a release tag; it never runs `wrangler deploy` and never
+# changes the Worker, its routes or its bindings.
+#
+# This is separate from deploy-knowledge-mcp.yml, which deploys the older Worker
+# `noemi-knowledge-mcp` (mcp.noemi.newpush.com) and is not changed here.
+#
+# Triggers:
+#   - release: published          a release created by a person or an App token.
+#   - workflow_run (Release)      release.yml creates releases with GITHUB_TOKEN, and GitHub does not
+#                                 start `release` workflows for GITHUB_TOKEN events, so this also runs
+#                                 after each successful release run. publish.ts treats the same tag
+#                                 with the same items as a no-op, and a run that tagged nothing finds
+#                                 the live service already on the latest tag and stops.
+#   - workflow_dispatch           manual, optional `tag` (empty = latest published release).
+#
+# Required secrets (names only; values are set by the secrets owner, never in this repository):
+#   Environment "knowledge-mcp-production":
+#     CLOUDFLARE_API_TOKEN    Workers R2 Storage: Edit + Account Settings: Read on the account that
+#                             holds the project-noemi.com zone (no Workers Scripts or Routes scope needed)
+#     CLOUDFLARE_ACCOUNT_ID   that account's ID
+#     KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY
+#                             private key of the dedicated read-only GitHub App (Contents: read,
+#                             Metadata: read) installed on project-noemi/code only
+#   Environment "knowledge-mcp-production" variable (not secret):
+#     KNOWLEDGE_MCP_READER_APP_ID   that App's id
+# A 1-hour installation token is minted per run with actions/create-github-app-token, so no
+# long-lived personal access token is stored.
+name: Publish Knowledge MCP corpus
+
+on:
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["Release (CalVer date-versioned)"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (YYYY.MM.DD or YYYY.MM.DD.N). Empty = latest published release."
+        type: string
+        required: false
+        default: ""
+
+concurrency:
+  group: publish-knowledge-mcp
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  HEALTH_URL: https://mcp.project-noemi.com/health
+
+jobs:
+  resolve:
+    name: Resolve release tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # After a Release run, only a successful one can have published a release.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      publish: ${{ steps.live.outputs.publish }}
+    steps:
+      - name: Resolve tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          case "${EVENT_NAME}" in
+            release)
+              if [ "${RELEASE_PRERELEASE}" = "true" ]; then
+                echo "::error::Release ${RELEASE_TAG} is a pre-release; the Knowledge MCP publishes only published releases."
+                exit 1
+              fi
+              tag="${RELEASE_TAG}" ;;
+            workflow_dispatch)
+              tag="${INPUT_TAG}"
+              if [ -z "${tag}" ]; then
+                tag="$(gh api "repos/${REPO}/releases/latest" --jq .tag_name)"
+              fi ;;
+            workflow_run)
+              tag="$(gh api "repos/${REPO}/releases/latest" --jq .tag_name)" ;;
+            *)
+              echo "::error::Unexpected event ${EVENT_NAME}."
+              exit 1 ;;
+          esac
+          if ! printf '%s' "${tag}" | grep -Eq '^[0-9]{4}\.[0-9]{2}\.[0-9]{2}(\.[0-9]+)?$'; then
+            echo "::error::'${tag}' is not a CalVer release tag (YYYY.MM.DD or YYYY.MM.DD.N)."
+            exit 1
+          fi
+          meta="$(gh api "repos/${REPO}/releases/tags/${tag}" --jq '[.draft, .prerelease] | map(tostring) | join(" ")')"
+          if [ "${meta}" != "false false" ]; then
+            echo "::error::${tag} is not a published release (draft/prerelease: ${meta})."
+            exit 1
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Release tag: ${tag}"
+
+      - name: Compare with the live service
+        id: live
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -uo pipefail
+          live="$(curl -fsS --max-time 20 "${HEALTH_URL}" | jq -r '.release // ""' || true)"
+          echo "Live release: ${live:-unknown}"
+          # A manual run always publishes (publish.ts is a no-op for an identical release).
+          if [ "${EVENT_NAME}" != "workflow_dispatch" ] && [ "${live}" = "${TAG}" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "The live service already reports ${TAG}; nothing to publish."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  publish-knowledge:
+    name: Publish corpus -> mcp.project-noemi.com
+    needs: resolve
+    if: needs.resolve.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: knowledge-mcp-production
+      url: https://mcp.project-noemi.com/health
+    env:
+      TAG: ${{ needs.resolve.outputs.tag }}
+    steps:
+      - name: Require a trusted ref
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          case "${REF}" in
+            refs/heads/develop|refs/heads/main|refs/tags/*) ;;
+            *)
+              echo "::error::Refusing to publish from ${REF}. Run this workflow from develop or main."
+              exit 1 ;;
+          esac
+
+      - name: Check secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          KNOWLEDGE_MCP_READER_APP_ID: ${{ vars.KNOWLEDGE_MCP_READER_APP_ID }}
+          KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY: ${{ secrets.KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY }}
+        run: |
+          missing=""
+          [ -n "${CLOUDFLARE_API_TOKEN}" ] || missing="${missing} CLOUDFLARE_API_TOKEN"
+          [ -n "${CLOUDFLARE_ACCOUNT_ID}" ] || missing="${missing} CLOUDFLARE_ACCOUNT_ID"
+          [ -n "${KNOWLEDGE_MCP_READER_APP_ID}" ] || missing="${missing} KNOWLEDGE_MCP_READER_APP_ID (variable)"
+          [ -n "${KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY}" ] || missing="${missing} KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY"
+          if [ -n "${missing}" ]; then
+            echo "::error::Missing secrets:${missing}. See docs/KNOWLEDGE_MCP_DEPLOY.md."
+            exit 1
+          fi
+
+      - name: Checkout agents at the release tag
+        uses: actions/checkout@v5
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          fetch-depth: 0
+          path: agents
+          persist-credentials: false
+
+      # Only promoted code may be published.
+      - name: Verify the tag is on main
+        working-directory: agents
+        run: |
+          set -euo pipefail
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::Refusing to publish ${TAG} ($(git rev-parse --short HEAD)): commit is not on main."
+            exit 1
+          fi
+
+      # Per-run installation token (1 hour) from the read-only App, limited to project-noemi/code.
+      - name: Mint read-only token for project-noemi/code
+        id: reader-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.KNOWLEDGE_MCP_READER_APP_ID }}
+          private-key: ${{ secrets.KNOWLEDGE_MCP_READER_APP_PRIVATE_KEY }}
+          owner: project-noemi
+          repositories: code
+          permission-contents: read
+
+      - name: Checkout project-noemi/code (publisher)
+        uses: actions/checkout@v5
+        with:
+          repository: project-noemi/code
+          token: ${{ steps.reader-token.outputs.token }}
+          path: noemi-code
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: noemi-code/package.json
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: noemi-code/pnpm-lock.yaml
+
+      - name: Install publisher dependencies
+        working-directory: noemi-code
+        run: pnpm install --frozen-lockfile
+
+      # Writes releases/<tag>/corpus.json.gz and manifest.json to R2. No Worker deploy.
+      - name: Publish the release corpus
+        working-directory: noemi-code/apps/knowledge-mcp
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: >
+          node --experimental-strip-types scripts/publish.ts --remote
+          --dir "${GITHUB_WORKSPACE}/agents" --release "${TAG}"
+
+      # The Worker re-reads the manifest about once a minute; poll for up to ~3 minutes.
+      - name: Smoke gate (/health reports the tag)
+        run: |
+          set -uo pipefail
+          deadline=$(( $(date +%s) + 180 ))
+          while :; do
+            body="$(curl -fsS --max-time 15 "${HEALTH_URL}" || true)"
+            release="$(printf '%s' "${body}" | jq -r '.release // ""' 2>/dev/null || true)"
+            echo "$(date -u +%H:%M:%S) release=${release:-unknown} (want ${TAG})"
+            if [ "${release}" = "${TAG}" ]; then
+              echo "Live release matches ${TAG}."
+              exit 0
+            fi
+            if [ "$(date +%s)" -ge "${deadline}" ]; then
+              echo "::error::${HEALTH_URL} did not report release ${TAG} within 3 minutes."
+              exit 1
+            fi
+            sleep 15
+          done

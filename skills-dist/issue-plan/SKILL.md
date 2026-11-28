@@ -1,6 +1,6 @@
 ---
 name: issue-plan
-description: "Produce a checkable implementation plan for an actionable GitHub issue, then run that plan through a Gemini Pro red-team cycle until the plan is accepted or `planRedTeam.maxCycles` is hit."
+description: "Produce a checkable implementation plan for an actionable GitHub issue, then run that plan through a Gemini Pro red-team cycle until the plan is accepted or `planRedTeam.maxCycles` is hit. Use when the task matches this skill's Purpose and Inputs."
 license: FSL-1.1-Apache-2.0
 metadata:
   author: project-noemi
@@ -22,32 +22,8 @@ metadata:
 
 ## Global Mandates
 
-These repository-wide mandates travel with the skill and bind regardless of
-the host agent's own context:
-
-### 🔐 Secrets & Configuration
-
-This project follows a "Fetch-on-Demand" architecture for security (Phase 0 Security). All sensitive credentials (API keys, database URLs, etc.) are stored exclusively in an encrypted SecretOps platform (Infisical or 1Password) and are never written to disk or hardcoded in source code.
-
-#### Mandatory Security Rules
-
-- NEVER ask the user for secrets in the chat interface.
-
-
-- NEVER hardcode actual secret values in any files, `.env` files, or logs.
-
-
-- ALWAYS use an Environment Injection CLI (`infisical run` or `op run`) to resolve credentials at runtime.
-
-### 🛡 Error Handling and Resilience
-
-To ensure reliability and stability, agents and toolkit components must implement robust error handling patterns.
-
-#### Mandatory Directives
-- **Graceful Degradation**: If an MCP tool or external API fails, the agent must explain the error clearly and attempt alternative strategies if available, rather than silently failing.
-- **Exponential Backoff**: Implement exponential backoff retry logic for transient network errors or rate-limiting (429) responses. Use `scripts/resilience_helpers.js` as the canonical Node.js reference implementation.
-- **Standardized Logging**: All technical errors must be logged to `stderr` to allow the orchestrator to capture and report execution failures accurately. Agent observability should leverage the `logging-mcp` protocol for unified access to Loki/Grafana and n8n webhook backends.
-- **Internal Tool & Service Audit Logs**: All Node.js-based tools in `tools/` and reference services in `examples/` that perform automated ingestion, routing, or state mutation must emit a structured JSON Audit Log to `stderr` for every significant operational event, following the same lightweight shape as agent personas.
+Before executing this skill, read [references/mandates.md](references/mandates.md).
+Those SecretOps and error-handling rules bind regardless of the host agent's context.
 
 ## Purpose
 Produce a checkable implementation plan for an actionable GitHub issue, then
@@ -67,8 +43,8 @@ from coding a rejected idea.
 ## Procedure
 1. **Reject non-actionable input** — If `intake.tier` is not `ACTIONABLE`,
    return `status: refused` and do not call a model.
-2. **Draft** — Using the Stage B family (Fable 5 Max, highest preview then
-   stable), write a plan comment with all of:
+2. **Draft** — Using the Stage B family (Gemini Argon, gateway pin
+   `google/gemini-4-argon`, a different model from the Stage B′ red-team), write a plan comment with all of:
    - **Goal** — one paragraph, the change a reviewer could verify
    - **Files** — expected paths or a bounded search plan if paths are unknown
    - **Tests** — how we will know the change is wrong if it is wrong
@@ -84,9 +60,25 @@ from coding a rejected idea.
    is a plan critique consumed by the conductor, not a GitHub PR review.
    Verdict is `pass` or `fail`. `fail` requires at least one finding with
    severity `high` or `critical` against `docs/AI_REVIEW_GOVERNANCE.md`.
-5. **Cycle** — On `fail`, if `len(prior_cycles) + 1 < cycle_limit`, revise the
-   plan (Stage B family) addressing the findings and repeat step 4. Increment
-   the cycle count each red-team call.
+5. **Cycle** — On `fail`, if `len(prior_cycles) + 1 < cycle_limit`, write a
+   revision prompt from the findings and execute that prompt on the plan,
+   then repeat step 4. The prompt revises the plan only. It does not edit
+   code and it does not edit the issue. A revision that does not change the
+   plan, drops the skip-red-team record, or adds a path that is not a
+   repository file grounded in the issue stops the cycle. Invalid files
+   (hostnames, URLs, `dist` / `coverage` / `node_modules`, `../`, absolute
+   paths, directories) are dropped rather than kept. A source file the issue
+   names stays even when this checkout does not contain it. When a finding
+   asks for a path the issue does not name, the revision records that gap
+   under Stop conditions and does not invent the path. A plan that says the
+   goal cannot be done, that contains a skip-red-team instruction in any
+   spacing, or that says a required path was not named in the issue is
+   `needs-info`. The unnamed-path finding stops the cycle immediately. With no reviser, invalid
+   files may still be dropped and the plan re-formatted; if that does not change
+   the plan, the first fail stops. The same draft is not resubmitted.
+   Increment the cycle count on each red-team call. An empty file list is
+   `needs-info` immediately. Until Stage B has an unattended resolver,
+   `--live-critic` executes the prompt with the same Gemini Pro caller as B′.
 6. **Limit** — On `fail` at `cycle_limit`, do **not** dispatch coding. Set
    `status: needs-info`, instruct the conductor to apply `noemi:needs-info`,
    and return the unresolved findings.

@@ -1,6 +1,6 @@
 ## Agent Index
 
-31 agent specifications across 9 domains:
+37 agent specifications across 10 domains:
 
 | Domain | Agent | Role | Spec File |
 |--------|-------|------|-----------|
@@ -10,7 +10,9 @@
 | coding | Bolt (Next.js 16) — Performance Agent | Performance-obsessed agent specializing in **Next. | `agents/coding/bolt/nextjs-16.md` |
 | coding | Mender — Coding Agent | Remediation specialist that closes review findings on agent-authored pull | `agents/coding/mender/core.md` |
 | coding | Sentinel — Security Agent | Security-focused agent who protects the codebase from vulnerabilities and security risks. | `agents/coding/sentinel/core.md` |
+| communication | MailSort — Communication Agent | MailSort is a specialized Gmail organization and labeling agent responsible for helping users design, maintain, and apply a clear, stable, and low-maintenance Gmail label taxonomy. | `agents/communication/mailsort.md` |
 | communication | Postman — Communication Agent | Professional communication assistant specializing in efficient email management and summarization. | `agents/communication/postman.md` |
+| education | Research Copilot — Education Agent | A research copilot agent for students, researchers, and anyone doing study or research work. | `agents/education/research-copilot.md` |
 | education | Student Success Coach — Education Agent | A compassionate, flexible, and strategic academic mentor specialized in supporting students from low-income or housing-unstable backgrounds. | `agents/education/student-success-coach.md` |
 | engineering | AI Architect — Engineering Agent | You are the AI Architect, the capstone persona of Project NoeMI. | `agents/engineering/ai-architect.md` |
 | engineering | Gatekeeper — Engineering Agent | Automated pull request triage agent that continuously monitors all repositories in a GitHub organization, classifies open PRs by risk level, and takes decisive action: auto-merges safe changes, flags  | `agents/engineering/gatekeeper.md` |
@@ -24,16 +26,20 @@
 | infrastructure | SysAdmin — Infrastructure Agent | Expert Linux System Administrator focused on safe, transparent, and efficient system management. | `agents/infrastructure/linux.md` |
 | marketing | Marketing & Brand Strategist — Marketing Agent | You are an expert Marketing & Brand Strategist. | `agents/marketing/brand-strategist.md` |
 | marketing | YouTube SEO Strategist — Marketing Agent | You are an expert **YouTube SEO and Data Strategist**. | `agents/marketing/seo-strategist.md` |
+| marketing | Social Copywriter — Marketing Agent | You are a **Social Copywriter**: the specialist that writes an organisation's public copy, such as a social post or the body of a newsletter. | `agents/marketing/social-copywriter.md` |
 | marketing | Thumbnail Specialist — Marketing Agent | You are a **Dynamic Graphic Compositor and Visual Specialist**. | `agents/marketing/thumbnail-specialist.md` |
 | marketing | Video Content Manager — Marketing Agent | You are the **Creative Director and Orchestrator** of the video content lifecycle. | `agents/marketing/video-content-manager.md` |
+| operations | After-hours Autotask Nudge — Operations Agent | MSP after-hours Service Desk alerting specialist for NewPush. | `agents/operations/after-hours-autotask-nudge.md` |
 | operations | Client Onboarding — Operations Agent | MSP Client Onboarding Specialist responsible for automating the end-to-end provisioning of new client tenants within the NoéMI framework. | `agents/operations/client-onboarding.md` |
 | operations | Club Operations — Operations Agent | You are a volunteer-club operations assistant who helps presidents, secretaries, and programme leads turn authorized sources into officer plans, draft minutes, annual calendars, speaker briefs, and ha | `agents/operations/club-operations.md` |
 | operations | Drive Cataloger — Operations Agent | You are a meticulous Drive Librarian responsible for systematically inventorying, classifying, and maintaining a structured catalog of an organization's Google Drive contents. | `agents/operations/drive-cataloger.md` |
 | operations | Fleet Dashboard — Operations Agent | Centralized observability and reporting agent that aggregates triage reports, health metrics, and action logs from all running NoéMI agents across the organization into a single dashboard interface. | `agents/operations/fleet-dashboard.md` |
 | operations | Knowledge Manager & Researcher — Operations Agent | You are a meticulous Knowledge Manager & Researcher. | `agents/operations/knowledge-manager.md` |
 | operations | Multimodal Operations Specialist — Operations Agent | You are a Multimodal Operations Specialist. | `agents/operations/multimodal-specialist.md` |
+| operations | Ops Digest Agent — Web Application Operations (read-only advisory) | An advisory operations analyst for a small, single-server web application run by one developer. | `agents/operations/ops-digest.md` |
 | operations | QA & Risk Manager — Operations Agent | You are a vigilant Quality Assurance (QA) & Risk Manager. | `agents/operations/qa-risk-manager.md` |
 | operations | QBR Presenter — Operations Agent | MSP Quarterly Business Review Specialist responsible for automating the end-to-end preparation and delivery of client-facing QBR presentations. | `agents/operations/qbr-presenter.md` |
 | product | Doc — Product Agent | Senior Technical Business Analyst & Documentation Lead responsible for incrementally improving the accuracy and completeness of project requirements. | `agents/product/doc.md` |
+| strategy | Socratic Contrarian — Strategy Agent | A disciplined, rigorous dialectical stress-tester and strategic sparring partner. | `agents/strategy/socratic-contrarian.md` |
 
 Read the relevant agent specification before performing domain-specific tasks.

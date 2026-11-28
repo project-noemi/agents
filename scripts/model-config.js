@@ -1,0 +1,237 @@
+'use strict';
+
+/**
+ * One model config for every live model call (writer, critic, reviser,
+ * doc-critic, reviewer). A pure function: env in, config out. It never reads
+ * the network and never calls gcloud.
+ *
+ * ROUTES
+ *   gateway — the shared NewPush AI gateway (LiteLLM). Main route. One virtual
+ *             key reaches xai/* and google/*. Chosen whenever AI_GW_API_TOKEN
+ *             or AI_GW_API_KEY is set, even if a provider credential is also
+ *             set: one key means the gateway key wins.
+ *   native  — per-provider direct access, kept for a tenant with no gateway
+ *             key: XAI_API_KEY to api.x.ai for the writer, application-default
+ *             credentials to Vertex for Gemini (scripts/gcp-token.js).
+ *
+ * DEFAULTS are resolved, not pinned (Decision [2026-11-14-0001]). With no env
+ * override (or `auto`), a caller that has the gateway key's model list passes
+ * it to resolveGatewayModel(): critic and review take the highest Pro preview,
+ * else the highest stable Pro, via selectModel() in resolve-gemini-model.js
+ * (the native reviewer's rule). The writer ranks xai/* with selectGrokModel().
+ * GATEWAY_FALLBACKS apply only when the list is unavailable or has no eligible
+ * model. An explicit override is still the model: a pin the key cannot call
+ * is a failed run and nothing is substituted for it. A dated Gemini id Google
+ * has retired or scheduled to 404 is refused here before any call, and is
+ * never resolved. Flash labs that cannot discover use gemini-flash-latest.
+ *
+ * The native env names (GEMINI_REVIEW_MODEL, GEMINI_CRITIC_MODEL,
+ * XAI_CODE_MODEL) keep their native meaning. On the gateway a bare id gets the
+ * provider prefix added, and `auto` or empty resolves from the key's model
+ * list (falling back to GATEWAY_FALLBACKS), so one vault value works on both
+ * routes.
+ */
+
+const { isRetiredGemini, selectModel } = require('./resolve-gemini-model.js');
+
+const NEWPUSH_AI_GW = 'https://ai-gw.newpush.com';
+const XAI_API = 'https://api.x.ai/v1';
+
+/** Refuse a dated Gemini id Google has retired or scheduled to 404. */
+function assertServableGemini(model) {
+  const bare = String(model || '')
+    .replace(/^publishers\/google\/models\//, '')
+    .replace(/^models\//, '')
+    .replace(/^google\//, '');
+  if (!bare.startsWith('gemini-') || !isRetiredGemini(bare)) return;
+  throw new Error(
+    `Gemini model '${bare}' is retired or scheduled to return HTTP 404. `
+    + 'Use auto so the resolver can choose, or the stable alias gemini-flash-latest.',
+  );
+}
+
+// plan: writes and revises the Stage B plan. critic: red-teams it. Two
+// different models on purpose, so the plan is not attacked by its author.
+//
+// Fallbacks, not defaults: used only when the key's model list is unavailable
+// or offers nothing eligible (see resolveGatewayModel). `plan` has no catalogue
+// rule yet: gemini-4-* ids carry no tier marker the Gemini resolver can rank,
+// so the plan writer stays on this id unless PLAN_MODEL is set.
+const GATEWAY_FALLBACKS = Object.freeze({
+  code: 'xai/grok-4.6',
+  plan: 'google/gemini-4-argon',
+  critic: 'google/gemini-3.1-pro-preview',
+  review: 'google/gemini-3.1-pro-preview',
+});
+
+/** Kept for callers that still import the old name. */
+const GATEWAY_DEFAULTS = GATEWAY_FALLBACKS;
+
+const STAGE_PROVIDER = Object.freeze({
+  code: 'xai', plan: 'google', critic: 'google', review: 'google',
+});
+
+function trimSlash(url) {
+  return String(url || '').trim().replace(/\/+$/, '');
+}
+
+/** OpenAI-compatible base: add /v1 when missing (same rule writer.js used). */
+function normalizeApiBase(url) {
+  const raw = trimSlash(url);
+  if (!raw) return '';
+  return /\/v1$/i.test(raw) ? raw : `${raw}/v1`;
+}
+
+/** Gateway root: accepts the root, `/v1`, or `/google` and returns the root. */
+function gatewayRoot(url) {
+  return trimSlash(url).replace(/\/(?:v1|google)$/i, '');
+}
+
+function isAuto(value) {
+  const v = String(value || '').trim();
+  return v === '' || v.toLowerCase() === 'auto';
+}
+
+/** A native Gemini or Grok id as a gateway provider/id. */
+function toGatewayModel(value, provider) {
+  const bare = String(value).trim()
+    .replace(/^publishers\/google\/models\//, '')
+    .replace(/^models\//, '');
+  if (bare.includes('/')) return bare;
+  return `${provider}/${bare}`;
+}
+
+function stageEnv(stage, env) {
+  if (stage === 'code') {
+    return env.XAI_CODE_MODEL ? { value: env.XAI_CODE_MODEL, source: 'XAI_CODE_MODEL' } : null;
+  }
+  if (stage === 'plan') {
+    // Provider-neutral: the plan writer's provider is a business choice.
+    // `anthropic/<id>` or `xai/<id>` works as well as a Gemini id.
+    return env.PLAN_MODEL ? { value: env.PLAN_MODEL, source: 'PLAN_MODEL' } : null;
+  }
+  if (stage === 'critic') {
+    if (env.GEMINI_CRITIC_MODEL) return { value: env.GEMINI_CRITIC_MODEL, source: 'GEMINI_CRITIC_MODEL' };
+    if (env.GEMINI_REVIEW_MODEL) return { value: env.GEMINI_REVIEW_MODEL, source: 'GEMINI_REVIEW_MODEL' };
+    return null;
+  }
+  return env.GEMINI_REVIEW_MODEL ? { value: env.GEMINI_REVIEW_MODEL, source: 'GEMINI_REVIEW_MODEL' } : null;
+}
+
+/** Provider of a provider/id; a bare id belongs to `fallback`. */
+function providerOf(model, fallback) {
+  const id = String(model || '');
+  return id.includes('/') ? id.split('/')[0] : fallback;
+}
+
+function gatewayStage(stage, env) {
+  const set = stageEnv(stage, env);
+  const model = !set || isAuto(set.value)
+    ? GATEWAY_FALLBACKS[stage]
+    : toGatewayModel(set.value, STAGE_PROVIDER[stage]);
+  assertServableGemini(model);
+  return {
+    provider: providerOf(model, STAGE_PROVIDER[stage]),
+    model,
+    source: !set || isAuto(set.value) ? 'default' : set.source,
+  };
+}
+
+function nativeStage(stage, env) {
+  const set = stageEnv(stage, env);
+  // Native pins stay raw. writer.selectGrokModel and resolvePinnedModel own
+  // catalogue matching; `auto` or empty means discover.
+  const model = set && !isAuto(set.value) ? String(set.value).trim() : '';
+  assertServableGemini(model);
+  const prefixed = /^(?:anthropic|xai|google|openai)\//.test(model);
+  return {
+    provider: prefixed ? providerOf(model, STAGE_PROVIDER[stage]) : STAGE_PROVIDER[stage],
+    model,
+    source: set && !isAuto(set.value) ? set.source : 'discover',
+  };
+}
+
+/**
+ * The gateway model for a stage, given the key's model list (`GET /v1/models`
+ * ids). Pure: the caller fetches the list.
+ *
+ * - An env override (source other than `default`) is returned unchanged.
+ * - critic / review: selectModel() with the Pro floor and Pro-preview first,
+ *   over the `google/gemini-*` ids. Retired ids are skipped by selectModel.
+ *   The critic never resolves to the plan writer's model.
+ * - code and plan are not resolved here (the writer ranks xai/* itself; plan
+ *   has no rule). They return their fallback.
+ * - No list, a wildcard-only list, or nothing eligible: the fallback, with
+ *   source `fallback`.
+ *
+ * @returns {{model: string, source: string}}
+ */
+function resolveGatewayModel(stage, config, ids) {
+  const current = config && config.stages && config.stages[stage];
+  if (!current) throw new Error(`Unknown model stage '${stage}'`);
+  if (current.source !== 'default') return { model: current.model, source: current.source };
+  if (stage !== 'critic' && stage !== 'review') return { model: current.model, source: 'fallback' };
+  const google = (Array.isArray(ids) ? ids : [])
+    .filter((id) => typeof id === 'string' && /^google\/gemini-/.test(id))
+    .map((id) => id.slice('google/'.length));
+  const { chosen } = selectModel(google, { floor: 'pro', preferPreviewPro: true });
+  const picked = chosen ? `google/${chosen.name}` : null;
+  if (!picked || (stage === 'critic' && picked === config.stages.plan.model)) {
+    return { model: current.model, source: 'fallback' };
+  }
+  assertServableGemini(picked);
+  return { model: picked, source: 'resolved' };
+}
+
+function loadModelConfig(env = process.env) {
+  const e = env || {};
+  const xai = e.XAI_API_KEY
+    ? { apiKey: e.XAI_API_KEY, apiBase: normalizeApiBase(e.XAI_API_BASE) || XAI_API, source: 'XAI_API_KEY' }
+    : null;
+  const gwKey = e.AI_GW_API_TOKEN || e.AI_GW_API_KEY;
+  if (gwKey) {
+    const root = gatewayRoot(e.AI_GW_BASE_URL || e.AI_GW_API_BASE) || NEWPUSH_AI_GW;
+    return {
+      mode: 'gateway',
+      gateway: {
+        apiKey: gwKey,
+        source: e.AI_GW_API_TOKEN ? 'AI_GW_API_TOKEN' : 'AI_GW_API_KEY',
+        root,
+        openaiBase: `${root}/v1`,
+        googleBase: `${root}/google`,
+      },
+      xai,
+      stages: {
+        code: gatewayStage('code', e),
+        plan: gatewayStage('plan', e),
+        critic: gatewayStage('critic', e),
+        review: gatewayStage('review', e),
+      },
+    };
+  }
+  return {
+    mode: 'native',
+    gateway: null,
+    xai,
+    stages: {
+      code: nativeStage('code', e),
+      plan: nativeStage('plan', e),
+      critic: nativeStage('critic', e),
+      review: nativeStage('review', e),
+    },
+  };
+}
+
+module.exports = {
+  GATEWAY_DEFAULTS,
+  GATEWAY_FALLBACKS,
+  NEWPUSH_AI_GW,
+  XAI_API,
+  gatewayRoot,
+  assertServableGemini,
+  loadModelConfig,
+  normalizeApiBase,
+  providerOf,
+  resolveGatewayModel,
+  toGatewayModel,
+};

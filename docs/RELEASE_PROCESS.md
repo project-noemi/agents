@@ -19,6 +19,16 @@ things run on two separate rhythms:
 Nobody hand-picks a version number, and nobody hand-writes a changelog. The date
 and the commit history are the source of truth.
 
+## Bible edition stamp
+
+`docs/PROJECT_REFERENCE.md` (the public "Bible") carries **`Edition YYYY.MM.DD`**, which must be a **published CalVer tag**, not SemVer (`2.0`) and not a month name (`April 2026`).
+
+The release job **does not rewrite `main`** (no branch write under `enforce_admins`). So the stamp is updated on `develop` during a narrative pass, using the last published tag at that time. `scripts/audit-repo.js` fails if the stamp is missing, is not a real tag, or lags the latest tag by more than 45 days (Decision [2026-09-24-0003]). Edit the Bible whenever the story drifts; do not wait for a promotion. A `docs` commit rides the next `feat`/`fix` release. Use `feat(reference):` only when the edition must be tagged before that train.
+
+## After a release: Knowledge MCP, then the website FAQ
+
+Each published release is deployed to the NoéMI Knowledge MCP (`mcp.noemi.newpush.com`) by `.github/workflows/deploy-knowledge-mcp.yml`, which rebuilds its corpus from the release. The website FAQ quotes that service, so the order is: agents release, then the Knowledge MCP deploy, then the website FAQ republish. See [KNOWLEDGE_MCP_DEPLOY.md](KNOWLEDGE_MCP_DEPLOY.md).
+
 ## Why date-based versioning (`YYYY.MM.DD`)
 
 The earlier version of this process used SemVer (`0.2.0`, `1.0.0`). For a
@@ -281,7 +291,7 @@ The two rhythms are deliberately separate:
 
 | | Cadence | What it does | Human gate |
 |---|---|---|---|
-| **Tagging / release** | Per content-bearing promotion (daily check; fires only when there's a feat/fix) | Auto-merge a `develop → main` PR, then stamp a `YYYY.MM.DD` tag + a GitHub Release (changelog as its body) on main | On develop review (upstream); green-CI gate |
+| **Tagging / release** | Per content-bearing promotion (daily check; fires when there is a feat/fix or a change to a knowledge-corpus path) | Auto-merge a `develop → main` PR, then stamp a `YYYY.MM.DD` tag + a GitHub Release (changelog as its body) on main | On develop review (upstream); green-CI gate |
 | **Digest / social** | Weekly (Monday) | Draft the week's feature highlights + LinkedIn/social post | **Yes — human approves before any post** |
 
 Why decouple them? Versions should track *reality*: mint one whenever real change
@@ -322,7 +332,7 @@ The moving parts:
 - **`.github/workflows/release.yml`** — the two jobs:
   - **`promote-and-release`** runs on a **daily `schedule:` cron** and on manual
     `workflow_dispatch` (with a `dry_run` input). It applies the **content gate**
-    (≥1 unreleased feat/fix since the last tag), checks develop's CI is
+    (≥1 unreleased feat/fix, or any commit touching a knowledge-corpus path, since the last tag), checks develop's CI is
     **green**, opens (or reuses) an **auto-merged `develop → main` PR**, and —
     once that PR merges — runs release-it **on `main`** to stamp the CalVer tag
     and publish the GitHub Release. If `main` already carries the unreleased
@@ -366,7 +376,7 @@ weekly digest pays off for consumers in concrete ways:
 - **A single, curated weekly update — not a firehose.** Communication is
   decoupled from tagging: however many versions land in a week, followers get one
   coherent, human-approved digest — benefit-language highlights, the governance
-  provenance behind them (academia + analyst firms + MSP field input), and a
+  provenance behind them (academic research + a published framework the change aligns with + MSP field input), and a
   social post — always reviewed by a human before it goes out. That turns raw
   release notes into something an adopting team, or a prospective one, actually
   reads.

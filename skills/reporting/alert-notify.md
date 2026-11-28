@@ -23,6 +23,13 @@ Deliver alerts and notifications to communication channels (Slack, email) with c
 4. **Deliver** — Send via the appropriate MCP (`slack` or `gmail`).
 5. **Confirm delivery** — Verify the message was accepted by the channel API. Log failures to stderr.
 
+**Repeated alerts.** An alert that fires on every retry or every restart can flood a channel, and a fixed cooldown per alert type also swallows the second real problem of the day. Where the same alert can recur, collapse repeats without hiding anything:
+- The first occurrence of a condition always posts, immediately.
+- A different condition always posts, however recently another one did. One problem never hides another. Independent instances, such as the same failure on two channels, count as different conditions.
+- Identical repeats within a short window update the existing message with a count (use the returned `message_id`) instead of posting again.
+- A condition resets once it stops recurring, so the same fault the next day is news again.
+- Keep this state on disk, not in memory. A crash loop is exactly when an in-memory throttle re-posts on every start.
+
 ## Outputs
 - **delivered** — Boolean indicating successful delivery
 - **channel** — Which channel was used

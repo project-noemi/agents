@@ -1,7 +1,7 @@
 # The 4D Framework: Discernment
 
 ## 1. The Core Principle
-Discernment focuses on validation, quality control, and testing. AI output is probabilistic, not deterministic, which means trust requires continuous verification. This phase maps directly to Gartner's TRiSM "Trust" pillar.
+Discernment focuses on validation, quality control, and testing. AI output is probabilistic, not deterministic, which means trust requires continuous verification. This phase maps to the trust dimension of the AI TRiSM framework (Gartner®, Inc.).
 
 ## 2. Product and Performance Validation
 - **Product Discernment**: Is the output factually true and logically sound?
@@ -21,13 +21,14 @@ Testing non-deterministic AI agents requires a fundamentally different approach 
 *   **Prompt Unit Testing (LLM-as-a-Judge):** Run the agent persona through a suite of standard input prompts. Use a separate, highly configured LLM to programmatically evaluate the output, ensuring the specified Tone, Role, and Rules are strictly respected.
 *   **Integration Testing (Mock MCPs):** Spin up mock MCP servers that return static, predictable JSON responses. Verify that the agent correctly formats its tool calls, parses the mock responses accurately, and takes the appropriate subsequent actions.
 *   **Continuous Evaluation:** Periodically test production agents against a "golden dataset" of ideal interactions. This helps detect "persona drift" that can occur silently when underlying base LLM models (e.g., GPT-4, Claude 3, Gemini) receive updates from their providers.
+*   **Deterministic Detectors:** Where a failure can be stated as a rule over the recorded run, check it in code rather than with a judge model: for example, an answer that says "there are none" while a tool result in the same run was marked incomplete, or an email address in output that must not carry one. Detectors are free, fast and stable, so they run on every pull request; test each one in pairs, the same answer over passing and failing evidence. See [Testing an Agent Product](../examples/testing-an-agent-product.md).
 
 ## 2. Security Hardening
 
-Security must align strictly with the **Gartner AI TRiSM** standards and the *Diligence* pillar of the 4D Framework.
+Security must align with the **AI TRiSM** framework (Gartner, Inc.) and the *Diligence* pillar of the 4D Framework.
 
 *   **Least Privilege MCPs:** If an agent (e.g., the Knowledge Manager) only needs to *read* Google Docs, its configured MCP server MUST NOT be granted write permissions at the API level.
-*   **Human-in-the-Loop (HITL):** Enforce hard blocks within the orchestrator for any mutating actions (e.g., sending emails, deleting files, executing SQL `UPDATE` statements, pushing code). The agent must draft the action and explicitly await human confirmation before execution.
+*   **Human-in-the-Loop (HITL):** Enforce hard blocks within the orchestrator for any mutating actions (e.g., sending emails, deleting files, executing SQL `UPDATE` statements, pushing code). The agent must draft the action and explicitly await human confirmation before execution. [Human-Approval Gates](../../guardian-layer/approval-gates.md) describes what that confirmation step must guarantee, so that what the human approved is what runs.
 *   **Prompt Injection Defense:** Design orchestrators to sanitize user inputs before passing them to the agent. Furthermore, explicitly instruct the agent within its persona file to recognize and reject instructions that attempt to override its primary Role or Rules.
 
 ## 3. Phase 0 Security & Secret Management

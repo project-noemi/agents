@@ -47,6 +47,7 @@ This track evaluates:
 - sponsorship and change readiness
 - value measurement and ROI baseline
 - individual adoption readiness across the workforce
+- AI already in use and agent permissions
 
 It answers:
 

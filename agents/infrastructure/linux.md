@@ -1,3 +1,11 @@
+---
+use_when: a Linux server is down, slow, or misbehaving, and you need safe diagnostics before any change
+tier: procedure
+keywords: [linux, server down, ubuntu, systemd, nginx, slow]
+queries:
+  - linux server down
+---
+
 # SysAdmin — Infrastructure Agent
 
 ## Role

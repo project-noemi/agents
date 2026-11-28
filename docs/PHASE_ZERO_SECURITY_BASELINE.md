@@ -1,3 +1,11 @@
+---
+use_when: baseline cybersecurity before an advanced AI project, and see what this assessment does not cover
+tier: principle
+keywords: [phase 0, security baseline, assessment scope, penetration test, certification]
+queries:
+  - what does the phase 0 assessment not cover
+---
+
 # Phase 0 Security Baseline — Client Guide Before Starting an Advanced AI Project
 
 Project NoéMI treats **Phase 0 Security** as the prerequisite for serious AI adoption. Before an organization launches copilots, agentic workflows, RAG systems, or autonomous integrations, it should first baseline its cybersecurity posture. The goal is not to become "perfect" before using AI. The goal is to understand your real risk, fix critical gaps, and establish safe operating boundaries.
@@ -81,6 +89,15 @@ Before an advanced AI project, clients should explicitly baseline the following 
 - Are security reviews and contract requirements in place before adoption?
 - Will the MSP or MSSP help assess third-party exposure, or only support tools after procurement?
 
+### 9. AI Toolchain Supply Chain
+
+- Are AI packages, MCP servers and agent CLIs installed from pinned versions or lockfiles, with no mutable `latest`-style tags on machines that hold credentials? Is there a short hold or review before a new release reaches them?
+- Which remote MCP servers may staff connect their AI tools to, who approved each one, and are MCP clients kept patched? Connecting to an unvetted server can be enough to run code on a laptop before any tool is used.
+- Does any agent or automation platform hold a person's own Git or cloud token, or does each use a service identity scoped to its task?
+- Do agents and agent-facing services (AI gateways, MCP servers) load keys from a secret manager rather than the process environment, are their API routes behind an authenticating layer, and is their outbound traffic limited to the providers they need?
+- If a key appears in a repository, chat, log or agent configuration file, is it revoked and rotated the same day (deleting the commit is not enough), and can you rotate every credential a compromised agent host could reach within a day?
+- Which third-party apps hold OAuth or app permissions in your tenant, and would you notice a credential change on one of them?
+
 ## What a Minimum Phase 0 Cybersecurity Stack Should Cover
 
 The exact tools may vary, but the capabilities should not.
@@ -96,6 +113,7 @@ The exact tools may vary, but the capabilities should not.
 | Secrets management | AI systems must not rely on hardcoded credentials | Vault-based secret storage, runtime injection, rotation process |
 | Asset inventory | You cannot secure what you cannot enumerate | Named owners for critical systems, current inventory for endpoints and SaaS |
 | Network, DNS, and egress controls | Helps enforce data boundaries and reduce exfiltration risk | Filtering, segmentation where needed, high-risk traffic visibility |
+| AI toolchain integrity | Agents run whatever their dependencies run | Pinned versions, approved MCP servers, scoped identities and secrets, same-day revocation, rotation drill rehearsed |
 | Governance and incident response | AI requires policy and human accountability | Written policies, response plan, escalation path, tabletop or rehearsal completed |
 
 ## How to Evaluate the Stack Before Launching AI
@@ -252,7 +270,7 @@ If the matching process takes time and you want to move forward with the assessm
 
 The findings belong to you regardless of which provider you ultimately choose. They can be used with your internal team, with the MSP or MSSP you select, or as a standalone reference.
 
-### What This Assessment Does Not Replace
+### Scope and limits of this assessment
 
 - It is not a full penetration test.
 - It is not a formal compliance certification.

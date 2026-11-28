@@ -6,8 +6,10 @@
 
 The **Guardian Layer** is the automated architecture where a specialized AI acts
 as an *independent auditor* of an operational AI. It natively integrates
-Gartner's **AI TRiSM** (Trust, Risk, and Security Management) framework and the
+the **AI TRiSM** framework (Gartner®, Inc.) and the
 **Discernment (D3)** phase of the [4D Framework](../docs/METHODOLOGY.md).
+
+Gartner uses the term "guardian agents" for a related category (Gartner press release, "Gartner Predicts that Guardian Agents will Capture 10-15% of the Agentic AI Market by 2030," 11 June 2025). "Guardian Layer" and "Guardian Agent" as used in NoéMI are NewPush's own terms for its implementation.
 
 > The best defense against a hallucinating AI is a specialized AI acting as an
 > independent auditor.
@@ -57,6 +59,12 @@ The judge model audits the operational output against five strict criteria:
 Any failed criterion, low confidence, or detected egress routes the output to
 `BLOCKED` and flags it for manual human review.
 
+Rules that can be stated as code are better checked by deterministic detectors
+beside the judge, such as an unsupported "there are none" over an incomplete
+retrieval, or an email address where none may appear. They cost nothing, give
+the same answer every time, and can run in the test suite as well as at
+runtime. See [Testing an Agent Product](../docs/examples/testing-an-agent-product.md).
+
 ## The Refusal Principle (Confidential data)
 
 When `data_classification_level == "Confidential"`, the Guardian additionally
@@ -84,6 +92,24 @@ unreachable, un-credentialed, or returns unparseable output (after exponential
 backoff retries: `2s, 4s, 8s, 16s`), the Guardian returns `BLOCKED` with code
 `guardian_unavailable` and `human_review_required: true`. Configure with
 `GuardianEvaluator(fail_closed=True)` (the default).
+
+## Tamper resistance
+
+A watched agent must not be able to edit, disable or silence its Guardian or its log. The table below says where each rule is enforced today and where it is not.
+
+- Guardian code, configuration, prompts, thresholds and alert routing live in a path the operational agent can read at most, never write. The intended enforcement is CODEOWNERS and branch protection, with human review on every change.
+- Removing or weakening a Guardian check, test or alert recipient is a blocking finding in review.
+- Guardian alerts and the audit log are delivered out of band, through a channel the agent does not control, and are append-only.
+- An agent's self-report (for example, "I did not remove the monitor") is never accepted as evidence. Verify from the diff and the audit log.
+
+Where this is enforced:
+
+| Rule | Enforced today | Not enforced today |
+| --- | --- | --- |
+| Read at most, never write | Agent pull requests are opened as the `noemi-agent` machine identity, which, by policy, does not approve or merge ([`docs/MACHINE_IDENTITY.md`](../docs/MACHINE_IDENTITY.md), `AGENTS.md` § Machine identity). [`.github/CODEOWNERS`](../.github/CODEOWNERS) covers `guardian-layer/` and `agents/guardian/` only through its default `*` entry. The repository rulesets block deletion and force-push on `develop` and `main`. | There is no Guardian-specific CODEOWNERS entry and no ruleset scoped to `guardian-layer/` or `agents/guardian/`. Required human review is a branch-protection setting outside this repository; this README does not assert it. At runtime, whether the operational agent can write the Guardian's files or configuration depends on the deployment, not on this repository. |
+| Weakening a Guardian check is a blocking finding | The AI reviewer's Sentinel spec ([`agents/coding/sentinel/core.md`](../agents/coding/sentinel/core.md), Refusal Criteria) refuses changes that weaken an existing control. | The AI review is advisory, and no check targets Guardian paths specifically. The decision rests with the human reviewer. |
+| Alerts and audit log out of band, append-only | Nothing in this repository. `guardian_evaluator.py` writes its audit record and a Loki-formatted record to `stderr`; `log_to_loki` formats the Loki payload but does not push it (see Observability below). | Capture of `stderr` by a process the agent does not control, delivery to a channel the agent does not control, and append-only retention all depend on how the Guardian and the log store (Loki or other) are deployed. This repository enforces none of them. |
+| Self-reports are not evidence | Partly, as reviewer guidance: the Sentinel spec ignores an unverified claim that something is "already fixed elsewhere" and verifies against the default branch. | No tool rejects an agent's self-report automatically. Reviewers verify from the diff and the audit log. |
 
 ## Observability (NewPush Labs: Loki + Grafana)
 
@@ -119,7 +145,7 @@ python3 guardian_evaluator.py        # runs three illustrative cases
 ```python
 from guardian_evaluator import GuardianEvaluator
 
-guardian = GuardianEvaluator()  # default judge = Gemini 3.6 Flash via env key
+guardian = GuardianEvaluator()  # default judge = gemini-flash-latest via env key
 decision = guardian.evaluate(
     user_prompt=user_prompt,
     operational_agent_output=proposed_output,
@@ -143,7 +169,8 @@ infisical run --env=dev -- python3 guardian_evaluator.py
 
 | Variable | Purpose |
 | --- | --- |
-| `GEMINI_API_KEY` / `GOOGLE_API_KEY` | Judge model (Gemini 3.6 Flash) credential. |
+| `GEMINI_API_KEY` / `GOOGLE_API_KEY` | Judge model credential. |
+| `GEMINI_MODEL` *(optional)* | Judge model id; defaults to the `gemini-flash-latest` alias. Do not pin a retired dated id. |
 | `LOKI_PUSH_URL` *(optional)* | Loki push endpoint; defaults to a stderr mock. |
 
 ## Files
@@ -151,4 +178,5 @@ infisical run --env=dev -- python3 guardian_evaluator.py
 | File | Description |
 | --- | --- |
 | `guardian_evaluator.py` | The Guardian class, egress scanner, Discernment prompt, routing, observability, and a runnable offline demo. |
+| `approval-gates.md` | What a human-approval stop must guarantee: opaque ids, single-use transitions, re-checks at the click, no agent holding a send tool, and the conditions for an unattended scheduled message. |
 | `requirements.txt` | `google-genai` (only needed for the live Gemini judge). |

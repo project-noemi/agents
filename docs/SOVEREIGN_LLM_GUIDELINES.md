@@ -1,3 +1,11 @@
+---
+use_when: run agents on local open-source models, with guardians watching the agents so one Accelerator can stay with the people
+tier: principle
+keywords: [sovereign, local model, open source, guardian, jailbreak]
+queries:
+  - how do local models stay safe
+---
+
 # Sovereign LLM Guidelines
 
 > **Status:** Architectural guidance for the "Great AI Pivot."
@@ -61,6 +69,8 @@ The protocol exposes two tools:
 3. **Wire the MCP.** Register `local-inference-mcp` with the orchestrator so the `query_local_llm` and `check_local_models` tools become available to agents. Resolve the gateway credential at runtime via the vault reference; never write it to disk.
 4. **Verify offline behavior.** Because both weights and gateway are internal, agents retain full reasoning capability with **no outbound internet dependency**. This is what makes air-gapped and offline operation reliable rather than aspirational.
 
+> **Workstation option: LM Studio.** On a Mac, [LM Studio](https://lmstudio.ai) serves the same kind of OpenAI-compatible endpoint (`http://localhost:1234/v1` by default) for small models. For a worked example, a local PII filter using Gemma 4, see [`examples/lm-studio-pii-layer.md`](examples/lm-studio-pii-layer.md).
+
 ### Resilience expectations
 
 Per the repository's error-handling mandates, the MCP integration must degrade gracefully: if the primary model is unavailable, fall back to the declared `fallback_model`; on transient gateway errors, apply exponential backoff (`scripts/resilience_helpers.js` is the canonical reference); and emit a structured audit record to `stderr` for every routing decision so the orchestrator can observe failures.
@@ -80,6 +90,17 @@ A single large model for every task is the most expensive and least efficient wa
 ### Why this is the cost-optimization core of the pivot
 
 Routing a categorization decision to a 70B model is like dispatching a freight truck to deliver an envelope. By letting an 8B model decide *whether and where* heavier reasoning is needed, you reserve scarce GPU capacity for the small fraction of requests that genuinely require it. On owned hardware this directly translates into higher effective throughput per GPU-hour — the **algorithmic efficiency** pillar of the pivot.
+
+### Choose the tier by how the task fails, not only by its size
+
+Task size is one input to routing; the cost of the task's typical failure is another. The cheapest tiers fail in two ways that a short task can hide:
+
+- **Repeating retrieved values verbatim.** Asked about records it already holds, a small model can state a time, a date or a count that appears in none of them, and contradict its own rows in the same answer.
+- **Restraint under many negative rules.** Instructions that are mostly "never invent a price, a date, a link, a deadline" are followed worst by the cheapest tiers. A small model also tends to agree with a correction it cannot verify ("You are absolutely right") instead of checking it against its data.
+
+So an agent whose whole job is reporting retrieved facts, or drafting copy that goes out under the organisation's name, can belong in Tier 1 or above even when each request is short. A prompt cannot fix a model that does not follow "never invent". Choose the tier deliberately rather than inheriting a default, record why, and test it with cases aimed at these failures: a question whose answer sits in a retrieved record, and a confident correction the data contradicts.
+
+A stronger tier is better at some operations without being reliable at them, calendar arithmetic among them. Remove such operations instead of escalating for them: hand the model a lookup, as the [Date Table](../skills/verification/date-table.md) skill does for weekdays and relative dates.
 
 ### Governance interaction
 
@@ -123,15 +144,13 @@ This agent operates in **Phase 0 Security** as an *outbound guardrail and securi
 
 On detection, the monitor takes decisive action: it **revokes the offending agent's MCP credentials** (via the `credential-vault-fetch` subscription) and **logs a high-severity alert** (via `unified-logging-loki`). Containment is immediate and credential-scoped — the compromised agent loses its ability to act, while the rest of the fleet continues uninterrupted.
 
-### The 1:50 Equilibrium
+### Why the 1:50 Equilibrium needs machine guardians
 
-The strategic reason the Guardian Layer is non-negotiable is the **1:50 equilibrium**: a single human manager is expected to supervise on the order of fifty autonomous agents. At that ratio, human-in-the-loop review of every action is impossible — a human cannot read fifty agents' prompt-and-response streams in real time.
+The [1:50 Equilibrium](PROJECT_REFERENCE.md#the-150-equilibrium) is one Accelerator keeping 50 AI users — Explorers or Practitioners — moving at the pace of AI. It counts people, not agents. Those people still run agents, and one person cannot read every agent's prompt-and-response stream. Machine guardians watch the agents and escalate by exception, so the Accelerator's attention stays on the 50 people. The `jailbreak-monitor-guardian` is one of those guardians:
 
-The equilibrium only holds if **machine guardians watch the machines**, escalating to the human supervisor *by exception* rather than by default. The `jailbreak-monitor-guardian` is the mechanism that makes the ratio safe:
-
-- **Auditability at scale.** Every inspected payload and every revocation is logged to the unified backend, producing a complete, queryable trail. The human manager supervises through the audit log and high-severity alerts, not by watching live streams.
-- **Bounded blast radius.** Credential revocation contains a compromised agent without a fleet-wide shutdown, preserving throughput for the other forty-nine.
-- **Sustainable oversight.** Read through the *Care-Continuity* Value Lens, exception-based supervision is what keeps the 1:50 ratio humanly sustainable. Without it, scaling the fleet would simply transfer unbounded review burden onto the human supervisor — trading a compute cost for a hidden human cost. The Guardian Layer is precisely what prevents that demographic debt.
+- **Auditability at scale.** Every inspected payload and every revocation is logged to the unified backend, producing a complete, queryable trail. The Accelerator supervises through the audit log and high-severity alerts, not by watching live streams.
+- **Bounded blast radius.** Credential revocation contains a compromised agent without a fleet-wide shutdown, so the rest of the fleet keeps working.
+- **Sustainable oversight.** Read through the *Care-Continuity* Value Lens, exception-based supervision is what keeps the Accelerator's time on the people. Without it, a larger fleet would transfer unbounded review onto that one person. The Guardian Layer is what prevents that.
 
 ### Defense-in-depth
 
@@ -141,4 +160,4 @@ The jailbreak monitor does not stand alone. It composes with the existing Guardi
 
 ## Summary
 
-The Great AI Pivot reorients Project NoéMI around infrastructure the organization controls. The four new artifacts — a sovereign Operating Profile, a consensus Skill, a jailbreak-monitoring Guardian, and a local-inference MCP — slot into the existing decoupled architecture without disturbing the proprietary profiles that remain available. Together they deliver data sovereignty, algorithmic efficiency through hierarchical routing, hallucination resistance through multi-model fusion, and the Guardian-layer governance required to keep a 1:50 human-to-agent ratio both safe and auditable.
+The Great AI Pivot reorients Project NoéMI around infrastructure the organization controls. The four new artifacts — a sovereign Operating Profile, a consensus Skill, a jailbreak-monitoring Guardian, and a local-inference MCP — slot into the existing decoupled architecture without disturbing the proprietary profiles that remain available. Together they deliver data sovereignty, algorithmic efficiency through hierarchical routing, hallucination resistance through multi-model fusion, and the Guardian-layer governance that keeps the [1:50 Equilibrium](PROJECT_REFERENCE.md#the-150-equilibrium) safe and auditable: one Accelerator, fifty AI users, agents watched by machines.

@@ -1,7 +1,17 @@
+---
+use_when: scan a payload for personal data before it is sent outside the organization
+tier: principle
+keywords: [pii, personal data, redact, scan, privacy]
+queries:
+  - scan this payload for personal data
+---
+
 # PII Scan — Security Skill
 
 ## Purpose
 Scan a data payload for Personally Identifiable Information (PII) and sensitive data patterns, then classify, redact, or block the payload accordingly. This skill extracts the core detection and redaction logic used by Guardian agents into a reusable component that any agent can invoke before sending data to external systems.
+
+What an agent stores for itself, such as conversation memory and delegation threads, is a destination too. [Conversation Memory in Shared Chats](../../docs/architecture/conversation-memory.md) covers redaction at that storage boundary, and why names are handled by expiry and erasure rather than by a pattern.
 
 ## Inputs
 - **payload** — The data to scan (string, JSON, or structured document)

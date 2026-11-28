@@ -15,3 +15,5 @@ This directory contains documentation for agents specialized in knowledge manage
 - **Club Operations**: Helps volunteer-club officers prepare plans, minutes, calendars, and speaker briefs with source verification and human decision ownership.
   - [Live persona](../../../agents/operations/club-operations.md)
   - [Rotary deployment example](../../../examples/rotary-club-operations/guide.md)
+- **Chrono Organizer**: Converts unstructured to-do lists into balanced, conflict-free daily time blocks with human-in-the-loop approval.
+  - Spec: `agents/operations/chrono-organizer.md`

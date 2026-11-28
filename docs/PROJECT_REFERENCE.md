@@ -948,6 +948,7 @@ This document serves as the entry point to the NoéMI Agents Library. Below is a
 | [`docs/examples/agent-friendly-architecture.md`](examples/agent-friendly-architecture.md) | Repository structure where the shortest path for an agent is the correct one |
 | [`docs/examples/codebase-as-memory.md`](examples/codebase-as-memory.md) | Correction hierarchy: turn repeated agent mistakes into structure, checks, and verification before prose rules |
 | [`docs/examples/verification-skills.md`](examples/verification-skills.md) | Writing evidence-based, CLI-first verification skills with a written done bar |
+| [`docs/examples/testing-an-agent-product.md`](examples/testing-an-agent-product.md) | Testing an agent product: a deterministic pull request tier, deterministic detectors, and manual live evals |
 | [`docs/examples/software-factory.md`](examples/software-factory.md) | Specialized agents, recurring triggers, and review gates for high-volume agent work |
 | [`docs/examples/trust-scaling.md`](examples/trust-scaling.md) | Widening agent autonomy one verified path at a time, gated on recorded evidence |
 | [`docs/governance/agent-gardeners.md`](governance/agent-gardeners.md) | Gardener routines that find repeated anti-patterns and replace them with durable controls |
